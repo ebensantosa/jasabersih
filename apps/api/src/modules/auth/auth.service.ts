@@ -4,14 +4,18 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { normalizePhone } from '@jasabersih/shared-types';
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../../common/prisma.service';
 
+import {
+  normalizePhone,
+  type LoginRequest,
+  type RegisterRequest,
+  type VerifyOtpRequest,
+} from './dto';
 import { OtpService } from './otp.service';
 import { TokenService, type IssuedTokens } from './token.service';
-import type { LoginRequest, RegisterRequest, VerifyOtpRequest } from './dto';
 
 const PENDING_TTL_MIN = 5;
 

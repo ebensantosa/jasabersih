@@ -10,10 +10,9 @@
     "rootDir": "src",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@jasabersih/shared-types": ["../../packages/shared-types/src/index.ts"],
-      "@jasabersih/shared-types/*": ["../../packages/shared-types/src/*"]
+      "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "prisma/seed.ts", "test/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "test", "prisma"]
 }
