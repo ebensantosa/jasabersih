@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "composite": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@jasabersih/shared-types": ["packages/shared-types/src/index.ts"],
+      "@jasabersih/shared-types/*": ["packages/shared-types/src/*"],
+      "@jasabersih/ui-kit": ["packages/ui-kit/src/index.ts"],
+      "@jasabersih/ui-kit/*": ["packages/ui-kit/src/*"]
+    }
+  }
+}

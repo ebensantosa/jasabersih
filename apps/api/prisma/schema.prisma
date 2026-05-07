@@ -1,0 +1,165 @@
+// Prisma schema — JasaBersih API
+// Catatan:
+// - PostGIS GEOGRAPHY column tidak fully supported di Prisma — pakai Unsupported("geography(Point,4326)")
+// - Partitioning, triggers (immutable ledger), extensions di-handle via raw SQL migration
+// - Money disimpan sebagai BigInt rupiah utuh
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [uuidOssp(map: "uuid-ossp"), postgis, pgcrypto, pg_trgm]
+}
+
+// ============ USER & AUTH ============
+
+model User {
+  id                       String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  phone                    String    @unique @db.VarChar(20)
+  email                    String?   @unique @db.VarChar(255)
+  passwordHash             String    @map("password_hash") @db.VarChar(255)
+  name                     String?   @db.VarChar(255)
+  gender                   String?   @db.VarChar(20)
+  dateOfBirth              DateTime? @map("date_of_birth") @db.Date
+  photoUrl                 String?   @map("photo_url") @db.VarChar(500)
+  emailVerifiedAt          DateTime? @map("email_verified_at") @db.Timestamptz()
+  phoneVerifiedAt          DateTime? @map("phone_verified_at") @db.Timestamptz()
+  isCustomer               Boolean   @default(true) @map("is_customer")
+  isFreelancer             Boolean   @default(false) @map("is_freelancer")
+  notificationPreferences  Json      @default("{}") @map("notification_preferences")
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt                DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt                DateTime? @map("deleted_at") @db.Timestamptz()
+
+  devices  UserDevice[]
+  sessions UserSession[]
+  addresses Address[]
+
+  @@index([phone])
+  @@index([email])
+  @@map("users")
+}
+
+model UserDevice {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  deviceId           String    @map("device_id") @db.VarChar(255)
+  fcmToken           String?   @map("fcm_token") @db.VarChar(500)
+  platform           String?   @db.VarChar(20)
+  deviceFingerprint  String?   @map("device_fingerprint")
+  lastActiveAt       DateTime? @map("last_active_at") @db.Timestamptz()
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceFingerprint])
+  @@map("user_devices")
+}
+
+model UserSession {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  refreshTokenHash   String    @map("refresh_token_hash") @db.VarChar(255)
+  deviceId           String?   @map("device_id") @db.VarChar(255)
+  ipAddress          String?   @map("ip_address") @db.Inet
+  userAgent          String?   @map("user_agent")
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz()
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz()
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([refreshTokenHash])
+  @@map("user_sessions")
+}
+
+model Address {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  tag         String?   @db.VarChar(50)
+  addressLine String    @map("address_line")
+  city        String    @db.VarChar(100)
+  postalCode  String?   @map("postal_code") @db.VarChar(10)
+  // PostGIS geography — managed via raw SQL migration
+  location    Unsupported("geography(Point,4326)")
+  notes       String?
+  isDefault   Boolean   @default(false) @map("is_default")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// ============ SERVICES & PRICING ============
+
+model Service {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code         String   @unique @db.VarChar(50)
+  name         String   @db.VarChar(100)
+  description  String?
+  iconUrl      String?  @map("icon_url") @db.VarChar(500)
+  isActive     Boolean  @default(true) @map("is_active")
+  displayOrder Int?     @map("display_order")
+
+  packages PricingPackage[]
+
+  @@map("services")
+}
+
+model PricingPackage {
+  id              String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  serviceId       String  @map("service_id") @db.Uuid
+  name            String  @db.VarChar(100)
+  price           BigInt
+  durationMin     Int     @map("duration_min")
+  scope           Json?
+  dirtMultipliers Json    @default("{\"4\": 1.25, \"5\": 1.5}") @map("dirt_multipliers")
+  isActive        Boolean @default(true) @map("is_active")
+
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@map("pricing_packages")
+}
+
+model PricingHourlyTier {
+  id              String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code            String? @unique @db.VarChar(50)
+  name            String? @db.VarChar(100)
+  pricePerHour    BigInt  @map("price_per_hour")
+  minHours        Decimal @map("min_hours") @db.Decimal(3, 1)
+  cleanerSharePct Decimal @map("cleaner_share_pct") @db.Decimal(5, 2)
+
+  @@map("pricing_hourly_tiers")
+}
+
+model AddOn {
+  id          String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code        String? @unique @db.VarChar(50)
+  name        String  @db.VarChar(100)
+  price       BigInt
+  durationMin Int     @map("duration_min")
+  description String?
+  isActive    Boolean @default(true) @map("is_active")
+
+  @@map("add_ons")
+}
+
+model CommissionTier {
+  id                     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  rangeMin               BigInt?  @map("range_min")
+  rangeMax               BigInt?  @map("range_max")
+  cleanerShareNoTools    Decimal? @map("cleaner_share_no_tools") @db.Decimal(5, 2)
+  cleanerShareWithTools  Decimal? @map("cleaner_share_with_tools") @db.Decimal(5, 2)
+  topTierBonusPct        Decimal  @default(5.00) @map("top_tier_bonus_pct") @db.Decimal(5, 2)
+
+  @@map("commission_tiers")
+}

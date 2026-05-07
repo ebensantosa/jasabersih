@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "JasaBersih",
+    "slug": "jasabersih-app",
+    "version": "1.1.0",
+    "scheme": "jasabersih",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jasabersih.app",
+      "buildNumber": "2"
+    },
+    "android": {
+      "package": "com.jasabersih.app",
+      "versionCode": 2,
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": false },
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000/v1",
+      "eas": {
+        "projectId": "4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a"
+      }
+    },
+    "owner": null
+  }
+}

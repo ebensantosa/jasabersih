@@ -1,0 +1,30 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@jasabersih/shared-types": [
+        "../../packages/shared-types/src/index.ts"
+      ],
+      "@jasabersih/shared-types/*": [
+        "../../packages/shared-types/src/*"
+      ],
+      "@jasabersih/ui-kit": [
+        "../../packages/ui-kit/src/index.ts"
+      ],
+      "@jasabersih/ui-kit/*": [
+        "../../packages/ui-kit/src/*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts"
+  ]
+}

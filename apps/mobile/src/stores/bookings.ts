@@ -1,0 +1,206 @@
+import { create } from 'zustand';
+
+import { storage } from '../lib/storage';
+
+const BOOKINGS_KEY = 'bookings.list';
+
+export type PricingMode = 'package' | 'hourly' | 'wa_survey';
+
+export type BookingStatus =
+  | 'pending_payment'
+  | 'searching'
+  | 'matched'
+  | 'on_the_way'
+  | 'in_progress'
+  | 'completed'
+  | 'canceled'
+  | 'wa_survey_pending'; // menunggu CS contact untuk WA Survey
+
+export type ChatMessage = {
+  id: string;
+  senderId: 'me' | 'cleaner' | 'system';
+  text: string;
+  createdAt: number;
+};
+
+/** Snapshot form yang customer submit — immutable, untuk anti-fraud audit. */
+export type FormSnapshot = {
+  propertyType?: string;
+  floor?: string;
+  hasLift?: boolean;
+  bedrooms?: number;
+  bathrooms?: number;
+  facilities?: string[];
+  areaM2?: number;
+  dirtLevel?: 1 | 2 | 3 | 4 | 5;
+  dirtCharacters?: string[];
+  floorType?: string;
+  furnitureDensity?: string;
+  hasWater?: boolean;
+  hasElectricity?: boolean;
+  hasPet?: boolean;
+  petNote?: string;
+  notes?: string;
+  photoCount?: number;
+};
+
+export type Booking = {
+  id: string;
+  pricingMode: PricingMode;
+  // Common
+  categoryCode: string;
+  categoryName: string;
+  categoryImage: string;
+  addressLine: string;
+  scheduledAt: string;
+  status: BookingStatus;
+  createdAt: number;
+  paidAt?: number;
+  cancelRefund?: number;
+  // Mode-specific
+  packageId?: string;
+  packageName?: string;
+  hourlyTierCode?: string;
+  hourlyTierName?: string;
+  hours?: number;
+  surveyDescription?: string;
+  // Add-ons & price
+  addOns: { code: string; name: string; price: number }[];
+  basePrice: number;
+  dirtSurcharge: number;
+  totalPrice: number;
+  // Anti-fraud snapshot
+  formSnapshot?: FormSnapshot;
+  // Cleaner (assigned later)
+  cleanerName?: string;
+  messages: ChatMessage[];
+};
+
+type State = {
+  list: Booking[];
+  hydrated: boolean;
+  create: (
+    b: Omit<Booking, 'id' | 'createdAt' | 'messages' | 'status'> & { initialStatus?: BookingStatus },
+  ) => Booking;
+  setStatus: (id: string, status: BookingStatus) => void;
+  markPaid: (id: string) => void;
+  cancel: (id: string, refund?: number) => void;
+  appendMessage: (id: string, msg: Omit<ChatMessage, 'id' | 'createdAt'>) => void;
+  hydrate: () => void;
+  setListInternal: (list: Booking[]) => void;
+};
+
+function persist(list: Booking[]): void {
+  storage.set(BOOKINGS_KEY, JSON.stringify(list));
+}
+
+export const useBookingsStore = create<State>((set, get) => ({
+  list: [],
+  hydrated: false,
+  hydrate: () => {
+    const raw = storage.getString(BOOKINGS_KEY);
+    if (raw) {
+      try {
+        const list = JSON.parse(raw) as Booking[];
+        set({ list, hydrated: true });
+        return;
+      } catch {
+        storage.delete(BOOKINGS_KEY);
+      }
+    }
+    set({ hydrated: true });
+  },
+  setListInternal: (list) => {
+    persist(list);
+    set({ list });
+  },
+  create: ({ initialStatus, ...b }) => {
+    const id = 'bk_' + Math.random().toString(36).slice(2, 10);
+    const status: BookingStatus = initialStatus ?? 'searching';
+    const booking: Booking = {
+      ...b,
+      id,
+      status,
+      createdAt: Date.now(),
+      messages: [],
+    };
+    const next = [booking, ...get().list];
+    persist(next);
+    set({ list: next });
+    return booking;
+  },
+  setStatus: (id, status) => {
+    const before = get().list.find((b) => b.id === id);
+    const next = get().list.map((b) => (b.id === id ? { ...b, status } : b));
+    persist(next);
+    set({ list: next });
+    // Auto-credit cleaner wallet saat job baru saja completed
+    if (status === 'completed' && before && before.status !== 'completed' && before.cleanerName) {
+      // Lazy import untuk hindari circular dependency
+      Promise.all([import('./cleanerWallet'), import('./cleaner')])
+        .then(([{ useCleanerWalletStore }, { useCleanerStore }]) => {
+          const bringsTools = useCleanerStore.getState().bringsTools;
+          useCleanerWalletStore
+            .getState()
+            .addEarning(
+              before.id,
+              before.totalPrice,
+              bringsTools,
+              `${before.categoryName} · ${before.id.toUpperCase()}`,
+            );
+        })
+        .catch(() => {});
+    }
+  },
+  markPaid: (id) => {
+    const next = get().list.map((b) =>
+      b.id === id ? { ...b, paidAt: Date.now(), status: 'searching' as const } : b,
+    );
+    persist(next);
+    set({ list: next });
+  },
+  cancel: (id, refund) => {
+    const next = get().list.map((b) =>
+      b.id === id ? { ...b, status: 'canceled' as const, cancelRefund: refund } : b,
+    );
+    persist(next);
+    set({ list: next });
+  },
+  appendMessage: (id, msg) => {
+    const next = get().list.map((b) =>
+      b.id === id
+        ? {
+            ...b,
+            messages: [
+              ...b.messages,
+              { ...msg, id: 'm' + Math.random().toString(36).slice(2, 8), createdAt: Date.now() },
+            ],
+          }
+        : b,
+    );
+    persist(next);
+    set({ list: next });
+  },
+}));
+
+export const STATUS_LABEL: Record<BookingStatus, string> = {
+  pending_payment: 'Menunggu Pembayaran',
+  searching: 'Mencari Cleaner',
+  matched: 'Cleaner Ditemukan',
+  on_the_way: 'Cleaner Menuju Lokasi',
+  in_progress: 'Sedang Dikerjakan',
+  completed: 'Selesai',
+  canceled: 'Dibatalkan',
+  wa_survey_pending: 'Menunggu CS Hubungi',
+};
+
+export const STATUS_COLOR: Record<BookingStatus, { bg: string; fg: string }> = {
+  pending_payment: { bg: '#FEF3C7', fg: '#B45309' },
+  searching: { bg: '#DBEAFE', fg: '#1D4ED8' },
+  matched: { bg: '#D1FAE5', fg: '#047857' },
+  on_the_way: { bg: '#DBEAFE', fg: '#1D4ED8' },
+  in_progress: { bg: '#FEF3C7', fg: '#B45309' },
+  completed: { bg: '#D1FAE5', fg: '#047857' },
+  canceled: { bg: '#FEE2E2', fg: '#B91C1C' },
+  wa_survey_pending: { bg: '#FEF3C7', fg: '#B45309' },
+};
