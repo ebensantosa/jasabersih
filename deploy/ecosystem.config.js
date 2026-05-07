@@ -1,4 +1,5 @@
 // PM2 ecosystem — keep API & Admin running 24/7 dengan auto-restart
+// Port 5000/5001 (port 3000/3001 dipakai project lain di VPS share)
 module.exports = {
   apps: [
     {
@@ -9,7 +10,7 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 5000,
       },
       max_memory_restart: '500M',
       error_file: '/var/log/jasabersih/api-error.log',
@@ -20,12 +21,12 @@ module.exports = {
       name: 'jasabersih-admin',
       cwd: '/var/www/jasabersih/apps/admin',
       script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 3001',
+      args: 'start -p 5001',
       instances: 1,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001,
+        PORT: 5001,
       },
       max_memory_restart: '300M',
       error_file: '/var/log/jasabersih/admin-error.log',

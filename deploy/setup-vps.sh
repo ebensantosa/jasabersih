@@ -88,20 +88,29 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable
 
-# ===== Caddy config =====
-echo "==> Write Caddyfile..."
-cat > /etc/caddy/Caddyfile <<EOF
+# ===== Caddy config — APPEND mode (VPS bisa share dengan project lain) =====
+echo "==> Append config jasabersih ke Caddyfile..."
+CADDY_MARK="# ===== JasaBersih (auto) ====="
+touch /etc/caddy/Caddyfile
+if ! grep -qF "$CADDY_MARK" /etc/caddy/Caddyfile; then
+  cat >> /etc/caddy/Caddyfile <<EOF
+
+$CADDY_MARK
 $DOMAIN_API {
-    reverse_proxy localhost:3000
+    reverse_proxy localhost:5000
     encode gzip
 }
 
 $DOMAIN_ADMIN {
-    reverse_proxy localhost:3001
+    reverse_proxy localhost:5001
     encode gzip
 }
 EOF
-systemctl reload caddy
+  systemctl reload caddy
+  echo "    Caddyfile updated + reloaded."
+else
+  echo "    Block JasaBersih sudah ada di Caddyfile — skip (run manual: sudo systemctl reload caddy kalau perlu)."
+fi
 
 echo ""
 echo "================================================"
