@@ -110,6 +110,7 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
       listCleaners: (params?: { status?: string }) =>
         request<unknown[]>('GET', `/admin/cleaners${qs(params)}`),
+      listUsers: () => request<unknown[]>('GET', '/admin/users'),
       approveCleanerKyc: (cleanerId: string) =>
         request<unknown>('PATCH', `/admin/cleaners/${cleanerId}/approve`),
       suspendCleaner: (cleanerId: string, reason: string) =>
