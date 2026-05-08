@@ -134,6 +134,7 @@ export default function RootLayout() {
         <Stack.Screen name="cleaner/withdraw" />
         <Stack.Screen name="cleaner/kyc" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="payment/[bookingId]" />
         <Stack.Screen name="addresses/edit" />
       </Stack>
         <ToastHost />

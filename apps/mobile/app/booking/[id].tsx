@@ -152,20 +152,13 @@ export default function BookingDetail() {
 
   function onPay() {
     if (!booking) return;
-    Alert.alert(
-      '💳 Simulasi Pembayaran',
-      `Bayar ${formatRupiah(booking.totalPrice)} via QRIS / VA / e-wallet?\n\n(DEV: tombol pura-pura bayar)`,
-      [
-        { text: 'Batal' },
-        {
-          text: 'Pura-pura Bayar',
-          onPress: () => {
-            markPaid(booking.id);
-            toast.success('Pembayaran berhasil — mencari cleaner…');
-          },
-        },
-      ],
-    );
+    // Local-only booking (belum sync ke server) → fall back ke mock pay
+    if (booking.id.startsWith('bk_')) {
+      markPaid(booking.id);
+      toast.success('Pembayaran berhasil (offline mode) — mencari cleaner…');
+      return;
+    }
+    router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id } });
   }
 
   const modeLabel =
@@ -468,7 +461,7 @@ export default function BookingDetail() {
                     className="rounded-2xl bg-brand-600 py-3.5"
                   >
                     <Text className="font-bold text-center text-sm text-white">
-                      💳 Bayar {formatRupiah(booking.totalPrice)} (Simulasi)
+                      Bayar {formatRupiah(booking.totalPrice)}
                     </Text>
                   </Pressable>
                   <Pressable onPress={onCancel} className="mt-2 py-2">
