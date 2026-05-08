@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { api } from '../lib/api';
 import { storage } from '../lib/storage';
 
 const KEY = 'addresses.list';
@@ -25,6 +26,8 @@ type State = {
   setDefault: (id: string) => void;
   getDefault: () => SavedAddress | null;
   hydrate: () => void;
+  syncFromApi: () => Promise<void>;
+  syncing: boolean;
 };
 
 function persist(list: SavedAddress[]): void {
@@ -34,6 +37,29 @@ function persist(list: SavedAddress[]): void {
 export const useAddressesStore = create<State>((set, get) => ({
   list: [],
   hydrated: false,
+  syncing: false,
+  async syncFromApi() {
+    set({ syncing: true });
+    try {
+      const res = await api.get('/addresses');
+      const items: any[] = res.data?.data ?? [];
+      const list: SavedAddress[] = items.map((a) => ({
+        id: a.id,
+        label: a.label ?? 'Alamat',
+        recipientName: a.recipientName ?? '',
+        recipientPhone: a.recipientPhone ?? '',
+        addressLine: a.addressLine ?? '',
+        detailNote: a.detailNote ?? undefined,
+        lat: Number(a.lat ?? 0),
+        lng: Number(a.lng ?? 0),
+        isDefault: !!a.isDefault,
+      }));
+      persist(list);
+      set({ list, syncing: false });
+    } catch {
+      set({ syncing: false });
+    }
+  },
   hydrate: () => {
     const raw = storage.getString(KEY);
     if (raw) {
@@ -48,15 +74,28 @@ export const useAddressesStore = create<State>((set, get) => ({
     set({ hydrated: true });
   },
   add: (a) => {
-    const id = 'addr_' + Math.random().toString(36).slice(2, 10);
+    const tempId = 'addr_' + Math.random().toString(36).slice(2, 10);
     let list = get().list;
-    // Kalau ini alamat pertama → otomatis default
     const isDefault = a.isDefault || list.length === 0;
     if (isDefault) list = list.map((x) => ({ ...x, isDefault: false }));
-    const next: SavedAddress = { ...a, id, isDefault };
+    const next: SavedAddress = { ...a, id: tempId, isDefault };
     const newList = [...list, next];
     persist(newList);
     set({ list: newList });
+
+    // Push to API in background, replace tempId with server uuid
+    api.post('/addresses', {
+      label: a.label, recipientName: a.recipientName, recipientPhone: a.recipientPhone,
+      addressLine: a.addressLine, city: 'Jakarta', detailNote: a.detailNote,
+      lat: a.lat, lng: a.lng, isDefault,
+    }).then((res) => {
+      const serverId = res.data?.data?.id ?? res.data?.id;
+      if (!serverId) return;
+      const updated = get().list.map((x) => x.id === tempId ? { ...x, id: serverId } : x);
+      persist(updated);
+      set({ list: updated });
+    }).catch(() => {});
+
     return next;
   },
   update: (id, patch) => {
@@ -65,20 +104,29 @@ export const useAddressesStore = create<State>((set, get) => ({
     const newList = list.map((a) => (a.id === id ? { ...a, ...patch } : a));
     persist(newList);
     set({ list: newList });
+    // Push to API kalau bukan local-only (tempId)
+    if (!id.startsWith('addr_')) {
+      api.patch(`/addresses/${id}`, patch).catch(() => {});
+    }
   },
   remove: (id) => {
     const newList = get().list.filter((a) => a.id !== id);
-    // Kalau yang di-remove adalah default & masih ada list → set yg pertama jadi default
     if (newList.length > 0 && !newList.some((a) => a.isDefault)) {
       newList[0]!.isDefault = true;
     }
     persist(newList);
     set({ list: newList });
+    if (!id.startsWith('addr_')) {
+      api.delete(`/addresses/${id}`).catch(() => {});
+    }
   },
   setDefault: (id) => {
     const newList = get().list.map((a) => ({ ...a, isDefault: a.id === id }));
     persist(newList);
     set({ list: newList });
+    if (!id.startsWith('addr_')) {
+      api.post(`/addresses/${id}/set-default`).catch(() => {});
+    }
   },
   getDefault: () => get().list.find((a) => a.isDefault) ?? get().list[0] ?? null,
 }));

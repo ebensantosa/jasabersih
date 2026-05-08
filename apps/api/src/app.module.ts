@@ -11,6 +11,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AppContentModule } from './modules/app-content/app-content.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AppContentModule } from './modules/app-content/app-content.module';
     BookingsModule,
     ChatModule,
     AppContentModule,
+    AddressesModule,
   ],
   controllers: [HealthController],
 })
