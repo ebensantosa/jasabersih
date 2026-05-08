@@ -19,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PaymentsModule } from './modules/payments/payments.module';
 import { RatingsModule } from './modules/ratings/ratings.module';
 import { ReferralModule } from './modules/referral/referral.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ReferralModule } from './modules/referral/referral.module';
     PaymentsModule,
     RatingsModule,
     ReferralModule,
+    JobsModule,
   ],
   controllers: [HealthController],
 })

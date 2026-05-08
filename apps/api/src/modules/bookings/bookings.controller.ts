@@ -7,6 +7,7 @@ import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { JobsGateway } from '../jobs/jobs.gateway';
 
 const CreateBookingSchema = z.object({
   pricingMode: z.enum(['package', 'hourly', 'wa_survey']),
@@ -30,7 +31,7 @@ type CreateBookingDto = z.infer<typeof CreateBookingSchema>;
 @UseGuards(JwtAuthGuard)
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly jobs: JobsGateway) {}
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser) {
@@ -104,6 +105,7 @@ export class BookingsController {
       id,
       user.id,
     );
+    void this.jobs.broadcastIncomingJob(id).catch(() => {});
     return { ok: true };
   }
 

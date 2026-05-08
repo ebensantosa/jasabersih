@@ -6,6 +6,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 import { TripayService } from './tripay.service';
 
@@ -16,6 +17,7 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
     private readonly tripay: TripayService,
     private readonly push: PushService,
+    private readonly jobs: JobsGateway,
   ) {}
 
   // List active payment channels (public — for picker UI)
@@ -153,7 +155,7 @@ export class PaymentsController {
           `,
         ] : []),
       ]);
-      // Notify customer
+      // Notify customer + broadcast to available cleaners
       if (p.user_id) {
         void this.push.send({
           userId: p.user_id, channel: 'booking',
@@ -162,6 +164,7 @@ export class PaymentsController {
           data: { type: 'payment_paid', bookingId: p.booking_id, paymentId: p.id },
         }).catch(() => {});
       }
+      if (p.booking_id) void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
     } else if ((status === 'EXPIRED' || status === 'REFUND') && p.status !== status.toLowerCase()) {
       await this.prisma.$executeRaw`
         UPDATE payments SET status = ${status.toLowerCase()}, callback_payload = ${raw}::jsonb
