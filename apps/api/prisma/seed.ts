@@ -42,11 +42,13 @@ const ADD_ONS = [
   { code: 'setrika', name: 'Setrika Pakaian', price: 30_000n, durationMin: 45 },
 ];
 
+// Canonical commission rules — see memory/project_commission_rules.md.
+// NoTools fixed 40%, WithTools decreases as order grows (platform margin
+// scales with absolute amount on big orders).
 const COMMISSION_TIERS = [
-  { rangeMin: 0n, rangeMax: 100_000n, cleanerShareNoTools: 70, cleanerShareWithTools: 65 },
-  { rangeMin: 100_001n, rangeMax: 300_000n, cleanerShareNoTools: 72, cleanerShareWithTools: 67 },
-  { rangeMin: 300_001n, rangeMax: 1_000_000n, cleanerShareNoTools: 75, cleanerShareWithTools: 70 },
-  { rangeMin: 1_000_001n, rangeMax: null, cleanerShareNoTools: 78, cleanerShareWithTools: 73 },
+  { rangeMin: 0n,        rangeMax: 300_000n, cleanerShareNoTools: 40, cleanerShareWithTools: 60 },
+  { rangeMin: 300_001n,  rangeMax: 600_000n, cleanerShareNoTools: 40, cleanerShareWithTools: 55 },
+  { rangeMin: 600_001n,  rangeMax: null,     cleanerShareNoTools: 40, cleanerShareWithTools: 50 },
 ];
 
 async function main() {

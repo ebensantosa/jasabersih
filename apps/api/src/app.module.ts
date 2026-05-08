@@ -8,6 +8,7 @@ import { RedisModule } from './common/redis.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { StorageModule } from './modules/storage/storage.module';
     AuthModule,
     AdminModule,
     BookingsModule,
+    ChatModule,
   ],
   controllers: [HealthController],
 })
