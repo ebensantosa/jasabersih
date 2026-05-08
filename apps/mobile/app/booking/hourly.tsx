@@ -5,11 +5,13 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
-import { HOURLY_TIERS, SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
+import { HOURLY_TIERS as LOCAL_TIERS, SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
+import { useApiHourlyTiers } from '../../src/stores/appContent';
 import { useAuthStore } from '../../src/stores/auth';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
+import { useMemo } from 'react';
 
 const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00', '17:00'];
 const DATE_OPTIONS = (() => {
@@ -34,6 +36,21 @@ export default function HourlyBooking() {
   const create = useBookingsStore((s) => s.create);
 
   const category = SERVICE_CATEGORIES.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
+
+  // Prefer API tiers (admin-editable). Fallback to LOCAL_TIERS kalau API kosong.
+  const apiTiers = useApiHourlyTiers();
+  const HOURLY_TIERS = useMemo(() => {
+    if (apiTiers.length > 0) {
+      return apiTiers.map((t) => ({
+        code: t.code ?? t.id,
+        name: t.name ?? 'Standard',
+        pricePerHour: Number(t.pricePerHour ?? 0),
+        minHours: Number(t.minHours ?? 2),
+        description: '',
+      }));
+    }
+    return LOCAL_TIERS;
+  }, [apiTiers]);
 
   const [tierCode, setTierCode] = useState<string>(HOURLY_TIERS[0]?.code ?? '');
   const tier = HOURLY_TIERS.find((t) => t.code === tierCode) ?? HOURLY_TIERS[0];

@@ -108,3 +108,23 @@ export function useConfig<K extends keyof AppConfig>(key: K, fallback: AppConfig
 export function useBanners(placement?: string): Banner[] {
   return useAppContent((s) => placement ? s.content.banners.filter((b) => b.placement === placement) : s.content.banners);
 }
+
+export function useApiServices(): ServiceItem[] {
+  return useAppContent((s) => s.content.services);
+}
+
+export function useApiAddons(): Addon[] {
+  return useAppContent((s) => s.content.addons);
+}
+
+export function useApiHourlyTiers(): HourlyTier[] {
+  return useAppContent((s) => s.content.hourlyTiers);
+}
+
+export function useApiPackagesForService(serviceCode: string): PackageItem[] {
+  return useAppContent((s) => {
+    const svc = s.content.services.find((x) => x.code === serviceCode);
+    if (!svc) return [];
+    return s.content.packages.filter((p) => p.serviceId === svc.id);
+  });
+}

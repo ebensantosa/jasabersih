@@ -9,13 +9,13 @@ import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { Stepper } from '../../src/components/Stepper';
 import { StepProgress } from '../../src/components/StepWizard';
 import {
-  ADDONS,
+  ADDONS as LOCAL_ADDONS,
   DIRT_CHARACTERS,
   DIRT_LEVELS,
   FLOOR_OPTIONS,
   FLOOR_TYPES,
   FURNITURE_DENSITY,
-  PACKAGES,
+  PACKAGES as LOCAL_PACKAGES,
   PROPERTY_TYPES,
   ROOM_FACILITIES,
   SERVICE_CATEGORIES,
@@ -24,6 +24,7 @@ import {
   type PropertyType,
 } from '../../src/data/catalog';
 import { useAddressesStore } from '../../src/stores/addresses';
+import { useApiAddons, useApiPackagesForService } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -56,6 +57,41 @@ export default function NewBooking() {
   const create = useBookingsStore((s) => s.create);
 
   const category = SERVICE_CATEGORIES.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
+
+  // Prefer API packages for this service code (admin-editable). Fallback to local.
+  const apiPackages = useApiPackagesForService(category?.code ?? '');
+  const PACKAGES = useMemo(() => {
+    if (apiPackages.length > 0) {
+      return apiPackages.map((p) => ({
+        id: p.id,
+        categoryCode: category?.code ?? '',
+        name: p.name,
+        price: Number(p.price),
+        durationMin: Number(p.durationMin),
+        scope: typeof p.scope === 'string' ? p.scope : (p.scope?.note ?? ''),
+      }));
+    }
+    return LOCAL_PACKAGES;
+  }, [apiPackages, category?.code]);
+
+  // Merge API addons with local icons (icons stay hardcoded by code).
+  const apiAddons = useApiAddons();
+  const ADDONS = useMemo(() => {
+    if (apiAddons.length === 0) return LOCAL_ADDONS;
+    const localByCode = new Map(LOCAL_ADDONS.map((a) => [a.code, a]));
+    return apiAddons.map((a) => {
+      const local = a.code ? localByCode.get(a.code) : undefined;
+      return {
+        code: a.code ?? a.id,
+        name: a.name,
+        price: Number(a.price),
+        durationMin: Number(a.durationMin),
+        unit: local?.unit,
+        icon: local?.icon ?? LOCAL_ADDONS[0]!.icon,
+      };
+    });
+  }, [apiAddons]);
+
   const categoryPackages = PACKAGES.filter((p) => p.categoryCode === category?.code);
   const initialPackage =
     PACKAGES.find((p) => p.id === packageId) ?? categoryPackages[0] ?? PACKAGES[0];
