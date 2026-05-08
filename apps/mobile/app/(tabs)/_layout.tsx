@@ -2,11 +2,13 @@ import { Tabs } from 'expo-router';
 import { Briefcase, ClipboardList, Home, Search, TrendingUp, User } from 'lucide-react-native';
 import { Platform, Text, View } from 'react-native';
 
+import { useT } from '../../src/lib/i18n';
 import { useModeStore } from '../../src/stores/mode';
 
 export default function TabsLayout() {
   const mode = useModeStore((s) => s.mode);
   const isFreelancer = mode === 'freelancer';
+  const t = useT();
 
   return (
     <Tabs
@@ -32,7 +34,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           href: isFreelancer ? null : '/(tabs)',
-          tabBarIcon: ({ focused }) => <TabItem icon={Home} label="Home" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabItem icon={Home} label={t('tab.home')} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -40,7 +42,7 @@ export default function TabsLayout() {
         options={{
           href: isFreelancer ? null : '/(tabs)/explore',
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={Search} label="Layanan" focused={focused} />
+            <TabItem icon={Search} label={t('tab.explore')} focused={focused} />
           ),
         }}
       />
@@ -49,7 +51,7 @@ export default function TabsLayout() {
         options={{
           href: isFreelancer ? '/(tabs)/jobs' : null,
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={Briefcase} label="Job Board" focused={focused} />
+            <TabItem icon={Briefcase} label={t('tab.jobs')} focused={focused} />
           ),
         }}
       />
@@ -58,7 +60,7 @@ export default function TabsLayout() {
         options={{
           href: isFreelancer ? null : '/(tabs)/bookings',
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={ClipboardList} label="Pesanan" focused={focused} />
+            <TabItem icon={ClipboardList} label={t('tab.bookings')} focused={focused} />
           ),
         }}
       />
@@ -67,14 +69,14 @@ export default function TabsLayout() {
         options={{
           href: isFreelancer ? '/(tabs)/earnings' : null,
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={TrendingUp} label="Pendapatan" focused={focused} />
+            <TabItem icon={TrendingUp} label={t('tab.earnings')} focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ focused }) => <TabItem icon={User} label="Profil" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabItem icon={User} label={t('tab.profile')} focused={focused} />,
         }}
       />
     </Tabs>

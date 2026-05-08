@@ -21,6 +21,7 @@ import {
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useT } from '../../src/lib/i18n';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
@@ -31,13 +32,14 @@ export default function Profile() {
   const logout = useAuthStore((s) => s.logout);
   const mode = useModeStore((s) => s.mode);
   const setMode = useModeStore((s) => s.setMode);
+  const t = useT();
 
   return (
     <View className="flex-1 bg-ink-50">
       <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 60 }}>
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
-            <Text className="font-bold text-xl text-white">Profil</Text>
+            <Text className="font-bold text-xl text-white">{t('tab.profile')}</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -154,23 +156,23 @@ export default function Profile() {
         )}
 
         <Section
-          title="Akun"
+          title={t('profile.account')}
           items={[
-            { icon: MapPin, label: 'Alamat Tersimpan', onPress: () => router.push('/account/addresses') },
-            { icon: CreditCard, label: 'Wallet & Pembayaran', onPress: () => router.push('/account/wallet') },
-            { icon: Gift, label: 'Referral & Bonus', onPress: () => router.push('/account/referral') },
-            { icon: Tag, label: 'Voucher Saya', onPress: () => router.push('/account/vouchers') },
+            { icon: MapPin, label: t('profile.addresses'), onPress: () => router.push('/account/addresses') },
+            { icon: CreditCard, label: t('profile.wallet'), onPress: () => router.push('/account/wallet') },
+            { icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') },
+            { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}
         />
 
         <Section
-          title="Lainnya"
+          title={t('profile.others')}
           items={[
-            { icon: Globe, label: 'Bahasa / Language', onPress: () => router.push('/account/language') },
-            { icon: Shield, label: 'Keamanan & Privasi', onPress: () => router.push('/account/security') },
-            { icon: HelpCircle, label: 'Pusat Bantuan', onPress: () => router.push('/account/help') },
-            { icon: Settings, label: 'Pengaturan', onPress: () => router.push('/account/settings') },
+            { icon: Globe, label: t('profile.language'), onPress: () => router.push('/account/language') },
+            { icon: Shield, label: t('profile.security'), onPress: () => router.push('/account/security') },
+            { icon: HelpCircle, label: t('profile.help'), onPress: () => router.push('/account/help') },
+            { icon: Settings, label: t('profile.settings'), onPress: () => router.push('/account/settings') },
           ]}
         />
 
@@ -180,7 +182,7 @@ export default function Profile() {
             className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl bg-white p-4"
           >
             <LogOut color="#DC2626" size={18} strokeWidth={2.2} />
-            <Text className="font-semibold text-sm text-danger">Logout</Text>
+            <Text className="font-semibold text-sm text-danger">{t('profile.logout')}</Text>
           </Pressable>
         )}
 
