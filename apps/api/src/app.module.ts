@@ -12,6 +12,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AppContentModule } from './modules/app-content/app-content.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
+import { CleanerModule } from './modules/cleaner/cleaner.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AddressesModule } from './modules/addresses/addresses.module';
     ChatModule,
     AppContentModule,
     AddressesModule,
+    CleanerModule,
   ],
   controllers: [HealthController],
 })
