@@ -44,7 +44,7 @@ export class AdminAuthService {
     await this.prisma.$executeRaw`UPDATE admin_users SET last_login_at = NOW() WHERE id = ${admin.id}::uuid`;
 
     // Issue JWT pakai TokenService yang sudah ada — userId pakai admin.id (treated as user)
-    const tokens = await this.tokens.issueForUser(admin.id, admin.email, meta);
+    const tokens = await this.tokens.issueForAdmin(admin.id, admin.email);
     return {
       ...tokens,
       admin: {
