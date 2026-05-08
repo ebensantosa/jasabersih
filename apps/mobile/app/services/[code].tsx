@@ -6,7 +6,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
-import { SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
+import { formatRupiah } from '../../src/data/catalog';
+import { useServices } from '../../src/hooks/useServices';
 import { useAuthStore } from '../../src/stores/auth';
 import { toast } from '../../src/stores/ui';
 
@@ -14,6 +15,7 @@ export default function ServiceDetail() {
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code: string }>();
   const tokens = useAuthStore((s) => s.tokens);
+  const SERVICE_CATEGORIES = useServices();
 
   const category = SERVICE_CATEGORIES.find((s) => s.code === code);
   if (!category) {

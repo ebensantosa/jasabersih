@@ -20,7 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
 import { WaIcon } from '../../src/components/BrandIcon';
-import { SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
+import { formatRupiah } from '../../src/data/catalog';
+import { useServices } from '../../src/hooks/useServices';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { shortenAddress } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -31,6 +32,7 @@ export default function Home() {
   const setDefault = useAddressesStore((s) => s.setDefault);
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const SERVICE_CATEGORIES = useServices();
 
   return (
     <View className="flex-1 bg-ink-50">

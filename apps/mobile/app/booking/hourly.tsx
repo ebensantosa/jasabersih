@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddressField } from '../../src/components/AddressField';
 import { HOURLY_TIERS as LOCAL_TIERS, SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
 import { useApiHourlyTiers } from '../../src/stores/appContent';
+import { useServices } from '../../src/hooks/useServices';
 import { useAuthStore } from '../../src/stores/auth';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
@@ -35,7 +36,8 @@ export default function HourlyBooking() {
   const tokens = useAuthStore((s) => s.tokens);
   const create = useBookingsStore((s) => s.create);
 
-  const category = SERVICE_CATEGORIES.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
+  const SERVICE_CATEGORIES_LIVE = useServices();
+  const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
 
   // Prefer API tiers (admin-editable). Fallback to LOCAL_TIERS kalau API kosong.
   const apiTiers = useApiHourlyTiers();

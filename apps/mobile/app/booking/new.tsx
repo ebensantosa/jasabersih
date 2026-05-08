@@ -25,6 +25,7 @@ import {
 } from '../../src/data/catalog';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { useApiAddons, useApiPackagesForService } from '../../src/stores/appContent';
+import { useServices } from '../../src/hooks/useServices';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -55,8 +56,9 @@ export default function NewBooking() {
     package?: string;
   }>();
   const create = useBookingsStore((s) => s.create);
+  const SERVICE_CATEGORIES_LIVE = useServices();
 
-  const category = SERVICE_CATEGORIES.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
+  const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
 
   // Prefer API packages for this service code (admin-editable). Fallback to local.
   const apiPackages = useApiPackagesForService(category?.code ?? '');

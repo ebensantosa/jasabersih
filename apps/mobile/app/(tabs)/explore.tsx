@@ -5,11 +5,13 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
+import { formatRupiah } from '../../src/data/catalog';
+import { useServices } from '../../src/hooks/useServices';
 
 export default function Explore() {
   const router = useRouter();
   const [q, setQ] = useState('');
+  const SERVICE_CATEGORIES = useServices();
 
   const query = q.trim().toLowerCase();
   const filtered = query
