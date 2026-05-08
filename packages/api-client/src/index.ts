@@ -263,6 +263,12 @@ export function createClient(opts: ClientOptions) {
       // Analytics
       analyticsOverview: () => request<any>('GET', '/admin/analytics/overview'),
 
+      // Referrals admin
+      referralStats: () => request<any>('GET', '/admin/referrals/stats'),
+      referralLeaderboard: () => request<any[]>('GET', '/admin/referrals/leaderboard'),
+      listReferrals: (params?: { status?: string; q?: string }) =>
+        request<any[]>('GET', `/admin/referrals${qs(params as any)}`),
+
       // Broadcast push
       broadcastEstimate: (audience: string) =>
         request<{ totalUsers: number; reachable: number }>('GET', `/admin/broadcast/estimate?audience=${audience}`),

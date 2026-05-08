@@ -10,6 +10,7 @@ import { FraudDetectionService } from './fraud-detection.service';
 import { AdminController } from './admin.controller';
 import { AdminAnalyticsController } from './analytics.controller';
 import { AdminBroadcastController } from './push-broadcast.controller';
+import { AdminReferralsController } from './referrals-admin.controller';
 import { AdminAppCmsController } from './app-cms.controller';
 import { AdminBookingsController } from './bookings-admin.controller';
 import { AdminChatController } from './chat-admin.controller';
@@ -39,6 +40,7 @@ import { SystemConfigController } from './system-config.controller';
     SystemConfigController,
     AdminAnalyticsController,
     AdminBroadcastController,
+    AdminReferralsController,
   ],
   providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard, FraudDetectionService],
 })
