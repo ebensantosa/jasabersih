@@ -13,6 +13,8 @@ import { StorageModule } from './modules/storage/storage.module';
 import { AppContentModule } from './modules/app-content/app-content.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { CleanerModule } from './modules/cleaner/cleaner.module';
+import { DisputesModule } from './modules/disputes/disputes.module';
+import { VouchersModule } from './modules/vouchers/vouchers.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { CleanerModule } from './modules/cleaner/cleaner.module';
     AppContentModule,
     AddressesModule,
     CleanerModule,
+    DisputesModule,
+    VouchersModule,
   ],
   controllers: [HealthController],
 })

@@ -16,6 +16,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
+import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { formatRupiah } from '../../src/data/catalog';
 import { useModeStore } from '../../src/stores/mode';
 import {
@@ -54,6 +55,11 @@ export default function BookingDetail() {
   const markPaid = useBookingsStore((s) => s.markPaid);
   const mode = useModeStore((s) => s.mode);
   const isCleaner = mode === 'freelancer';
+  const [showDispute, setShowDispute] = useState(false);
+  // Dispute hanya bisa dilaporkan setelah booking ada cleaner_id (matched/in_progress/completed)
+  const canDispute = booking
+    && !id?.startsWith('bk_')
+    && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status);
 
   if (!booking) {
     return (
@@ -414,6 +420,16 @@ export default function BookingDetail() {
             </View>
           )}
 
+          {canDispute && (
+            <Pressable
+              onPress={() => setShowDispute(true)}
+              className="mx-4 mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3"
+            >
+              <AlertTriangle color="#B91C1C" size={16} />
+              <Text className="font-semibold text-sm text-red-700">Laporkan Masalah</Text>
+            </Pressable>
+          )}
+
           {!isCleaner &&
             booking.status !== 'canceled' &&
             booking.status !== 'completed' &&
@@ -558,6 +574,15 @@ export default function BookingDetail() {
           </View>
         )}
       </View>
+
+      {canDispute && (
+        <DisputeFormModal
+          bookingId={booking.id}
+          open={showDispute}
+          onClose={() => setShowDispute(false)}
+          onSubmitted={() => setShowDispute(false)}
+        />
+      )}
     </>
   );
 }

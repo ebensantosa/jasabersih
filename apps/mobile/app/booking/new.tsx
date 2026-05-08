@@ -155,7 +155,28 @@ export default function NewBooking() {
     () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + a.price, 0),
     [selectedAddons],
   );
-  const total = basePrice + dirtSurcharge + addonTotal;
+  const subtotal = basePrice + dirtSurcharge + addonTotal;
+  const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
+  const [voucherInput, setVoucherInput] = useState('');
+  const [voucherChecking, setVoucherChecking] = useState(false);
+  const total = subtotal - (voucher?.discount ?? 0);
+
+  async function applyVoucher() {
+    if (!voucherInput.trim()) return;
+    setVoucherChecking(true);
+    try {
+      const { api } = await import('../../src/lib/api');
+      const res = await api.post('/vouchers/validate', { code: voucherInput.trim().toUpperCase(), orderAmount: subtotal });
+      const data = res.data?.data ?? res.data;
+      setVoucher({ code: data.code, discount: data.discount, voucherId: data.voucherId });
+      setVoucherInput('');
+      toast.success(`Voucher ${data.code} dipakai — hemat ${formatRupiah(data.discount)}!`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Voucher tidak valid');
+    } finally {
+      setVoucherChecking(false);
+    }
+  }
 
   function toggleSet<T extends string>(set: Set<T>, value: T): Set<T> {
     const next = new Set(set);
@@ -673,8 +694,46 @@ export default function NewBooking() {
                     <Row key={a.code} label={a.name} value={`+${formatRupiah(a.price)}`} />
                   ))}
                 </View>
+
                 <View className="mt-3 border-t border-ink-100 pt-3">
-                  <Row label="Total" value={formatRupiah(total)} bold />
+                  <Text className="font-semibold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Voucher / Promo</Text>
+                  {voucher ? (
+                    <View className="flex-row items-center justify-between rounded-xl border border-success/30 bg-success/10 p-3">
+                      <View>
+                        <Text className="font-bold text-sm text-success">{voucher.code}</Text>
+                        <Text className="font-sans text-[11px] text-ink-600">-{formatRupiah(voucher.discount)}</Text>
+                      </View>
+                      <Pressable onPress={() => setVoucher(null)} className="rounded-full bg-white px-3 py-1">
+                        <Text className="font-medium text-xs text-ink-600">Hapus</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View className="flex-row gap-2">
+                      <TextInput
+                        value={voucherInput}
+                        onChangeText={(v) => setVoucherInput(v.toUpperCase())}
+                        placeholder="Masukkan kode"
+                        placeholderTextColor="#94A3B8"
+                        autoCapitalize="characters"
+                        className="font-sans flex-1 rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-900"
+                      />
+                      <Pressable
+                        onPress={applyVoucher}
+                        disabled={voucherChecking || !voucherInput.trim()}
+                        className={`rounded-xl px-4 py-2.5 ${voucherChecking || !voucherInput.trim() ? 'bg-brand-300' : 'bg-brand-600'}`}
+                      >
+                        <Text className="font-semibold text-sm text-white">{voucherChecking ? 'Cek…' : 'Pakai'}</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+
+                <View className="mt-3 border-t border-ink-100 pt-3">
+                  <Row label="Subtotal" value={formatRupiah(subtotal)} />
+                  {voucher && <Row label={`Voucher (${voucher.code})`} value={`-${formatRupiah(voucher.discount)}`} />}
+                  <View className="mt-2 border-t border-ink-100 pt-2">
+                    <Row label="Total" value={formatRupiah(total)} bold />
+                  </View>
                 </View>
               </View>
             </>
