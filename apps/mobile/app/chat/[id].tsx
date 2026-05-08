@@ -22,7 +22,10 @@ function decodeJwtSub(token: string | undefined): string | null {
   try {
     const part = token.split('.')[1];
     if (!part) return null;
-    const json = JSON.parse(globalThis.atob ? atob(part.replace(/-/g, '+').replace(/_/g, '/')) : Buffer.from(part, 'base64').toString());
+    const decoded = typeof (globalThis as any).atob === 'function'
+      ? (globalThis as any).atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+      : Buffer.from(part, 'base64').toString();
+    const json = JSON.parse(decoded);
     return (json?.sub as string) ?? null;
   } catch { return null; }
 }

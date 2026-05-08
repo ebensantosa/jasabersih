@@ -1,0 +1,110 @@
+import { create } from 'zustand';
+
+import { api } from '../lib/api';
+
+// Mirror server response. Catatan: nilai apapun yg defined di app_config dipake;
+// fallback hardcoded di getter (di-consume hook) untuk safety kalau API down saat boot.
+export type AppConfig = Partial<{
+  'brand.app_name': string;
+  'brand.tagline': string;
+  'brand.logo_url': string;
+  'brand.primary_color': string;
+  'brand.secondary_color': string;
+  'typography.font_family': string;
+  'typography.base_size': number;
+  'contact.whatsapp': string;
+  'contact.email': string;
+  'contact.phone': string;
+  'feature.cancel_window_sec': number;
+  'feature.cancel_penalty_pct': number;
+  'feature.min_withdrawal': number;
+  'feature.max_addresses': number;
+  'hero.subtitle': string;
+  'hero.cta_label': string;
+}> & Record<string, unknown>;
+
+export type Banner = { id: string; title: string; subtitle: string | null; imageUrl: string; linkUrl: string | null; placement: string; sortOrder: number };
+export type ServiceItem = { id: string; code: string; name: string; description: string | null; iconUrl: string | null; displayOrder: number | null };
+export type Addon = { id: string; code: string | null; name: string; price: number; durationMin: number; description: string | null };
+export type HourlyTier = { id: string; code: string | null; name: string | null; pricePerHour: number; minHours: number; cleanerSharePct: number };
+export type PackageItem = { id: string; serviceId: string; name: string; price: number; durationMin: number; scope: any };
+export type Announcement = { id: string; title: string; body: string; severity: 'info' | 'warning' | 'critical'; audience: string };
+export type CommissionTier = { id: string; rangeMin: number | null; rangeMax: number | null; shareNoTools: number; shareWithTools: number };
+
+export type AppContent = {
+  config: AppConfig;
+  banners: Banner[];
+  services: ServiceItem[];
+  addons: Addon[];
+  hourlyTiers: HourlyTier[];
+  packages: PackageItem[];
+  announcement: Announcement | null;
+  commissionTiers: CommissionTier[];
+};
+
+const EMPTY: AppContent = {
+  config: {},
+  banners: [],
+  services: [],
+  addons: [],
+  hourlyTiers: [],
+  packages: [],
+  announcement: null,
+  commissionTiers: [],
+};
+
+type AppContentStore = {
+  content: AppContent;
+  loading: boolean;
+  error: string | null;
+  lastFetchedAt: number | null;
+  fetch: (force?: boolean) => Promise<void>;
+};
+
+const TTL_MS = 5 * 60_000; // 5 minutes — refresh on next app foreground after this
+
+export const useAppContent = create<AppContentStore>((set, get) => ({
+  content: EMPTY,
+  loading: false,
+  error: null,
+  lastFetchedAt: null,
+
+  async fetch(force = false) {
+    const last = get().lastFetchedAt;
+    if (!force && last && Date.now() - last < TTL_MS) return;
+    set({ loading: true, error: null });
+    try {
+      const res = await api.get('/app/content');
+      // API wraps in { data, error }
+      const data = res.data?.data ?? res.data ?? EMPTY;
+      // Coerce numeric strings (BIGINT serialized as string by api)
+      const coerce = (v: any) => (v == null ? v : Number(v));
+      set({
+        content: {
+          config: data.config ?? {},
+          banners: data.banners ?? [],
+          services: data.services ?? [],
+          addons: (data.addons ?? []).map((a: any) => ({ ...a, price: coerce(a.price) })),
+          hourlyTiers: (data.hourlyTiers ?? []).map((t: any) => ({ ...t, pricePerHour: coerce(t.pricePerHour), minHours: coerce(t.minHours), cleanerSharePct: coerce(t.cleanerSharePct) })),
+          packages: (data.packages ?? []).map((p: any) => ({ ...p, price: coerce(p.price) })),
+          announcement: data.announcement ?? null,
+          commissionTiers: (data.commissionTiers ?? []).map((c: any) => ({ ...c, rangeMin: c.rangeMin == null ? null : coerce(c.rangeMin), rangeMax: c.rangeMax == null ? null : coerce(c.rangeMax), shareNoTools: coerce(c.shareNoTools), shareWithTools: coerce(c.shareWithTools) })),
+        },
+        loading: false,
+        lastFetchedAt: Date.now(),
+      });
+    } catch (e: any) {
+      set({ loading: false, error: e?.message ?? 'gagal' });
+    }
+  },
+}));
+
+// Convenience hooks
+export function useConfig<K extends keyof AppConfig>(key: K, fallback: AppConfig[K]): NonNullable<AppConfig[K]> {
+  const v = useAppContent((s) => s.content.config[key]);
+  return ((v ?? fallback) as NonNullable<AppConfig[K]>);
+}
+
+export function useBanners(placement?: string): Banner[] {
+  return useAppContent((s) => placement ? s.content.banners.filter((b) => b.placement === placement) : s.content.banners);
+}

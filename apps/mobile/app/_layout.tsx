@@ -14,8 +14,10 @@ import { View } from 'react-native';
 
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { IncomingJobModal } from '../src/components/IncomingJobModal';
+import { PopupRenderer } from '../src/components/PopupRenderer';
 import { ToastHost } from '../src/components/Toast';
 import { UpdatePromptHost } from '../src/components/UpdatePrompt';
+import { useAppContent } from '../src/stores/appContent';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
 import { useAddressesStore } from '../src/stores/addresses';
@@ -34,6 +36,7 @@ export default function RootLayout() {
   const hydrateLocation = useLocationStore((s) => s.hydrate);
   const hydrateAddresses = useAddressesStore((s) => s.hydrate);
   const hydrateWallet = useCleanerWalletStore((s) => s.hydrate);
+  const fetchAppContent = useAppContent((s) => s.fetch);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -61,6 +64,8 @@ export default function RootLayout() {
       hydrateLocation();
       hydrateAddresses();
       hydrateWallet();
+      // Fetch fresh app content (banners/services/config/popups) — non-blocking
+      void fetchAppContent();
     });
   }, [
     hydrateAuth,
@@ -70,6 +75,7 @@ export default function RootLayout() {
     hydrateLocation,
     hydrateAddresses,
     hydrateWallet,
+    fetchAppContent,
   ]);
 
   if (!fontsLoaded) {
@@ -103,6 +109,7 @@ export default function RootLayout() {
         <ToastHost />
         <UpdatePromptHost />
         <IncomingJobModal />
+        <PopupRenderer event="app_open" />
       </QueryProvider>
     </ErrorBoundary>
   );
