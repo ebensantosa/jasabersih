@@ -135,6 +135,41 @@ function ValuePreview({ value, keyName }: { value: any; keyName: string }) {
   return <code className="text-[10px]">{JSON.stringify(value)}</code>;
 }
 
+function ImageUploadField({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  async function pickAndUpload(file: File) {
+    setBusy(true);
+    try {
+      const r = await api.admin.cmsUploadUrl(file.type, folder);
+      const put = await fetch(r.uploadUrl, { method: 'PUT', body: file, headers: { 'content-type': file.type } });
+      if (!put.ok) throw new Error('Upload gagal');
+      onChange(r.publicUrl);
+      toast.success('Image ter-upload.');
+    } catch (e: any) { toast.error(e?.message ?? 'Upload gagal'); } finally { setBusy(false); }
+  }
+  return (
+    <div>
+      {value && <img src={value} alt="" className="mb-2 h-16 rounded border bg-slate-50 object-contain" />}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://cdn.jasabersih.com/..."
+        className="mb-2 w-full rounded-md border border-slate-300 px-3 py-2 text-xs"
+      />
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void pickAndUpload(f); }}
+        className="text-xs"
+      />
+      {busy && <p className="mt-1 text-xs text-slate-500">Uploading…</p>}
+      <p className="mt-1 text-[10px] text-slate-500">Atau paste URL manual di atas.</p>
+    </div>
+  );
+}
+
 function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!config;
@@ -201,7 +236,9 @@ function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onC
 
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-700">Value <span className="text-red-500">*</span></label>
-          {valueType === 'string' ? (
+          {valueType === 'string' && form.key.endsWith('_url') ? (
+            <ImageUploadField value={parsedValue ?? ''} onChange={(v) => setSimpleValue(v)} folder={form.key.split('.')[0] ?? 'misc'} />
+          ) : valueType === 'string' ? (
             <input
               type={form.key.includes('color') ? 'color' : 'text'}
               value={parsedValue ?? ''}

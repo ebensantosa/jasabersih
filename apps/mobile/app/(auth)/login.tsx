@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '../../src/components/BrandLogo';
 import { Field, validateEmail, validatePassword } from '../../src/components/Field';
 import { login } from '../../src/lib/devAuth';
 import { useAuthStore } from '../../src/stores/auth';
@@ -64,9 +65,7 @@ export default function Login() {
             </Pressable>
           </View>
           <View className="px-6 pt-2">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-              <Sparkles color="white" size={24} strokeWidth={2.2} />
-            </View>
+            <BrandLogo size={48} showName={false} variant="light" />
             <Text className="font-bold mt-3 text-3xl text-white">Selamat Datang 👋</Text>
             <Text className="font-sans mt-1 text-sm text-white/85">
               Masuk untuk lanjut pesan jasa bersih
