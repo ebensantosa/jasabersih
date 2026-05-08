@@ -110,11 +110,30 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
       listCleaners: (params?: { status?: string }) =>
         request<unknown[]>('GET', `/admin/cleaners${qs(params)}`),
-      listUsers: () => request<unknown[]>('GET', '/admin/users'),
-      approveCleanerKyc: (cleanerId: string) =>
-        request<unknown>('PATCH', `/admin/cleaners/${cleanerId}/approve`),
-      suspendCleaner: (cleanerId: string, reason: string) =>
-        request<unknown>('PATCH', `/admin/cleaners/${cleanerId}/suspend`, { reason }),
+      listUsers: (params?: { q?: string; status?: string; role?: 'customer' | 'cleaner' }) =>
+        request<unknown[]>('GET', `/admin/users${qs(params)}`),
+      getUser: (id: string) => request<{ user: any; strikes: any[]; recentBookings: any[] }>('GET', `/admin/users/${id}`),
+      suspendUser: (id: string, reason: string, durationDays?: number) =>
+        request<unknown>('POST', `/admin/users/${id}/suspend`, { reason, durationDays }),
+      banUser: (id: string, reason: string) =>
+        request<unknown>('POST', `/admin/users/${id}/ban`, { reason }),
+      unsuspendUser: (id: string) =>
+        request<unknown>('POST', `/admin/users/${id}/unsuspend`),
+      userAuditTrail: (id: string) =>
+        request<any[]>('GET', `/admin/users/${id}/audit-trail`),
+
+      // KYC vetting
+      kycQueue: (status: 'pending' | 'under_review' | 'approved' | 'rejected' = 'pending') =>
+        request<any[]>('GET', `/admin/kyc/queue?status=${status}`),
+      kycDetail: (userId: string) =>
+        request<{ profile: any; documents: any[] }>('GET', `/admin/kyc/${userId}`),
+      kycApprove: (userId: string) =>
+        request<unknown>('POST', `/admin/kyc/${userId}/approve`),
+      kycReject: (userId: string, reason: string) =>
+        request<unknown>('POST', `/admin/kyc/${userId}/reject`, { reason }),
+      kycRequestRedoc: (userId: string, reason: string) =>
+        request<unknown>('POST', `/admin/kyc/${userId}/request-redocument`, { reason }),
+
       listChatLogs: (params?: { blocked?: boolean }) =>
         request<unknown[]>('GET', `/admin/chat${qs(params)}`),
     },

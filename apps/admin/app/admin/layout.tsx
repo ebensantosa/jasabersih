@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   BarChart3,
+  BadgeCheck,
   CalendarCheck,
   FileText,
   LogOut,
@@ -21,6 +22,7 @@ import { type AdminSession, clearSession, getSession } from '../../lib/auth';
 const NAV = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/kyc', label: 'KYC Cleaner', icon: BadgeCheck },
   { href: '/admin/bookings', label: 'Pesanan', icon: CalendarCheck },
   { href: '/admin/wallet', label: 'Wallet & Withdrawal', icon: Wallet },
   { href: '/admin/disputes', label: 'Disputes & Fraud', icon: ShieldAlert },

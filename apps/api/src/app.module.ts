@@ -8,6 +8,7 @@ import { RedisModule } from './common/redis.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
     PrismaModule,
     RedisModule,
+    StorageModule,
     AuthModule,
     AdminModule,
     BookingsModule,
