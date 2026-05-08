@@ -6,6 +6,7 @@ import { AdminJwtGuard, AdminRbacGuard } from '../../common/admin-auth';
 import { AuthModule } from '../auth/auth.module';
 
 import { AdminController } from './admin.controller';
+import { AdminAnalyticsController } from './analytics.controller';
 import { AdminAppCmsController } from './app-cms.controller';
 import { AdminBookingsController } from './bookings-admin.controller';
 import { AdminChatController } from './chat-admin.controller';
@@ -33,6 +34,7 @@ import { SystemConfigController } from './system-config.controller';
     AdminChatController,
     AdminManagementController,
     SystemConfigController,
+    AdminAnalyticsController,
   ],
   providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard],
 })

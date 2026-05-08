@@ -260,6 +260,9 @@ export function createClient(opts: ClientOptions) {
       updatePopup: (id: string, body: any) => request<unknown>('PATCH', `/admin/app/popups/${id}`, body),
       deletePopup: (id: string) => request<unknown>('DELETE', `/admin/app/popups/${id}`),
 
+      // Analytics
+      analyticsOverview: () => request<any>('GET', '/admin/analytics/overview'),
+
       // Chat audit
       chatBookings: (params?: { q?: string; hasBlocked?: boolean }) =>
         request<any[]>('GET', `/admin/chat/bookings${qs(params as any)}`),
