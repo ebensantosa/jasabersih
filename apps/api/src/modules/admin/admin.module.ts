@@ -6,12 +6,24 @@ import { AdminJwtGuard, AdminRbacGuard } from '../../common/admin-auth';
 import { AuthModule } from '../auth/auth.module';
 
 import { AdminController } from './admin.controller';
+import { AdminBookingsController } from './bookings-admin.controller';
 import { AdminKycController } from './kyc.controller';
+import { AdminManagementController } from './admin-management.controller';
 import { AdminUsersController } from './users-admin.controller';
+import { AdminWithdrawalsController } from './withdrawals-admin.controller';
+import { SystemConfigController } from './system-config.controller';
 
 @Module({
   imports: [AuthModule, JwtModule.register({})],
-  controllers: [AdminController, AdminKycController, AdminUsersController],
+  controllers: [
+    AdminController,
+    AdminKycController,
+    AdminUsersController,
+    AdminBookingsController,
+    AdminWithdrawalsController,
+    AdminManagementController,
+    SystemConfigController,
+  ],
   providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard],
 })
 export class AdminModule {}

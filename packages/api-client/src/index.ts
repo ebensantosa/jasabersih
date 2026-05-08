@@ -134,6 +134,56 @@ export function createClient(opts: ClientOptions) {
       kycRequestRedoc: (userId: string, reason: string) =>
         request<unknown>('POST', `/admin/kyc/${userId}/request-redocument`, { reason }),
 
+      // Booking admin
+      bookingDetail: (id: string) =>
+        request<{ booking: any; photos: any[]; charges: any[]; payments: any[] }>('GET', `/admin/bookings/${id}`),
+      bookingForceCancel: (id: string, reason: string, refundAmount?: number) =>
+        request<unknown>('POST', `/admin/bookings/${id}/force-cancel`, { reason, refundAmount }),
+      bookingForceComplete: (id: string, reason: string) =>
+        request<unknown>('POST', `/admin/bookings/${id}/force-complete`, { reason }),
+      bookingReassign: (id: string, cleanerId: string, reason?: string) =>
+        request<unknown>('POST', `/admin/bookings/${id}/reassign`, { cleanerId, reason }),
+
+      // Withdrawals
+      withdrawals: (status: 'pending' | 'approved' | 'rejected' | 'paid' = 'pending') =>
+        request<any[]>('GET', `/admin/withdrawals?status=${status}`),
+      approveWithdrawal: (id: string, bankTransferRef: string, note?: string) =>
+        request<unknown>('POST', `/admin/withdrawals/${id}/approve`, { bankTransferRef, note }),
+      rejectWithdrawal: (id: string, reason: string) =>
+        request<unknown>('POST', `/admin/withdrawals/${id}/reject`, { reason }),
+
+      // Admin user management
+      listAdmins: () => request<any[]>('GET', '/admin/admins'),
+      createAdmin: (body: { email: string; name: string; role: string; password: string }) =>
+        request<{ id: string }>('POST', '/admin/admins', body),
+      updateAdmin: (id: string, body: { name?: string; role?: string; isActive?: boolean; password?: string }) =>
+        request<unknown>('PATCH', `/admin/admins/${id}`, body),
+      deactivateAdmin: (id: string) =>
+        request<unknown>('DELETE', `/admin/admins/${id}`),
+      auditLog: (params?: { action?: string; adminId?: string; limit?: number }) =>
+        request<any[]>('GET', `/admin/admins/audit-log${qs(params as any)}`),
+
+      // System config
+      commissionTiers: () => request<any[]>('GET', '/admin/config/commission-tiers'),
+      updateCommissionTier: (id: string, body: any) =>
+        request<unknown>('PATCH', `/admin/config/commission-tiers/${id}`, body),
+      configServices: () => request<any[]>('GET', '/admin/config/services'),
+      createService: (body: any) => request<{ id: string }>('POST', '/admin/config/services', body),
+      updateService: (id: string, body: any) =>
+        request<unknown>('PATCH', `/admin/config/services/${id}`, body),
+      deactivateService: (id: string) =>
+        request<unknown>('DELETE', `/admin/config/services/${id}`),
+      hourlyTiers: () => request<any[]>('GET', '/admin/config/hourly-tiers'),
+      updateHourlyTier: (id: string, body: any) =>
+        request<unknown>('PATCH', `/admin/config/hourly-tiers/${id}`, body),
+
+      // Blacklist
+      blacklist: () => request<any[]>('GET', '/admin/config/blacklist'),
+      addBlacklist: (body: { type: string; value: string; reason: string; expiresAt?: string }) =>
+        request<unknown>('POST', '/admin/config/blacklist', body),
+      removeBlacklist: (id: string) =>
+        request<unknown>('DELETE', `/admin/config/blacklist/${id}`),
+
       listChatLogs: (params?: { blocked?: boolean }) =>
         request<unknown[]>('GET', `/admin/chat${qs(params)}`),
     },
