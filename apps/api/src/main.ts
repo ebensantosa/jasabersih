@@ -1,5 +1,11 @@
 import 'reflect-metadata';
 
+// BigInt → string saat JSON.stringify (Postgres BIGINT via $queryRaw return BigInt).
+// Frontend coerce ke Number/string sesuai konteks.
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return this.toString();
+};
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
