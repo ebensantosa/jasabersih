@@ -11,6 +11,16 @@ import { AllExceptionsFilter } from './common/exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  const corsOrigins = (process.env.CORS_ORIGINS ?? 'https://dashboard.jasabersih.com,http://localhost:3001,http://localhost:8081')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
   app.setGlobalPrefix('v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ResponseInterceptor());
