@@ -9,13 +9,19 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { json, raw } from 'body-parser';
 
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/response.interceptor';
 import { AllExceptionsFilter } from './common/exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, bodyParser: false });
+
+  // Tripay webhook butuh raw body untuk verifikasi HMAC signature
+  app.use('/v1/payments/callback', raw({ type: '*/*' }));
+  // Default JSON parser untuk semua route lain
+  app.use(json({ limit: '5mb' }));
 
   const corsOrigins = (process.env.CORS_ORIGINS ?? 'https://dashboard.jasabersih.com,http://localhost:3001,http://localhost:8081')
     .split(',')
