@@ -129,29 +129,37 @@ export class AdminBookingsController {
       `;
       const referral = refRows[0];
       if (referral) {
-        const REFERRAL_BONUS = 25000;
-        await this.prisma.$transaction([
-          this.prisma.$executeRaw`
-            UPDATE referrals SET status = 'qualified', qualified_at = NOW(), bonus_amount = ${REFERRAL_BONUS}::bigint
-              WHERE id = ${referral.id}::uuid
-          `,
-          // Credit referrer's ledger (wallet)
-          this.prisma.$executeRaw`
-            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-            VALUES (${referral.referrer_id}::uuid, 'earnings', ${REFERRAL_BONUS}::bigint, 'referral', ${referral.id}::uuid,
-                    'CLEARED', NOW(), 'Bonus referral')
-          `,
-          this.prisma.$executeRaw`
-            UPDATE referral_codes SET total_referrals = total_referrals + 1, total_paid = total_paid + ${REFERRAL_BONUS}::bigint
-              WHERE user_id = ${referral.referrer_id}::uuid
-          `,
-        ]);
-        void this.push.send({
-          userId: referral.referrer_id, channel: 'wallet',
-          title: 'Bonus referral masuk! 🎉',
-          body: `Rp ${REFERRAL_BONUS.toLocaleString('id-ID')} masuk wallet kamu — teman pakai kode referralmu order pertama.`,
-          data: { type: 'referral_bonus' },
-        }).catch(() => {});
+        // Read bonus + enabled flag dari app_config (admin-editable)
+        const cfgRows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
+          SELECT key, value FROM app_config WHERE key IN ('referral.bonus_amount', 'referral.enabled', 'referral.min_order_amount')
+        `;
+        const enabled = cfgRows.find((c) => c.key === 'referral.enabled')?.value !== false;
+        const REFERRAL_BONUS = Number(cfgRows.find((c) => c.key === 'referral.bonus_amount')?.value ?? 25000);
+        const minOrder = Number(cfgRows.find((c) => c.key === 'referral.min_order_amount')?.value ?? 0);
+
+        if (enabled && REFERRAL_BONUS > 0 && Number(booking.total_amount ?? 0) >= minOrder) {
+          await this.prisma.$transaction([
+            this.prisma.$executeRaw`
+              UPDATE referrals SET status = 'qualified', qualified_at = NOW(), bonus_amount = ${REFERRAL_BONUS}::bigint
+                WHERE id = ${referral.id}::uuid
+            `,
+            this.prisma.$executeRaw`
+              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+              VALUES (${referral.referrer_id}::uuid, 'earnings', ${REFERRAL_BONUS}::bigint, 'referral', ${referral.id}::uuid,
+                      'CLEARED', NOW(), 'Bonus referral')
+            `,
+            this.prisma.$executeRaw`
+              UPDATE referral_codes SET total_referrals = total_referrals + 1, total_paid = total_paid + ${REFERRAL_BONUS}::bigint
+                WHERE user_id = ${referral.referrer_id}::uuid
+            `,
+          ]);
+          void this.push.send({
+            userId: referral.referrer_id, channel: 'wallet',
+            title: 'Bonus referral masuk! 🎉',
+            body: `Rp ${REFERRAL_BONUS.toLocaleString('id-ID')} masuk wallet kamu — teman pakai kode referralmu order pertama.`,
+            data: { type: 'referral_bonus' },
+          }).catch(() => {});
+        }
       }
     }
 

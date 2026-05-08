@@ -111,6 +111,12 @@ export default function AppSettingsPage() {
 }
 
 function ValuePreview({ value, keyName }: { value: any; keyName: string }) {
+  // Mask sensitive secrets
+  const isSensitive = /(_key|_secret|_private|password|token)/i.test(keyName);
+  if (isSensitive && typeof value === 'string') {
+    if (!value) return <span className="text-xs italic text-amber-700">(belum diset)</span>;
+    return <code className="text-xs">••••••••{value.slice(-4)}</code>;
+  }
   if (typeof value === 'string') {
     if (keyName.includes('color')) {
       return (

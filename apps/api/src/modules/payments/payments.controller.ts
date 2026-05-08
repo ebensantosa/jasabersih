@@ -121,7 +121,7 @@ export class PaymentsController {
     // req.body is raw Buffer (configured in main.ts for this route specifically)
     const buf = req.body as Buffer;
     const raw = Buffer.isBuffer(buf) ? buf.toString('utf8') : JSON.stringify(buf);
-    if (!this.tripay.verifyCallbackSignature(raw, sig)) {
+    if (!(await this.tripay.verifyCallbackSignature(raw, sig))) {
       throw new BadRequestException('Invalid signature');
     }
     let body: any;
