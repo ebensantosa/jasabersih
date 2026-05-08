@@ -263,6 +263,13 @@ export function createClient(opts: ClientOptions) {
       // Analytics
       analyticsOverview: () => request<any>('GET', '/admin/analytics/overview'),
 
+      // Broadcast push
+      broadcastEstimate: (audience: string) =>
+        request<{ totalUsers: number; reachable: number }>('GET', `/admin/broadcast/estimate?audience=${audience}`),
+      broadcastSend: (body: { title: string; body: string; audience: string; ctaLink?: string }) =>
+        request<{ audienceSize: number; sent: number; failed: number }>('POST', '/admin/broadcast/send', body),
+      broadcastHistory: () => request<any[]>('GET', '/admin/broadcast/history'),
+
       // Chat audit
       chatBookings: (params?: { q?: string; hasBlocked?: boolean }) =>
         request<any[]>('GET', `/admin/chat/bookings${qs(params as any)}`),
