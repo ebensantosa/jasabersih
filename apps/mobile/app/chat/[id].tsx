@@ -110,7 +110,13 @@ export default function Chat() {
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
               <Text className="font-bold text-sm text-brand-700">{(booking?.cleanerName ?? 'C')[0]}</Text>
             </View>
-            <View className="flex-1">
+            <Pressable
+              className="flex-1"
+              onPress={() => {
+                const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
+                if (cleanerId) router.push({ pathname: '/cleaner/public/[id]', params: { id: cleanerId } });
+              }}
+            >
               <View className="flex-row items-center gap-1.5">
                 <Text className="font-semibold text-sm text-ink-900">{booking?.cleanerName ?? 'Menunggu cleaner…'}</Text>
                 {cleanerStats && (
@@ -122,11 +128,11 @@ export default function Chat() {
                 )}
               </View>
               <Text className={`font-medium text-[11px] ${status === 'connected' ? 'text-success' : 'text-ink-400'}`}>
-                {status === 'connected' ? (otherTyping ? 'sedang mengetik…' : 'Online') :
+                {status === 'connected' ? (otherTyping ? 'sedang mengetik…' : 'Online · tap untuk lihat profil') :
                  status === 'connecting' ? 'Menyambung…' :
                  status === 'error' ? 'Koneksi error' : 'Offline'}
               </Text>
-            </View>
+            </Pressable>
             <Pressable
               onPress={() => toast.warning('Demi keamanan & garansi, komunikasi hanya via in-app chat')}
               className="h-10 w-10 items-center justify-center rounded-full bg-brand-50"

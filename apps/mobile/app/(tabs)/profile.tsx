@@ -6,6 +6,7 @@ import {
   Briefcase,
   ChevronRight,
   CreditCard,
+  Gift,
   HelpCircle,
   LogIn,
   LogOut,
@@ -155,7 +156,8 @@ export default function Profile() {
           items={[
             { icon: MapPin, label: 'Alamat Tersimpan', onPress: () => router.push('/account/addresses') },
             { icon: CreditCard, label: 'Wallet & Pembayaran', onPress: () => router.push('/account/wallet') },
-            { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/account/notifications') },
+            { icon: Gift, label: 'Referral & Bonus', onPress: () => router.push('/account/referral') },
+            { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}
         />
 
