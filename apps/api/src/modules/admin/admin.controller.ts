@@ -13,31 +13,30 @@ export class AdminController {
   constructor(private readonly prisma: PrismaService, private readonly push: PushService) {}
 
   @Get('bookings')
-  async listBookings(@Query('status') status?: string) {
-    // Pakai raw query karena Booking model belum lengkap di Prisma
-    const where = status ? `WHERE b.status = '${status.replace(/'/g, '')}'` : '';
-    const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+  async listBookings(
+    @Query('status') status?: string,
+    @Query('from') from?: string,    // ISO date e.g. 2026-05-01
+    @Query('to') to?: string,
+  ) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT
-        b.id,
-        b.status,
-        b.pricing_mode AS "pricingMode",
-        b.total_amount AS total,
-        b.scheduled_at AS "scheduledAt",
-        b.address_line AS address,
-        b.created_at AS "createdAt",
-        cu.name AS "customerName",
-        cu.phone AS "customerPhone",
+        b.id, b.status, b.pricing_mode AS "pricingMode",
+        b.total_amount AS total, b.scheduled_at AS "scheduledAt",
+        b.address_line AS address, b.created_at AS "createdAt",
+        cu.name AS "customerName", cu.phone AS "customerPhone",
         cl.name AS "cleanerName",
         s.name AS service
       FROM bookings b
       LEFT JOIN users cu ON cu.id = b.customer_id
       LEFT JOIN users cl ON cl.id = b.cleaner_id
       LEFT JOIN services s ON s.id = b.service_id
-      ${where}
+      WHERE 1=1
+        AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
+        AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)
+        AND (${to ?? null}::date IS NULL OR b.created_at < (${to ?? null}::date + INTERVAL '1 day'))
       ORDER BY b.created_at DESC
-      LIMIT 100
-    `);
-    return rows;
+      LIMIT 200
+    `;
   }
 
   @Get('cleaners')

@@ -24,6 +24,8 @@ const FILTERS: { key: OrderStatus | 'all'; label: string }[] = [
 export default function Bookings() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [q, setQ] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [assigning, setAssigning] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,11 @@ export default function Bookings() {
     setLoading(true);
     setError(null);
     try {
-      const data = (await api.admin.listBookings()) as Order[];
+      const data = (await api.admin.listBookings({
+        status: filter === 'all' ? undefined : filter,
+        from: from || undefined,
+        to: to || undefined,
+      })) as Order[];
       setOrders(data);
     } catch (e) {
       setError(e instanceof ApiOffline ? 'offline' : (e as Error).message);
@@ -79,11 +85,21 @@ export default function Bookings() {
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <label className="text-xs text-slate-500">Tanggal:</label>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-md border border-slate-300 px-2 py-1 text-xs" />
+          <span className="text-xs text-slate-400">→</span>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-md border border-slate-300 px-2 py-1 text-xs" />
+          <button onClick={() => void load()} className="rounded-md bg-blue-700 px-3 py-1 text-xs font-medium text-white">Apply</button>
+          {(from || to) && (
+            <button onClick={() => { setFrom(''); setTo(''); setTimeout(() => load(), 100); }} className="rounded-md border border-slate-300 px-3 py-1 text-xs">Reset</button>
+          )}
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key)}
+              onClick={() => { setFilter(f.key); setTimeout(() => load(), 50); }}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                 filter === f.key
                   ? 'bg-primary text-white'

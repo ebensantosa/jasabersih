@@ -104,8 +104,8 @@ export function createClient(opts: ClientOptions) {
 
     // Admin endpoints (TODO Sprint 2: implement di NestJS)
     admin: {
-      listBookings: (params?: { status?: string }) =>
-        request<unknown[]>('GET', `/admin/bookings${qs(params)}`),
+      listBookings: (params?: { status?: string; from?: string; to?: string }) =>
+        request<unknown[]>('GET', `/admin/bookings${qs(params as any)}`),
       assignCleaner: (bookingId: string, cleanerId: string) =>
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
       listCleaners: (params?: { status?: string }) =>

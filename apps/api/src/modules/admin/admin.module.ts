@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard } from '../../common/admin-auth';
 import { AuthModule } from '../auth/auth.module';
 import { FraudDetectionService } from './fraud-detection.service';
+import { RetentionService } from './retention.service';
 
 import { AdminController } from './admin.controller';
 import { AdminAnalyticsController } from './analytics.controller';
@@ -42,6 +43,6 @@ import { SystemConfigController } from './system-config.controller';
     AdminBroadcastController,
     AdminReferralsController,
   ],
-  providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard, FraudDetectionService],
+  providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard, FraudDetectionService, RetentionService],
 })
 export class AdminModule {}
