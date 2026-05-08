@@ -129,6 +129,7 @@ export default function RootLayout() {
         <Stack.Screen name="account/security" />
         <Stack.Screen name="account/help" />
         <Stack.Screen name="account/settings" />
+        <Stack.Screen name="account/referral" />
         <Stack.Screen name="cleaner/areas" />
         <Stack.Screen name="cleaner/wallet" />
         <Stack.Screen name="cleaner/withdraw" />

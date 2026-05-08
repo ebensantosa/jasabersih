@@ -18,6 +18,7 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { RatingsModule } from './modules/ratings/ratings.module';
+import { ReferralModule } from './modules/referral/referral.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { RatingsModule } from './modules/ratings/ratings.module';
     NotificationsModule,
     PaymentsModule,
     RatingsModule,
+    ReferralModule,
   ],
   controllers: [HealthController],
 })
