@@ -9,7 +9,9 @@ import {
   CalendarCheck,
   FileText,
   LogOut,
+  Megaphone,
   MessageSquare,
+  Palette,
   Settings,
   ShieldAlert,
   Tag,
@@ -31,6 +33,8 @@ const NAV = [
   { href: '/admin/vouchers', label: 'Vouchers & Referral', icon: Tag },
   { href: '/admin/chat', label: 'Chat Audit', icon: MessageSquare },
   { href: '/admin/content', label: 'Content / CMS', icon: FileText },
+  { href: '/admin/popups', label: 'Pop-up Promo', icon: Megaphone },
+  { href: '/admin/app-settings', label: 'App Settings', icon: Palette },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 

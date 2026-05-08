@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { AppContentModule } from './modules/app-content/app-content.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { StorageModule } from './modules/storage/storage.module';
     AdminModule,
     BookingsModule,
     ChatModule,
+    AppContentModule,
   ],
   controllers: [HealthController],
 })

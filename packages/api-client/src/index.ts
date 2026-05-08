@@ -247,6 +247,19 @@ export function createClient(opts: ClientOptions) {
       removeBlacklist: (id: string) =>
         request<unknown>('DELETE', `/admin/config/blacklist/${id}`),
 
+      // App config (key-value settings)
+      appConfig: () => request<any[]>('GET', '/admin/app/config'),
+      setAppConfig: (key: string, body: { value: any; description?: string; category?: string }) =>
+        request<unknown>('PATCH', `/admin/app/config/${encodeURIComponent(key)}`, body),
+      deleteAppConfig: (key: string) =>
+        request<unknown>('DELETE', `/admin/app/config/${encodeURIComponent(key)}`),
+
+      // Pop-up promo
+      popups: () => request<any[]>('GET', '/admin/app/popups'),
+      createPopup: (body: any) => request<{ id: string }>('POST', '/admin/app/popups', body),
+      updatePopup: (id: string, body: any) => request<unknown>('PATCH', `/admin/app/popups/${id}`, body),
+      deletePopup: (id: string) => request<unknown>('DELETE', `/admin/app/popups/${id}`),
+
       // Chat audit
       chatBookings: (params?: { q?: string; hasBlocked?: boolean }) =>
         request<any[]>('GET', `/admin/chat/bookings${qs(params as any)}`),
