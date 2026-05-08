@@ -20,6 +20,7 @@ import { RealtimeJobModal } from '../src/components/RealtimeJobModal';
 import { ToastHost } from '../src/components/Toast';
 import { UpdatePromptHost } from '../src/components/UpdatePrompt';
 import { useAppContent } from '../src/stores/appContent';
+import { useLocaleStore } from '../src/lib/i18n';
 import { registerForPushAsync } from '../src/lib/pushSetup';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
@@ -43,6 +44,7 @@ export default function RootLayout() {
   const syncBookings = useBookingsStore((s) => s.syncFromApi);
   const syncAddresses = useAddressesStore((s) => s.syncFromApi);
   const syncWallet = useCleanerWalletStore((s) => s.syncFromApi);
+  const hydrateLocale = useLocaleStore((s) => s.hydrate);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -70,6 +72,7 @@ export default function RootLayout() {
       hydrateLocation();
       hydrateAddresses();
       hydrateWallet();
+      hydrateLocale();
       // Fetch fresh app content (banners/services/config/popups) — non-blocking
       void fetchAppContent();
       // Sync bookings + addresses + wallet from server kalau sudah login
@@ -132,6 +135,7 @@ export default function RootLayout() {
         <Stack.Screen name="account/settings" />
         <Stack.Screen name="account/referral" />
         <Stack.Screen name="account/vouchers" />
+        <Stack.Screen name="account/language" />
         <Stack.Screen name="cleaner/areas" />
         <Stack.Screen name="cleaner/wallet" />
         <Stack.Screen name="cleaner/withdraw" />

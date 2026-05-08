@@ -5,6 +5,7 @@ import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
+import { useT } from '../../src/lib/i18n';
 import { useAuthStore } from '../../src/stores/auth';
 
 export default function Verify() {
@@ -17,6 +18,7 @@ export default function Verify() {
   const [password, setPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const t = useT();
 
   async function onSubmit() {
     setLoading(true);
@@ -46,10 +48,8 @@ export default function Verify() {
         </Pressable>
       </View>
       <View className="flex-1 px-6 pt-4">
-        <Text className="text-3xl font-bold text-slate-900">Verifikasi OTP</Text>
-        <Text className="mt-1 text-sm text-slate-500">
-          Kode 6 digit dikirim ke <Text className="font-semibold">{phone}</Text>
-        </Text>
+        <Text className="text-3xl font-bold text-slate-900">{t('auth.otp_title')}</Text>
+        <Text className="mt-1 text-sm text-slate-500">{t('auth.otp_sent', { phone })}</Text>
 
         <View className="mt-8 gap-4">
           <TextInput
@@ -63,20 +63,20 @@ export default function Verify() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Nama lengkap"
+            placeholder={t('auth.full_name')}
             className="rounded-xl border border-slate-300 px-4 py-3"
           />
           <TextInput
             value={password}
             onChangeText={setPassword}
-            placeholder="Buat password (min 8 karakter)"
+            placeholder={t('auth.create_password')}
             secureTextEntry
             className="rounded-xl border border-slate-300 px-4 py-3"
           />
           <TextInput
             value={referralCode}
             onChangeText={(v) => setReferralCode(v.toUpperCase())}
-            placeholder="Kode referral (opsional) — dapat bonus"
+            placeholder={t('auth.referral_code')}
             autoCapitalize="characters"
             className="rounded-xl border border-slate-300 px-4 py-3 font-mono"
           />
@@ -88,7 +88,7 @@ export default function Verify() {
           className="mt-6 rounded-xl bg-emerald-500 py-4 disabled:opacity-50"
         >
           <Text className="text-center text-base font-semibold text-white">
-            {loading ? 'Memproses…' : 'Selesai & Masuk'}
+            {loading ? t('auth.processing') : t('auth.complete')}
           </Text>
         </Pressable>
       </View>

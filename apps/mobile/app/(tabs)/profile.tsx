@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CreditCard,
   Gift,
+  Globe,
   HelpCircle,
   LogIn,
   LogOut,
@@ -166,6 +167,7 @@ export default function Profile() {
         <Section
           title="Lainnya"
           items={[
+            { icon: Globe, label: 'Bahasa / Language', onPress: () => router.push('/account/language') },
             { icon: Shield, label: 'Keamanan & Privasi', onPress: () => router.push('/account/security') },
             { icon: HelpCircle, label: 'Pusat Bantuan', onPress: () => router.push('/account/help') },
             { icon: Settings, label: 'Pengaturan', onPress: () => router.push('/account/settings') },
