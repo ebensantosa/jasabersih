@@ -36,9 +36,11 @@ export default function FraudPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Fraud Signals</h1>
-          <p className="text-sm text-slate-500">Auto-detect indikasi fraud + manual flag.</p>
+          <p className="text-sm text-slate-500">
+            Auto-detect berjalan otomatis tiap 1 jam (cron). Tombol di samping untuk force-run sekarang.
+          </p>
         </div>
-        <Button variant="danger" icon={<Play size={14} />} onClick={runDetection} loading={running}>Run Detection</Button>
+        <Button variant="secondary" icon={<Play size={14} />} onClick={runDetection} loading={running}>Force Run</Button>
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-4">

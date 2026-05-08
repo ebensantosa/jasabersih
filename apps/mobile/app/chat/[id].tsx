@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Phone, Send, ShieldAlert, AlertCircle } from 'lucide-react-native';
+import { ArrowLeft, Phone, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -42,7 +42,22 @@ export default function Chat() {
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
   const [text, setText] = useState('');
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
+  const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Fetch cleaner rating untuk header (kalau cleaner sudah di-assign)
+  useEffect(() => {
+    const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
+    if (!cleanerId) return;
+    import('../../src/lib/api').then(({ api }) => {
+      api.get(`/ratings/cleaner/${cleanerId}`).then((r) => {
+        const list: any[] = r.data?.data ?? [];
+        if (list.length === 0) return;
+        const sum = list.reduce((s, x) => s + Number(x.rating ?? 0), 0);
+        setCleanerStats({ ratingAvg: sum / list.length, ratingCount: list.length });
+      }).catch(() => {});
+    });
+  }, [booking]);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -96,7 +111,16 @@ export default function Chat() {
               <Text className="font-bold text-sm text-brand-700">{(booking?.cleanerName ?? 'C')[0]}</Text>
             </View>
             <View className="flex-1">
-              <Text className="font-semibold text-sm text-ink-900">{booking?.cleanerName ?? 'Menunggu cleaner…'}</Text>
+              <View className="flex-row items-center gap-1.5">
+                <Text className="font-semibold text-sm text-ink-900">{booking?.cleanerName ?? 'Menunggu cleaner…'}</Text>
+                {cleanerStats && (
+                  <View className="flex-row items-center gap-0.5">
+                    <Star color="#FACC15" fill="#FACC15" size={10} strokeWidth={1} />
+                    <Text className="font-bold text-[10px] text-ink-700">{cleanerStats.ratingAvg.toFixed(1)}</Text>
+                    <Text className="font-sans text-[10px] text-ink-400">({cleanerStats.ratingCount})</Text>
+                  </View>
+                )}
+              </View>
               <Text className={`font-medium text-[11px] ${status === 'connected' ? 'text-success' : 'text-ink-400'}`}>
                 {status === 'connected' ? (otherTyping ? 'sedang mengetik…' : 'Online') :
                  status === 'connecting' ? 'Menyambung…' :

@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard } from '../../common/admin-auth';
 import { AuthModule } from '../auth/auth.module';
+import { FraudDetectionService } from './fraud-detection.service';
 
 import { AdminController } from './admin.controller';
 import { AdminAnalyticsController } from './analytics.controller';
@@ -21,7 +23,7 @@ import { AdminWithdrawalsController } from './withdrawals-admin.controller';
 import { SystemConfigController } from './system-config.controller';
 
 @Module({
-  imports: [AuthModule, JwtModule.register({})],
+  imports: [AuthModule, JwtModule.register({}), ScheduleModule.forRoot()],
   controllers: [
     AdminController,
     AdminKycController,
@@ -38,6 +40,6 @@ import { SystemConfigController } from './system-config.controller';
     AdminAnalyticsController,
     AdminBroadcastController,
   ],
-  providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard],
+  providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard, FraudDetectionService],
 })
 export class AdminModule {}
