@@ -18,6 +18,7 @@ export const VerifyOtpRequestSchema = z.object({
   otp: z.string().regex(/^\d{6}$/, 'OTP harus 6 digit'),
   password: z.string().min(8).max(72),
   fullName: z.string().min(2).max(100),
+  referralCode: z.string().min(4).max(20).optional(),
 });
 export type VerifyOtpRequest = z.infer<typeof VerifyOtpRequestSchema>;
 

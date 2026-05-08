@@ -15,6 +15,7 @@ export default function Verify() {
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function onSubmit() {
@@ -26,6 +27,7 @@ export default function Verify() {
         password,
         fullName: name,
         mode: 'customer',
+        ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
       });
       setTokens(res.data.data);
       router.replace('/(tabs)');
@@ -70,6 +72,13 @@ export default function Verify() {
             placeholder="Buat password (min 8 karakter)"
             secureTextEntry
             className="rounded-xl border border-slate-300 px-4 py-3"
+          />
+          <TextInput
+            value={referralCode}
+            onChangeText={(v) => setReferralCode(v.toUpperCase())}
+            placeholder="Kode referral (opsional) — dapat bonus"
+            autoCapitalize="characters"
+            className="rounded-xl border border-slate-300 px-4 py-3 font-mono"
           />
         </View>
 

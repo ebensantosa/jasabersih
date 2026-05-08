@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
@@ -19,6 +19,40 @@ const ValidateVoucherSchema = z.object({
 @Controller('vouchers')
 export class VouchersController {
   constructor(private readonly prisma: PrismaService) {}
+
+  // List voucher yg user pernah pakai (history)
+  @Get('my-history')
+  async myHistory(@CurrentUser() user: AuthenticatedUser) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT vu.id, vu.discount_amount AS "discountAmount", vu.used_at AS "usedAt",
+             v.code, v.type, v.value, v.max_discount AS "maxDiscount",
+             vu.booking_id AS "bookingId"
+        FROM voucher_usage vu
+        INNER JOIN vouchers v ON v.id = vu.voucher_id
+       WHERE vu.user_id = ${user.id}::uuid
+       ORDER BY vu.used_at DESC LIMIT 50
+    `;
+  }
+
+  // List voucher aktif yg masih bisa di-claim user (active + not yet used by this user + within window)
+  @Get('available')
+  async available(@CurrentUser() user: AuthenticatedUser) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT v.id, v.code, v.type, v.value, v.max_discount AS "maxDiscount",
+             v.min_order_amount AS "minOrder", v.valid_until AS "validUntil",
+             v.total_quota AS "totalQuota", v.used_count AS "usedCount",
+             v.per_user_limit AS "perUserLimit"
+        FROM vouchers v
+       WHERE v.is_active = TRUE
+         AND v.valid_from <= NOW() AND v.valid_until > NOW()
+         AND (v.total_quota IS NULL OR v.used_count < v.total_quota)
+         AND (
+           SELECT COUNT(*) FROM voucher_usage vu
+            WHERE vu.voucher_id = v.id AND vu.user_id = ${user.id}::uuid
+         ) < v.per_user_limit
+       ORDER BY v.valid_until ASC LIMIT 50
+    `;
+  }
 
   // Validate code + return discount calculation. Doesn't reserve quota.
   @Post('validate')

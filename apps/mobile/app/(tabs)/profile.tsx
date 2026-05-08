@@ -14,6 +14,7 @@ import {
   Settings,
   Shield,
   Star,
+  Tag,
   User,
 } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -157,6 +158,7 @@ export default function Profile() {
             { icon: MapPin, label: 'Alamat Tersimpan', onPress: () => router.push('/account/addresses') },
             { icon: CreditCard, label: 'Wallet & Pembayaran', onPress: () => router.push('/account/wallet') },
             { icon: Gift, label: 'Referral & Bonus', onPress: () => router.push('/account/referral') },
+            { icon: Tag, label: 'Voucher Saya', onPress: () => router.push('/account/vouchers') },
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}
         />

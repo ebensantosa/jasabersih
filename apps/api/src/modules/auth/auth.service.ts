@@ -71,6 +71,31 @@ export class AuthService {
       },
     });
 
+    // Auto-apply referral code (best-effort, ignore errors)
+    if (input.referralCode) {
+      const code = input.referralCode.trim().toUpperCase();
+      try {
+        const ref = await this.prisma.$queryRaw<{ user_id: string }[]>`
+          SELECT user_id FROM referral_codes WHERE code = ${code} LIMIT 1
+        `;
+        const referrerId = ref[0]?.user_id;
+        if (referrerId && referrerId !== user.id) {
+          // Cek belum pernah punya referral entry
+          const exists = await this.prisma.$queryRaw<{ id: string }[]>`
+            SELECT id FROM referrals WHERE referred_id = ${user.id}::uuid LIMIT 1
+          `;
+          if (exists.length === 0) {
+            await this.prisma.$executeRaw`
+              INSERT INTO referrals (referrer_id, referred_id, referrer_role, referred_role, status)
+              VALUES (${referrerId}::uuid, ${user.id}::uuid, 'customer', ${mode}, 'pending')
+            `;
+          }
+        }
+      } catch {
+        // Diam aja — referral gagal jangan halangin signup
+      }
+    }
+
     return this.tokens.issueForUser(user.id, user.phone, meta);
   }
 
