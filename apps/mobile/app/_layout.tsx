@@ -136,6 +136,10 @@ export default function RootLayout() {
         <Stack.Screen name="account/referral" />
         <Stack.Screen name="account/vouchers" />
         <Stack.Screen name="account/language" />
+        <Stack.Screen name="account/about" />
+        <Stack.Screen name="account/terms" />
+        <Stack.Screen name="account/privacy" />
+        <Stack.Screen name="account/faq" />
         <Stack.Screen name="cleaner/areas" />
         <Stack.Screen name="cleaner/wallet" />
         <Stack.Screen name="cleaner/withdraw" />

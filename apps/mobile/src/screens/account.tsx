@@ -206,6 +206,7 @@ export function Notifications() {
 }
 
 export function Security() {
+  const router = useRouter();
   return (
     <>
       <View className="rounded-2xl bg-white">
@@ -214,8 +215,9 @@ export function Security() {
         <Row icon={Shield} label="Two-Factor Authentication" last />
       </View>
       <View className="rounded-2xl bg-white">
-        <Row icon={Info} label="Kebijakan Privasi" />
-        <Row icon={Info} label="Hak atas Data Pribadi (UU PDP)" />
+        <Row icon={Info} label="Kebijakan Privasi" onPress={() => router.push('/account/privacy')} />
+        <Row icon={Info} label="Syarat & Ketentuan" onPress={() => router.push('/account/terms')} />
+        <Row icon={Info} label="Tentang JasaBersih" onPress={() => router.push('/account/about')} />
         <Row icon={Info} label="Hapus Akun" danger last />
       </View>
     </>
@@ -223,12 +225,7 @@ export function Security() {
 }
 
 export function Help() {
-  const items = [
-    { q: 'Bagaimana cara batalkan pesanan?', a: 'Buka tab Pesanan → pilih order → tap "Batalkan".' },
-    { q: 'Berapa lama cleaner sampai?', a: 'Rata-rata 30-45 menit setelah cleaner accept.' },
-    { q: 'Apa yang dijaminkan asuransi?', a: 'Kerusakan barang sampai Rp 10jt, lihat T&C.' },
-    { q: 'Bisa minta cleaner cewek/cowok saja?', a: 'Bisa, di booking form pilih "Preferensi Gender".' },
-  ];
+  const router = useRouter();
   return (
     <>
       <View className="rounded-2xl bg-brand-50 p-4">
@@ -243,13 +240,12 @@ export function Help() {
           <Text className="font-semibold text-xs text-white">Chat dengan CS</Text>
         </Pressable>
       </View>
-      <Text className="font-bold mt-2 text-sm text-ink-900">FAQ Populer</Text>
-      {items.map((it) => (
-        <View key={it.q} className="rounded-2xl bg-white p-4">
-          <Text className="font-semibold text-sm text-ink-900">{it.q}</Text>
-          <Text className="font-sans mt-1 text-xs text-ink-600">{it.a}</Text>
-        </View>
-      ))}
+      <View className="rounded-2xl bg-white">
+        <Row icon={Info} label="FAQ Lengkap" onPress={() => router.push('/account/faq')} />
+        <Row icon={Info} label="Syarat & Ketentuan" onPress={() => router.push('/account/terms')} />
+        <Row icon={Info} label="Kebijakan Privasi" onPress={() => router.push('/account/privacy')} />
+        <Row icon={Info} label="Tentang JasaBersih" onPress={() => router.push('/account/about')} last />
+      </View>
     </>
   );
 }
