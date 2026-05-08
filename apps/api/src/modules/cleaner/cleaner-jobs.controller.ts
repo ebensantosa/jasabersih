@@ -7,13 +7,81 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
+import { StorageService } from '../storage/storage.service';
 
 @ApiTags('cleaner-jobs')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('cleaner/jobs')
 export class CleanerJobsController {
-  constructor(private readonly prisma: PrismaService, private readonly jobs: JobsGateway, private readonly push: PushService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jobs: JobsGateway,
+    private readonly push: PushService,
+    private readonly storage: StorageService,
+  ) {}
+
+  // Generate signed PUT URL untuk upload foto before/after ke R2 public bucket
+  @Post(':id/photo-upload-url')
+  async photoUploadUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { photoType: 'before' | 'after' | 'damage'; contentType: string },
+  ) {
+    if (!['before', 'after', 'damage'].includes(body?.photoType)) throw new BadRequestException('photoType invalid.');
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(body?.contentType)) throw new BadRequestException('contentType invalid.');
+    const owns = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
+    return this.storage.createUploadUrl({
+      bucket: 'public',
+      keyPrefix: `bookings/${id}/${body.photoType}`,
+      contentType: body.contentType,
+      expiresInSec: 300,
+    });
+  }
+
+  // Register uploaded photo
+  @Post(':id/photos')
+  async addPhoto(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { photoType: 'before' | 'after' | 'damage'; storagePath: string },
+  ) {
+    if (!body?.storagePath) throw new BadRequestException('storagePath wajib.');
+    const owns = await this.prisma.$queryRaw<{ id: string; status: string }[]>`
+      SELECT id, status FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
+    if (!['matched', 'on_the_way', 'in_progress', 'completed'].includes(owns[0].status)) {
+      throw new BadRequestException('Tidak bisa upload foto di status ini.');
+    }
+    await this.prisma.$executeRaw`
+      INSERT INTO booking_photos (booking_id, photo_type, uploaded_by, storage_path)
+      VALUES (${id}::uuid, ${body.photoType}, ${user.id}::uuid, ${body.storagePath})
+    `;
+    return { ok: true, publicUrl: this.storage.getPublicUrl(body.storagePath) };
+  }
+
+  // List photos for a booking (both customer + cleaner can view)
+  @Get(':id/photos')
+  async listPhotos(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const owns = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string | null }[]>`
+      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const b = owns[0];
+    if (!b) throw new ForbiddenException();
+    if (b.customer_id !== user.id && b.cleaner_id !== user.id) throw new ForbiddenException();
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, photo_type AS "photoType", storage_path AS "storagePath",
+             uploaded_at AS "uploadedAt"
+        FROM booking_photos WHERE booking_id = ${id}::uuid
+        ORDER BY uploaded_at ASC
+    `;
+    return rows.map((r) => ({ ...r, url: this.storage.getPublicUrl(r.storagePath as string) }));
+  }
 
   // List bookings searching that this cleaner can take. Filter by service area di future.
   @Get('available')

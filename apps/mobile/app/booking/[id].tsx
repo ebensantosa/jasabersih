@@ -16,6 +16,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
+import { BookingPhotos } from '../../src/components/BookingPhotos';
 import { BookingTimeline } from '../../src/components/BookingTimeline';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { RatingFormModal } from '../../src/components/RatingFormModal';
@@ -447,6 +448,12 @@ export default function BookingDetail() {
           {!booking.id.startsWith('bk_') && booking.status !== 'searching' && (
             <View className="mx-4 mt-3">
               <BookingTimeline bookingId={booking.id} />
+            </View>
+          )}
+
+          {!booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
+            <View className="mx-4 mt-3">
+              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
             </View>
           )}
 
