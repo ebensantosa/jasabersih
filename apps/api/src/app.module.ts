@@ -17,6 +17,7 @@ import { DisputesModule } from './modules/disputes/disputes.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { RatingsModule } from './modules/ratings/ratings.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     VouchersModule,
     NotificationsModule,
     PaymentsModule,
+    RatingsModule,
   ],
   controllers: [HealthController],
 })

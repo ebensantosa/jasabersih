@@ -17,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
+import { RatingFormModal } from '../../src/components/RatingFormModal';
+import { api } from '../../src/lib/api';
 import { formatRupiah } from '../../src/data/catalog';
 import { useModeStore } from '../../src/stores/mode';
 import {
@@ -56,6 +58,16 @@ export default function BookingDetail() {
   const mode = useModeStore((s) => s.mode);
   const isCleaner = mode === 'freelancer';
   const [showDispute, setShowDispute] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [hasRated, setHasRated] = useState(false);
+
+  // Check if booking already rated
+  useEffect(() => {
+    if (!id || id.startsWith('bk_') || booking?.status !== 'completed') return;
+    api.get(`/ratings/booking/${id}`).then((r) => {
+      if (r.data?.data) setHasRated(true);
+    }).catch(() => {});
+  }, [id, booking?.status]);
   // Dispute hanya bisa dilaporkan setelah booking ada cleaner_id (matched/in_progress/completed)
   const canDispute = booking
     && !id?.startsWith('bk_')
@@ -554,14 +566,24 @@ export default function BookingDetail() {
             </View>
           )}
 
-        {booking.status === 'completed' && (
+        {booking.status === 'completed' && !isCleaner && (
           <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
             <SafeAreaView edges={['bottom']}>
               <View className="p-4">
-                <Pressable className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-3.5">
-                  <CheckCircle2 color="white" size={16} strokeWidth={2.4} />
-                  <Text className="font-bold text-sm text-white">Beri Rating</Text>
-                </Pressable>
+                {hasRated ? (
+                  <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-success/10 py-3.5">
+                    <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
+                    <Text className="font-semibold text-sm text-success">Sudah diberi rating</Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => setShowRating(true)}
+                    className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-3.5"
+                  >
+                    <CheckCircle2 color="white" size={16} strokeWidth={2.4} />
+                    <Text className="font-bold text-sm text-white">Beri Rating</Text>
+                  </Pressable>
+                )}
               </View>
             </SafeAreaView>
           </View>
@@ -574,6 +596,16 @@ export default function BookingDetail() {
           open={showDispute}
           onClose={() => setShowDispute(false)}
           onSubmitted={() => setShowDispute(false)}
+        />
+      )}
+
+      {booking.status === 'completed' && booking.cleanerName && (
+        <RatingFormModal
+          bookingId={booking.id}
+          cleanerName={booking.cleanerName}
+          open={showRating}
+          onClose={() => setShowRating(false)}
+          onSubmitted={() => { setShowRating(false); setHasRated(true); }}
         />
       )}
     </>
