@@ -7,6 +7,8 @@ import { AuthModule } from '../auth/auth.module';
 
 import { AdminController } from './admin.controller';
 import { AdminBookingsController } from './bookings-admin.controller';
+import { AdminDisputesController } from './disputes-admin.controller';
+import { AdminFraudController } from './fraud-admin.controller';
 import { AdminKycController } from './kyc.controller';
 import { AdminManagementController } from './admin-management.controller';
 import { AdminUsersController } from './users-admin.controller';
@@ -21,6 +23,8 @@ import { SystemConfigController } from './system-config.controller';
     AdminUsersController,
     AdminBookingsController,
     AdminWithdrawalsController,
+    AdminDisputesController,
+    AdminFraudController,
     AdminManagementController,
     SystemConfigController,
   ],

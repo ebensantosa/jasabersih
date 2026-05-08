@@ -177,6 +177,32 @@ export function createClient(opts: ClientOptions) {
       updateHourlyTier: (id: string, body: any) =>
         request<unknown>('PATCH', `/admin/config/hourly-tiers/${id}`, body),
 
+      // Disputes
+      listDisputes: (status: 'open' | 'in_progress' | 'resolved' | 'escalated' = 'open') =>
+        request<any[]>('GET', `/admin/disputes?status=${status}`),
+      disputeDetail: (id: string) =>
+        request<{ dispute: any }>('GET', `/admin/disputes/${id}`),
+      assignDispute: (id: string) =>
+        request<unknown>('POST', `/admin/disputes/${id}/assign`),
+      resolveDispute: (id: string, body: { action: string; payoutAmount?: number; resolution: string; suspendDays?: number }) =>
+        request<unknown>('POST', `/admin/disputes/${id}/resolve`, body),
+      escalateDispute: (id: string, reason: string) =>
+        request<unknown>('POST', `/admin/disputes/${id}/escalate`, { reason }),
+      disputeEvidenceUploadUrl: (id: string, contentType: string) =>
+        request<{ uploadUrl: string; key: string }>('POST', `/admin/disputes/${id}/evidence-upload-url`, { contentType }),
+      addDisputeEvidence: (id: string, body: { key: string; type: string; caption?: string }) =>
+        request<unknown>('POST', `/admin/disputes/${id}/evidence`, body),
+
+      // Fraud
+      fraudSignals: (limit?: number) =>
+        request<any[]>('GET', `/admin/fraud/signals${limit ? `?limit=${limit}` : ''}`),
+      fraudFlag: (body: { userId: string; strikeType: string; details?: any }) =>
+        request<unknown>('POST', '/admin/fraud/flag', body),
+      fraudRunDetection: () =>
+        request<{ ok: true; results: any }>('POST', '/admin/fraud/run-detection'),
+      fraudDismissStrike: (id: string, reason: string) =>
+        request<unknown>('POST', `/admin/fraud/strikes/${id}/dismiss`, { reason }),
+
       // Blacklist
       blacklist: () => request<any[]>('GET', '/admin/config/blacklist'),
       addBlacklist: (body: { type: string; value: string; reason: string; expiresAt?: string }) =>
