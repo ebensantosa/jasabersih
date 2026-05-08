@@ -16,6 +16,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
+import { BookingTimeline } from '../../src/components/BookingTimeline';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { RatingFormModal } from '../../src/components/RatingFormModal';
 import { api } from '../../src/lib/api';
@@ -440,6 +441,12 @@ export default function BookingDetail() {
               <View className="mt-3 border-t border-ink-100 pt-3">
                 <Row label="Total" value={formatRupiah(booking.totalPrice)} bold />
               </View>
+            </View>
+          )}
+
+          {!booking.id.startsWith('bk_') && booking.status !== 'searching' && (
+            <View className="mx-4 mt-3">
+              <BookingTimeline bookingId={booking.id} />
             </View>
           )}
 
