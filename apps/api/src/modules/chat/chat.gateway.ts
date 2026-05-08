@@ -16,16 +16,29 @@ import { PrismaService } from '../../common/prisma.service';
 
 type AuthedSocket = Socket & { data: { userId: string; role?: string } };
 
-// Same keywords as fraud detection — auto-block off-platform leak
-const BLOCK_PATTERNS: { re: RegExp; reason: string }[] = [
-  { re: /(0[2-9]\d{8,11})/, reason: 'phone_number' },
-  { re: /\b(wa|whatsapp|wa\.me|chat\s+wa)\b/i, reason: 'wa_mention' },
-  { re: /\b(transfer|tf|bca|mandiri|bri|bni)\b/i, reason: 'bank_mention' },
-  { re: /\b(cash|tunai\s+aja|off\s*app|luar\s+app)\b/i, reason: 'off_platform_offer' },
+// Auto-block off-platform leak. Each pattern returns reason code + Indonesian
+// message yang dishow ke user — biar mereka tau kenapa pesan ke-block.
+const BLOCK_PATTERNS: { re: RegExp; reason: string; userMsg: string }[] = [
+  // Phone numbers (Indonesia format + various)
+  { re: /(\+?62|0)\s?[2-9](?:[\s\-.]?\d){7,11}/, reason: 'phone_number', userMsg: 'Dilarang share nomor HP. Gunakan chat di app aja ya.' },
+  // Common Indonesian phone words
+  { re: /\b(no\.?\s*hp|nomor\s+hp|no\s+telp|nomor\s+telp|telpon|tlp)\b/i, reason: 'phone_word', userMsg: 'Dilarang minta/share nomor HP. Gunakan chat di app.' },
+  // WhatsApp mentions
+  { re: /\b(wa|whatsapp|wa\.me|chat\s+wa|nge\-?wa|wha?ts?ap|w[a4]+\s*aj[a4]?)\b/i, reason: 'wa_mention', userMsg: 'Dilarang ajak chat di luar app (WA). Komunikasi harus di JasaBersih.' },
+  // Telegram / Line / IG / FB
+  { re: /\b(telegram|tele|line\.?me|line\s+id|instagram|ig\s|facebook|fb\.me|messenger)\b/i, reason: 'social_media', userMsg: 'Dilarang ajak komunikasi di sosmed/messenger lain.' },
+  // Bank transfer mentions
+  { re: /\b(transfer|tf|bca|mandiri|bri|bni|cimb|permata|danamon|jago|seabank|jenius|bukopin|btn|gopay|ovo|dana|shopeepay|qris|virtual\s*account|va\s+\d+)\b/i, reason: 'bank_mention', userMsg: 'Pembayaran HARUS via app — DP/transfer langsung dilarang & berisiko penipuan.' },
+  // Off-app deal
+  { re: /\b(cash|tunai\s+aja|off\s*app|luar\s+app|di\s*luar|langganan\s+langsung|booking\s+langsung|tanpa\s+app|deal\s+langsung)\b/i, reason: 'off_platform_offer', userMsg: 'Dilarang transaksi di luar app. Order via app dapat asuransi & garansi.' },
+  // Email
+  { re: /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i, reason: 'email', userMsg: 'Dilarang share email. Komunikasi via app aja.' },
+  // External URLs (kecuali jasabersih.com)
+  { re: /\b(?!.*jasabersih\.com)(https?:\/\/|www\.)\S+/i, reason: 'external_url', userMsg: 'Dilarang share link eksternal.' },
 ];
 
-function detectBlockReason(content: string): string | null {
-  for (const p of BLOCK_PATTERNS) if (p.re.test(content)) return p.reason;
+function detectBlockReason(content: string): { reason: string; userMsg: string } | null {
+  for (const p of BLOCK_PATTERNS) if (p.re.test(content)) return { reason: p.reason, userMsg: p.userMsg };
   return null;
 }
 
@@ -106,7 +119,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async onSend(
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { bookingId: string; content: string; messageType?: 'text' | 'image'; attachmentUrl?: string },
-  ): Promise<{ ok: boolean; messageId?: string; blocked?: boolean; blockReason?: string; error?: string }> {
+  ): Promise<{ ok: boolean; messageId?: string; blocked?: boolean; blockReason?: string; userMessage?: string; error?: string }> {
     if (!body?.bookingId || !body?.content) return { ok: false, error: 'bookingId & content required' };
     if (body.content.length > 2000) return { ok: false, error: 'message too long (max 2000)' };
 
@@ -121,8 +134,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     const recipientId = client.data.userId === b.customer_id ? b.cleaner_id : b.customer_id;
 
-    const blockReason = detectBlockReason(body.content);
-    const status = blockReason ? 'blocked' : 'sent';
+    const block = detectBlockReason(body.content);
+    const status = block ? 'blocked' : 'sent';
 
     const inserted = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
       INSERT INTO chat_messages (booking_id, sender_id, recipient_id, message_type, content, attachment_url, status, block_reason)
@@ -134,14 +147,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         ${body.content},
         ${body.attachmentUrl ?? null},
         ${status},
-        ${blockReason}
+        ${block?.reason ?? null}
       )
       RETURNING id, created_at
     `;
     const msg = inserted[0];
 
+    // Record fraud strike kalau berulang
+    if (block) {
+      await this.prisma.$executeRaw`
+        INSERT INTO fraud_strikes (user_id, strike_type, reference_id, details)
+        VALUES (${client.data.userId}::uuid, 'off_platform_chat', ${msg?.id ?? null}::uuid,
+          ${JSON.stringify({ reason: block.reason, snippet: body.content.slice(0, 100) })}::jsonb)
+      `;
+    }
+
     // Broadcast to room only if not blocked
-    if (!blockReason && msg) {
+    if (!block && msg) {
       this.server.to(roomName(body.bookingId)).emit('message', {
         id: msg.id,
         bookingId: body.bookingId,
@@ -154,7 +176,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
 
-    return { ok: true, messageId: msg?.id, blocked: !!blockReason, blockReason: blockReason ?? undefined };
+    return {
+      ok: true,
+      messageId: msg?.id,
+      blocked: !!block,
+      blockReason: block?.reason,
+      userMessage: block?.userMsg,
+    };
   }
 
   @SubscribeMessage('typing')

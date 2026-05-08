@@ -247,8 +247,14 @@ export function createClient(opts: ClientOptions) {
       removeBlacklist: (id: string) =>
         request<unknown>('DELETE', `/admin/config/blacklist/${id}`),
 
-      listChatLogs: (params?: { blocked?: boolean }) =>
-        request<unknown[]>('GET', `/admin/chat${qs(params)}`),
+      // Chat audit
+      chatBookings: (params?: { q?: string; hasBlocked?: boolean }) =>
+        request<any[]>('GET', `/admin/chat/bookings${qs(params as any)}`),
+      chatMessages: (bookingId: string, reason?: string) =>
+        request<any[]>('GET', `/admin/chat/booking/${bookingId}/messages${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`),
+      chatBlocked: (limit?: number) =>
+        request<any[]>('GET', `/admin/chat/blocked${limit ? `?limit=${limit}` : ''}`),
+      chatStats: () => request<{ last7Days: any; blockedByReason: any[] }>('GET', '/admin/chat/stats'),
     },
 
     // Catalog (public — no auth needed)

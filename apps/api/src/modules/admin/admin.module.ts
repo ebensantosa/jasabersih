@@ -7,6 +7,7 @@ import { AuthModule } from '../auth/auth.module';
 
 import { AdminController } from './admin.controller';
 import { AdminBookingsController } from './bookings-admin.controller';
+import { AdminChatController } from './chat-admin.controller';
 import { AdminCmsController } from './cms.controller';
 import { AdminDisputesController } from './disputes-admin.controller';
 import { AdminFraudController } from './fraud-admin.controller';
@@ -27,6 +28,7 @@ import { SystemConfigController } from './system-config.controller';
     AdminDisputesController,
     AdminFraudController,
     AdminCmsController,
+    AdminChatController,
     AdminManagementController,
     SystemConfigController,
   ],
