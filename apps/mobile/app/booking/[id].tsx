@@ -21,6 +21,7 @@ import { BookingTimeline } from '../../src/components/BookingTimeline';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { RatingFormModal } from '../../src/components/RatingFormModal';
 import { api } from '../../src/lib/api';
+import { useT } from '../../src/lib/i18n';
 import { formatRupiah } from '../../src/data/catalog';
 import { useModeStore } from '../../src/stores/mode';
 import {
@@ -63,6 +64,7 @@ export default function BookingDetail() {
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const t = useT();
 
   // Cleaner advance status — pakai API kalau bukan local-only booking
   async function advanceStatus(to: 'on_the_way' | 'in_progress' | 'completed') {
@@ -418,7 +420,7 @@ export default function BookingDetail() {
           {booking.totalPrice > 0 && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
-                Pembayaran
+                {t('bd.payment')}
               </Text>
               <View className="gap-2">
                 <Row
@@ -440,7 +442,7 @@ export default function BookingDetail() {
                 ))}
               </View>
               <View className="mt-3 border-t border-ink-100 pt-3">
-                <Row label="Total" value={formatRupiah(booking.totalPrice)} bold />
+                <Row label={t('bd.total')} value={formatRupiah(booking.totalPrice)} bold />
               </View>
             </View>
           )}
@@ -463,7 +465,7 @@ export default function BookingDetail() {
               className="mx-4 mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3"
             >
               <AlertTriangle color="#B91C1C" size={16} />
-              <Text className="font-semibold text-sm text-red-700">Laporkan Masalah</Text>
+              <Text className="font-semibold text-sm text-red-700">{t('booking.report')}</Text>
             </Pressable>
           )}
 
@@ -510,7 +512,7 @@ export default function BookingDetail() {
                   </Pressable>
                   <Pressable onPress={onCancel} className="mt-2 py-2">
                     <Text className="font-semibold text-center text-xs text-ink-500">
-                      Batalkan Pesanan
+                      {t('booking.cancel')}
                     </Text>
                   </Pressable>
                 </View>
@@ -522,7 +524,7 @@ export default function BookingDetail() {
                   >
                     <XCircle color="#DC2626" size={16} strokeWidth={2.2} />
                     <Text className="font-semibold text-sm text-danger">
-                      {inFreeCancelWindow ? `Batal (${freeCancelLeft}s gratis)` : 'Batalkan'}
+                      {inFreeCancelWindow ? t('bd.free_cancel_left', { sec: freeCancelLeft }) : t('bd.cancel_btn')}
                     </Text>
                   </Pressable>
                   {booking.status === 'matched' ||
@@ -541,8 +543,8 @@ export default function BookingDetail() {
                     <View className="flex-1 items-center justify-center rounded-2xl bg-ink-100 py-3.5">
                       <Text className="font-medium text-sm text-ink-500">
                         {booking.pricingMode === 'wa_survey'
-                          ? 'CS akan WhatsApp kamu'
-                          : 'Menunggu cleaner…'}
+                          ? t('bd.cs_will_wa')
+                          : t('bd.waiting_cleaner')}
                       </Text>
                     </View>
                   )}
@@ -567,7 +569,7 @@ export default function BookingDetail() {
                     className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl border border-brand-300 bg-white py-3.5"
                   >
                     <MessageCircle color="#1D4ED8" size={16} strokeWidth={2.4} />
-                    <Text className="font-bold text-sm text-brand-700">Chat Customer</Text>
+                    <Text className="font-bold text-sm text-brand-700">{t('bd.chat_customer')}</Text>
                   </Pressable>
                   {booking.status === 'matched' && (
                     <Pressable
@@ -575,7 +577,7 @@ export default function BookingDetail() {
                       disabled={advancing}
                       className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
                     >
-                      <Text className="font-bold text-sm text-white">{advancing ? 'Memproses…' : 'Berangkat (OTW)'}</Text>
+                      <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.depart')}</Text>
                     </Pressable>
                   )}
                   {booking.status === 'on_the_way' && (
@@ -584,7 +586,7 @@ export default function BookingDetail() {
                       disabled={advancing}
                       className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
                     >
-                      <Text className="font-bold text-sm text-white">{advancing ? 'Memproses…' : 'Mulai Kerja'}</Text>
+                      <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.start_work')}</Text>
                     </Pressable>
                   )}
                   {booking.status === 'in_progress' && (
@@ -593,7 +595,7 @@ export default function BookingDetail() {
                       disabled={advancing}
                       className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-success/60' : 'bg-success'}`}
                     >
-                      <Text className="font-bold text-sm text-white">{advancing ? 'Memproses…' : 'Selesai'}</Text>
+                      <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.finish')}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -608,7 +610,7 @@ export default function BookingDetail() {
                 {hasRated ? (
                   <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-success/10 py-3.5">
                     <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
-                    <Text className="font-semibold text-sm text-success">Sudah diberi rating</Text>
+                    <Text className="font-semibold text-sm text-success">{t('booking.already_rated')}</Text>
                   </View>
                 ) : (
                   <Pressable
@@ -616,7 +618,7 @@ export default function BookingDetail() {
                     className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-3.5"
                   >
                     <CheckCircle2 color="white" size={16} strokeWidth={2.4} />
-                    <Text className="font-bold text-sm text-white">Beri Rating</Text>
+                    <Text className="font-bold text-sm text-white">{t('booking.rate')}</Text>
                   </Pressable>
                 )}
               </View>

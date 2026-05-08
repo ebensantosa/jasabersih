@@ -24,6 +24,7 @@ import { WaIcon } from '../../src/components/BrandIcon';
 import { NotifBell } from '../../src/components/NotifBell';
 import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
+import { useT } from '../../src/lib/i18n';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { shortenAddress } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -35,6 +36,7 @@ export default function Home() {
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
   const SERVICE_CATEGORIES = useServices();
+  const t = useT();
 
   return (
     <View className="flex-1 bg-ink-50">
@@ -56,7 +58,7 @@ export default function Home() {
                 <MapPin color="white" size={14} strokeWidth={2.4} />
                 <View className="flex-1">
                   <Text className="font-medium text-[10px] text-white/70">
-                    {defaultAddress ? `Kirim ke · ${defaultAddress.label}` : 'Belum ada alamat'}
+                    {defaultAddress ? `${t('home.send_to')} · ${defaultAddress.label}` : t('home.no_address')}
                   </Text>
                   <View className="flex-row items-center gap-1">
                     <Text
@@ -64,7 +66,7 @@ export default function Home() {
                       numberOfLines={1}
                       ellipsizeMode="tail"
                     >
-                      {defaultAddress?.addressLine ?? 'Tap untuk tambah alamat'}
+                      {defaultAddress?.addressLine ?? t('home.tap_to_add')}
                     </Text>
                     <ChevronDown color="white" size={12} />
                   </View>
@@ -100,14 +102,14 @@ export default function Home() {
           className="mx-4 flex-row gap-2 rounded-2xl bg-white p-2.5"
           style={{ elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8 }}
         >
-          <ModeBtn icon={Wallet} label="Paket" sub="Harga tetap" onPress={() => router.push('/(tabs)/explore')} />
+          <ModeBtn icon={Wallet} label={t('home.mode_packages')} sub={t('home.mode_packages_sub')} onPress={() => router.push('/(tabs)/explore')} />
           <Divider />
-          <ModeBtn icon={Clock} label="Per Jam" sub="Mulai 65rb" onPress={() => router.push('/booking/hourly')} />
+          <ModeBtn icon={Clock} label={t('home.mode_hourly')} sub={t('home.mode_hourly_sub')} onPress={() => router.push('/booking/hourly')} />
           <Divider />
           <ModeBtn
             renderIcon={() => <WaIcon size={18} />}
-            label="WA Survey"
-            sub="Konsultasi"
+            label={t('home.mode_wa')}
+            sub={t('home.mode_wa_sub')}
             onPress={() => router.push('/booking/wa-survey')}
           />
         </View>
@@ -145,8 +147,8 @@ export default function Home() {
         <FeaturedCleaners />
 
         <SectionHeader
-          title="Layanan Populer"
-          actionLabel="Lihat semua"
+          title={t('home.popular')}
+          actionLabel={t('home.see_all')}
           onAction={() => router.push('/(tabs)/explore')}
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>

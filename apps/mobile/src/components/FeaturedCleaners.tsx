@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { useT } from '../lib/i18n';
 
 type Cleaner = {
   id: string;
@@ -20,6 +21,7 @@ export function FeaturedCleaners() {
   const router = useRouter();
   const [list, setList] = useState<Cleaner[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = useT();
 
   useEffect(() => {
     api.get('/cleaner/public/featured')
@@ -37,8 +39,8 @@ export function FeaturedCleaners() {
   return (
     <View className="mt-4">
       <View className="mb-2 flex-row items-center justify-between px-5">
-        <Text className="font-bold text-base text-ink-900">Cleaner Pilihan</Text>
-        <Text className="font-medium text-[11px] text-ink-500">Rating tertinggi</Text>
+        <Text className="font-bold text-base text-ink-900">{t('home.featured_cleaners')}</Text>
+        <Text className="font-medium text-[11px] text-ink-500">{t('home.top_rated')}</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className="flex-row gap-3 px-4 pb-1">

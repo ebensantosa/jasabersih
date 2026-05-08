@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '../../src/components/BrandLogo';
 import { Field, validateEmail, validatePassword } from '../../src/components/Field';
+import { useT } from '../../src/lib/i18n';
 import { login } from '../../src/lib/devAuth';
 import { useAuthStore } from '../../src/stores/auth';
 import { useCleanerStore } from '../../src/stores/cleaner';
@@ -15,6 +16,7 @@ import { toast } from '../../src/stores/ui';
 
 export default function Login() {
   const router = useRouter();
+  const t = useT();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
   const setCleanerName = useCleanerStore((s) => s.setName);
@@ -66,10 +68,8 @@ export default function Login() {
           </View>
           <View className="px-6 pt-2">
             <BrandLogo size={48} showName={false} variant="light" />
-            <Text className="font-bold mt-3 text-3xl text-white">Selamat Datang 👋</Text>
-            <Text className="font-sans mt-1 text-sm text-white/85">
-              Masuk untuk lanjut pesan jasa bersih
-            </Text>
+            <Text className="font-bold mt-3 text-3xl text-white">{t('login.welcome_emoji')}</Text>
+            <Text className="font-sans mt-1 text-sm text-white/85">{t('login.subtitle')}</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -130,14 +130,14 @@ export default function Login() {
             className="mt-2 rounded-2xl bg-brand-600 py-4 disabled:opacity-50"
           >
             <Text className="font-bold text-center text-sm text-white">
-              {loading ? 'Memproses…' : 'Masuk'}
+              {loading ? t('login.signing_in') : t('auth.login')}
             </Text>
           </Pressable>
 
           <Pressable onPress={() => router.replace('/(auth)/register')} className="mt-3">
             <Text className="font-sans text-center text-sm text-ink-500">
-              Belum punya akun?{' '}
-              <Text className="font-semibold text-brand-600">Daftar Sekarang</Text>
+              {t('login.no_account')}{' '}
+              <Text className="font-semibold text-brand-600">{t('login.signup_link')}</Text>
             </Text>
           </Pressable>
         </View>
