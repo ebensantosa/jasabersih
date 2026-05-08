@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
 import { StorageService } from '../storage/storage.service';
 
 @ApiTags('admin-disputes')
@@ -16,6 +17,7 @@ export class AdminDisputesController {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly audit: AdminAuditService,
+    private readonly push: PushService,
   ) {}
 
   @Get()
@@ -177,6 +179,22 @@ export class AdminDisputesController {
       changes: { action: body.action, payoutAmount: body.payoutAmount, resolution: body.resolution },
       ipAddress: req.ip ?? null,
     });
+
+    // Notify both raised_by and subject
+    const partyRows = await this.prisma.$queryRaw<{ raised_by: string | null; subject_user_id: string | null }[]>`
+      SELECT raised_by, subject_user_id FROM disputes WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const parties = partyRows[0];
+    const summary = body.action === 'refund_customer' ? 'Refund disetujui' :
+      body.action === 'debit_cleaner' ? 'Sengketa diputus — saldo cleaner dipotong' :
+      body.action === 'suspend_subject' ? 'Akun di-suspend' :
+      body.action === 'warn_both' ? 'Peringatan dikeluarkan' : 'Laporan ditolak';
+    if (parties?.raised_by) {
+      void this.push.send({ userId: parties.raised_by, channel: 'system', title: 'Sengketa selesai', body: summary, data: { type: 'dispute_resolved', disputeId: id } }).catch(() => {});
+    }
+    if (parties?.subject_user_id && parties.subject_user_id !== parties.raised_by) {
+      void this.push.send({ userId: parties.subject_user_id, channel: 'system', title: 'Sengketa selesai', body: summary, data: { type: 'dispute_resolved', disputeId: id } }).catch(() => {});
+    }
 
     return { ok: true };
   }

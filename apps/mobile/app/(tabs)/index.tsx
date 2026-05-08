@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
 import { WaIcon } from '../../src/components/BrandIcon';
+import { NotifBell } from '../../src/components/NotifBell';
 import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
 import { useAddressesStore } from '../../src/stores/addresses';
@@ -68,12 +69,9 @@ export default function Home() {
                   </View>
                 </View>
               </Pressable>
-              <Pressable
-                onPress={() => toast.info('Belum ada notifikasi baru')}
-                className="h-10 w-10 items-center justify-center rounded-full bg-white/15"
-              >
-                <Bell color="white" size={18} strokeWidth={2.2} />
-              </Pressable>
+              <View className="rounded-full bg-white/15">
+                <NotifBell tint="white" />
+              </View>
             </View>
 
             <Pressable

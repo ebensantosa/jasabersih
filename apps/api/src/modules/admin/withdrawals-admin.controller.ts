@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
 
 @ApiTags('admin-withdrawals')
 @ApiBearerAuth()
@@ -14,7 +15,15 @@ export class AdminWithdrawalsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly push: PushService,
   ) {}
+
+  private async getUserAndAmount(id: string) {
+    const r = await this.prisma.$queryRaw<{ user_id: string; amount: number }[]>`
+      SELECT user_id, amount FROM withdrawals WHERE id = ${id}::uuid LIMIT 1
+    `;
+    return r[0];
+  }
 
   @Get()
   @Roles('super_admin', 'finance')
@@ -78,6 +87,10 @@ export class AdminWithdrawalsController {
       changes: { bankTransferRef: body.bankTransferRef, note: body.note ?? null },
       ipAddress: req.ip ?? null,
     });
+    const w = await this.getUserAndAmount(id);
+    if (w) {
+      void this.push.send({ userId: w.user_id, channel: 'wallet', title: 'Penarikan disetujui', body: `Rp ${Number(w.amount).toLocaleString('id-ID')} sudah ditransfer. Ref: ${body.bankTransferRef}`, data: { type: 'withdrawal_approved', withdrawalId: id } }).catch(() => {});
+    }
     return { ok: true };
   }
 
@@ -120,6 +133,10 @@ export class AdminWithdrawalsController {
       changes: { reason: body.reason },
       ipAddress: req.ip ?? null,
     });
+    const w = await this.getUserAndAmount(id);
+    if (w) {
+      void this.push.send({ userId: w.user_id, channel: 'wallet', title: 'Penarikan ditolak', body: body.reason, data: { type: 'withdrawal_rejected', withdrawalId: id } }).catch(() => {});
+    }
     return { ok: true };
   }
 }

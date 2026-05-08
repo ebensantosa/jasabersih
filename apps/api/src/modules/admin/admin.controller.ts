@@ -3,13 +3,14 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { PushService } from '../notifications/push.service';
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly push: PushService) {}
 
   @Get('bookings')
   async listBookings(@Query('status') status?: string) {
@@ -89,6 +90,15 @@ export class AdminController {
       body.cleanerId,
       id,
     );
+    // Notify customer + cleaner
+    const rows = await this.prisma.$queryRaw<{ customer_id: string | null }[]>`
+      SELECT customer_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const customerId = rows[0]?.customer_id;
+    if (customerId) {
+      void this.push.send({ userId: customerId, channel: 'booking', title: 'Cleaner sudah ditemukan', body: 'Tap untuk lihat detail & chat dengan cleaner kamu.', data: { type: 'booking_matched', bookingId: id } }).catch(() => {});
+    }
+    void this.push.send({ userId: body.cleanerId, channel: 'booking', title: 'Job baru di-assign', body: 'Kamu mendapat job baru. Buka untuk konfirmasi.', data: { type: 'job_assigned', bookingId: id } }).catch(() => {});
     return { ok: true };
   }
 }

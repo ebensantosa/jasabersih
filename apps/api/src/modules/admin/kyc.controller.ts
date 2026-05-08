@@ -16,6 +16,7 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
 import { StorageService } from '../storage/storage.service';
 
 type KycListRow = {
@@ -48,6 +49,7 @@ export class AdminKycController {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly audit: AdminAuditService,
+    private readonly push: PushService,
   ) {}
 
   // List cleaner with kyc_status pending or under_review.
@@ -151,6 +153,7 @@ export class AdminKycController {
       resourceId: userId,
       ipAddress: req.ip ?? null,
     });
+    void this.push.send({ userId, channel: 'system', title: 'KYC kamu disetujui ✓', body: 'Selamat! Kamu sudah bisa menerima order sekarang.', data: { type: 'kyc_approved' } }).catch(() => {});
     return { ok: true };
   }
 
@@ -188,6 +191,7 @@ export class AdminKycController {
       changes: { reason: body.reason },
       ipAddress: req.ip ?? null,
     });
+    void this.push.send({ userId, channel: 'system', title: 'KYC ditolak', body: body.reason, data: { type: 'kyc_rejected' } }).catch(() => {});
     return { ok: true };
   }
 
