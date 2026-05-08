@@ -13,6 +13,7 @@ import {
 import type { Server, Socket } from 'socket.io';
 
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
 
 type AuthedSocket = Socket & { data: { userId: string; role?: string } };
 
@@ -61,6 +62,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly push: PushService,
   ) {}
 
   // Authenticate on connect via JWT token in handshake.auth.token
@@ -174,6 +176,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         attachmentUrl: body.attachmentUrl ?? null,
         createdAt: msg.created_at.toISOString(),
       });
+
+      // Push notification ke recipient (fire-and-forget)
+      if (recipientId) {
+        const room = this.server.sockets.adapter.rooms.get(roomName(body.bookingId));
+        const recipientOnline = !!room && Array.from(room).some((sid) => {
+          const s = this.server.sockets.sockets.get(sid) as AuthedSocket | undefined;
+          return s?.data?.userId === recipientId;
+        });
+        if (!recipientOnline) {
+          void this.push.send({
+            userId: recipientId,
+            title: 'Pesan baru',
+            body: body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content,
+            channel: 'chat',
+            data: { type: 'chat', bookingId: body.bookingId },
+          }).catch(() => {});
+        }
+      }
     }
 
     return {

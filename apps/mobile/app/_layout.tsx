@@ -7,7 +7,8 @@ import {
   Inter_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View } from 'react-native';
@@ -18,6 +19,7 @@ import { PopupRenderer } from '../src/components/PopupRenderer';
 import { ToastHost } from '../src/components/Toast';
 import { UpdatePromptHost } from '../src/components/UpdatePrompt';
 import { useAppContent } from '../src/stores/appContent';
+import { registerForPushAsync } from '../src/lib/pushSetup';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
 import { useAddressesStore } from '../src/stores/addresses';
@@ -74,6 +76,8 @@ export default function RootLayout() {
         void syncBookings();
         void syncAddresses();
         void syncWallet();
+        // Register Expo push token (idempotent — only physical devices, ignores web/sim)
+        void registerForPushAsync().catch(() => {});
       }, 500);
     });
   }, [
@@ -89,6 +93,18 @@ export default function RootLayout() {
     syncAddresses,
     syncWallet,
   ]);
+
+  // Notification tap → deep link
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
+      const data = res.notification.request.content.data as Record<string, unknown> | undefined;
+      const type = data?.type as string | undefined;
+      const bookingId = data?.bookingId as string | undefined;
+      if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
+      else if ((type === 'booking_completed' || type === 'wallet_credit') && bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!fontsLoaded) {
     return <View className="flex-1 bg-white" />;

@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
 
 @ApiTags('admin-bookings')
 @ApiBearerAuth()
@@ -14,6 +15,7 @@ export class AdminBookingsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly push: PushService,
   ) {}
 
   // Detail lengkap booking — header, timeline (timestamps), customer, cleaner, payment, photos
@@ -93,8 +95,8 @@ export class AdminBookingsController {
       throw new BadRequestException('Alasan wajib.');
     }
     // Get booking info untuk auto-credit cleaner
-    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; cleaner_payout: number | null; total_amount: number }[]>`
-      SELECT cleaner_id, cleaner_payout, total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string | null; cleaner_payout: number | null; total_amount: number }[]>`
+      SELECT cleaner_id, customer_id, cleaner_payout, total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
     const booking = bookings[0];
 
@@ -118,6 +120,22 @@ export class AdminBookingsController {
         `,
       ] : []),
     ]);
+
+    // Push notif (fire-and-forget)
+    if (booking?.customer_id) {
+      void this.push.send({
+        userId: booking.customer_id, channel: 'booking',
+        title: 'Pesanan selesai', body: 'Yuk beri rating untuk cleaner kamu!',
+        data: { type: 'booking_completed', bookingId: id },
+      }).catch(() => {});
+    }
+    if (booking?.cleaner_id && (booking.cleaner_payout ?? 0) > 0) {
+      void this.push.send({
+        userId: booking.cleaner_id, channel: 'wallet',
+        title: 'Saldo bertambah', body: `Pendapatan Rp ${Number(booking.cleaner_payout).toLocaleString('id-ID')} masuk wallet kamu.`,
+        data: { type: 'wallet_credit', bookingId: id },
+      }).catch(() => {});
+    }
 
     await this.audit.log({
       adminId: admin.id,

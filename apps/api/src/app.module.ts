@@ -15,6 +15,7 @@ import { AddressesModule } from './modules/addresses/addresses.module';
 import { CleanerModule } from './modules/cleaner/cleaner.module';
 import { DisputesModule } from './modules/disputes/disputes.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
     CleanerModule,
     DisputesModule,
     VouchersModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })
