@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { CalendarCheck, ChevronRight, LogIn } from 'lucide-react-native';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback } from 'react';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
@@ -16,6 +17,11 @@ export default function Bookings() {
   const mode = useModeStore((s) => s.mode);
   const cleanerName = useCleanerStore((s) => s.name);
   const allList = useBookingsStore((s) => s.list);
+  const syncFromApi = useBookingsStore((s) => s.syncFromApi);
+  const syncing = useBookingsStore((s) => s.syncing);
+
+  // Refresh on focus
+  useFocusEffect(useCallback(() => { void syncFromApi(); }, [syncFromApi]));
   // Cleaner mode: hanya job yang di-assign ke cleaner ini
   // Customer mode: semua booking customer
   const list =
@@ -70,7 +76,10 @@ export default function Bookings() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+          refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void syncFromApi()} />}
+        >
           {list.map((b) => {
             const c = STATUS_COLOR[b.status];
             return (

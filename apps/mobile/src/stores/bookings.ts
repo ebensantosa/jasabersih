@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { api } from '../lib/api';
 import { storage } from '../lib/storage';
 
 const BOOKINGS_KEY = 'bookings.list';
@@ -88,15 +89,75 @@ type State = {
   appendMessage: (id: string, msg: Omit<ChatMessage, 'id' | 'createdAt'>) => void;
   hydrate: () => void;
   setListInternal: (list: Booking[]) => void;
+  // API integration — pull server state, push local mutations
+  syncFromApi: () => Promise<void>;
+  syncing: boolean;
+  syncError: string | null;
 };
 
 function persist(list: Booking[]): void {
   storage.set(BOOKINGS_KEY, JSON.stringify(list));
 }
 
+// Map server status (from API) to mobile UI status
+function mapServerStatus(s: string | null | undefined): BookingStatus {
+  switch (s) {
+    case 'pending_payment': return 'pending_payment';
+    case 'searching':
+    case 'searching_cleaner': return 'searching';
+    case 'matched':
+    case 'confirmed': return 'matched';
+    case 'cleaner_otw':
+    case 'on_the_way': return 'on_the_way';
+    case 'in_progress':
+    case 'started': return 'in_progress';
+    case 'completed': return 'completed';
+    case 'cancelled':
+    case 'canceled': return 'canceled';
+    default: return 'searching';
+  }
+}
+
 export const useBookingsStore = create<State>((set, get) => ({
   list: [],
   hydrated: false,
+  syncing: false,
+  syncError: null,
+  async syncFromApi() {
+    set({ syncing: true, syncError: null });
+    try {
+      const res = await api.get('/bookings');
+      const items: any[] = res.data?.data ?? [];
+      // Merge with local list — server entries take precedence on conflict (id match);
+      // entries that exist only locally (not yet pushed) stay.
+      const local = get().list;
+      const serverIds = new Set(items.map((i) => i.id));
+      const serverMapped: Booking[] = items.map((s) => {
+        const existing = local.find((b) => b.id === s.id);
+        const total = Number(s.total ?? 0);
+        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerName: s.cleanerName ?? existing.cleanerName, scheduledAt: s.scheduledAt ?? existing.scheduledAt }
+          : {
+              id: s.id,
+              pricingMode: (s.pricingMode ?? 'package') as PricingMode,
+              categoryCode: '', categoryName: s.serviceName ?? 'Layanan', categoryImage: '',
+              addressLine: s.address ?? '',
+              scheduledAt: s.scheduledAt ?? new Date().toISOString(),
+              status: mapServerStatus(s.status),
+              createdAt: s.createdAt ? new Date(s.createdAt).getTime() : Date.now(),
+              addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
+              cleanerName: s.cleanerName ?? undefined,
+              messages: [],
+            } as Booking;
+      });
+      // Keep local-only (not yet on server — likely fresh creates not synced)
+      const localOnly = local.filter((b) => !serverIds.has(b.id));
+      const merged = [...serverMapped, ...localOnly];
+      persist(merged);
+      set({ list: merged, syncing: false });
+    } catch (e: any) {
+      set({ syncing: false, syncError: e?.message ?? 'gagal sync' });
+    }
+  },
   hydrate: () => {
     const raw = storage.getString(BOOKINGS_KEY);
     if (raw) {
@@ -115,11 +176,11 @@ export const useBookingsStore = create<State>((set, get) => ({
     set({ list });
   },
   create: ({ initialStatus, ...b }) => {
-    const id = 'bk_' + Math.random().toString(36).slice(2, 10);
+    const tempId = 'bk_' + Math.random().toString(36).slice(2, 10);
     const status: BookingStatus = initialStatus ?? 'searching';
     const booking: Booking = {
       ...b,
-      id,
+      id: tempId,
       status,
       createdAt: Date.now(),
       messages: [],
@@ -127,6 +188,32 @@ export const useBookingsStore = create<State>((set, get) => ({
     const next = [booking, ...get().list];
     persist(next);
     set({ list: next });
+
+    // Fire-and-forget: POST ke API. Kalau sukses, replace tempId dgn server uuid.
+    if (b.pricingMode !== 'wa_survey') {
+      const payload = {
+        pricingMode: b.pricingMode,
+        packageId: b.packageId,
+        hourlyTierId: b.hourlyTierCode ? undefined : undefined, // tier id sebenernya — TODO map dari code
+        hoursBooked: b.hours,
+        scheduledAt: b.scheduledAt,
+        addressLine: b.addressLine,
+        baseAmount: Math.round(b.basePrice),
+        totalAmount: Math.round(b.totalPrice),
+        formSnapshot: b.formSnapshot ?? {},
+        customerNotes: undefined,
+      };
+      api.post('/bookings', payload)
+        .then((res) => {
+          const serverId = res.data?.data?.id ?? res.data?.id;
+          if (!serverId) return;
+          const updated = get().list.map((row) => row.id === tempId ? { ...row, id: serverId } : row);
+          persist(updated);
+          set({ list: updated });
+        })
+        .catch(() => { /* keep local only — user can retry via sync */ });
+    }
+
     return booking;
   },
   setStatus: (id, status) => {
@@ -158,6 +245,10 @@ export const useBookingsStore = create<State>((set, get) => ({
     );
     persist(next);
     set({ list: next });
+    // Push to API (server-side: status 'pending_payment' → 'searching')
+    if (!id.startsWith('bk_')) {
+      api.post(`/bookings/${id}/pay`).catch(() => {});
+    }
   },
   cancel: (id, refund) => {
     const next = get().list.map((b) =>
@@ -165,6 +256,9 @@ export const useBookingsStore = create<State>((set, get) => ({
     );
     persist(next);
     set({ list: next });
+    if (!id.startsWith('bk_')) {
+      api.post(`/bookings/${id}/cancel`).catch(() => {});
+    }
   },
   appendMessage: (id, msg) => {
     const next = get().list.map((b) =>

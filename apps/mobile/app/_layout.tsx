@@ -37,6 +37,7 @@ export default function RootLayout() {
   const hydrateAddresses = useAddressesStore((s) => s.hydrate);
   const hydrateWallet = useCleanerWalletStore((s) => s.hydrate);
   const fetchAppContent = useAppContent((s) => s.fetch);
+  const syncBookings = useBookingsStore((s) => s.syncFromApi);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -66,6 +67,8 @@ export default function RootLayout() {
       hydrateWallet();
       // Fetch fresh app content (banners/services/config/popups) — non-blocking
       void fetchAppContent();
+      // Sync bookings from server kalau sudah login
+      setTimeout(() => { void syncBookings(); }, 500);
     });
   }, [
     hydrateAuth,
@@ -76,6 +79,7 @@ export default function RootLayout() {
     hydrateAddresses,
     hydrateWallet,
     fetchAppContent,
+    syncBookings,
   ]);
 
   if (!fontsLoaded) {
