@@ -24,7 +24,8 @@ echo "==> Seed master data (services, admin users)..."
 (cd apps/api && npx tsx prisma/seed.ts) || echo "Seed skipped (idempotent)"
 
 echo "==> Build NestJS API..."
-(cd apps/api && npx nest build)
+# Clean tsbuildinfo cache + dist agar tsc tidak skip emit (incremental cache bug)
+(cd apps/api && rm -rf dist *.tsbuildinfo .tsbuildinfo && npx nest build)
 
 echo "==> Build Admin Next.js..."
 (cd apps/admin && npx next build)
