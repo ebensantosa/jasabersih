@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import {
   ArrowDownToLine,
   Award,
@@ -32,8 +33,14 @@ const LEADERBOARD = [
 export default function Earnings() {
   const router = useRouter();
   const cleanerName = useCleanerStore((s) => s.name);
-  const balance = useCleanerWalletStore((s) => s.balance());
+  const localBalance = useCleanerWalletStore((s) => s.balance());
+  const serverBalance = useCleanerWalletStore((s) => s.serverBalance);
+  const balance = serverBalance > 0 ? serverBalance : localBalance;
   const entries = useCleanerWalletStore((s) => s.entries);
+  const syncWallet = useCleanerWalletStore((s) => s.syncFromApi);
+
+  // Refresh wallet on tab focus
+  useFocusEffect(useCallback(() => { void syncWallet(); }, [syncWallet]));
   const list = useBookingsStore((s) => s.list);
 
   const now = new Date();
