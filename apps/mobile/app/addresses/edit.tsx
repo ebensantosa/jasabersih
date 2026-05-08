@@ -36,6 +36,7 @@ export default function EditAddress() {
     recipientName?: string | null;
     recipientPhone?: string | null;
     addressLine?: string | null;
+    detailNote?: string | null;
   }>({});
 
   function save() {

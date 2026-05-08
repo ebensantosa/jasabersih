@@ -248,7 +248,7 @@ export function LocationPicker({
       {/* Map */}
       <View className="flex-1">
         {Platform.OS === 'web' ? (
-          // @ts-expect-error iframe is web-only
+          // @ts-ignore iframe is web-only
           <iframe
             ref={iframeRef}
             srcDoc={HTML(lat, lng)}
