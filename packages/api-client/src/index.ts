@@ -203,6 +203,43 @@ export function createClient(opts: ClientOptions) {
       fraudDismissStrike: (id: string, reason: string) =>
         request<unknown>('POST', `/admin/fraud/strikes/${id}/dismiss`, { reason }),
 
+      // CMS
+      cmsUploadUrl: (contentType: string, folder: string) =>
+        request<{ uploadUrl: string; key: string; publicUrl: string }>('POST', '/admin/cms/upload-url', { contentType, folder }),
+      banners: (placement?: string) => request<any[]>('GET', `/admin/cms/banners${placement ? `?placement=${placement}` : ''}`),
+      createBanner: (body: any) => request<{ id: string }>('POST', '/admin/cms/banners', body),
+      updateBanner: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/banners/${id}`, body),
+      deleteBanner: (id: string) => request<unknown>('DELETE', `/admin/cms/banners/${id}`),
+
+      pages: () => request<any[]>('GET', '/admin/cms/pages'),
+      getPage: (slug: string) => request<any>('GET', `/admin/cms/pages/${slug}`),
+      upsertPage: (body: { slug: string; title: string; bodyMarkdown: string; audience?: string }) =>
+        request<unknown>('POST', '/admin/cms/pages', body),
+      publishPage: (id: string, isPublished: boolean) =>
+        request<unknown>('PATCH', `/admin/cms/pages/${id}/publish`, { isPublished }),
+
+      announcements: () => request<any[]>('GET', '/admin/cms/announcements'),
+      createAnnouncement: (body: any) => request<{ id: string }>('POST', '/admin/cms/announcements', body),
+      updateAnnouncement: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/announcements/${id}`, body),
+
+      serviceAreas: () => request<any[]>('GET', '/admin/cms/service-areas'),
+      createServiceArea: (body: any) => request<{ id: string }>('POST', '/admin/cms/service-areas', body),
+      updateServiceArea: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/service-areas/${id}`, body),
+      deleteServiceArea: (id: string) => request<unknown>('DELETE', `/admin/cms/service-areas/${id}`),
+
+      packages: (serviceId?: string) => request<any[]>('GET', `/admin/cms/packages${serviceId ? `?serviceId=${serviceId}` : ''}`),
+      createPackage: (body: any) => request<{ id: string }>('POST', '/admin/cms/packages', body),
+      updatePackage: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/packages/${id}`, body),
+      deletePackage: (id: string) => request<unknown>('DELETE', `/admin/cms/packages/${id}`),
+
+      addons: () => request<any[]>('GET', '/admin/cms/addons'),
+      createAddon: (body: any) => request<{ id: string }>('POST', '/admin/cms/addons', body),
+      updateAddon: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/addons/${id}`, body),
+
+      vouchers: () => request<any[]>('GET', '/admin/cms/vouchers'),
+      createVoucher: (body: any) => request<{ id: string }>('POST', '/admin/cms/vouchers', body),
+      updateVoucher: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/vouchers/${id}`, body),
+
       // Blacklist
       blacklist: () => request<any[]>('GET', '/admin/config/blacklist'),
       addBlacklist: (body: { type: string; value: string; reason: string; expiresAt?: string }) =>
