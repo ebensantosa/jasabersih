@@ -60,6 +60,24 @@ export default function BookingDetail() {
   const [showDispute, setShowDispute] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
+
+  // Cleaner advance status — pakai API kalau bukan local-only booking
+  async function advanceStatus(to: 'on_the_way' | 'in_progress' | 'completed') {
+    if (!booking) return;
+    if (booking.id.startsWith('bk_')) {
+      setStatus(booking.id, to);
+      return;
+    }
+    setAdvancing(true);
+    try {
+      await api.post(`/cleaner/jobs/${booking.id}/status`, { to });
+      setStatus(booking.id, to);
+      toast.success(to === 'on_the_way' ? 'Status: OTW' : to === 'in_progress' ? 'Pekerjaan dimulai' : 'Job selesai');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal update status');
+    } finally { setAdvancing(false); }
+  }
 
   // Check if booking already rated
   useEffect(() => {
@@ -539,26 +557,29 @@ export default function BookingDetail() {
                   </Pressable>
                   {booking.status === 'matched' && (
                     <Pressable
-                      onPress={() => setStatus(booking.id, 'on_the_way')}
-                      className="flex-1 items-center rounded-2xl bg-brand-600 py-3.5"
+                      onPress={() => advanceStatus('on_the_way')}
+                      disabled={advancing}
+                      className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
                     >
-                      <Text className="font-bold text-sm text-white">Berangkat (OTW)</Text>
+                      <Text className="font-bold text-sm text-white">{advancing ? 'Memproses…' : 'Berangkat (OTW)'}</Text>
                     </Pressable>
                   )}
                   {booking.status === 'on_the_way' && (
                     <Pressable
-                      onPress={() => setStatus(booking.id, 'in_progress')}
-                      className="flex-1 items-center rounded-2xl bg-brand-600 py-3.5"
+                      onPress={() => advanceStatus('in_progress')}
+                      disabled={advancing}
+                      className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
                     >
-                      <Text className="font-bold text-sm text-white">Mulai Kerja</Text>
+                      <Text className="font-bold text-sm text-white">{advancing ? 'Memproses…' : 'Mulai Kerja'}</Text>
                     </Pressable>
                   )}
                   {booking.status === 'in_progress' && (
                     <Pressable
-                      onPress={() => setStatus(booking.id, 'completed')}
-                      className="flex-1 items-center rounded-2xl bg-success py-3.5"
+                      onPress={() => advanceStatus('completed')}
+                      disabled={advancing}
+                      className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-success/60' : 'bg-success'}`}
                     >
-                      <Text className="font-bold text-sm text-white">Selesai</Text>
+                      <Text className="font-bold text-sm text-white">{advancing ? 'Memproses…' : 'Selesai'}</Text>
                     </Pressable>
                   )}
                 </View>
