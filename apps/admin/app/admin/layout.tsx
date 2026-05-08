@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 import { type AdminSession, clearSession, getSession } from '../../lib/auth';
+import { UiProvider } from '../../components/ui';
 
 const NAV = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
@@ -60,6 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
+    <UiProvider>
     <div className="flex min-h-screen">
       <aside className="flex w-60 flex-col border-r bg-white p-4">
         <div className="mb-6">
@@ -95,5 +97,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
       <main className="flex-1 p-6">{children}</main>
     </div>
+    </UiProvider>
   );
 }

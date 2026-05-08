@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Trash2, X, ExternalLink } from 'lucide-react';
+import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Trash2, Pencil, ExternalLink } from 'lucide-react';
 
 import { api } from '../../../lib/api';
+import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
 type Tab = 'banners' | 'pages' | 'announcements' | 'areas' | 'packages' | 'addons';
 const TABS: { key: Tab; label: string; icon: any }[] = [
@@ -23,13 +24,7 @@ export default function CmsPage() {
       <p className="text-sm text-slate-500">Banner, halaman statis, pengumuman, area, paket harga, add-ons.</p>
       <div className="mt-4 flex flex-wrap gap-1 border-b">
         {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${
-              tab === t.key ? 'border-b-2 border-blue-700 text-blue-700' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
+          <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${tab === t.key ? 'border-b-2 border-blue-700 text-blue-700' : 'text-slate-500 hover:text-slate-900'}`}>
             <t.icon size={14} /> {t.label}
           </button>
         ))}
@@ -46,63 +41,18 @@ export default function CmsPage() {
   );
 }
 
-function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b p-4">
-          <h3 className="font-bold">{title}</h3>
-          <button onClick={onClose} className="rounded-full p-1 hover:bg-slate-100"><X size={18} /></button>
-        </div>
-        <div className="space-y-3 p-4">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, type = 'text', placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
-      <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-    </div>
-  );
-}
-
-function TextArea({ label, value, onChange, rows = 4 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono" />
-    </div>
-  );
-}
-
-function Select({ label, value, options, onChange }: { label: string; value: string; options: { v: string; l: string }[]; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-        {options.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-      </select>
-    </div>
-  );
-}
-
 async function uploadToR2(file: File, folder: string): Promise<string | null> {
   try {
     const { uploadUrl, publicUrl } = await api.admin.cmsUploadUrl(file.type, folder);
     const res = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'content-type': file.type } });
     if (!res.ok) throw new Error('Upload gagal');
     return publicUrl;
-  } catch (e: any) {
-    alert('Upload gagal: ' + (e?.message ?? 'unknown'));
-    return null;
-  }
+  } catch { return null; }
 }
 
 function ImageUpload({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-slate-700">Gambar</label>
@@ -116,34 +66,38 @@ function ImageUpload({ value, onChange, folder }: { value: string; onChange: (ur
           setBusy(true);
           const url = await uploadToR2(f, folder);
           setBusy(false);
-          if (url) onChange(url);
+          if (url) { onChange(url); toast.success('Image ter-upload.'); }
+          else toast.error('Upload gagal — cek koneksi atau format file.');
         }}
         className="w-full text-xs"
       />
       {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
-      {value && <div className="mt-1 break-all text-[10px] text-slate-400">{value}</div>}
     </div>
   );
 }
 
+// ============ BANNERS ============
 function BannersTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', subtitle: '', imageUrl: '', linkUrl: '', placement: 'home_hero', sortOrder: 0 });
-  async function load() { try { setList(await api.admin.banners()); } catch (e: any) { alert(e?.message); } }
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() { try { setList(await api.admin.banners()); } catch (e: any) { toast.error(e?.message); } }
   useEffect(() => { void load(); }, []);
-  async function save() {
-    if (!form.title || !form.imageUrl) return alert('Title & image wajib.');
-    try { await api.admin.createBanner(form); setShowForm(false); setForm({ title: '', subtitle: '', imageUrl: '', linkUrl: '', placement: 'home_hero', sortOrder: 0 }); void load(); } catch (e: any) { alert(e?.message); }
+
+  async function del(b: any) {
+    const ok = await confirm({ title: 'Hapus banner', message: `Yakin hapus "${b.title}"?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.deleteBanner(b.id); toast.success('Banner dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
-  async function toggle(id: string, isActive: boolean) { try { await api.admin.updateBanner(id, { isActive: !isActive }); void load(); } catch (e: any) { alert(e?.message); } }
-  async function del(id: string) { if (!confirm('Hapus banner?')) return; try { await api.admin.deleteBanner(id); void load(); } catch (e: any) { alert(e?.message); } }
+  async function toggle(b: any) {
+    try { await api.admin.updateBanner(b.id, { isActive: !b.isActive }); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
   return (
     <div>
-      <div className="mb-3 flex justify-between">
-        <h2 className="text-base font-semibold">Banner ({list.length})</h2>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white"><Plus size={14} /> Tambah</button>
-      </div>
+      <div className="mb-3 flex justify-between"><h2 className="text-base font-semibold">Banner ({list.length})</h2><Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Banner</Button></div>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {list.map((b) => (
           <div key={b.id} className="overflow-hidden rounded-md border bg-white">
@@ -151,58 +105,135 @@ function BannersTab() {
             <div className="p-3">
               <div className="flex items-center justify-between">
                 <h3 className="truncate text-sm font-semibold">{b.title}</h3>
-                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px]">{b.placement}</span>
+                <Badge>{b.placement}</Badge>
               </div>
               {b.subtitle && <p className="mt-1 truncate text-xs text-slate-500">{b.subtitle}</p>}
               {b.linkUrl && <a href={b.linkUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-xs text-blue-700"><ExternalLink size={11} /> {b.linkUrl}</a>}
               <div className="mt-3 flex justify-between">
-                <button onClick={() => toggle(b.id, b.isActive)} className={`rounded-full px-2 py-0.5 text-xs ${b.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>{b.isActive ? 'aktif' : 'nonaktif'}</button>
-                <button onClick={() => del(b.id)} className="text-xs text-red-600 hover:underline"><Trash2 size={11} className="inline" /></button>
+                <button onClick={() => toggle(b)}>{b.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(b)}>Edit</Button>
+                  <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => del(b)}>Hapus</Button>
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
-      {showForm && (
-        <Modal title="Tambah Banner" onClose={() => setShowForm(false)}>
-          <Field label="Judul" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
-          <Field label="Subtitle (opsional)" value={form.subtitle} onChange={(v) => setForm({ ...form, subtitle: v })} />
-          <ImageUpload value={form.imageUrl} onChange={(v) => setForm({ ...form, imageUrl: v })} folder="banners" />
-          <Field label="Link URL (opsional)" value={form.linkUrl} onChange={(v) => setForm({ ...form, linkUrl: v })} placeholder="https://..." />
-          <Select label="Placement" value={form.placement} options={[{ v: 'home_hero', l: 'Home Hero (utama)' }, { v: 'home_promo', l: 'Home Promo (carousel)' }, { v: 'cleaner_home', l: 'Cleaner Home' }]} onChange={(v) => setForm({ ...form, placement: v })} />
-          <Field label="Sort Order" type="number" value={String(form.sortOrder)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) })} />
-          <button onClick={save} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {editing !== null && <BannerFormModal banner={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
   );
 }
 
-function PagesTab() {
-  const [list, setList] = useState<any[]>([]);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [form, setForm] = useState({ slug: '', title: '', bodyMarkdown: '', audience: 'public' });
-  async function load() { try { setList(await api.admin.pages()); } catch (e: any) { alert(e?.message); } }
-  useEffect(() => { void load(); }, []);
-  async function openEdit(slug: string) {
-    try { const p = await api.admin.getPage(slug); setEditing(p); setForm({ slug: p.slug, title: p.title, bodyMarkdown: p.bodyMarkdown, audience: p.audience }); } catch (e: any) { alert(e?.message); }
-  }
-  function newPage() { setEditing({}); setForm({ slug: '', title: '', bodyMarkdown: '', audience: 'public' }); }
+function BannerFormModal({ banner, onClose, onSaved }: { banner: any | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!banner;
+  const [form, setForm] = useState({
+    title: banner?.title ?? '',
+    subtitle: banner?.subtitle ?? '',
+    imageUrl: banner?.imageUrl ?? '',
+    linkUrl: banner?.linkUrl ?? '',
+    placement: banner?.placement ?? 'home_hero',
+    sortOrder: banner?.sortOrder ?? 0,
+    isActive: banner?.isActive ?? true,
+    startsAt: banner?.startsAt ? new Date(banner.startsAt).toISOString().slice(0, 16) : '',
+    endsAt: banner?.endsAt ? new Date(banner.endsAt).toISOString().slice(0, 16) : '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
   async function save() {
-    if (!form.slug || !form.title || !form.bodyMarkdown) return alert('Lengkapi semua field.');
-    try { await api.admin.upsertPage(form); setEditing(null); void load(); } catch (e: any) { alert(e?.message); }
+    const e: Record<string, string> = {};
+    if (!form.title) e.title = 'Wajib.';
+    if (!form.imageUrl) e.imageUrl = 'Upload image dulu.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      const payload = {
+        ...form,
+        startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
+        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
+      };
+      if (isEdit) await api.admin.updateBanner(banner.id, payload);
+      else await api.admin.createBanner(payload);
+      toast.success(isEdit ? 'Banner di-update.' : 'Banner dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
   }
-  async function publish(id: string, isPublished: boolean) { try { await api.admin.publishPage(id, !isPublished); void load(); } catch (e: any) { alert(e?.message); } }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit ${banner.title}` : 'Tambah Banner'}
+      open={true}
+      onClose={onClose}
+      size="lg"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Judul" required value={form.title} onChange={(v) => setForm({ ...form, title: v })} error={errors.title} />
+        <Input label="Subtitle (opsional)" value={form.subtitle} onChange={(v) => setForm({ ...form, subtitle: v })} />
+        <ImageUpload value={form.imageUrl} onChange={(v) => setForm({ ...form, imageUrl: v })} folder="banners" />
+        {errors.imageUrl && <p className="text-xs text-red-600">{errors.imageUrl}</p>}
+        <Input label="Link URL (opsional)" value={form.linkUrl} onChange={(v) => setForm({ ...form, linkUrl: v })} placeholder="https://..." />
+        <Select
+          label="Placement" required value={form.placement}
+          options={[
+            { value: 'home_hero', label: 'Home Hero (utama)' },
+            { value: 'home_promo', label: 'Home Promo (carousel)' },
+            { value: 'cleaner_home', label: 'Cleaner Home' },
+          ]}
+          onChange={(v) => setForm({ ...form, placement: v })}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Sort Order" type="number" value={String(form.sortOrder)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) })} />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Status</label>
+            <Switch checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Aktif' : 'Nonaktif'} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Mulai (opsional)" type="datetime-local" value={form.startsAt} onChange={(v) => setForm({ ...form, startsAt: v })} />
+          <Input label="Berakhir (opsional)" type="datetime-local" value={form.endsAt} onChange={(v) => setForm({ ...form, endsAt: v })} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ============ PAGES ============
+function PagesTab() {
+  const toast = useToast();
+  const [list, setList] = useState<any[]>([]);
+  const [editing, setEditing] = useState<{ slug: string; title: string; bodyMarkdown: string; audience: string } | null>(null);
+
+  async function load() { try { setList(await api.admin.pages()); } catch (e: any) { toast.error(e?.message); } }
+  useEffect(() => { void load(); }, []);
+
+  async function openEdit(slug: string) {
+    try { const p = await api.admin.getPage(slug); setEditing(p); } catch (e: any) { toast.error(e?.message); }
+  }
+  async function publish(p: any) {
+    try { await api.admin.publishPage(p.id, !p.isPublished); toast.success(p.isPublished ? 'Halaman di-unpublish.' : 'Halaman di-publish.'); void load(); }
+    catch (e: any) { toast.error(e?.message); }
+  }
+
   return (
     <div>
-      <div className="mb-3 flex justify-between">
-        <h2 className="text-base font-semibold">Halaman Statis ({list.length})</h2>
-        <button onClick={newPage} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white"><Plus size={14} /> Halaman Baru</button>
-      </div>
+      <div className="mb-3 flex justify-between"><h2 className="text-base font-semibold">Halaman Statis ({list.length})</h2><Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({ slug: '', title: '', bodyMarkdown: '', audience: 'public' })}>Halaman Baru</Button></div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-2">Slug</th><th className="px-4 py-2">Judul</th><th className="px-4 py-2">Audience</th><th className="px-4 py-2">Panjang</th><th className="px-4 py-2">Status</th><th className="px-4 py-2"></th></tr>
+            <tr>
+              <th className="px-4 py-2">Slug</th><th className="px-4 py-2">Judul</th>
+              <th className="px-4 py-2">Audience</th><th className="px-4 py-2">Panjang</th>
+              <th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th>
+            </tr>
           </thead>
           <tbody>
             {list.length === 0 ? (
@@ -211,102 +242,176 @@ function PagesTab() {
               <tr key={p.id} className="border-t">
                 <td className="px-4 py-2 font-mono text-xs">{p.slug}</td>
                 <td className="px-4 py-2 font-medium">{p.title}</td>
-                <td className="px-4 py-2"><span className="rounded bg-slate-200 px-2 py-0.5 text-xs">{p.audience}</span></td>
+                <td className="px-4 py-2"><Badge>{p.audience}</Badge></td>
                 <td className="px-4 py-2 text-xs">{p.bodyLength} char</td>
                 <td className="px-4 py-2">
-                  <button onClick={() => publish(p.id, p.isPublished)} className={`rounded-full px-2 py-0.5 text-xs ${p.isPublished ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{p.isPublished ? 'published' : 'draft'}</button>
+                  <button onClick={() => publish(p)}>{p.isPublished ? <Badge variant="green">published</Badge> : <Badge variant="amber">draft</Badge>}</button>
                 </td>
-                <td className="px-4 py-2 text-right"><button onClick={() => openEdit(p.slug)} className="text-xs text-blue-700 hover:underline">Edit</button></td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => openEdit(p.slug)}>Edit</Button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {editing && (
-        <Modal title={editing.id ? `Edit: ${form.slug}` : 'Halaman Baru'} onClose={() => setEditing(null)}>
-          <Field label="Slug (URL)" value={form.slug} onChange={(v) => setForm({ ...form, slug: v })} placeholder="terms / privacy / about / faq" />
-          <Field label="Judul" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
-          <Select label="Audience" value={form.audience} options={[{ v: 'public', l: 'Public (semua)' }, { v: 'customer', l: 'Customer only' }, { v: 'cleaner', l: 'Cleaner only' }]} onChange={(v) => setForm({ ...form, audience: v })} />
-          <TextArea label="Body (Markdown)" value={form.bodyMarkdown} onChange={(v) => setForm({ ...form, bodyMarkdown: v })} rows={12} />
-          <button onClick={save} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {editing && <PageFormModal page={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
   );
 }
 
-function AnnouncementsTab() {
-  const [list, setList] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', body: '', audience: 'all', severity: 'info', endsAt: '' });
-  async function load() { try { setList(await api.admin.announcements()); } catch (e: any) { alert(e?.message); } }
-  useEffect(() => { void load(); }, []);
+function PageFormModal({ page, onClose, onSaved }: { page: { slug: string; title: string; bodyMarkdown: string; audience: string }; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState(page);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
   async function save() {
-    if (!form.title || !form.body) return alert('Title & body wajib.');
-    try { await api.admin.createAnnouncement(form); setShowForm(false); setForm({ title: '', body: '', audience: 'all', severity: 'info', endsAt: '' }); void load(); } catch (e: any) { alert(e?.message); }
+    const e: Record<string, string> = {};
+    if (!form.slug) e.slug = 'Wajib.';
+    if (!form.title) e.title = 'Wajib.';
+    if (!form.bodyMarkdown) e.bodyMarkdown = 'Wajib.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try { await api.admin.upsertPage(form); toast.success('Halaman tersimpan.'); onSaved(); }
+    catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
   }
-  async function toggle(id: string, isActive: boolean) { try { await api.admin.updateAnnouncement(id, { isActive: !isActive }); void load(); } catch (e: any) { alert(e?.message); } }
+
+  return (
+    <Modal
+      title={page.slug ? `Edit: ${form.slug}` : 'Halaman Baru'}
+      open={true}
+      onClose={onClose}
+      size="xl"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Slug (URL)" required value={form.slug} onChange={(v) => setForm({ ...form, slug: v })} error={errors.slug} placeholder="terms / privacy / about / faq" />
+        <Input label="Judul" required value={form.title} onChange={(v) => setForm({ ...form, title: v })} error={errors.title} />
+        <Select label="Audience" value={form.audience} options={[{ value: 'public', label: 'Public (semua)' }, { value: 'customer', label: 'Customer only' }, { value: 'cleaner', label: 'Cleaner only' }]} onChange={(v) => setForm({ ...form, audience: v })} />
+        <Textarea label="Body (Markdown)" mono required rows={14} value={form.bodyMarkdown} onChange={(v) => setForm({ ...form, bodyMarkdown: v })} helpText="Markdown — header (#), bold (**), list (-), link [text](url)." />
+        {errors.bodyMarkdown && <p className="text-xs text-red-600">{errors.bodyMarkdown}</p>}
+      </div>
+    </Modal>
+  );
+}
+
+// ============ ANNOUNCEMENTS ============
+function AnnouncementsTab() {
+  const toast = useToast();
+  const [list, setList] = useState<any[]>([]);
+  const [adding, setAdding] = useState(false);
+
+  async function load() { try { setList(await api.admin.announcements()); } catch (e: any) { toast.error(e?.message); } }
+  useEffect(() => { void load(); }, []);
+
+  async function toggle(a: any) {
+    try { await api.admin.updateAnnouncement(a.id, { isActive: !a.isActive }); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
   return (
     <div>
-      <div className="mb-3 flex justify-between">
-        <h2 className="text-base font-semibold">Pengumuman ({list.length})</h2>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white"><Plus size={14} /> Tambah</button>
-      </div>
+      <div className="mb-3 flex justify-between"><h2 className="text-base font-semibold">Pengumuman ({list.length})</h2><Button variant="primary" icon={<Plus size={14} />} onClick={() => setAdding(true)}>Tambah</Button></div>
       <div className="space-y-2">
         {list.map((a) => (
           <div key={a.id} className={`rounded-md border p-3 ${a.severity === 'critical' ? 'border-red-300 bg-red-50' : a.severity === 'warning' ? 'border-amber-300 bg-amber-50' : 'border-blue-300 bg-blue-50'}`}>
             <div className="flex items-start justify-between">
               <div>
-                <div className="flex items-center gap-2"><h3 className="text-sm font-bold">{a.title}</h3><span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px]">{a.severity}</span><span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px]">{a.audience}</span></div>
+                <div className="flex items-center gap-2"><h3 className="text-sm font-bold">{a.title}</h3><Badge>{a.severity}</Badge><Badge>{a.audience}</Badge></div>
                 <p className="mt-1 text-sm text-slate-700">{a.body}</p>
                 <p className="mt-1 text-[10px] text-slate-500">{new Date(a.startsAt).toLocaleString('id-ID')} {a.endsAt ? `→ ${new Date(a.endsAt).toLocaleString('id-ID')}` : ''}</p>
               </div>
-              <button onClick={() => toggle(a.id, a.isActive)} className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>{a.isActive ? 'aktif' : 'nonaktif'}</button>
+              <button onClick={() => toggle(a)}>{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button>
             </div>
           </div>
         ))}
       </div>
-      {showForm && (
-        <Modal title="Tambah Pengumuman" onClose={() => setShowForm(false)}>
-          <Field label="Judul" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
-          <TextArea label="Pesan" value={form.body} onChange={(v) => setForm({ ...form, body: v })} rows={4} />
-          <Select label="Audience" value={form.audience} options={[{ v: 'all', l: 'Semua' }, { v: 'customer', l: 'Customer' }, { v: 'cleaner', l: 'Cleaner' }]} onChange={(v) => setForm({ ...form, audience: v })} />
-          <Select label="Severity" value={form.severity} options={[{ v: 'info', l: 'Info (biru)' }, { v: 'warning', l: 'Warning (kuning)' }, { v: 'critical', l: 'Critical (merah)' }]} onChange={(v) => setForm({ ...form, severity: v })} />
-          <Field label="Berakhir (opsional)" type="datetime-local" value={form.endsAt} onChange={(v) => setForm({ ...form, endsAt: v })} />
-          <button onClick={save} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {adding && <AnnouncementFormModal onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void load(); }} />}
     </div>
   );
 }
 
-function AreasTab() {
-  const [list, setList] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', city: '', lat: -6.2, lng: 106.8, radiusM: 5000, surgeMultiplier: 1.0, notes: '' });
-  async function load() { try { setList(await api.admin.serviceAreas()); } catch (e: any) { alert(e?.message); } }
-  useEffect(() => { void load(); }, []);
+function AnnouncementFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({ title: '', body: '', audience: 'all', severity: 'info', endsAt: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
   async function save() {
-    if (!form.name || !form.city) return alert('Nama & kota wajib.');
-    try { await api.admin.createServiceArea(form); setShowForm(false); void load(); } catch (e: any) { alert(e?.message); }
+    const e: Record<string, string> = {};
+    if (!form.title) e.title = 'Wajib.';
+    if (!form.body) e.body = 'Wajib.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      await api.admin.createAnnouncement({ ...form, endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined });
+      toast.success('Pengumuman dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
   }
-  async function toggle(id: string, isActive: boolean) { try { await api.admin.updateServiceArea(id, { isActive: !isActive }); void load(); } catch (e: any) { alert(e?.message); } }
-  async function del(id: string) { if (!confirm('Hapus area?')) return; try { await api.admin.deleteServiceArea(id); void load(); } catch (e: any) { alert(e?.message); } }
-  async function setSurge(id: string, current: number) {
-    const v = prompt('Surge multiplier (1.0 = normal, 1.5 = +50%):', String(current));
-    if (!v) return;
-    try { await api.admin.updateServiceArea(id, { surgeMultiplier: Number(v) }); void load(); } catch (e: any) { alert(e?.message); }
+
+  return (
+    <Modal
+      title="Tambah Pengumuman"
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Judul" required value={form.title} onChange={(v) => setForm({ ...form, title: v })} error={errors.title} />
+        <Textarea label="Pesan" required rows={4} value={form.body} onChange={(v) => setForm({ ...form, body: v })} />
+        {errors.body && <p className="text-xs text-red-600">{errors.body}</p>}
+        <Select label="Audience" value={form.audience} options={[{ value: 'all', label: 'Semua' }, { value: 'customer', label: 'Customer' }, { value: 'cleaner', label: 'Cleaner' }]} onChange={(v) => setForm({ ...form, audience: v })} />
+        <Select label="Severity" value={form.severity} options={[{ value: 'info', label: 'Info' }, { value: 'warning', label: 'Warning' }, { value: 'critical', label: 'Critical' }]} onChange={(v) => setForm({ ...form, severity: v })} />
+        <Input label="Berakhir (opsional)" type="datetime-local" value={form.endsAt} onChange={(v) => setForm({ ...form, endsAt: v })} />
+      </div>
+    </Modal>
+  );
+}
+
+// ============ AREAS ============
+function AreasTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [list, setList] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() { try { setList(await api.admin.serviceAreas()); } catch (e: any) { toast.error(e?.message); } }
+  useEffect(() => { void load(); }, []);
+
+  async function toggle(a: any) {
+    try { await api.admin.updateServiceArea(a.id, { isActive: !a.isActive }); void load(); } catch (e: any) { toast.error(e?.message); }
   }
+  async function del(a: any) {
+    const ok = await confirm({ title: 'Hapus area', message: `Yakin hapus "${a.name}"?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.deleteServiceArea(a.id); toast.success('Area dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
   return (
     <div>
-      <div className="mb-3 flex justify-between">
-        <h2 className="text-base font-semibold">Area Layanan ({list.length})</h2>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white"><Plus size={14} /> Tambah Area</button>
-      </div>
+      <div className="mb-3 flex justify-between"><h2 className="text-base font-semibold">Area Layanan ({list.length})</h2><Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Area</Button></div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Kota</th><th className="px-4 py-2">Koordinat</th><th className="px-4 py-2">Radius (m)</th><th className="px-4 py-2">Surge</th><th className="px-4 py-2">Status</th><th className="px-4 py-2"></th></tr>
+            <tr>
+              <th className="px-4 py-2">Nama</th><th className="px-4 py-2">Kota</th>
+              <th className="px-4 py-2">Koordinat</th><th className="px-4 py-2">Radius (m)</th>
+              <th className="px-4 py-2">Surge</th><th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2 text-right">Aksi</th>
+            </tr>
           </thead>
           <tbody>
             {list.map((a) => (
@@ -315,136 +420,310 @@ function AreasTab() {
                 <td className="px-4 py-2">{a.city}</td>
                 <td className="px-4 py-2 font-mono text-xs">{Number(a.lat).toFixed(4)}, {Number(a.lng).toFixed(4)}</td>
                 <td className="px-4 py-2">{a.radiusM}</td>
-                <td className="px-4 py-2"><button onClick={() => setSurge(a.id, a.surgeMultiplier)} className={`rounded px-2 py-0.5 text-xs ${Number(a.surgeMultiplier) > 1 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100'}`}>{Number(a.surgeMultiplier).toFixed(2)}x</button></td>
-                <td className="px-4 py-2"><button onClick={() => toggle(a.id, a.isActive)} className={`rounded-full px-2 py-0.5 text-xs ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>{a.isActive ? 'aktif' : 'nonaktif'}</button></td>
-                <td className="px-4 py-2 text-right"><button onClick={() => del(a.id)} className="text-xs text-red-600 hover:underline">Hapus</button></td>
+                <td className="px-4 py-2"><Badge variant={Number(a.surgeMultiplier) > 1 ? 'amber' : 'slate'}>{Number(a.surgeMultiplier).toFixed(2)}x</Badge></td>
+                <td className="px-4 py-2"><button onClick={() => toggle(a)}>{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(a)}>Edit</Button>
+                  <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(a)}>Hapus</Button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {showForm && (
-        <Modal title="Tambah Area Layanan" onClose={() => setShowForm(false)}>
-          <Field label="Nama Area" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Kelapa Gading" />
-          <Field label="Kota" value={form.city} onChange={(v) => setForm({ ...form, city: v })} placeholder="Jakarta Utara" />
-          <div className="grid grid-cols-2 gap-2"><Field label="Latitude" type="number" value={String(form.lat)} onChange={(v) => setForm({ ...form, lat: Number(v) })} /><Field label="Longitude" type="number" value={String(form.lng)} onChange={(v) => setForm({ ...form, lng: Number(v) })} /></div>
-          <Field label="Radius (meter)" type="number" value={String(form.radiusM)} onChange={(v) => setForm({ ...form, radiusM: Number(v) })} />
-          <Field label="Surge Multiplier (1.0 - 2.0)" type="number" value={String(form.surgeMultiplier)} onChange={(v) => setForm({ ...form, surgeMultiplier: Number(v) })} />
-          <Field label="Catatan (opsional)" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
-          <button onClick={save} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {editing !== null && <AreaFormModal area={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
   );
 }
 
+function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!area;
+  const [form, setForm] = useState({
+    name: area?.name ?? '',
+    city: area?.city ?? '',
+    lat: area?.lat ?? -6.2,
+    lng: area?.lng ?? 106.8,
+    radiusM: area?.radiusM ?? 5000,
+    surgeMultiplier: area?.surgeMultiplier ?? 1.0,
+    notes: area?.notes ?? '',
+    isActive: area?.isActive ?? true,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (!form.name) e.name = 'Wajib.';
+    if (!form.city) e.city = 'Wajib.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      if (isEdit) await api.admin.updateServiceArea(area.id, { isActive: form.isActive, surgeMultiplier: Number(form.surgeMultiplier), radiusM: Number(form.radiusM), notes: form.notes });
+      else await api.admin.createServiceArea({ ...form, lat: Number(form.lat), lng: Number(form.lng), radiusM: Number(form.radiusM), surgeMultiplier: Number(form.surgeMultiplier) });
+      toast.success(isEdit ? 'Area di-update.' : 'Area dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit ${area.name}` : 'Tambah Area'}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Nama Area" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Kelapa Gading" />
+        <Input label="Kota" required value={form.city} onChange={(v) => setForm({ ...form, city: v })} error={errors.city} placeholder="Jakarta Utara" />
+        {!isEdit && (
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Latitude" type="number" value={String(form.lat)} onChange={(v) => setForm({ ...form, lat: Number(v) })} />
+            <Input label="Longitude" type="number" value={String(form.lng)} onChange={(v) => setForm({ ...form, lng: Number(v) })} />
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Radius (meter)" type="number" value={String(form.radiusM)} onChange={(v) => setForm({ ...form, radiusM: Number(v) })} />
+          <Input label="Surge Multiplier" type="number" value={String(form.surgeMultiplier)} onChange={(v) => setForm({ ...form, surgeMultiplier: Number(v) })} helpText="1.0 = normal, 1.5 = +50%" />
+        </div>
+        <Textarea label="Catatan" rows={2} value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
+        {isEdit && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Status</label>
+            <Switch checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Aktif' : 'Nonaktif'} />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ============ PACKAGES ============
 function PackagesTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ serviceId: '', name: '', price: 0, durationMin: 60 });
+  const [editing, setEditing] = useState<any | null>(null);
+
   async function load() {
-    try { const [pkgs, svcs] = await Promise.all([api.admin.packages(), api.admin.configServices()]); setList(pkgs); setServices(svcs); } catch (e: any) { alert(e?.message); }
+    try { const [pkgs, svcs] = await Promise.all([api.admin.packages(), api.admin.configServices()]); setList(pkgs); setServices(svcs); }
+    catch (e: any) { toast.error(e?.message); }
   }
   useEffect(() => { void load(); }, []);
-  async function save() {
-    if (!form.serviceId || !form.name || !form.price || !form.durationMin) return alert('Lengkapi semua field.');
-    try { await api.admin.createPackage(form); setShowForm(false); setForm({ serviceId: '', name: '', price: 0, durationMin: 60 }); void load(); } catch (e: any) { alert(e?.message); }
+
+  async function del(p: any) {
+    const ok = await confirm({ title: 'Nonaktifkan paket', message: `Yakin nonaktifkan "${p.name}"?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.deletePackage(p.id); toast.success('Paket nonaktifkan.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
-  async function toggle(id: string, isActive: boolean) { try { await api.admin.updatePackage(id, { isActive: !isActive }); void load(); } catch (e: any) { alert(e?.message); } }
-  async function editPrice(id: string, current: number) {
-    const v = prompt('Harga baru (Rupiah):', String(current));
-    if (!v) return;
-    try { await api.admin.updatePackage(id, { price: Number(v) }); void load(); } catch (e: any) { alert(e?.message); }
+  async function toggle(p: any) {
+    try { await api.admin.updatePackage(p.id, { isActive: !p.isActive }); void load(); } catch (e: any) { toast.error(e?.message); }
   }
+
   return (
     <div>
-      <div className="mb-3 flex justify-between">
-        <h2 className="text-base font-semibold">Paket Harga ({list.length})</h2>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white"><Plus size={14} /> Tambah Paket</button>
-      </div>
+      <div className="mb-3 flex justify-between"><h2 className="text-base font-semibold">Paket Harga ({list.length})</h2><Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Paket</Button></div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-2">Service</th><th className="px-4 py-2">Paket</th><th className="px-4 py-2">Harga</th><th className="px-4 py-2">Durasi</th><th className="px-4 py-2">Status</th></tr>
+            <tr>
+              <th className="px-4 py-2">Service</th><th className="px-4 py-2">Paket</th>
+              <th className="px-4 py-2">Harga</th><th className="px-4 py-2">Durasi</th>
+              <th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th>
+            </tr>
           </thead>
           <tbody>
             {list.map((p) => (
               <tr key={p.id} className="border-t">
                 <td className="px-4 py-2 text-xs text-slate-600">{p.serviceName ?? '—'}</td>
                 <td className="px-4 py-2 font-medium">{p.name}</td>
-                <td className="px-4 py-2"><button onClick={() => editPrice(p.id, Number(p.price))} className="font-mono text-sm text-blue-700 hover:underline">Rp {Number(p.price).toLocaleString('id-ID')}</button></td>
+                <td className="px-4 py-2 font-mono">Rp {Number(p.price).toLocaleString('id-ID')}</td>
                 <td className="px-4 py-2 text-xs">{p.durationMin} min</td>
-                <td className="px-4 py-2"><button onClick={() => toggle(p.id, p.isActive)} className={`rounded-full px-2 py-0.5 text-xs ${p.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>{p.isActive ? 'aktif' : 'nonaktif'}</button></td>
+                <td className="px-4 py-2"><button onClick={() => toggle(p)}>{p.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(p)}>Edit</Button>
+                  {p.isActive && <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(p)}>Hapus</Button>}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {showForm && (
-        <Modal title="Tambah Paket Harga" onClose={() => setShowForm(false)}>
-          <Select label="Service" value={form.serviceId} options={[{ v: '', l: '— pilih —' }, ...services.map((s: any) => ({ v: s.id, l: s.name }))]} onChange={(v) => setForm({ ...form, serviceId: v })} />
-          <Field label="Nama Paket" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Bersih 2 Kamar" />
-          <Field label="Harga (Rupiah)" type="number" value={String(form.price)} onChange={(v) => setForm({ ...form, price: Number(v) })} />
-          <Field label="Durasi (menit)" type="number" value={String(form.durationMin)} onChange={(v) => setForm({ ...form, durationMin: Number(v) })} />
-          <button onClick={save} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {editing !== null && <PackageFormModal pkg={editing.id ? editing : null} services={services} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
   );
 }
 
-function AddonsTab() {
-  const [list, setList] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ code: '', name: '', price: 0, durationMin: 30, description: '' });
-  async function load() { try { setList(await api.admin.addons()); } catch (e: any) { alert(e?.message); } }
-  useEffect(() => { void load(); }, []);
+function PackageFormModal({ pkg, services, onClose, onSaved }: { pkg: any | null; services: any[]; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!pkg;
+  const [form, setForm] = useState({
+    serviceId: pkg?.serviceId ?? '',
+    name: pkg?.name ?? '',
+    price: Number(pkg?.price ?? 0),
+    durationMin: pkg?.durationMin ?? 60,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
   async function save() {
-    if (!form.name || !form.price || !form.durationMin) return alert('Lengkapi semua field.');
-    try { await api.admin.createAddon(form); setShowForm(false); setForm({ code: '', name: '', price: 0, durationMin: 30, description: '' }); void load(); } catch (e: any) { alert(e?.message); }
+    const e: Record<string, string> = {};
+    if (!isEdit && !form.serviceId) e.serviceId = 'Wajib.';
+    if (!form.name) e.name = 'Wajib.';
+    if (!form.price || form.price <= 0) e.price = 'Wajib > 0.';
+    if (!form.durationMin || form.durationMin <= 0) e.durationMin = 'Wajib > 0.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      if (isEdit) await api.admin.updatePackage(pkg.id, { name: form.name, price: form.price, durationMin: form.durationMin });
+      else await api.admin.createPackage(form);
+      toast.success(isEdit ? 'Paket di-update.' : 'Paket dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
   }
-  async function toggle(id: string, isActive: boolean) { try { await api.admin.updateAddon(id, { isActive: !isActive }); void load(); } catch (e: any) { alert(e?.message); } }
-  async function editPrice(id: string, current: number) {
-    const v = prompt('Harga baru:', String(current));
-    if (!v) return;
-    try { await api.admin.updateAddon(id, { price: Number(v) }); void load(); } catch (e: any) { alert(e?.message); }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit ${pkg.name}` : 'Tambah Paket Harga'}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {!isEdit && (
+          <Select
+            label="Service" required value={form.serviceId}
+            options={[{ value: '', label: '— pilih —' }, ...services.map((s: any) => ({ value: s.id, label: s.name }))]}
+            onChange={(v) => setForm({ ...form, serviceId: v })}
+          />
+        )}
+        {errors.serviceId && <p className="text-xs text-red-600">{errors.serviceId}</p>}
+        <Input label="Nama Paket" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih 2 Kamar" />
+        <Input label="Harga (Rupiah)" type="number" required value={String(form.price)} onChange={(v) => setForm({ ...form, price: Number(v) })} error={errors.price} />
+        <Input label="Durasi (menit)" type="number" required value={String(form.durationMin)} onChange={(v) => setForm({ ...form, durationMin: Number(v) })} error={errors.durationMin} />
+      </div>
+    </Modal>
+  );
+}
+
+// ============ ADD-ONS ============
+function AddonsTab() {
+  const toast = useToast();
+  const [list, setList] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() { try { setList(await api.admin.addons()); } catch (e: any) { toast.error(e?.message); } }
+  useEffect(() => { void load(); }, []);
+
+  async function toggle(a: any) {
+    try { await api.admin.updateAddon(a.id, { isActive: !a.isActive }); void load(); } catch (e: any) { toast.error(e?.message); }
   }
+
   return (
     <div>
-      <div className="mb-3 flex justify-between">
-        <h2 className="text-base font-semibold">Add-Ons ({list.length})</h2>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white"><Plus size={14} /> Tambah Add-On</button>
-      </div>
+      <div className="mb-3 flex justify-between"><h2 className="text-base font-semibold">Add-Ons ({list.length})</h2><Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Add-On</Button></div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-2">Code</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Harga</th><th className="px-4 py-2">Durasi</th><th className="px-4 py-2">Deskripsi</th><th className="px-4 py-2">Status</th></tr>
+            <tr>
+              <th className="px-4 py-2">Code</th><th className="px-4 py-2">Nama</th>
+              <th className="px-4 py-2">Harga</th><th className="px-4 py-2">Durasi</th>
+              <th className="px-4 py-2">Deskripsi</th><th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2 text-right">Aksi</th>
+            </tr>
           </thead>
           <tbody>
             {list.map((a) => (
               <tr key={a.id} className="border-t">
                 <td className="px-4 py-2 font-mono text-xs">{a.code ?? '—'}</td>
                 <td className="px-4 py-2 font-medium">{a.name}</td>
-                <td className="px-4 py-2"><button onClick={() => editPrice(a.id, Number(a.price))} className="font-mono text-sm text-blue-700 hover:underline">Rp {Number(a.price).toLocaleString('id-ID')}</button></td>
+                <td className="px-4 py-2 font-mono">Rp {Number(a.price).toLocaleString('id-ID')}</td>
                 <td className="px-4 py-2 text-xs">{a.durationMin} min</td>
-                <td className="px-4 py-2 text-xs text-slate-600">{a.description ?? '—'}</td>
-                <td className="px-4 py-2"><button onClick={() => toggle(a.id, a.isActive)} className={`rounded-full px-2 py-0.5 text-xs ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>{a.isActive ? 'aktif' : 'nonaktif'}</button></td>
+                <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-600">{a.description ?? '—'}</td>
+                <td className="px-4 py-2"><button onClick={() => toggle(a)}>{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(a)}>Edit</Button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {showForm && (
-        <Modal title="Tambah Add-On" onClose={() => setShowForm(false)}>
-          <Field label="Code (opsional)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="setrika_30m" />
-          <Field label="Nama" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Setrika Baju" />
-          <Field label="Harga (Rupiah)" type="number" value={String(form.price)} onChange={(v) => setForm({ ...form, price: Number(v) })} />
-          <Field label="Durasi (menit)" type="number" value={String(form.durationMin)} onChange={(v) => setForm({ ...form, durationMin: Number(v) })} />
-          <TextArea label="Deskripsi" value={form.description} onChange={(v) => setForm({ ...form, description: v })} rows={2} />
-          <button onClick={save} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {editing !== null && <AddonFormModal addon={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
+  );
+}
+
+function AddonFormModal({ addon, onClose, onSaved }: { addon: any | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!addon;
+  const [form, setForm] = useState({
+    code: addon?.code ?? '',
+    name: addon?.name ?? '',
+    price: Number(addon?.price ?? 0),
+    durationMin: addon?.durationMin ?? 30,
+    description: addon?.description ?? '',
+    isActive: addon?.isActive ?? true,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (!form.name) e.name = 'Wajib.';
+    if (!form.price || form.price <= 0) e.price = 'Wajib > 0.';
+    if (!form.durationMin) e.durationMin = 'Wajib > 0.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      if (isEdit) await api.admin.updateAddon(addon.id, form);
+      else await api.admin.createAddon(form);
+      toast.success(isEdit ? 'Add-on di-update.' : 'Add-on dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit ${addon.name}` : 'Tambah Add-On'}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Code (opsional)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="setrika_30m" />
+        <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Harga (Rupiah)" type="number" required value={String(form.price)} onChange={(v) => setForm({ ...form, price: Number(v) })} error={errors.price} />
+          <Input label="Durasi (menit)" type="number" required value={String(form.durationMin)} onChange={(v) => setForm({ ...form, durationMin: Number(v) })} error={errors.durationMin} />
+        </div>
+        <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
+        {isEdit && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Status</label>
+            <Switch checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Aktif' : 'Nonaktif'} />
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

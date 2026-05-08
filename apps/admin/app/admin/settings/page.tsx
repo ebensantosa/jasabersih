@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Edit2, X, Shield, Banknote, Briefcase, Ban, Activity } from 'lucide-react';
+import { Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
+import { Modal, Input, Textarea, Select, Button, Switch, Badge, useConfirm, useToast } from '../../../components/ui';
 
 type Tab = 'admins' | 'commission' | 'services' | 'hourly' | 'blacklist' | 'audit';
 const TABS: { key: Tab; label: string; icon: any }[] = [
@@ -17,13 +18,11 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('admins');
-
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
       <p className="text-sm text-slate-500">Kelola admin, komisi, layanan, blacklist, audit log.</p>
-
-      <div className="mt-4 flex gap-1 border-b">
+      <div className="mt-4 flex flex-wrap gap-1 border-b">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -36,7 +35,6 @@ export default function SettingsPage() {
           </button>
         ))}
       </div>
-
       <div className="mt-6">
         {tab === 'admins' && <AdminsTab />}
         {tab === 'commission' && <CommissionTab />}
@@ -51,220 +49,326 @@ export default function SettingsPage() {
 
 // ============ ADMIN USERS ============
 function AdminsTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ email: '', name: '', role: 'ops', password: '' });
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [pwReset, setPwReset] = useState<any | null>(null);
 
   async function load() {
-    try {
-      setList(await api.admin.listAdmins());
-    } catch (e: any) {
-      alert(e?.message ?? 'Gagal load.');
-    }
+    setLoading(true);
+    try { setList(await api.admin.listAdmins()); } catch (e: any) { toast.error(e?.message ?? 'Gagal load.'); }
+    setLoading(false);
   }
   useEffect(() => { void load(); }, []);
 
-  async function create() {
-    if (!form.email || !form.name || !form.password) return alert('Lengkapi semua field.');
-    try {
-      await api.admin.createAdmin(form);
-      setShowCreate(false);
-      setForm({ email: '', name: '', role: 'ops', password: '' });
-      void load();
-    } catch (e: any) {
-      alert(e?.message ?? 'Gagal create.');
-    }
-  }
-
-  async function deactivate(id: string, email: string) {
-    if (!confirm(`Nonaktifkan admin ${email}?`)) return;
-    try {
-      await api.admin.deactivateAdmin(id);
-      void load();
-    } catch (e: any) { alert(e?.message); }
-  }
-
-  async function resetPassword(id: string, email: string) {
-    const pwd = prompt(`Password baru untuk ${email} (min 8 char):`);
-    if (!pwd || pwd.length < 8) return;
-    try {
-      await api.admin.updateAdmin(id, { password: pwd });
-      alert('Password diganti.');
-    } catch (e: any) { alert(e?.message); }
+  async function deactivate(a: any) {
+    const ok = await confirm({ title: 'Nonaktifkan admin', message: `Yakin nonaktifkan ${a.email}? User ini tidak bisa login lagi.`, variant: 'danger', confirmLabel: 'Nonaktifkan' });
+    if (!ok) return;
+    try { await api.admin.deactivateAdmin(a.id); toast.success('Admin nonaktifkan.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-base font-semibold">Admin Users ({list.length})</h2>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800"
-        >
-          <Plus size={14} /> Tambah Admin
-        </button>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Admin</Button>
       </div>
-
-      <div className="overflow-hidden rounded-md border bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-2">Nama</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Role</th>
-              <th className="px-4 py-2">Last Login</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((a) => (
-              <tr key={a.id} className="border-t">
-                <td className="px-4 py-2 font-medium">{a.name}</td>
-                <td className="px-4 py-2 text-slate-600">{a.email}</td>
-                <td className="px-4 py-2"><RoleBadge role={a.role} /></td>
-                <td className="px-4 py-2 text-xs text-slate-500">
-                  {a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString('id-ID') : '—'}
-                </td>
-                <td className="px-4 py-2">
-                  {a.isActive ? (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">aktif</span>
-                  ) : (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">nonaktif</span>
-                  )}
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => resetPassword(a.id, a.email)}
-                    className="mr-2 text-xs text-blue-700 hover:underline"
-                  >
-                    Reset Password
-                  </button>
-                  {a.isActive && (
-                    <button
-                      onClick={() => deactivate(a.id, a.email)}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      Nonaktifkan
-                    </button>
-                  )}
-                </td>
+      {loading ? (
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+      ) : (
+        <div className="overflow-hidden rounded-md border bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-2">Nama</th><th className="px-4 py-2">Email</th>
+                <th className="px-4 py-2">Role</th><th className="px-4 py-2">Last Login</th>
+                <th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {showCreate && (
-        <Modal title="Tambah Admin Baru" onClose={() => setShowCreate(false)}>
-          <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
-          <Field label="Nama" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-          <SelectField
-            label="Role"
-            value={form.role}
-            options={[
-              { value: 'super_admin', label: 'Super Admin (akses semua)' },
-              { value: 'ops', label: 'Ops (KYC, booking, user)' },
-              { value: 'finance', label: 'Finance (wallet, withdrawal)' },
-              { value: 'fraud_analyst', label: 'Fraud Analyst (audit, fraud, blacklist)' },
-              { value: 'support', label: 'Support (read-only user/booking)' },
-            ]}
-            onChange={(v) => setForm({ ...form, role: v })}
-          />
-          <Field label="Password (min 8 char)" type="password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} />
-          <button onClick={create} className="w-full rounded-md bg-blue-700 py-2 text-sm font-medium text-white">
-            Simpan
-          </button>
-        </Modal>
+            </thead>
+            <tbody>
+              {list.map((a) => (
+                <tr key={a.id} className="border-t">
+                  <td className="px-4 py-2 font-medium">{a.name}</td>
+                  <td className="px-4 py-2 text-slate-600">{a.email}</td>
+                  <td className="px-4 py-2"><RoleBadge role={a.role} /></td>
+                  <td className="px-4 py-2 text-xs text-slate-500">{a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString('id-ID') : '—'}</td>
+                  <td className="px-4 py-2">{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</td>
+                  <td className="px-4 py-2 text-right">
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(a)} icon={<Pencil size={12} />}>Edit</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setPwReset(a)}>Reset Password</Button>
+                    {a.isActive && <Button size="sm" variant="ghost" onClick={() => deactivate(a)} icon={<Trash2 size={12} />}>Nonaktifkan</Button>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+      {editing !== null && <AdminFormModal admin={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+      {pwReset && <PasswordResetModal admin={pwReset} onClose={() => setPwReset(null)} />}
     </div>
   );
 }
 
-// ============ COMMISSION ============
-function CommissionTab() {
-  const [list, setList] = useState<any[]>([]);
-  async function load() {
-    try { setList(await api.admin.commissionTiers()); } catch (e: any) { alert(e?.message); }
-  }
-  useEffect(() => { void load(); }, []);
+function AdminFormModal({ admin, onClose, onSaved }: { admin: any | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!admin;
+  const [form, setForm] = useState({
+    email: admin?.email ?? '',
+    name: admin?.name ?? '',
+    role: admin?.role ?? 'ops',
+    password: '',
+    isActive: admin?.isActive ?? true,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
 
-  async function update(id: string, field: string, val: string) {
-    const num = Number(val);
-    if (isNaN(num)) return;
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!isEdit) {
+      if (!form.email || !/^.+@.+\..+$/.test(form.email)) e.email = 'Email valid wajib.';
+      if (!form.password || form.password.length < 8) e.password = 'Password minimum 8 karakter.';
+    }
+    if (!form.name) e.name = 'Nama wajib.';
+    if (!form.role) e.role = 'Role wajib.';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function save() {
+    if (!validate()) return;
+    setBusy(true);
     try {
-      await api.admin.updateCommissionTier(id, { [field]: num });
-      void load();
-    } catch (e: any) { alert(e?.message); }
+      if (isEdit) {
+        await api.admin.updateAdmin(admin.id, { name: form.name, role: form.role, isActive: form.isActive });
+      } else {
+        await api.admin.createAdmin({ email: form.email, name: form.name, role: form.role, password: form.password });
+      }
+      toast.success(isEdit ? 'Admin di-update.' : 'Admin baru dibuat.');
+      onSaved();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal simpan.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
+    <Modal
+      title={isEdit ? `Edit ${admin.email}` : 'Tambah Admin Baru'}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {!isEdit && <Input label="Email" required value={form.email} onChange={(v) => setForm({ ...form, email: v })} error={errors.email} />}
+        <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
+        <Select
+          label="Role" required value={form.role}
+          options={[
+            { value: 'super_admin', label: 'Super Admin (akses semua)' },
+            { value: 'ops', label: 'Ops (KYC, booking, user)' },
+            { value: 'finance', label: 'Finance (wallet, withdrawal)' },
+            { value: 'fraud_analyst', label: 'Fraud Analyst (audit, fraud, blacklist)' },
+            { value: 'support', label: 'Support (read-only user/booking)' },
+          ]}
+          onChange={(v) => setForm({ ...form, role: v })}
+        />
+        {!isEdit && <Input label="Password" type="password" required value={form.password} onChange={(v) => setForm({ ...form, password: v })} error={errors.password} helpText="Minimum 8 karakter." />}
+        {isEdit && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Status</label>
+            <Switch checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Aktif' : 'Nonaktif'} />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+function PasswordResetModal({ admin, onClose }: { admin: any; onClose: () => void }) {
+  const toast = useToast();
+  const [pw, setPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (pw.length < 8) e.pw = 'Min 8 karakter.';
+    if (pw !== confirmPw) e.confirmPw = 'Tidak cocok.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      await api.admin.updateAdmin(admin.id, { password: pw });
+      toast.success(`Password ${admin.email} di-reset.`);
+      onClose();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title={`Reset Password — ${admin.email}`}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Reset</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Password Baru" type="password" required value={pw} onChange={setPw} error={errors.pw} helpText="Min 8 karakter." />
+        <Input label="Konfirmasi Password" type="password" required value={confirmPw} onChange={setConfirmPw} error={errors.confirmPw} />
+      </div>
+    </Modal>
+  );
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const variant: any = { super_admin: 'purple', ops: 'blue', finance: 'green', fraud_analyst: 'red', support: 'slate' }[role] ?? 'slate';
+  return <Badge variant={variant}>{role}</Badge>;
+}
+
+// ============ COMMISSION ============
+function CommissionTab() {
+  const toast = useToast();
+  const [list, setList] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() { try { setList(await api.admin.commissionTiers()); } catch (e: any) { toast.error(e?.message); } }
+  useEffect(() => { void load(); }, []);
+
+  return (
     <div>
-      <h2 className="mb-3 text-base font-semibold">Tier Komisi Cleaner</h2>
-      <p className="mb-3 text-xs text-slate-500">
-        % komisi cleaner berdasarkan total order. Tools = bawa alat sendiri (dapat lebih besar).
-      </p>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold">Tier Komisi Cleaner</h2>
+      </div>
+      <p className="mb-3 text-xs text-slate-500">% komisi cleaner berdasarkan total order. <b>Tools</b> = bawa alat sendiri.</p>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-2">Range Min</th>
-              <th className="px-4 py-2">Range Max</th>
-              <th className="px-4 py-2">Tanpa Alat (%)</th>
-              <th className="px-4 py-2">Bawa Alat (%)</th>
-              <th className="px-4 py-2">Bonus Top Tier (%)</th>
+              <th className="px-4 py-2">Range Min</th><th className="px-4 py-2">Range Max</th>
+              <th className="px-4 py-2">Tanpa Alat (%)</th><th className="px-4 py-2">Bawa Alat (%)</th>
+              <th className="px-4 py-2">Bonus Top Tier (%)</th><th className="px-4 py-2 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {list.map((t) => (
               <tr key={t.id} className="border-t">
-                <td className="px-4 py-2">{t.rangeMin ? Number(t.rangeMin).toLocaleString('id-ID') : '—'}</td>
-                <td className="px-4 py-2">{t.rangeMax ? Number(t.rangeMax).toLocaleString('id-ID') : '∞'}</td>
-                <td className="px-4 py-2">
-                  <InlineNum value={Number(t.shareNoTools ?? 0)} onSave={(v) => update(t.id, 'shareNoTools', String(v))} />
-                </td>
-                <td className="px-4 py-2">
-                  <InlineNum value={Number(t.shareWithTools ?? 0)} onSave={(v) => update(t.id, 'shareWithTools', String(v))} />
-                </td>
-                <td className="px-4 py-2">
-                  <InlineNum value={Number(t.topTierBonusPct ?? 0)} onSave={(v) => update(t.id, 'topTierBonusPct', String(v))} />
+                <td className="px-4 py-2 font-mono text-xs">{t.rangeMin ? Number(t.rangeMin).toLocaleString('id-ID') : '—'}</td>
+                <td className="px-4 py-2 font-mono text-xs">{t.rangeMax ? Number(t.rangeMax).toLocaleString('id-ID') : '∞'}</td>
+                <td className="px-4 py-2 font-bold">{Number(t.shareNoTools ?? 0)}%</td>
+                <td className="px-4 py-2 font-bold">{Number(t.shareWithTools ?? 0)}%</td>
+                <td className="px-4 py-2">{Number(t.topTierBonusPct ?? 0)}%</td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(t)}>Edit</Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {editing && <CommissionFormModal tier={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
+  );
+}
+
+function CommissionFormModal({ tier, onClose, onSaved }: { tier: any; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    rangeMin: tier.rangeMin ?? 0,
+    rangeMax: tier.rangeMax ?? 0,
+    shareNoTools: Number(tier.shareNoTools ?? 0),
+    shareWithTools: Number(tier.shareWithTools ?? 0),
+    topTierBonusPct: Number(tier.topTierBonusPct ?? 0),
+  });
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api.admin.updateCommissionTier(tier.id, {
+        rangeMin: Number(form.rangeMin),
+        rangeMax: Number(form.rangeMax) || undefined,
+        shareNoTools: Number(form.shareNoTools),
+        shareWithTools: Number(form.shareWithTools),
+        topTierBonusPct: Number(form.topTierBonusPct),
+      });
+      toast.success('Tier ter-update.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title="Edit Commission Tier"
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Range Min (Rp)" type="number" value={String(form.rangeMin)} onChange={(v) => setForm({ ...form, rangeMin: Number(v) })} />
+          <Input label="Range Max (Rp)" type="number" value={String(form.rangeMax)} onChange={(v) => setForm({ ...form, rangeMax: Number(v) })} helpText="0 = tidak ada batas" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Tanpa Alat (%)" type="number" value={String(form.shareNoTools)} onChange={(v) => setForm({ ...form, shareNoTools: Number(v) })} />
+          <Input label="Bawa Alat (%)" type="number" value={String(form.shareWithTools)} onChange={(v) => setForm({ ...form, shareWithTools: Number(v) })} />
+        </div>
+        <Input label="Bonus Top Tier (%)" type="number" value={String(form.topTierBonusPct)} onChange={(v) => setForm({ ...form, topTierBonusPct: Number(v) })} />
+      </div>
+    </Modal>
   );
 }
 
 // ============ SERVICES ============
 function ServicesTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
-  async function load() { try { setList(await api.admin.configServices()); } catch (e: any) { alert(e?.message); } }
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() { try { setList(await api.admin.configServices()); } catch (e: any) { toast.error(e?.message); } }
   useEffect(() => { void load(); }, []);
 
-  async function toggle(id: string, isActive: boolean) {
-    try { await api.admin.updateService(id, { isActive: !isActive }); void load(); } catch (e: any) { alert(e?.message); }
+  async function toggle(s: any) {
+    try { await api.admin.updateService(s.id, { isActive: !s.isActive }); toast.success(`Service ${s.isActive ? 'nonaktif' : 'aktif'}kan.`); void load(); } catch (e: any) { toast.error(e?.message); }
   }
-  async function rename(id: string, current: string) {
-    const v = prompt('Nama baru:', current);
-    if (!v) return;
-    try { await api.admin.updateService(id, { name: v }); void load(); } catch (e: any) { alert(e?.message); }
+  async function del(s: any) {
+    const ok = await confirm({ title: 'Nonaktifkan layanan', message: `Yakin nonaktifkan "${s.name}"?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.deactivateService(s.id); toast.success('Service nonaktifkan.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
 
   return (
     <div>
-      <h2 className="mb-3 text-base font-semibold">Layanan</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold">Layanan ({list.length})</h2>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Layanan</Button>
+      </div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-2">Code</th>
-              <th className="px-4 py-2">Nama</th>
-              <th className="px-4 py-2">Order</th>
-              <th className="px-4 py-2">Aktif</th>
-              <th className="px-4 py-2"></th>
+              <th className="px-4 py-2">Code</th><th className="px-4 py-2">Nama</th>
+              <th className="px-4 py-2">Deskripsi</th><th className="px-4 py-2">Order</th>
+              <th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -272,40 +376,85 @@ function ServicesTab() {
               <tr key={s.id} className="border-t">
                 <td className="px-4 py-2 font-mono text-xs">{s.code}</td>
                 <td className="px-4 py-2 font-medium">{s.name}</td>
+                <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-500">{s.description ?? '—'}</td>
                 <td className="px-4 py-2">{s.displayOrder ?? '—'}</td>
-                <td className="px-4 py-2">
-                  <button
-                    onClick={() => toggle(s.id, s.isActive)}
-                    className={`rounded-full px-2 py-0.5 text-xs ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}
-                  >
-                    {s.isActive ? 'aktif' : 'nonaktif'}
-                  </button>
-                </td>
+                <td className="px-4 py-2"><button onClick={() => toggle(s)}>{s.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
                 <td className="px-4 py-2 text-right">
-                  <button onClick={() => rename(s.id, s.name)} className="text-xs text-blue-700 hover:underline">
-                    Rename
-                  </button>
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
+                  {s.isActive && <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(s)}>Hapus</Button>}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {editing !== null && <ServiceFormModal service={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
   );
 }
 
-// ============ HOURLY TIERS ============
-function HourlyTab() {
-  const [list, setList] = useState<any[]>([]);
-  async function load() { try { setList(await api.admin.hourlyTiers()); } catch (e: any) { alert(e?.message); } }
-  useEffect(() => { void load(); }, []);
+function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!service;
+  const [form, setForm] = useState({
+    code: service?.code ?? '',
+    name: service?.name ?? '',
+    description: service?.description ?? '',
+    iconUrl: service?.iconUrl ?? '',
+    displayOrder: service?.displayOrder ?? 0,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
 
-  async function update(id: string, field: string, val: string) {
-    const num = Number(val);
-    if (isNaN(num)) return;
-    try { await api.admin.updateHourlyTier(id, { [field]: num }); void load(); } catch (e: any) { alert(e?.message); }
+  async function save() {
+    const e: Record<string, string> = {};
+    if (!isEdit && !form.code) e.code = 'Code wajib.';
+    if (!form.name) e.name = 'Nama wajib.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      if (isEdit) {
+        await api.admin.updateService(service.id, { name: form.name, description: form.description, iconUrl: form.iconUrl, displayOrder: form.displayOrder });
+      } else {
+        await api.admin.createService({ code: form.code, name: form.name, description: form.description, iconUrl: form.iconUrl, displayOrder: form.displayOrder });
+      }
+      toast.success(isEdit ? 'Service di-update.' : 'Service dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
   }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit ${service.name}` : 'Tambah Layanan'}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {!isEdit && <Input label="Code (slug, lowercase)" required value={form.code} onChange={(v) => setForm({ ...form, code: v.toLowerCase() })} error={errors.code} placeholder="kamar / dapur / full_house" />}
+        <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
+        <Textarea label="Deskripsi" value={form.description} onChange={(v) => setForm({ ...form, description: v })} rows={3} />
+        <Input label="Icon URL (opsional)" value={form.iconUrl} onChange={(v) => setForm({ ...form, iconUrl: v })} placeholder="https://cdn.jasabersih.com/..." />
+        <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} />
+      </div>
+    </Modal>
+  );
+}
+
+// ============ HOURLY ============
+function HourlyTab() {
+  const toast = useToast();
+  const [list, setList] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() { try { setList(await api.admin.hourlyTiers()); } catch (e: any) { toast.error(e?.message); } }
+  useEffect(() => { void load(); }, []);
 
   return (
     <div>
@@ -314,11 +463,9 @@ function HourlyTab() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-2">Code</th>
-              <th className="px-4 py-2">Nama</th>
-              <th className="px-4 py-2">Tarif/Jam</th>
-              <th className="px-4 py-2">Min Jam</th>
-              <th className="px-4 py-2">Share Cleaner (%)</th>
+              <th className="px-4 py-2">Code</th><th className="px-4 py-2">Nama</th>
+              <th className="px-4 py-2">Tarif/Jam</th><th className="px-4 py-2">Min Jam</th>
+              <th className="px-4 py-2">Share Cleaner (%)</th><th className="px-4 py-2 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -326,62 +473,92 @@ function HourlyTab() {
               <tr key={t.id} className="border-t">
                 <td className="px-4 py-2 font-mono text-xs">{t.code}</td>
                 <td className="px-4 py-2">{t.name ?? '—'}</td>
-                <td className="px-4 py-2">
-                  <InlineNum
-                    value={Number(t.pricePerHour ?? 0)}
-                    fmt={(v) => `Rp ${v.toLocaleString('id-ID')}`}
-                    onSave={(v) => update(t.id, 'pricePerHour', String(v))}
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <InlineNum value={Number(t.minHours ?? 0)} onSave={(v) => update(t.id, 'minHours', String(v))} />
-                </td>
-                <td className="px-4 py-2">
-                  <InlineNum value={Number(t.cleanerSharePct ?? 0)} onSave={(v) => update(t.id, 'cleanerSharePct', String(v))} />
+                <td className="px-4 py-2 font-bold">Rp {Number(t.pricePerHour).toLocaleString('id-ID')}</td>
+                <td className="px-4 py-2">{Number(t.minHours)} jam</td>
+                <td className="px-4 py-2">{Number(t.cleanerSharePct)}%</td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(t)}>Edit</Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {editing && <HourlyFormModal tier={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
     </div>
+  );
+}
+
+function HourlyFormModal({ tier, onClose, onSaved }: { tier: any; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    name: tier.name ?? '',
+    pricePerHour: Number(tier.pricePerHour ?? 0),
+    minHours: Number(tier.minHours ?? 0),
+    cleanerSharePct: Number(tier.cleanerSharePct ?? 0),
+  });
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api.admin.updateHourlyTier(tier.id, form);
+      toast.success('Tier ter-update.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title={`Edit Tarif Per Jam — ${tier.code}`}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Nama" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+        <Input label="Tarif Per Jam (Rp)" type="number" value={String(form.pricePerHour)} onChange={(v) => setForm({ ...form, pricePerHour: Number(v) })} />
+        <Input label="Min Jam" type="number" value={String(form.minHours)} onChange={(v) => setForm({ ...form, minHours: Number(v) })} />
+        <Input label="Share Cleaner (%)" type="number" value={String(form.cleanerSharePct)} onChange={(v) => setForm({ ...form, cleanerSharePct: Number(v) })} />
+      </div>
+    </Modal>
   );
 }
 
 // ============ BLACKLIST ============
 function BlacklistTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ type: 'phone', value: '', reason: '' });
-  async function load() { try { setList(await api.admin.blacklist()); } catch (e: any) { alert(e?.message); } }
+  const [adding, setAdding] = useState(false);
+
+  async function load() { try { setList(await api.admin.blacklist()); } catch (e: any) { toast.error(e?.message); } }
   useEffect(() => { void load(); }, []);
 
-  async function add() {
-    if (!form.value || !form.reason) return alert('Lengkapi value & reason.');
-    try { await api.admin.addBlacklist(form); setShowAdd(false); setForm({ type: 'phone', value: '', reason: '' }); void load(); } catch (e: any) { alert(e?.message); }
-  }
-  async function remove(id: string, value: string) {
-    if (!confirm(`Hapus ${value} dari blacklist?`)) return;
-    try { await api.admin.removeBlacklist(id); void load(); } catch (e: any) { alert(e?.message); }
+  async function remove(b: any) {
+    const ok = await confirm({ title: 'Hapus dari blacklist', message: `Yakin hapus ${b.value} (${b.type})?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.removeBlacklist(b.id); toast.success('Entry dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-base font-semibold">Blacklist ({list.length})</h2>
-        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1 rounded-md bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800">
-          <Plus size={14} /> Tambah
-        </button>
+        <Button variant="danger" icon={<Plus size={14} />} onClick={() => setAdding(true)}>Tambah Entry</Button>
       </div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-2">Type</th>
-              <th className="px-4 py-2">Value</th>
-              <th className="px-4 py-2">Alasan</th>
-              <th className="px-4 py-2">Ditambahkan</th>
-              <th className="px-4 py-2"></th>
+              <th className="px-4 py-2">Type</th><th className="px-4 py-2">Value</th>
+              <th className="px-4 py-2">Alasan</th><th className="px-4 py-2">Ditambahkan</th>
+              <th className="px-4 py-2 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -389,139 +566,115 @@ function BlacklistTab() {
               <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">Blacklist kosong.</td></tr>
             ) : list.map((b) => (
               <tr key={b.id} className="border-t">
-                <td className="px-4 py-2"><span className="rounded bg-slate-200 px-2 py-0.5 text-xs">{b.type}</span></td>
+                <td className="px-4 py-2"><Badge>{b.type}</Badge></td>
                 <td className="px-4 py-2 font-mono text-xs">{b.value}</td>
                 <td className="px-4 py-2 text-slate-600">{b.reason}</td>
                 <td className="px-4 py-2 text-xs text-slate-500">{new Date(b.addedAt).toLocaleString('id-ID')}</td>
                 <td className="px-4 py-2 text-right">
-                  <button onClick={() => remove(b.id, b.value)} className="text-xs text-red-600 hover:underline">Hapus</button>
+                  <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => remove(b)}>Hapus</Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {showAdd && (
-        <Modal title="Tambah ke Blacklist" onClose={() => setShowAdd(false)}>
-          <SelectField label="Type" value={form.type} options={['phone','device','ip','bank','nik','email'].map(v => ({ value: v, label: v }))} onChange={(v) => setForm({ ...form, type: v })} />
-          <Field label="Value (no HP / device id / IP / dll)" value={form.value} onChange={(v) => setForm({ ...form, value: v })} />
-          <Field label="Alasan" value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} />
-          <button onClick={add} className="w-full rounded-md bg-red-700 py-2 text-sm font-medium text-white">Simpan</button>
-        </Modal>
-      )}
+      {adding && <BlacklistFormModal onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void load(); }} />}
     </div>
   );
 }
 
-// ============ AUDIT LOG ============
+function BlacklistFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({ type: 'phone', value: '', reason: '', expiresAt: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (!form.value) e.value = 'Value wajib.';
+    if (!form.reason || form.reason.length < 5) e.reason = 'Alasan min 5 karakter.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      await api.admin.addBlacklist({ type: form.type, value: form.value, reason: form.reason, expiresAt: form.expiresAt || undefined });
+      toast.success('Entry ditambahkan.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title="Tambah Blacklist"
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="danger" onClick={save} loading={busy}>Tambahkan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Select
+          label="Type" required value={form.type}
+          options={[
+            { value: 'phone', label: 'Phone (no HP)' },
+            { value: 'device', label: 'Device fingerprint' },
+            { value: 'ip', label: 'IP Address' },
+            { value: 'bank', label: 'Bank account' },
+            { value: 'nik', label: 'NIK (KTP)' },
+            { value: 'email', label: 'Email' },
+          ]}
+          onChange={(v) => setForm({ ...form, type: v })}
+        />
+        <Input label="Value" required value={form.value} onChange={(v) => setForm({ ...form, value: v })} error={errors.value} placeholder={form.type === 'phone' ? '081234567890' : '...'} />
+        <Textarea label="Alasan" rows={3} required value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} helpText="Min 5 karakter — akan masuk audit log." />
+        <Input label="Berakhir (opsional)" type="datetime-local" value={form.expiresAt} onChange={(v) => setForm({ ...form, expiresAt: v })} helpText="Kosongkan = permanen." />
+      </div>
+    </Modal>
+  );
+}
+
+// ============ AUDIT ============
 function AuditTab() {
+  const toast = useToast();
   const [list, setList] = useState<any[]>([]);
-  async function load() { try { setList(await api.admin.auditLog({ limit: 200 })); } catch (e: any) { alert(e?.message); } }
+  const [loading, setLoading] = useState(true);
+  async function load() { setLoading(true); try { setList(await api.admin.auditLog({ limit: 200 })); } catch (e: any) { toast.error(e?.message); } setLoading(false); }
   useEffect(() => { void load(); }, []);
 
   return (
     <div>
       <h2 className="mb-3 text-base font-semibold">Audit Log (200 terakhir)</h2>
-      <div className="overflow-hidden rounded-md border bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-2">Waktu</th>
-              <th className="px-4 py-2">Admin</th>
-              <th className="px-4 py-2">Action</th>
-              <th className="px-4 py-2">Resource</th>
-              <th className="px-4 py-2">Detail</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((a) => (
-              <tr key={a.id} className="border-t align-top">
-                <td className="px-4 py-2 text-xs text-slate-500">{new Date(a.performedAt).toLocaleString('id-ID')}</td>
-                <td className="px-4 py-2">
-                  <div className="text-xs font-medium">{a.adminName ?? a.adminEmail}</div>
-                  <div className="text-[10px] text-slate-500">{a.adminRole}</div>
-                </td>
-                <td className="px-4 py-2"><span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">{a.action}</span></td>
-                <td className="px-4 py-2 text-xs">{a.resourceType}{a.resourceId ? `:${a.resourceId.slice(0, 8)}…` : ''}</td>
-                <td className="px-4 py-2 text-xs text-slate-600">
-                  {a.changes ? <code className="text-[10px]">{JSON.stringify(a.changes)}</code> : '—'}
-                </td>
+      {loading ? (
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+      ) : (
+        <div className="overflow-hidden rounded-md border bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-2">Waktu</th><th className="px-4 py-2">Admin</th>
+                <th className="px-4 py-2">Action</th><th className="px-4 py-2">Resource</th>
+                <th className="px-4 py-2">Detail</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ============ SHARED ============
-function RoleBadge({ role }: { role: string }) {
-  const colors: Record<string, string> = {
-    super_admin: 'bg-purple-100 text-purple-700',
-    ops: 'bg-blue-100 text-blue-700',
-    finance: 'bg-green-100 text-green-700',
-    fraud_analyst: 'bg-red-100 text-red-700',
-    support: 'bg-slate-100 text-slate-700',
-  };
-  return <span className={`rounded-full px-2 py-0.5 text-xs ${colors[role] ?? 'bg-slate-100'}`}>{role}</span>;
-}
-
-function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b p-4">
-          <h3 className="font-bold">{title}</h3>
-          <button onClick={onClose} className="rounded-full p-1 hover:bg-slate-100"><X size={18} /></button>
+            </thead>
+            <tbody>
+              {list.map((a) => (
+                <tr key={a.id} className="border-t align-top">
+                  <td className="px-4 py-2 text-xs text-slate-500">{new Date(a.performedAt).toLocaleString('id-ID')}</td>
+                  <td className="px-4 py-2"><div className="text-xs font-medium">{a.adminName ?? a.adminEmail}</div><div className="text-[10px] text-slate-500">{a.adminRole}</div></td>
+                  <td className="px-4 py-2"><Badge variant="blue">{a.action}</Badge></td>
+                  <td className="px-4 py-2 text-xs">{a.resourceType}{a.resourceId ? `:${a.resourceId.slice(0, 8)}…` : ''}</td>
+                  <td className="px-4 py-2 max-w-md text-xs text-slate-600">
+                    {a.changes ? <code className="block max-h-20 overflow-auto break-all text-[10px]">{JSON.stringify(a.changes)}</code> : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="space-y-3 p-4">{children}</div>
-      </div>
+      )}
     </div>
-  );
-}
-
-function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-    </div>
-  );
-}
-
-function SelectField({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function InlineNum({ value, onSave, fmt }: { value: number; onSave: (v: number) => void; fmt?: (v: number) => string }) {
-  const [edit, setEdit] = useState(false);
-  const [v, setV] = useState(String(value));
-  useEffect(() => { setV(String(value)); }, [value]);
-  if (!edit) {
-    return (
-      <button onClick={() => setEdit(true)} className="group inline-flex items-center gap-1 hover:text-blue-700">
-        {fmt ? fmt(value) : value}
-        <Edit2 size={11} className="opacity-0 group-hover:opacity-100" />
-      </button>
-    );
-  }
-  return (
-    <input
-      autoFocus
-      type="number"
-      value={v}
-      onChange={(e) => setV(e.target.value)}
-      onBlur={() => { setEdit(false); if (Number(v) !== value) onSave(Number(v)); }}
-      onKeyDown={(e) => { if (e.key === 'Enter') { setEdit(false); if (Number(v) !== value) onSave(Number(v)); } }}
-      className="w-24 rounded border border-slate-300 px-2 py-0.5 text-sm"
-    />
   );
 }

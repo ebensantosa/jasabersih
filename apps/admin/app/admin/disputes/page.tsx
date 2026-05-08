@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, X, Image as ImageIcon, Send, ArrowUpCircle } from 'lucide-react';
+import { AlertTriangle, X, Send, ArrowUpCircle } from 'lucide-react';
 
 import { api } from '../../../lib/api';
+import { Modal, Input, Textarea, Select, Button, Badge, useToast } from '../../../components/ui';
 
 type Status = 'open' | 'in_progress' | 'resolved' | 'escalated';
 const TABS: { key: Status; label: string }[] = [
@@ -14,6 +15,7 @@ const TABS: { key: Status; label: string }[] = [
 ];
 
 export default function DisputesPage() {
+  const toast = useToast();
   const [tab, setTab] = useState<Status>('open');
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,19 +23,16 @@ export default function DisputesPage() {
 
   async function load() {
     setLoading(true);
-    try { setList(await api.admin.listDisputes(tab)); } catch (e: any) { alert(e?.message); setList([]); } finally { setLoading(false); }
+    try { setList(await api.admin.listDisputes(tab)); } catch (e: any) { toast.error(e?.message); setList([]); } finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, [tab]);
 
   async function openDetail(id: string) {
-    try {
-      const d = await api.admin.disputeDetail(id);
-      setSelected(d.dispute);
-    } catch (e: any) { alert(e?.message); }
+    try { const d = await api.admin.disputeDetail(id); setSelected(d.dispute); } catch (e: any) { toast.error(e?.message); }
   }
 
   async function takeOver(id: string) {
-    try { await api.admin.assignDispute(id); await openDetail(id); void load(); } catch (e: any) { alert(e?.message); }
+    try { await api.admin.assignDispute(id); toast.success('Dispute di-assign ke kamu.'); await openDetail(id); void load(); } catch (e: any) { toast.error(e?.message); }
   }
 
   return (
@@ -67,47 +66,25 @@ export default function DisputesPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Pelapor</th>
-                  <th className="px-4 py-2">Subject</th>
-                  <th className="px-4 py-2">Booking</th>
-                  <th className="px-4 py-2">Priority</th>
-                  <th className="px-4 py-2">Dibuat</th>
-                  <th className="px-4 py-2">SLA</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-4 py-2">Type</th><th className="px-4 py-2">Pelapor</th>
+                  <th className="px-4 py-2">Subject</th><th className="px-4 py-2">Booking</th>
+                  <th className="px-4 py-2">Priority</th><th className="px-4 py-2">Dibuat</th>
+                  <th className="px-4 py-2">SLA</th><th className="px-4 py-2 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {list.map((d) => (
                   <tr key={d.id} className="border-t hover:bg-slate-50">
-                    <td className="px-4 py-2"><span className="rounded bg-slate-200 px-2 py-0.5 text-xs">{d.type}</span></td>
-                    <td className="px-4 py-2">
-                      <div className="font-medium">{d.raisedByName ?? '—'}</div>
-                      <div className="text-xs text-slate-500">{d.raisedByPhone}</div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="font-medium">{d.subjectName ?? '—'}</div>
-                      <div className="text-xs text-slate-500">{d.subjectPhone}</div>
-                    </td>
+                    <td className="px-4 py-2"><Badge>{d.type}</Badge></td>
+                    <td className="px-4 py-2"><div className="font-medium">{d.raisedByName ?? '—'}</div><div className="text-xs text-slate-500">{d.raisedByPhone}</div></td>
+                    <td className="px-4 py-2"><div className="font-medium">{d.subjectName ?? '—'}</div><div className="text-xs text-slate-500">{d.subjectPhone}</div></td>
                     <td className="px-4 py-2 font-mono text-xs">{d.bookingId?.slice(0, 8)}…</td>
-                    <td className="px-4 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${d.priority === 'urgent' ? 'bg-red-100 text-red-700' : d.priority === 'high' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}`}>
-                        {d.priority}
-                      </span>
-                    </td>
+                    <td className="px-4 py-2"><Badge variant={d.priority === 'urgent' ? 'red' : d.priority === 'high' ? 'amber' : 'slate'}>{d.priority}</Badge></td>
                     <td className="px-4 py-2 text-xs text-slate-500">{new Date(d.createdAt).toLocaleString('id-ID')}</td>
-                    <td className="px-4 py-2 text-xs">
-                      {d.slaDueAt ? <SlaBadge dueAt={d.slaDueAt} /> : <span className="text-slate-400">—</span>}
-                    </td>
+                    <td className="px-4 py-2 text-xs">{d.slaDueAt ? <SlaBadge dueAt={d.slaDueAt} /> : <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2 text-right">
-                      <button onClick={() => openDetail(d.id)} className="rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-100">
-                        Detail
-                      </button>
-                      {tab === 'open' && (
-                        <button onClick={() => takeOver(d.id)} className="ml-1 rounded-md bg-blue-700 px-3 py-1 text-xs text-white">
-                          Take Over
-                        </button>
-                      )}
+                      <Button size="sm" variant="secondary" onClick={() => openDetail(d.id)}>Detail</Button>
+                      {tab === 'open' && <Button size="sm" variant="primary" onClick={() => takeOver(d.id)}>Take Over</Button>}
                     </td>
                   </tr>
                 ))}
@@ -117,36 +94,40 @@ export default function DisputesPage() {
         )}
       </div>
 
-      {selected && (
-        <DisputeDetailModal dispute={selected} onClose={() => setSelected(null)} onResolved={() => { setSelected(null); void load(); }} />
-      )}
+      {selected && <DisputeDetailModal dispute={selected} onClose={() => setSelected(null)} onResolved={() => { setSelected(null); void load(); }} />}
     </div>
   );
 }
 
 function SlaBadge({ dueAt }: { dueAt: string }) {
   const dueDate = new Date(dueAt);
-  const now = new Date();
-  const hoursLeft = Math.round((dueDate.getTime() - now.getTime()) / 3_600_000);
-  if (hoursLeft < 0) return <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">Overdue {Math.abs(hoursLeft)}h</span>;
-  if (hoursLeft < 4) return <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700">{hoursLeft}h left</span>;
-  return <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{hoursLeft}h left</span>;
+  const hoursLeft = Math.round((dueDate.getTime() - Date.now()) / 3_600_000);
+  if (hoursLeft < 0) return <Badge variant="red">Overdue {Math.abs(hoursLeft)}h</Badge>;
+  if (hoursLeft < 4) return <Badge variant="amber">{hoursLeft}h left</Badge>;
+  return <Badge>{hoursLeft}h left</Badge>;
 }
 
 function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; onClose: () => void; onResolved: () => void }) {
-  const [resolving, setResolving] = useState(false);
+  const toast = useToast();
+  const [escalating, setEscalating] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     action: 'refund_customer' as 'refund_customer' | 'debit_cleaner' | 'warn_both' | 'dismiss' | 'suspend_subject',
     payoutAmount: '',
     resolution: '',
     suspendDays: 14,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   async function resolve() {
-    if (form.resolution.trim().length < 10) return alert('Resolusi min 10 karakter.');
+    const e: Record<string, string> = {};
+    if (form.resolution.trim().length < 10) e.resolution = 'Min 10 karakter.';
     const needsAmount = form.action === 'refund_customer' || form.action === 'debit_cleaner';
-    if (needsAmount && !Number(form.payoutAmount)) return alert('payoutAmount wajib.');
-    if (!confirm(`Yakin resolve dengan action "${form.action}"?`)) return;
+    if (needsAmount && !Number(form.payoutAmount)) e.payoutAmount = 'Wajib > 0.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
+    setBusy(true);
     try {
       await api.admin.resolveDispute(dispute.id, {
         action: form.action,
@@ -154,39 +135,17 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
         resolution: form.resolution,
         suspendDays: form.action === 'suspend_subject' ? form.suspendDays : undefined,
       });
+      toast.success('Dispute resolved.');
       onResolved();
-    } catch (e: any) { alert(e?.message); }
-  }
-
-  async function escalate() {
-    const reason = prompt('Alasan eskalasi (akan di-priority urgent):');
-    if (!reason) return;
-    try { await api.admin.escalateDispute(dispute.id, reason); onResolved(); } catch (e: any) { alert(e?.message); }
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white shadow-xl">
-        <div className="sticky top-0 flex items-center justify-between border-b bg-white p-4">
-          <div>
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <AlertTriangle className="text-amber-600" size={18} />
-              Dispute · {dispute.type}
-            </h2>
-            <p className="text-xs text-slate-500">ID: {dispute.id} · Booking: {dispute.booking_id?.slice(0, 8)}…</p>
-          </div>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100"><X size={18} /></button>
-        </div>
-
-        <div className="grid gap-4 p-4 md:grid-cols-2">
-          <InfoCard title="Pelapor">
-            <div className="font-medium">{dispute.raisedByName ?? '—'}</div>
-            <div className="text-xs text-slate-500">{dispute.raisedByPhone}</div>
-          </InfoCard>
-          <InfoCard title="Subject (yang dilaporkan)">
-            <div className="font-medium">{dispute.subjectName ?? '—'}</div>
-            <div className="text-xs text-slate-500">{dispute.subjectPhone}</div>
-          </InfoCard>
+    <>
+      <Modal title={`Dispute · ${dispute.type}`} open={!escalating} onClose={onClose} size="lg">
+        <div className="grid gap-3 md:grid-cols-2">
+          <InfoCard title="Pelapor"><div className="font-medium">{dispute.raisedByName ?? '—'}</div><div className="text-xs text-slate-500">{dispute.raisedByPhone}</div></InfoCard>
+          <InfoCard title="Subject"><div className="font-medium">{dispute.subjectName ?? '—'}</div><div className="text-xs text-slate-500">{dispute.subjectPhone}</div></InfoCard>
           <InfoCard title="Booking">
             <div className="text-xs">Status: {dispute.bookingStatus ?? '—'}</div>
             <div className="text-xs">Total: Rp {Number(dispute.bookingTotal ?? 0).toLocaleString('id-ID')}</div>
@@ -198,13 +157,13 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
           </InfoCard>
         </div>
 
-        <div className="border-t p-4">
-          <h3 className="mb-2 text-sm font-semibold">Deskripsi dari Pelapor</h3>
+        <div className="mt-4 border-t pt-4">
+          <h4 className="mb-2 text-sm font-semibold">Deskripsi</h4>
           <p className="rounded-md bg-slate-50 p-3 text-sm whitespace-pre-wrap">{dispute.description}</p>
         </div>
 
-        <div className="border-t p-4">
-          <h3 className="mb-2 text-sm font-semibold">Evidence ({dispute.evidence?.length ?? 0})</h3>
+        <div className="mt-4 border-t pt-4">
+          <h4 className="mb-2 text-sm font-semibold">Evidence ({dispute.evidence?.length ?? 0})</h4>
           {!dispute.evidence || dispute.evidence.length === 0 ? (
             <p className="text-xs text-slate-500">Belum ada evidence.</p>
           ) : (
@@ -215,9 +174,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
                     <img src={ev.url} alt={ev.caption ?? ''} className="h-32 w-full object-cover" />
                   ) : (
                     <div className="flex h-32 items-center justify-center bg-slate-100">
-                      <a href={ev.url} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline">
-                        Open file
-                      </a>
+                      <a href={ev.url} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline">Open file</a>
                     </div>
                   )}
                   {ev.caption && <div className="bg-slate-50 px-2 py-1 text-[10px] text-slate-600">{ev.caption}</div>}
@@ -228,66 +185,82 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
         </div>
 
         {dispute.status !== 'resolved' && (
-          <div className="border-t p-4">
-            <h3 className="mb-3 text-sm font-semibold">Resolve Dispute</h3>
+          <div className="mt-4 border-t pt-4">
+            <h4 className="mb-3 text-sm font-semibold">Resolve</h4>
             <div className="space-y-3">
-              <select
-                value={form.action}
-                onChange={(e) => setForm({ ...form, action: e.target.value as any })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="refund_customer">Refund Customer (full / partial)</option>
-                <option value="debit_cleaner">Debit Cleaner (potong saldo cleaner)</option>
-                <option value="suspend_subject">Suspend Subject (14 hari)</option>
-                <option value="warn_both">Warn keduanya (no penalty)</option>
-                <option value="dismiss">Dismiss (laporan ga valid)</option>
-              </select>
+              <Select
+                label="Action" required value={form.action}
+                options={[
+                  { value: 'refund_customer', label: 'Refund Customer' },
+                  { value: 'debit_cleaner', label: 'Debit Cleaner (potong saldo)' },
+                  { value: 'suspend_subject', label: 'Suspend Subject' },
+                  { value: 'warn_both', label: 'Warn keduanya (no penalty)' },
+                  { value: 'dismiss', label: 'Dismiss (laporan ga valid)' },
+                ]}
+                onChange={(v) => setForm({ ...form, action: v as any })}
+              />
               {(form.action === 'refund_customer' || form.action === 'debit_cleaner') && (
-                <input
-                  type="number"
-                  placeholder="Jumlah Rupiah (e.g. 50000)"
-                  value={form.payoutAmount}
-                  onChange={(e) => setForm({ ...form, payoutAmount: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                />
+                <Input label="Jumlah (Rp)" type="number" required value={form.payoutAmount} onChange={(v) => setForm({ ...form, payoutAmount: v })} error={errors.payoutAmount} />
               )}
               {form.action === 'suspend_subject' && (
-                <input
-                  type="number"
-                  placeholder="Durasi suspend (hari)"
-                  value={form.suspendDays}
-                  onChange={(e) => setForm({ ...form, suspendDays: Number(e.target.value) })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                />
+                <Input label="Durasi suspend (hari)" type="number" value={String(form.suspendDays)} onChange={(v) => setForm({ ...form, suspendDays: Number(v) })} />
               )}
-              <textarea
-                placeholder="Resolusi (min 10 char) — alasan keputusan, akan masuk audit log"
-                value={form.resolution}
-                onChange={(e) => setForm({ ...form, resolution: e.target.value })}
-                rows={3}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
+              <Textarea label="Resolusi" required rows={3} value={form.resolution} onChange={(v) => setForm({ ...form, resolution: v })} helpText="Min 10 char — masuk audit log." />
+              {errors.resolution && <p className="text-xs text-red-600">{errors.resolution}</p>}
               <div className="flex justify-end gap-2">
-                <button onClick={escalate} className="inline-flex items-center gap-1 rounded-md border border-orange-300 bg-orange-50 px-4 py-2 text-sm text-orange-700">
-                  <ArrowUpCircle size={14} /> Escalate
-                </button>
-                <button onClick={resolve} disabled={resolving} className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white">
-                  <Send size={14} /> Resolve
-                </button>
+                <Button variant="secondary" icon={<ArrowUpCircle size={14} />} onClick={() => setEscalating(true)}>Escalate</Button>
+                <Button variant="primary" icon={<Send size={14} />} onClick={resolve} loading={busy}>Resolve</Button>
               </div>
             </div>
           </div>
         )}
 
         {dispute.status === 'resolved' && (
-          <div className="border-t bg-green-50 p-4 text-sm">
-            <b>Resolved by admin {dispute.resolved_by_admin?.slice(0, 8)}…</b>
+          <div className="mt-4 rounded-md border-t bg-green-50 p-4 text-sm">
+            <b>Resolved</b>
             <p className="mt-1 text-slate-700 whitespace-pre-wrap">{dispute.resolution}</p>
             {dispute.payout_amount && <p className="mt-1 text-xs">Amount: Rp {Number(dispute.payout_amount).toLocaleString('id-ID')}</p>}
           </div>
         )}
+      </Modal>
+
+      {escalating && <EscalateModal disputeId={dispute.id} onClose={() => setEscalating(false)} onDone={() => { setEscalating(false); onResolved(); }} />}
+    </>
+  );
+}
+
+function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [reason, setReason] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  async function save() {
+    const e: Record<string, string> = {};
+    if (reason.length < 5) e.reason = 'Min 5 karakter.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try { await api.admin.escalateDispute(disputeId, reason); toast.success('Dispute di-escalate.'); onDone(); }
+    catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+  return (
+    <Modal
+      title="Escalate Dispute"
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="danger" onClick={save} loading={busy} icon={<ArrowUpCircle size={14} />}>Escalate</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-xs text-slate-600">Priority akan jadi <b>urgent</b>. Manager / super_admin akan dapat notif.</p>
+        <Textarea label="Alasan eskalasi" required rows={3} value={reason} onChange={setReason} />
+        {errors.reason && <p className="text-xs text-red-600">{errors.reason}</p>}
       </div>
-    </div>
+    </Modal>
   );
 }
 

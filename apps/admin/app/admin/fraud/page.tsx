@@ -1,35 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Play, Trash2, Flag } from 'lucide-react';
+import { Play, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
+import { Modal, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
 export default function FraudPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [dismissing, setDismissing] = useState<any | null>(null);
 
   async function load() {
     setLoading(true);
-    try { setList(await api.admin.fraudSignals(200)); } catch (e: any) { alert(e?.message); setList([]); } finally { setLoading(false); }
+    try { setList(await api.admin.fraudSignals(200)); } catch (e: any) { toast.error(e?.message); setList([]); } finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
 
   async function runDetection() {
-    if (!confirm('Jalankan deteksi fraud sekarang? (cek cancel rate, refund rate, shared device, off-platform chat)')) return;
+    const ok = await confirm({ title: 'Run Detection', message: 'Jalankan semua rules sekarang? (cancel rate, refund rate, shared device, off-platform chat)' });
+    if (!ok) return;
     setRunning(true);
     try {
       const r = await api.admin.fraudRunDetection();
-      alert(`Deteksi selesai:\n- High cancel cleaner: ${r.results.highCancelRateCleaners}\n- High refund customer: ${r.results.highRefundRateCustomers}\n- Shared device: ${r.results.sharedDevices}\n- Off-platform chat: ${r.results.offPlatformChats}`);
+      toast.success(`Selesai — High cancel: ${r.results.highCancelRateCleaners}, Refund: ${r.results.highRefundRateCustomers}, Device: ${r.results.sharedDevices}, Chat: ${r.results.offPlatformChats}`);
       void load();
-    } catch (e: any) { alert(e?.message); } finally { setRunning(false); }
-  }
-
-  async function dismiss(id: string) {
-    const reason = prompt('Alasan dismiss strike (min 5 char):');
-    if (!reason || reason.length < 5) return;
-    try { await api.admin.fraudDismissStrike(id, reason); void load(); } catch (e: any) { alert(e?.message); }
+    } catch (e: any) { toast.error(e?.message); } finally { setRunning(false); }
   }
 
   return (
@@ -39,13 +38,7 @@ export default function FraudPage() {
           <h1 className="text-2xl font-bold text-slate-900">Fraud Signals</h1>
           <p className="text-sm text-slate-500">Auto-detect indikasi fraud + manual flag.</p>
         </div>
-        <button
-          onClick={runDetection}
-          disabled={running}
-          className="inline-flex items-center gap-1 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
-        >
-          <Play size={14} /> {running ? 'Running…' : 'Run Detection'}
-        </button>
+        <Button variant="danger" icon={<Play size={14} />} onClick={runDetection} loading={running}>Run Detection</Button>
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-4">
@@ -72,7 +65,7 @@ export default function FraudPage() {
                   <th className="px-4 py-2">Strike Type</th>
                   <th className="px-4 py-2">Total Strikes</th>
                   <th className="px-4 py-2">Detail</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-4 py-2 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -82,25 +75,17 @@ export default function FraudPage() {
                     <td className="px-4 py-2">
                       <div className="font-medium">{s.userName ?? '—'}</div>
                       <div className="text-xs text-slate-500">{s.userPhone}</div>
-                      {s.userStatus && s.userStatus !== 'active' && (
-                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] text-red-700">{s.userStatus}</span>
-                      )}
+                      {s.userStatus && s.userStatus !== 'active' && <Badge variant="red">{s.userStatus}</Badge>}
                     </td>
+                    <td className="px-4 py-2"><SignalBadge type={s.strikeType} /></td>
                     <td className="px-4 py-2">
-                      <SignalBadge type={s.strikeType} />
+                      <Badge variant={s.totalStrikes >= 3 ? 'red' : 'slate'}>{s.totalStrikes}x</Badge>
                     </td>
-                    <td className="px-4 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${s.totalStrikes >= 3 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
-                        {s.totalStrikes}x
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-xs text-slate-600">
-                      {s.details ? <code className="text-[10px]">{JSON.stringify(s.details)}</code> : '—'}
+                    <td className="px-4 py-2 max-w-xs text-xs text-slate-600">
+                      {s.details ? <code className="block max-h-16 overflow-auto break-all text-[10px]">{JSON.stringify(s.details)}</code> : '—'}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <button onClick={() => dismiss(s.id)} className="text-xs text-slate-600 hover:text-red-700 hover:underline">
-                        <Trash2 size={11} className="inline" /> Dismiss
-                      </button>
+                      <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => setDismissing(s)}>Dismiss</Button>
                     </td>
                   </tr>
                 ))}
@@ -109,7 +94,46 @@ export default function FraudPage() {
           </div>
         )}
       </div>
+
+      {dismissing && <DismissModal strike={dismissing} onClose={() => setDismissing(null)} onDone={() => { setDismissing(null); void load(); }} />}
     </div>
+  );
+}
+
+function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [reason, setReason] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (reason.length < 5) e.reason = 'Min 5 karakter.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try { await api.admin.fraudDismissStrike(strike.id, reason); toast.success('Strike dismissed.'); onDone(); }
+    catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title="Dismiss Fraud Strike"
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="danger" onClick={save} loading={busy}>Dismiss</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-sm">User: <b>{strike.userName ?? '—'}</b> · {strike.strikeType}</p>
+        <Textarea label="Alasan dismiss" required rows={3} value={reason} onChange={setReason} helpText="Min 5 karakter — masuk audit log." />
+        {errors.reason && <p className="text-xs text-red-600">{errors.reason}</p>}
+      </div>
+    </Modal>
   );
 }
 
@@ -123,14 +147,10 @@ function RuleCard({ title, desc }: { title: string; desc: string }) {
 }
 
 function SignalBadge({ type }: { type: string }) {
-  const colors: Record<string, string> = {
-    high_cancel_rate: 'bg-orange-100 text-orange-700',
-    high_refund_rate: 'bg-orange-100 text-orange-700',
-    shared_device: 'bg-purple-100 text-purple-700',
-    off_platform_chat: 'bg-red-100 text-red-700',
-    dispute_debit_cleaner: 'bg-red-100 text-red-700',
-    dispute_suspend_subject: 'bg-red-100 text-red-700',
-    dispute_refund_customer: 'bg-amber-100 text-amber-700',
-  };
-  return <span className={`rounded-full px-2 py-0.5 text-xs ${colors[type] ?? 'bg-slate-100 text-slate-700'}`}>{type}</span>;
+  const variant: any = {
+    high_cancel_rate: 'amber', high_refund_rate: 'amber',
+    shared_device: 'purple', off_platform_chat: 'red',
+    dispute_debit_cleaner: 'red', dispute_suspend_subject: 'red', dispute_refund_customer: 'amber',
+  }[type] ?? 'slate';
+  return <Badge variant={variant}>{type}</Badge>;
 }
