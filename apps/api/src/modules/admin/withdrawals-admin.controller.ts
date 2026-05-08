@@ -51,17 +51,25 @@ export class AdminWithdrawalsController {
     @Req() req: Request,
   ) {
     if (!body?.bankTransferRef) throw new BadRequestException('Referensi bank transfer wajib.');
-    await this.prisma.$executeRaw`
-      UPDATE withdrawals
-         SET review_status = 'approved',
-             status = 'paid',
-             reviewed_by = ${admin.id}::uuid,
-             reviewed_at = NOW(),
-             completed_at = NOW(),
-             bank_transfer_ref = ${body.bankTransferRef},
-             review_note = ${body.note ?? null}
-       WHERE id = ${id}::uuid
-    `;
+    await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        UPDATE withdrawals
+           SET review_status = 'approved',
+               status = 'paid',
+               reviewed_by = ${admin.id}::uuid,
+               reviewed_at = NOW(),
+               completed_at = NOW(),
+               bank_transfer_ref = ${body.bankTransferRef},
+               review_note = ${body.note ?? null}
+         WHERE id = ${id}::uuid
+      `,
+      // Mark ledger debit CLEARED (saldo benar-benar berkurang)
+      this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries
+           SET status = 'CLEARED', cleared_at = NOW()
+         WHERE reference_type = 'withdrawal' AND reference_id = ${id}::uuid AND status = 'PENDING'
+      `,
+    ]);
     await this.audit.log({
       adminId: admin.id,
       action: 'withdrawal.approve',
@@ -84,18 +92,26 @@ export class AdminWithdrawalsController {
     if (!body?.reason || body.reason.trim().length < 5) {
       throw new BadRequestException('Alasan wajib.');
     }
-    // Refund balance ke wallet cleaner — anggap saldo masih di-hold, tinggal release
-    // (asumsi: saat request withdrawal, saldo cleaner di-debit. Reject = re-credit.)
-    await this.prisma.$executeRaw`
-      UPDATE withdrawals
-         SET review_status = 'rejected',
-             status = 'rejected',
-             reviewed_by = ${admin.id}::uuid,
-             reviewed_at = NOW(),
-             review_note = ${body.reason},
-             failure_reason = ${body.reason}
-       WHERE id = ${id}::uuid
-    `;
+    // Refund: reverse the PENDING ledger debit dgn entry positif baru
+    // (ledger immutable — bikin entry reversal, bukan delete/update)
+    await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        UPDATE withdrawals
+           SET review_status = 'rejected',
+               status = 'rejected',
+               reviewed_by = ${admin.id}::uuid,
+               reviewed_at = NOW(),
+               review_note = ${body.reason},
+               failure_reason = ${body.reason}
+         WHERE id = ${id}::uuid
+      `,
+      // Mark original debit CANCELLED (status transition allowed by trigger)
+      this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries
+           SET status = 'CANCELLED', cleared_at = NOW()
+         WHERE reference_type = 'withdrawal' AND reference_id = ${id}::uuid AND status = 'PENDING'
+      `,
+    ]);
     await this.audit.log({
       adminId: admin.id,
       action: 'withdrawal.reject',

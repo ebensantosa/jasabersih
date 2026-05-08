@@ -92,18 +92,39 @@ export class AdminBookingsController {
     if (!body?.reason || body.reason.trim().length < 5) {
       throw new BadRequestException('Alasan wajib.');
     }
-    await this.prisma.$executeRaw`
-      UPDATE bookings
-         SET status = 'completed',
-             completed_at = COALESCE(completed_at, NOW())
-       WHERE id = ${id}::uuid
+    // Get booking info untuk auto-credit cleaner
+    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; cleaner_payout: number | null; total_amount: number }[]>`
+      SELECT cleaner_id, cleaner_payout, total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
+    const booking = bookings[0];
+
+    await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        UPDATE bookings
+           SET status = 'completed',
+               completed_at = COALESCE(completed_at, NOW())
+         WHERE id = ${id}::uuid
+      `,
+      // Auto-credit cleaner ledger (cleaner_payout amount; CLEARED langsung)
+      ...(booking?.cleaner_id && (booking.cleaner_payout ?? 0) > 0 ? [
+        this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (
+            ${booking.cleaner_id}::uuid, 'earnings', ${booking.cleaner_payout}::bigint,
+            'booking', ${id}::uuid, 'CLEARED', NOW(),
+            'Pembayaran job completed'
+          )
+          ON CONFLICT DO NOTHING
+        `,
+      ] : []),
+    ]);
+
     await this.audit.log({
       adminId: admin.id,
       action: 'booking.force_complete',
       resourceType: 'booking',
       resourceId: id,
-      changes: { reason: body.reason },
+      changes: { reason: body.reason, cleanerPayout: booking?.cleaner_payout ?? 0 },
       ipAddress: req.ip ?? null,
     });
     return { ok: true };

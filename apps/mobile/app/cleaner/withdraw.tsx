@@ -23,8 +23,13 @@ const QUICK_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
 
 export default function Withdraw() {
   const router = useRouter();
-  const balance = useCleanerWalletStore((s) => s.balance());
+  // Prefer server-side balance (authoritative). Fallback to local sum.
+  const serverBalance = useCleanerWalletStore((s) => s.serverBalance);
+  const localBalance = useCleanerWalletStore((s) => s.balance());
+  const balance = serverBalance > 0 ? serverBalance : localBalance;
+  const requestWithdrawalApi = useCleanerWalletStore((s) => s.requestWithdrawalApi);
   const addWithdrawal = useCleanerWalletStore((s) => s.addWithdrawal);
+  const [submitting, setSubmitting] = useState(false);
 
   const [methodCode, setMethodCode] = useState<string>('bca');
   const [account, setAccount] = useState('');
@@ -57,9 +62,19 @@ export default function Withdraw() {
       toast.error('Lengkapi data yang masih kosong/salah');
       return;
     }
-    addWithdrawal(amount, { method: method.label, account, name: accountName });
-    toast.success('Penarikan berhasil dikirim. Diproses ~5 menit.');
-    router.back();
+    setSubmitting(true);
+    requestWithdrawalApi(amount, { bankCode: method.label, accountNumber: account, accountName })
+      .then(() => {
+        // Mirror to local store untuk UI cepat (akan ke-overwrite saat sync next)
+        addWithdrawal(amount, { method: method.label, account, name: accountName });
+        toast.success('Permintaan tarik dana terkirim. Admin akan review.');
+        router.back();
+      })
+      .catch((err: any) => {
+        const msg = err?.response?.data?.error?.message ?? err?.message ?? 'Gagal request penarikan';
+        toast.error(msg);
+      })
+      .finally(() => setSubmitting(false));
   }
 
   return (

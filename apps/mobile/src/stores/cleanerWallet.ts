@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { api } from '../lib/api';
 import { storage } from '../lib/storage';
 
 const KEY = 'cleaner.wallet';
@@ -45,6 +46,17 @@ type State = {
     amount: number,
     destination: { method: string; account: string; name: string },
   ) => WalletEntry;
+  // Server sync
+  serverBalance: number;
+  serverPendingAmount: number;
+  syncing: boolean;
+  syncError: string | null;
+  syncFromApi: () => Promise<void>;
+  /** Request withdrawal via API. Returns server response or throws. */
+  requestWithdrawalApi: (
+    amount: number,
+    destination: { bankCode: string; accountNumber: string; accountName: string },
+  ) => Promise<{ id: string }>;
 };
 
 function persist(entries: WalletEntry[]): void {
@@ -54,6 +66,56 @@ function persist(entries: WalletEntry[]): void {
 export const useCleanerWalletStore = create<State>((set, get) => ({
   entries: [],
   hydrated: false,
+  serverBalance: 0,
+  serverPendingAmount: 0,
+  syncing: false,
+  syncError: null,
+  async syncFromApi() {
+    set({ syncing: true, syncError: null });
+    try {
+      const res = await api.get('/cleaner/wallet');
+      const data = res.data?.data ?? res.data;
+      // Convert server ledger ke WalletEntry shape (untuk compat dengan UI existing)
+      const entries: WalletEntry[] = (data.ledger ?? []).map((l: any) => {
+        const isEarning = l.accountType === 'earnings';
+        const isWithdrawal = l.accountType === 'withdrawal';
+        const status = l.status as string;
+        return {
+          id: l.id,
+          type: isEarning ? 'earning'
+            : isWithdrawal && status === 'PENDING' ? 'withdrawal_pending'
+            : isWithdrawal && status === 'CLEARED' ? 'withdrawal_complete'
+            : isWithdrawal && status === 'CANCELLED' ? 'withdrawal_failed'
+            : 'earning',
+          amount: isEarning ? Number(l.amount) : -Math.abs(Number(l.amount)),
+          description: l.description ?? (isEarning ? 'Pendapatan' : 'Penarikan'),
+          bookingId: l.referenceType === 'booking' ? l.referenceId : undefined,
+          createdAt: l.createdAt ? new Date(l.createdAt).getTime() : Date.now(),
+        } as WalletEntry;
+      });
+      persist(entries);
+      set({
+        entries,
+        serverBalance: Number(data.balance ?? 0),
+        serverPendingAmount: Number(data.pendingWithdrawalAmount ?? 0),
+        syncing: false,
+      });
+    } catch (e: any) {
+      set({ syncing: false, syncError: e?.message ?? 'gagal sync' });
+    }
+  },
+  async requestWithdrawalApi(amount, destination) {
+    const res = await api.post('/cleaner/withdrawal', {
+      amount,
+      bankCode: destination.bankCode,
+      accountNumber: destination.accountNumber,
+      accountName: destination.accountName,
+    });
+    const data = res.data?.data ?? res.data;
+    // Re-sync biar ledger entry baru muncul
+    void get().syncFromApi();
+    return { id: data.id };
+  },
   hydrate: () => {
     const raw = storage.getString(KEY);
     if (raw) {
@@ -104,13 +166,8 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
     const next = [entry, ...get().entries];
     persist(next);
     set({ entries: next });
-    // Simulate completion 4 detik kemudian
-    setTimeout(() => {
-      const completed: WalletEntry = { ...entry, type: 'withdrawal_complete' };
-      const updated = get().entries.map((e) => (e.id === entry.id ? completed : e));
-      persist(updated);
-      set({ entries: updated });
-    }, 4000);
+    // Status real berasal dari server; syncFromApi() akan pull status final
+    // (pending → cleared / cancelled).
     return entry;
   },
 }));
