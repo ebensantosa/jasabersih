@@ -8,6 +8,23 @@ import { PrismaService } from '../../common/prisma.service';
 export class CleanerPublicController {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Top cleaners — for home/explore featured section. Public, no auth.
+  @Get('featured')
+  async featured() {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT u.id, u.name, u.photo_url AS "photoUrl",
+             cp.tier, cp.rating_avg AS "ratingAvg", cp.rating_count AS "ratingCount",
+             cp.total_jobs_done AS "totalJobsDone", cp.brings_tools AS "bringsTools"
+        FROM cleaner_profiles cp
+        INNER JOIN users u ON u.id = cp.user_id
+       WHERE cp.kyc_status = 'approved'
+         AND (u.status = 'active' OR u.status IS NULL)
+         AND cp.rating_count >= 3
+       ORDER BY cp.rating_avg DESC NULLS LAST, cp.total_jobs_done DESC
+       LIMIT 10
+    `;
+  }
+
   // Public: anyone can view cleaner profile (read-only).
   @Get(':id')
   async profile(@Param('id') id: string) {

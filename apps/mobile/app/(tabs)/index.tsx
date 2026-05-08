@@ -19,6 +19,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
+import { FeaturedCleaners } from '../../src/components/FeaturedCleaners';
 import { WaIcon } from '../../src/components/BrandIcon';
 import { NotifBell } from '../../src/components/NotifBell';
 import { formatRupiah } from '../../src/data/catalog';
@@ -140,6 +141,8 @@ export default function Home() {
         <View className="mt-4">
           <BannerCarousel />
         </View>
+
+        <FeaturedCleaners />
 
         <SectionHeader
           title="Layanan Populer"
