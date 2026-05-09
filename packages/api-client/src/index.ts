@@ -110,6 +110,10 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
       listCleaners: (params?: { status?: string }) =>
         request<unknown[]>('GET', `/admin/cleaners${qs(params)}`),
+      createCleaner: (body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean }) =>
+        request<{ id: string; phone: string; name: string }>('POST', '/admin/cleaners', body),
+      deleteCleaner: (id: string, reason?: string) =>
+        request<{ ok: true }>('DELETE', `/admin/cleaners/${id}`, { reason }),
       listUsers: (params?: { q?: string; status?: string; role?: 'customer' | 'cleaner' }) =>
         request<unknown[]>('GET', `/admin/users${qs(params)}`),
       getUser: (id: string) => request<{ user: any; strikes: any[]; recentBookings: any[] }>('GET', `/admin/users/${id}`),

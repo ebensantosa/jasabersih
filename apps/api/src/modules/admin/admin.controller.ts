@@ -1,4 +1,8 @@
-import { Controller, Get, Param, Patch, Query, UseGuards, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, Body, BadRequestException, Req } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import type { Request } from 'express';
+import { AdminAuditService } from '../../common/admin-audit.service';
+import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -10,7 +14,11 @@ import { PushService } from '../notifications/push.service';
 @UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService, private readonly push: PushService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+    private readonly audit: AdminAuditService,
+  ) {}
 
   @Get('bookings')
   async listBookings(
@@ -60,6 +68,116 @@ export class AdminController {
       LIMIT 100
     `);
     return rows;
+  }
+
+  // POST /admin/cleaners — manual create cleaner (admin-trusted, bypass OTP)
+  @Post('cleaners')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async createCleaner(
+    @Body() body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body.name || body.name.length < 2) throw new BadRequestException('Nama wajib (min 2 karakter)');
+    if (!body.phone || !/^(\+62|62|0)8[1-9][0-9]{6,11}$/.test(body.phone.replace(/\s/g, ''))) {
+      throw new BadRequestException('Nomor HP tidak valid');
+    }
+    if (!body.password || body.password.length < 8) throw new BadRequestException('Password min 8 karakter');
+
+    // Normalize phone
+    const digits = body.phone.replace(/\D/g, '');
+    const phone = digits.startsWith('62') ? `+${digits}` : digits.startsWith('0') ? `+62${digits.slice(1)}` : `+62${digits}`;
+    const email = body.email?.trim().toLowerCase() || null;
+
+    // Check duplicate
+    const dup = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM users WHERE phone = ${phone} OR (${email}::text IS NOT NULL AND email = ${email}) LIMIT 1
+    `;
+    if (dup.length > 0) throw new BadRequestException('Nomor HP atau email sudah terdaftar');
+
+    const passwordHash = await bcrypt.hash(body.password, 12);
+    const kycStatus = body.autoApprove ? 'approved' : 'pending';
+    const tier = body.tier || 'standard';
+
+    const userRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO users (phone, name, email, password_hash, phone_verified_at, is_customer, is_freelancer, status)
+      VALUES (${phone}, ${body.name}, ${email}, ${passwordHash}, NOW(), FALSE, TRUE, 'active')
+      RETURNING id
+    `;
+    const userId = userRows[0]!.id;
+
+    // Create cleaner_profile (idempotent kalau row sudah ada)
+    await this.prisma.$executeRaw`
+      INSERT INTO cleaner_profiles (user_id, kyc_status, tier, brings_tools, service_areas)
+      VALUES (${userId}::uuid, ${kycStatus}, ${tier}, ${body.bringsTools ?? false}, ${JSON.stringify(body.serviceAreas ?? [])}::jsonb)
+      ON CONFLICT (user_id) DO UPDATE
+        SET kyc_status = EXCLUDED.kyc_status,
+            tier = EXCLUDED.tier,
+            brings_tools = EXCLUDED.brings_tools,
+            service_areas = EXCLUDED.service_areas
+    `;
+
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'cleaner.create',
+      resourceType: 'user',
+      resourceId: userId,
+      changes: { name: body.name, phone, email, kycStatus, tier, autoApprove: !!body.autoApprove },
+      ipAddress: req.ip ?? null,
+    });
+
+    return { id: userId, phone, name: body.name, kycStatus, tier };
+  }
+
+  // DELETE /admin/cleaners/:id — soft-delete (deleted_at + status banned + revoke sessions)
+  @Delete('cleaners/:id')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async deleteCleaner(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const rows = await this.prisma.$queryRaw<{ id: string; name: string | null; is_freelancer: boolean }[]>`
+      SELECT id, name, is_freelancer FROM users WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (rows.length === 0) throw new BadRequestException('Cleaner tidak ditemukan');
+    if (!rows[0]!.is_freelancer) throw new BadRequestException('User ini bukan cleaner');
+
+    // Cek active jobs — jangan hapus kalau lagi pegang booking
+    const active = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM bookings
+       WHERE cleaner_id = ${id}::uuid
+         AND status IN ('matched', 'on_the_way', 'in_progress')
+    `;
+    if (Number(active[0]?.c ?? 0) > 0) {
+      throw new BadRequestException('Cleaner masih punya job aktif — selesaikan dulu sebelum hapus');
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE users
+         SET deleted_at = NOW(),
+             status = 'banned',
+             suspend_reason = ${body.reason || 'Dihapus oleh admin'}
+       WHERE id = ${id}::uuid
+    `;
+    // Revoke semua refresh token aktif → user langsung ke-logout
+    await this.prisma.$executeRaw`
+      UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${id}::uuid AND revoked_at IS NULL
+    `;
+
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'cleaner.delete',
+      resourceType: 'user',
+      resourceId: id,
+      changes: { reason: body.reason ?? null, name: rows[0]!.name },
+      ipAddress: req.ip ?? null,
+    });
+
+    return { ok: true };
   }
 
   @Get('users')

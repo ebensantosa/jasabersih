@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BadgeCheck, Eye, X, Check, Clock, AlertCircle, RefreshCcw } from 'lucide-react';
+import { BadgeCheck, Eye, X, Check, Clock, AlertCircle, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
-import { Modal, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
+import { Modal, Input, Switch, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
 type Cleaner = { user_id: string; name: string | null; phone: string; email: string | null; joined_at: string; kyc_status: string; pending_docs: number; total_docs: number };
 type Detail = {
@@ -25,6 +25,25 @@ export default function KycPage() {
   const [list, setList] = useState<Cleaner[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Detail | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const confirm = useConfirm();
+
+  async function deleteCleaner(c: Cleaner) {
+    const ok = await confirm({
+      title: `Hapus ${c.name ?? c.phone}?`,
+      message: 'Cleaner ini akan di-soft-delete (tidak bisa login lagi). Data history tetap tersimpan untuk audit.',
+      variant: 'danger',
+      confirmLabel: 'Hapus Cleaner',
+    });
+    if (!ok) return;
+    try {
+      await api.admin.deleteCleaner(c.user_id, 'Dihapus oleh admin via KYC page');
+      toast.success(`Cleaner ${c.name ?? c.phone} dihapus`);
+      void load();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal hapus');
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -43,6 +62,7 @@ export default function KycPage() {
           <h1 className="text-2xl font-bold text-slate-900">KYC Cleaner</h1>
           <p className="text-sm text-slate-500">Verifikasi dokumen cleaner sebelum aktif terima order.</p>
         </div>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setAddOpen(true)}>Tambah Cleaner</Button>
       </div>
 
       <div className="mb-4 flex gap-2 border-b">
@@ -83,7 +103,10 @@ export default function KycPage() {
                   <td className="px-4 py-3 text-slate-500">{new Date(c.joined_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                   <td className="px-4 py-3"><Badge>{c.pending_docs} pending / {c.total_docs} total</Badge></td>
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => openDetail(c.user_id)}>Review</Button>
+                    <div className="inline-flex gap-1">
+                      <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => openDetail(c.user_id)}>Review</Button>
+                      <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => deleteCleaner(c)}>Hapus</Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -93,7 +116,82 @@ export default function KycPage() {
       )}
 
       {selected && <KycDetailModal data={selected} onClose={() => setSelected(null)} onDone={() => { setSelected(null); void load(); }} />}
+      {addOpen && <AddCleanerModal onClose={() => setAddOpen(false)} onDone={() => { setAddOpen(false); void load(); }} />}
     </div>
+  );
+}
+
+function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', password: '',
+    bringsTools: false, autoApprove: false, tier: 'standard',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!form.name || form.name.length < 2) e.name = 'Nama wajib (min 2 karakter)';
+    if (!/^(\+62|62|0)8[1-9][0-9]{6,11}$/.test(form.phone.replace(/\s/g, ''))) e.phone = 'Format: 08xxxx atau +62xxxx';
+    if (form.email && !/^.+@.+\..+$/.test(form.email)) e.email = 'Format email tidak valid';
+    if (!form.password || form.password.length < 8) e.password = 'Password min 8 karakter';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function save() {
+    if (!validate()) return;
+    setBusy(true);
+    try {
+      await api.admin.createCleaner({
+        name: form.name,
+        phone: form.phone.trim(),
+        email: form.email.trim() || undefined,
+        password: form.password,
+        bringsTools: form.bringsTools,
+        autoApprove: form.autoApprove,
+        tier: form.tier,
+      });
+      toast.success(`Cleaner ${form.name} dibuat`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal buat cleaner');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Tambah Cleaner Manual"
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Buat Cleaner</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <div className="rounded-md bg-amber-50 p-2 text-[11px] text-amber-900">
+          ⓘ Cleaner dibuat tanpa OTP (admin-trusted). Mereka langsung bisa login dengan nomor HP + password yang kamu set.
+        </div>
+        <Input label="Nama Lengkap" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
+        <Input label="Nomor HP" required value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="08123456789" error={errors.phone} />
+        <Input label="Email (opsional)" value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="cleaner@example.com" error={errors.email} />
+        <Input label="Password" type="password" required value={form.password} onChange={(v) => setForm({ ...form, password: v })} error={errors.password} helpText="Min 8 karakter. Berikan ke cleaner secara langsung." />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-700">Bawa Alat Sendiri</label>
+          <Switch checked={form.bringsTools} onChange={(v) => setForm({ ...form, bringsTools: v })} label={form.bringsTools ? 'Ya, bawa alat (komisi lebih tinggi)' : 'Tidak'} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-700">Auto-approve KYC</label>
+          <Switch checked={form.autoApprove} onChange={(v) => setForm({ ...form, autoApprove: v })} label={form.autoApprove ? 'Ya, langsung approved (skip review)' : 'Tidak, masuk antrian KYC pending'} />
+        </div>
+      </div>
+    </Modal>
   );
 }
 
