@@ -77,11 +77,13 @@ export default function RootLayout() {
       void fetchAppContent();
       // Sync bookings + addresses + wallet from server kalau sudah login
       setTimeout(() => {
-        void syncBookings();
-        void syncAddresses();
-        void syncWallet();
-        // Register Expo push token (idempotent — only physical devices, ignores web/sim)
-        void registerForPushAsync().catch(() => {});
+        if (useAuthStore.getState().tokens) {
+          void syncBookings();
+          void syncAddresses();
+          void syncWallet();
+          // Register Expo push token (idempotent — only physical devices, ignores web/sim)
+          void registerForPushAsync().catch(() => {});
+        }
       }, 500);
     });
   }, [

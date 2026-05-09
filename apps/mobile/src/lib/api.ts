@@ -21,6 +21,9 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
     if (error.response?.status === 401 && !original?._retry) {
+      const hasTokens = !!useAuthStore.getState().tokens;
+      // No tokens = anonymous user, don't try refresh — caller handles "not logged in"
+      if (!hasTokens) return Promise.reject(error);
       original._retry = true;
       try {
         if (!refreshing) refreshing = useAuthStore.getState().refresh();

@@ -25,6 +25,8 @@ export const useNotifications = create<State>((set, get) => ({
   unreadCount: 0,
   loading: false,
   async fetch() {
+    const { useAuthStore } = await import('./auth');
+    if (!useAuthStore.getState().tokens) return;
     set({ loading: true });
     try {
       const res = await api.get('/notifications');

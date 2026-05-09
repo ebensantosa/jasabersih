@@ -20,7 +20,7 @@
     "plugins": ["expo-router", "expo-secure-store"],
     "experiments": { "typedRoutes": false },
     "extra": {
-      "apiBaseUrl": "http://localhost:3000/v1",
+      "apiBaseUrl": "https://api.jasabersih.com/v1",
       "eas": {
         "projectId": "4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a"
       }

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { create } from 'zustand';
 
 import { api } from '../lib/api';
@@ -106,7 +107,11 @@ export function useConfig<K extends keyof AppConfig>(key: K, fallback: AppConfig
 }
 
 export function useBanners(placement?: string): Banner[] {
-  return useAppContent((s) => placement ? s.content.banners.filter((b) => b.placement === placement) : s.content.banners);
+  const banners = useAppContent((s) => s.content.banners);
+  return useMemo(
+    () => (placement ? banners.filter((b) => b.placement === placement) : banners),
+    [banners, placement],
+  );
 }
 
 export function useApiServices(): ServiceItem[] {
