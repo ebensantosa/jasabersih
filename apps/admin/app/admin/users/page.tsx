@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Eye, Loader2, Search, ShieldOff, User, UserX } from 'lucide-react';
+import { Briefcase, Eye, Loader2, Plus, Search, ShieldOff, Trash2, User, UserX } from 'lucide-react';
 
 import { api } from '../../../lib/api';
-import { Modal, Input, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
+import { Modal, Input, Switch, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
 type Tab = 'customer' | 'cleaner';
 
@@ -32,6 +32,25 @@ export default function UsersPage() {
   const [q, setQ] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewing, setViewing] = useState<Row | null>(null);
+  const [adding, setAdding] = useState(false);
+  const confirm = useConfirm();
+
+  async function deleteRow(r: Row) {
+    const label = tab === 'customer' ? 'Customer' : 'Cleaner';
+    const ok = await confirm({
+      title: `Hapus ${r.name ?? r.phone}?`,
+      message: `${label} ini akan di-soft-delete (tidak bisa login lagi). Data history tetap untuk audit.`,
+      variant: 'danger',
+      confirmLabel: `Hapus ${label}`,
+    });
+    if (!ok) return;
+    try {
+      if (tab === 'customer') await api.admin.deleteCustomer(r.id, 'Dihapus oleh admin');
+      else await api.admin.deleteCleaner(r.id, 'Dihapus oleh admin');
+      toast.success(`${label} ${r.name ?? r.phone} dihapus`);
+      void load();
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal hapus'); }
+  }
 
   async function load() {
     setLoading(true);
@@ -50,8 +69,15 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
-      <p className="text-sm text-slate-500">Lihat customer & cleaner, suspend, ban, audit trail.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
+          <p className="text-sm text-slate-500">Lihat customer & cleaner, suspend, ban, audit trail.</p>
+        </div>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setAdding(true)}>
+          Tambah {tab === 'customer' ? 'Customer' : 'Cleaner'}
+        </Button>
+      </div>
 
       <div className="mt-4 inline-flex rounded-xl bg-slate-100 p-1">
         <button onClick={() => setTab('customer')} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === 'customer' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
@@ -128,7 +154,10 @@ export default function UsersPage() {
                     <td className="px-4 py-2"><StatusBadge status={r.status ?? 'active'} /></td>
                     <td className="px-4 py-2 text-xs text-slate-500">{r.joinedAt ? new Date(r.joinedAt).toLocaleDateString('id-ID') : '—'}</td>
                     <td className="px-4 py-2 text-right">
-                      <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>
+                      <div className="inline-flex gap-1">
+                        <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>
+                        <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => deleteRow(r)}>Hapus</Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -139,7 +168,94 @@ export default function UsersPage() {
       </div>
 
       {viewing && <UserDetailModal row={viewing} onClose={() => setViewing(null)} onChanged={() => { setViewing(null); void load(); }} />}
+      {adding && (
+        <AddUserModal
+          role={tab}
+          onClose={() => setAdding(false)}
+          onDone={() => { setAdding(false); void load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+function AddUserModal({ role, onClose, onDone }: { role: 'customer' | 'cleaner'; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', password: '',
+    bringsTools: false, autoApprove: false,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!form.name || form.name.length < 2) e.name = 'Nama wajib (min 2 karakter)';
+    if (!/^(\+62|62|0)8[1-9][0-9]{6,11}$/.test(form.phone.replace(/\s/g, ''))) e.phone = 'Format: 08xxxx atau +62xxxx';
+    if (form.email && !/^.+@.+\..+$/.test(form.email)) e.email = 'Format email tidak valid';
+    if (!form.password || form.password.length < 8) e.password = 'Password min 8 karakter';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function save() {
+    if (!validate()) return;
+    setBusy(true);
+    try {
+      if (role === 'customer') {
+        await api.admin.createCustomer({
+          name: form.name, phone: form.phone.trim(),
+          email: form.email.trim() || undefined, password: form.password,
+        });
+      } else {
+        await api.admin.createCleaner({
+          name: form.name, phone: form.phone.trim(),
+          email: form.email.trim() || undefined, password: form.password,
+          bringsTools: form.bringsTools, autoApprove: form.autoApprove,
+        });
+      }
+      toast.success(`${role === 'customer' ? 'Customer' : 'Cleaner'} ${form.name} dibuat`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal buat user');
+    } finally { setBusy(false); }
+  }
+
+  const label = role === 'customer' ? 'Customer' : 'Cleaner';
+  return (
+    <Modal
+      title={`Tambah ${label} Manual`}
+      open={true}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Buat {label}</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <div className="rounded-md bg-amber-50 p-2 text-[11px] text-amber-900">
+          ⓘ Akun dibuat tanpa OTP (admin-trusted). User langsung bisa login dengan nomor HP + password yang kamu set.
+        </div>
+        <Input label="Nama Lengkap" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
+        <Input label="Nomor HP" required value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="08123456789" error={errors.phone} />
+        <Input label="Email (opsional)" value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="user@example.com" error={errors.email} />
+        <Input label="Password" type="password" required value={form.password} onChange={(v) => setForm({ ...form, password: v })} error={errors.password} helpText="Min 8 karakter. Berikan ke user secara langsung." />
+        {role === 'cleaner' && (
+          <>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Bawa Alat Sendiri</label>
+              <Switch checked={form.bringsTools} onChange={(v) => setForm({ ...form, bringsTools: v })} label={form.bringsTools ? 'Ya, bawa alat (komisi lebih tinggi)' : 'Tidak'} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Auto-approve KYC</label>
+              <Switch checked={form.autoApprove} onChange={(v) => setForm({ ...form, autoApprove: v })} label={form.autoApprove ? 'Ya, langsung approved (skip review)' : 'Tidak, masuk antrian KYC pending'} />
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }
 

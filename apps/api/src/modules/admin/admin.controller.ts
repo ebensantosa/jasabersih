@@ -70,6 +70,85 @@ export class AdminController {
     return rows;
   }
 
+  // POST /admin/customers — manual create customer (admin-trusted, bypass OTP)
+  @Post('customers')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async createCustomer(
+    @Body() body: { name: string; phone: string; email?: string; password: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body.name || body.name.length < 2) throw new BadRequestException('Nama wajib (min 2 karakter)');
+    if (!body.phone || !/^(\+62|62|0)8[1-9][0-9]{6,11}$/.test(body.phone.replace(/\s/g, ''))) {
+      throw new BadRequestException('Nomor HP tidak valid');
+    }
+    if (!body.password || body.password.length < 8) throw new BadRequestException('Password min 8 karakter');
+
+    const digits = body.phone.replace(/\D/g, '');
+    const phone = digits.startsWith('62') ? `+${digits}` : digits.startsWith('0') ? `+62${digits.slice(1)}` : `+62${digits}`;
+    const email = body.email?.trim().toLowerCase() || null;
+
+    const dup = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM users WHERE phone = ${phone} OR (${email}::text IS NOT NULL AND email = ${email}) LIMIT 1
+    `;
+    if (dup.length > 0) throw new BadRequestException('Nomor HP atau email sudah terdaftar');
+
+    const passwordHash = await bcrypt.hash(body.password, 12);
+    const userRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO users (phone, name, email, password_hash, phone_verified_at, is_customer, is_freelancer, status)
+      VALUES (${phone}, ${body.name}, ${email}, ${passwordHash}, NOW(), TRUE, FALSE, 'active')
+      RETURNING id
+    `;
+    const userId = userRows[0]!.id;
+
+    await this.audit.log({
+      adminId: admin.id, action: 'customer.create', resourceType: 'user', resourceId: userId,
+      changes: { name: body.name, phone, email }, ipAddress: req.ip ?? null,
+    });
+    return { id: userId, phone, name: body.name };
+  }
+
+  // DELETE /admin/customers/:id — soft-delete customer
+  @Delete('customers/:id')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async deleteCustomer(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const rows = await this.prisma.$queryRaw<{ id: string; name: string | null; is_customer: boolean }[]>`
+      SELECT id, name, is_customer FROM users WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (rows.length === 0) throw new BadRequestException('Customer tidak ditemukan');
+    if (!rows[0]!.is_customer) throw new BadRequestException('User ini bukan customer');
+
+    const active = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM bookings
+       WHERE customer_id = ${id}::uuid
+         AND status IN ('searching', 'matched', 'on_the_way', 'in_progress', 'pending_payment')
+    `;
+    if (Number(active[0]?.c ?? 0) > 0) {
+      throw new BadRequestException('Customer masih punya booking aktif — selesaikan dulu sebelum hapus');
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE users SET deleted_at = NOW(), status = 'banned',
+                       suspend_reason = ${body.reason || 'Dihapus oleh admin'}
+       WHERE id = ${id}::uuid
+    `;
+    await this.prisma.$executeRaw`
+      UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${id}::uuid AND revoked_at IS NULL
+    `;
+    await this.audit.log({
+      adminId: admin.id, action: 'customer.delete', resourceType: 'user', resourceId: id,
+      changes: { reason: body.reason ?? null, name: rows[0]!.name }, ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
   // POST /admin/cleaners — manual create cleaner (admin-trusted, bypass OTP)
   @Post('cleaners')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)

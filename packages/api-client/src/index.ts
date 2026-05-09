@@ -114,6 +114,10 @@ export function createClient(opts: ClientOptions) {
         request<{ id: string; phone: string; name: string }>('POST', '/admin/cleaners', body),
       deleteCleaner: (id: string, reason?: string) =>
         request<{ ok: true }>('DELETE', `/admin/cleaners/${id}`, { reason }),
+      createCustomer: (body: { name: string; phone: string; email?: string; password: string }) =>
+        request<{ id: string; phone: string; name: string }>('POST', '/admin/customers', body),
+      deleteCustomer: (id: string, reason?: string) =>
+        request<{ ok: true }>('DELETE', `/admin/customers/${id}`, { reason }),
       listUsers: (params?: { q?: string; status?: string; role?: 'customer' | 'cleaner' }) =>
         request<unknown[]>('GET', `/admin/users${qs(params)}`),
       getUser: (id: string) => request<{ user: any; strikes: any[]; recentBookings: any[] }>('GET', `/admin/users/${id}`),
