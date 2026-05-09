@@ -13,6 +13,7 @@ import {
   Megaphone,
   MessageSquare,
   Send,
+  Mail,
   Palette,
   Settings,
   ShieldAlert,
@@ -38,6 +39,7 @@ const NAV = [
   { href: '/admin/content', label: 'Content / CMS', icon: FileText },
   { href: '/admin/popups', label: 'Pop-up Promo', icon: Megaphone },
   { href: '/admin/broadcast', label: 'Broadcast Push', icon: Send },
+  { href: '/admin/email', label: 'Email (Resend)', icon: Mail },
   { href: '/admin/app-settings', label: 'App Settings', icon: Palette },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
