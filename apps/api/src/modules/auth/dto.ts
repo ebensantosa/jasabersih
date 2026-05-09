@@ -10,6 +10,7 @@ export type UserMode = z.infer<typeof UserModeSchema>;
 export const RegisterRequestSchema = z.object({
   phone: PhoneNumberSchema,
   mode: UserModeSchema,
+  email: z.string().email('Format email tidak valid').optional(),
 });
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 

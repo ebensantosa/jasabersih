@@ -5,13 +5,18 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { EmailService } from '../email/email.service';
 
 @ApiTags('admin-app-cms')
 @ApiBearerAuth()
 @UseGuards(AdminJwtGuard, AdminRbacGuard)
 @Controller('admin/app')
 export class AdminAppCmsController {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AdminAuditService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AdminAuditService,
+    private readonly email: EmailService,
+  ) {}
 
   // =========== APP CONFIG ===========
   @Get('config')
@@ -45,7 +50,28 @@ export class AdminAppCmsController {
             updated_at = NOW()
     `;
     await this.audit.log({ adminId: admin.id, action: 'app_config.set', resourceType: 'app_config', changes: { key, value: body.value }, ipAddress: req.ip ?? null });
+    // Invalidate email config cache when email keys change
+    if (key.startsWith('email.')) this.email.invalidateCache();
     return { ok: true };
+  }
+
+  @Post('email/test')
+  @Roles('super_admin', 'ops')
+  async testEmail(
+    @Body() body: { to: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body?.to) throw new BadRequestException('to wajib (email tujuan).');
+    this.email.invalidateCache(); // pakai config terbaru
+    const result = await this.email.send({
+      to: body.to,
+      subject: 'Test Email — JasaBersih Admin',
+      html: '<p>Halo! Ini email tes dari Admin Dashboard JasaBersih. Kalau kamu nerima ini, konfigurasi Resend kamu sudah benar 🎉</p>',
+      text: 'Halo! Ini email tes dari Admin Dashboard JasaBersih. Konfigurasi Resend kamu sudah benar.',
+    });
+    await this.audit.log({ adminId: admin.id, action: 'email.test', resourceType: 'email', changes: { to: body.to, ok: result.ok, error: result.error }, ipAddress: req.ip ?? null });
+    return result;
   }
 
   @Delete('config/:key')

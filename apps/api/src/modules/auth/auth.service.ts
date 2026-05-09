@@ -28,7 +28,7 @@ export class AuthService {
     private readonly tokens: TokenService,
   ) {}
 
-  async register(input: RegisterRequest): Promise<{ phone: string; expiresInSeconds: number; devOtp?: string }> {
+  async register(input: RegisterRequest): Promise<{ phone: string; expiresInSeconds: number; emailSent?: boolean; devOtp?: string }> {
     const phone = normalizePhone(input.phone);
 
     const existing = await this.prisma.user.findUnique({ where: { phone } });
@@ -40,10 +40,20 @@ export class AuthService {
     }
 
     const otp = await this.otp.generateAndSend(phone);
-    // Until SMS gateway is wired (Sprint 2), expose OTP in API response when AUTH_DEV_MODE=true
-    // so testers can finish registration without server log access.
+    // Kalau email disediakan & Resend aktif, kirim OTP via email
+    let emailSent = false;
+    if (input.email) {
+      const result = await this.otp.sendViaEmail(input.email.trim().toLowerCase(), otp);
+      emailSent = result.ok;
+    }
+    // Sampai SMS gateway aktif: expose devOtp di response saat AUTH_DEV_MODE=true ATAU kalau email gagal terkirim
     const devMode = process.env.AUTH_DEV_MODE === 'true';
-    return { phone, expiresInSeconds: PENDING_TTL_MIN * 60, ...(devMode && otp ? { devOtp: otp } : {}) };
+    return {
+      phone,
+      expiresInSeconds: PENDING_TTL_MIN * 60,
+      emailSent,
+      ...(devMode && otp ? { devOtp: otp } : {}),
+    };
   }
 
   async verifyOtp(

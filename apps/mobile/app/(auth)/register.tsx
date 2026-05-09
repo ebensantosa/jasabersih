@@ -63,8 +63,12 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      // Step 1: request OTP
-      const reg = await api.post('/auth/register', { phone: phone.trim(), mode: targetMode });
+      // Step 1: request OTP (kirim ke phone + email kalau email diisi)
+      const reg = await api.post('/auth/register', {
+        phone: phone.trim(),
+        mode: targetMode,
+        email: email.trim().toLowerCase(),
+      });
       const devOtp: string | undefined = reg.data?.data?.devOtp ?? reg.data?.devOtp;
 
       if (!devOtp) {

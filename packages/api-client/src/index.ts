@@ -253,6 +253,8 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('PATCH', `/admin/app/config/${encodeURIComponent(key)}`, body),
       deleteAppConfig: (key: string) =>
         request<unknown>('DELETE', `/admin/app/config/${encodeURIComponent(key)}`),
+      testEmail: (to: string) =>
+        request<{ ok: boolean; id?: string; error?: string }>('POST', '/admin/app/email/test', { to }),
 
       // Pop-up promo
       popups: () => request<any[]>('GET', '/admin/app/popups'),

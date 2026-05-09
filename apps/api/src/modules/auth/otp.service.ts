@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import type Redis from 'ioredis';
 
 import { REDIS_CLIENT } from '../../common/redis.module';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class OtpService {
@@ -15,6 +16,7 @@ export class OtpService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly config: ConfigService,
+    private readonly email: EmailService,
   ) {
     this.ttl = Number(this.config.get('OTP_TTL_SECONDS') ?? 300);
     this.maxAttempts = Number(this.config.get('OTP_MAX_ATTEMPTS') ?? 3);
@@ -39,6 +41,11 @@ export class OtpService {
     // Sprint 2: ganti dengan Zenziva SMS service
     this.logger.warn(`[OTP] phone=${phone} code=${otp} (DEV ONLY — kirim via SMS di Sprint 2)`);
     return otp;
+  }
+
+  /** Kirim OTP via email (Resend). Best-effort — caller bisa fallback ke devOtp/SMS. */
+  async sendViaEmail(toEmail: string, otp: string): Promise<{ ok: boolean; error?: string }> {
+    return this.email.sendOtp(toEmail, otp);
   }
 
   async verify(phone: string, otp: string): Promise<void> {
