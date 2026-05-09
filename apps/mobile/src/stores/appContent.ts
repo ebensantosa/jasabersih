@@ -127,9 +127,11 @@ export function useApiHourlyTiers(): HourlyTier[] {
 }
 
 export function useApiPackagesForService(serviceCode: string): PackageItem[] {
-  return useAppContent((s) => {
-    const svc = s.content.services.find((x) => x.code === serviceCode);
+  const services = useAppContent((s) => s.content.services);
+  const packages = useAppContent((s) => s.content.packages);
+  return useMemo(() => {
+    const svc = services.find((x) => x.code === serviceCode);
     if (!svc) return [];
-    return s.content.packages.filter((p) => p.serviceId === svc.id);
-  });
+    return packages.filter((p) => p.serviceId === svc.id);
+  }, [services, packages, serviceCode]);
 }
