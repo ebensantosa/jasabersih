@@ -6,12 +6,11 @@ import { Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2, Mail,
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Button, Switch, Badge, useConfirm, useToast } from '../../../components/ui';
 
-type Tab = 'admins' | 'commission' | 'services' | 'hourly' | 'email' | 'blacklist' | 'audit';
+type Tab = 'admins' | 'commission' | 'services' | 'email' | 'blacklist' | 'audit';
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'admins', label: 'Admin Users', icon: Shield },
   { key: 'commission', label: 'Komisi Cleaner', icon: Banknote },
   { key: 'services', label: 'Layanan', icon: Briefcase },
-  { key: 'hourly', label: 'Tarif Per Jam', icon: Banknote },
   { key: 'email', label: 'Email (Resend)', icon: Mail },
   { key: 'blacklist', label: 'Blacklist', icon: Ban },
   { key: 'audit', label: 'Audit Log', icon: Activity },
@@ -40,7 +39,6 @@ export default function SettingsPage() {
         {tab === 'admins' && <AdminsTab />}
         {tab === 'commission' && <CommissionTab />}
         {tab === 'services' && <ServicesTab />}
-        {tab === 'hourly' && <HourlyTab />}
         {tab === 'email' && <EmailTab />}
         {tab === 'blacklist' && <BlacklistTab />}
         {tab === 'audit' && <AuditTab />}
@@ -444,89 +442,6 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         <Textarea label="Deskripsi" value={form.description} onChange={(v) => setForm({ ...form, description: v })} rows={3} />
         <Input label="Icon URL (opsional)" value={form.iconUrl} onChange={(v) => setForm({ ...form, iconUrl: v })} placeholder="https://cdn.jasabersih.com/..." />
         <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} />
-      </div>
-    </Modal>
-  );
-}
-
-// ============ HOURLY ============
-function HourlyTab() {
-  const toast = useToast();
-  const [list, setList] = useState<any[]>([]);
-  const [editing, setEditing] = useState<any | null>(null);
-
-  async function load() { try { setList(await api.admin.hourlyTiers()); } catch (e: any) { toast.error(e?.message); } }
-  useEffect(() => { void load(); }, []);
-
-  return (
-    <div>
-      <h2 className="mb-3 text-base font-semibold">Tarif Per Jam</h2>
-      <div className="overflow-hidden rounded-md border bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-2">Code</th><th className="px-4 py-2">Nama</th>
-              <th className="px-4 py-2">Tarif/Jam</th><th className="px-4 py-2">Min Jam</th>
-              <th className="px-4 py-2">Share Cleaner (%)</th><th className="px-4 py-2 text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((t) => (
-              <tr key={t.id} className="border-t">
-                <td className="px-4 py-2 font-mono text-xs">{t.code}</td>
-                <td className="px-4 py-2">{t.name ?? '—'}</td>
-                <td className="px-4 py-2 font-bold">Rp {Number(t.pricePerHour).toLocaleString('id-ID')}</td>
-                <td className="px-4 py-2">{Number(t.minHours)} jam</td>
-                <td className="px-4 py-2">{Number(t.cleanerSharePct)}%</td>
-                <td className="px-4 py-2 text-right">
-                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(t)}>Edit</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {editing && <HourlyFormModal tier={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
-    </div>
-  );
-}
-
-function HourlyFormModal({ tier, onClose, onSaved }: { tier: any; onClose: () => void; onSaved: () => void }) {
-  const toast = useToast();
-  const [form, setForm] = useState({
-    name: tier.name ?? '',
-    pricePerHour: Number(tier.pricePerHour ?? 0),
-    minHours: Number(tier.minHours ?? 0),
-    cleanerSharePct: Number(tier.cleanerSharePct ?? 0),
-  });
-  const [busy, setBusy] = useState(false);
-
-  async function save() {
-    setBusy(true);
-    try {
-      await api.admin.updateHourlyTier(tier.id, form);
-      toast.success('Tier ter-update.');
-      onSaved();
-    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
-  }
-
-  return (
-    <Modal
-      title={`Edit Tarif Per Jam — ${tier.code}`}
-      open={true}
-      onClose={onClose}
-      footer={
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Batal</Button>
-          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
-        </div>
-      }
-    >
-      <div className="space-y-3">
-        <Input label="Nama" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-        <Input label="Tarif Per Jam (Rp)" type="number" value={String(form.pricePerHour)} onChange={(v) => setForm({ ...form, pricePerHour: Number(v) })} />
-        <Input label="Min Jam" type="number" value={String(form.minHours)} onChange={(v) => setForm({ ...form, minHours: Number(v) })} />
-        <Input label="Share Cleaner (%)" type="number" value={String(form.cleanerSharePct)} onChange={(v) => setForm({ ...form, cleanerSharePct: Number(v) })} />
       </div>
     </Modal>
   );

@@ -138,40 +138,6 @@ export class SystemConfigController {
     return { ok: true };
   }
 
-  // ============ HOURLY TIERS ============
-  @Get('hourly-tiers')
-  @Roles('super_admin', 'finance', 'ops')
-  async listHourlyTiers() {
-    return this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT id, code, name, price_per_hour AS "pricePerHour",
-             min_hours AS "minHours", cleaner_share_pct AS "cleanerSharePct"
-        FROM pricing_hourly_tiers ORDER BY price_per_hour ASC
-    `;
-  }
-
-  @Patch('hourly-tiers/:id')
-  @Roles('super_admin', 'finance')
-  async updateHourlyTier(
-    @Param('id') id: string,
-    @Body() body: { pricePerHour?: number; minHours?: number; cleanerSharePct?: number; name?: string },
-    @CurrentAdmin() admin: AdminPrincipal,
-    @Req() req: Request,
-  ) {
-    if (body.pricePerHour !== undefined) await this.prisma.$executeRaw`UPDATE pricing_hourly_tiers SET price_per_hour = ${body.pricePerHour}::bigint WHERE id = ${id}::uuid`;
-    if (body.minHours !== undefined) await this.prisma.$executeRaw`UPDATE pricing_hourly_tiers SET min_hours = ${body.minHours} WHERE id = ${id}::uuid`;
-    if (body.cleanerSharePct !== undefined) await this.prisma.$executeRaw`UPDATE pricing_hourly_tiers SET cleaner_share_pct = ${body.cleanerSharePct} WHERE id = ${id}::uuid`;
-    if (body.name !== undefined) await this.prisma.$executeRaw`UPDATE pricing_hourly_tiers SET name = ${body.name} WHERE id = ${id}::uuid`;
-    await this.audit.log({
-      adminId: admin.id,
-      action: 'hourly_tier.update',
-      resourceType: 'pricing_hourly_tier',
-      resourceId: id,
-      changes: body,
-      ipAddress: req.ip ?? null,
-    });
-    return { ok: true };
-  }
-
   // ============ BLACKLIST ============
   @Get('blacklist')
   @Roles('super_admin', 'fraud_analyst', 'ops')

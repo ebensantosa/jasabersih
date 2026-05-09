@@ -12,11 +12,11 @@ export class AppContentController {
   constructor(private readonly prisma: PrismaService) {}
 
   // PUBLIC — boot endpoint, no auth required.
-  // Returns: config (key→value), banners, services, addons, hourlyTiers, packages,
-  // active announcement (latest), pages list (slugs only), commission tiers.
+  // Returns: config (key→value), banners, services, addons, packages,
+  // active announcement (latest), commission tiers.
   @Get('content')
   async content() {
-    const [config, banners, services, addons, hourlyTiers, packages, announcement, commissionTiers] = await Promise.all([
+    const [config, banners, services, addons, packages, announcement, commissionTiers] = await Promise.all([
       this.prisma.$queryRaw<Record<string, unknown>[]>`SELECT key, value FROM app_config`,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT id, title, subtitle, image_url AS "imageUrl", link_url AS "linkUrl",
@@ -34,10 +34,6 @@ export class AppContentController {
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT id, code, name, price, duration_min AS "durationMin", description
           FROM add_ons WHERE is_active = TRUE ORDER BY price ASC
-      `,
-      this.prisma.$queryRaw<Record<string, unknown>[]>`
-        SELECT id, code, name, price_per_hour AS "pricePerHour", min_hours AS "minHours", cleaner_share_pct AS "cleanerSharePct"
-          FROM pricing_hourly_tiers ORDER BY price_per_hour ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT p.id, p.service_id AS "serviceId", p.name, p.price, p.duration_min AS "durationMin", p.scope
@@ -66,7 +62,7 @@ export class AppContentController {
       banners,
       services,
       addons,
-      hourlyTiers,
+      hourlyTiers: [],
       packages,
       announcement: announcement[0] ?? null,
       commissionTiers,

@@ -173,10 +173,6 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('PATCH', `/admin/config/services/${id}`, body),
       deactivateService: (id: string) =>
         request<unknown>('DELETE', `/admin/config/services/${id}`),
-      hourlyTiers: () => request<any[]>('GET', '/admin/config/hourly-tiers'),
-      updateHourlyTier: (id: string, body: any) =>
-        request<unknown>('PATCH', `/admin/config/hourly-tiers/${id}`, body),
-
       // Disputes
       listDisputes: (status: 'open' | 'in_progress' | 'resolved' | 'escalated' = 'open') =>
         request<any[]>('GET', `/admin/disputes?status=${status}`),

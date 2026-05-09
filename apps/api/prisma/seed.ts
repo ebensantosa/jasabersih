@@ -21,12 +21,6 @@ const SERVICES = [
   { code: 'pasca_renovasi', name: 'Bersih Pasca Renovasi', displayOrder: 8 },
 ];
 
-const HOURLY_TIERS = [
-  { code: 'standard', name: 'Standard', pricePerHour: 35_000n, minHours: 2, cleanerSharePct: 70 },
-  { code: 'with_tools', name: 'With Tools', pricePerHour: 45_000n, minHours: 2, cleanerSharePct: 65 },
-  { code: 'specialist', name: 'Specialist', pricePerHour: 65_000n, minHours: 3, cleanerSharePct: 60 },
-];
-
 const ADD_ONS = [
   { code: 'kulkas', name: 'Bersih Kulkas', price: 25_000n, durationMin: 30 },
   { code: 'oven', name: 'Bersih Oven', price: 30_000n, durationMin: 30 },
@@ -92,15 +86,6 @@ async function main() {
     });
     await prisma.pricingPackage.create({
       data: { serviceId: fullHouse.id, name: 'Full House Tipe 45', price: 320_000n, durationMin: 300 },
-    });
-  }
-
-  console.warn('Seeding hourly tiers...');
-  for (const t of HOURLY_TIERS) {
-    await prisma.pricingHourlyTier.upsert({
-      where: { code: t.code },
-      update: t,
-      create: t,
     });
   }
 
