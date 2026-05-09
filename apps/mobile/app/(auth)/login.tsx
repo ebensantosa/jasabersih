@@ -31,8 +31,18 @@ export default function Login() {
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
 
+  // Accept email OR Indonesian phone (08.../+62.../62...)
+  function validateIdentifier(v: string): string | null {
+    const x = v.trim();
+    if (!x) return 'Email atau No. HP wajib diisi';
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
+    const isPhone = /^(\+62|62|0)8[1-9][0-9]{6,11}$/.test(x.replace(/\s/g, ''));
+    if (!isEmail && !isPhone) return 'Format harus email atau nomor HP Indonesia (08...)';
+    return null;
+  }
+
   function validate(): boolean {
-    const e = { email: validateEmail(email), password: validatePassword(password, 6) };
+    const e = { email: validateIdentifier(email), password: validatePassword(password, 6) };
     setErrors(e);
     setTouched({ email: true, password: true });
     return !e.email && !e.password;
@@ -116,19 +126,19 @@ export default function Login() {
             </Text>
           </View>
           <View className="gap-4">
-            <Field label="Email" required error={touched.email ? errors.email : null}>
+            <Field label="Email atau No. HP" required error={touched.email ? errors.email : null}>
               <Mail color="#94A3B8" size={18} />
               <TextInput
                 value={email}
                 onChangeText={(v) => {
                   setEmail(v);
-                  if (touched.email) setErrors({ ...errors, email: validateEmail(v) });
+                  if (touched.email) setErrors({ ...errors, email: validateIdentifier(v) });
                 }}
                 onBlur={() => {
                   setTouched({ ...touched, email: true });
-                  setErrors({ ...errors, email: validateEmail(email) });
+                  setErrors({ ...errors, email: validateIdentifier(email) });
                 }}
-                placeholder="kamu@email.com"
+                placeholder="kamu@email.com atau 08123456789"
                 placeholderTextColor="#94A3B8"
                 keyboardType="email-address"
                 autoCapitalize="none"

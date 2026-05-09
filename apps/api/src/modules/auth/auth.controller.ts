@@ -96,7 +96,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   async me(@CurrentUser() user: AuthenticatedUser) {
-    return this.auth.getProfile(user.userId);
+    return this.auth.getProfile(user.id);
   }
 
   @Post('logout')

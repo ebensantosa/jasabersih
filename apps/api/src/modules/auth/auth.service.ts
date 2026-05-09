@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma.service';
 
 import {
+  isLikelyEmail,
   normalizePhone,
   type LoginRequest,
   type RegisterRequest,
@@ -103,12 +104,14 @@ export class AuthService {
     input: LoginRequest,
     meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
   ): Promise<IssuedTokens> {
-    const phone = normalizePhone(input.phone);
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+    const raw = input.phone.trim();
+    const user = isLikelyEmail(raw)
+      ? await this.prisma.user.findUnique({ where: { email: raw.toLowerCase() } })
+      : await this.prisma.user.findUnique({ where: { phone: normalizePhone(raw) } });
     if (!user || !user.phoneVerifiedAt) {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
-        message: 'Nomor HP atau password salah.',
+        message: 'Email/No. HP atau password salah.',
       });
     }
     const ok = await bcrypt.compare(input.password, user.passwordHash);

@@ -22,11 +22,16 @@ export const VerifyOtpRequestSchema = z.object({
 });
 export type VerifyOtpRequest = z.infer<typeof VerifyOtpRequestSchema>;
 
+// Login accepts either Indonesian phone or email in `phone` field (legacy name kept for compat)
 export const LoginRequestSchema = z.object({
-  phone: PhoneNumberSchema,
+  phone: z.string().min(3, 'Email atau No. HP wajib diisi'),
   password: z.string().min(1),
 });
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export function isLikelyEmail(input: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.trim());
+}
 
 export const RefreshRequestSchema = z.object({
   refreshToken: z.string().min(1),
