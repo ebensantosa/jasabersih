@@ -48,6 +48,19 @@ export class OtpService {
     return this.email.sendOtp(toEmail, otp);
   }
 
+  /** Throttle per-email OTP requests (max 3 / 15 menit) — cegah abuse Resend quota. */
+  async assertEmailRateOk(email: string): Promise<void> {
+    const key = `otp:email:rate:${email.toLowerCase()}`;
+    const sent = await this.redis.incr(key);
+    if (sent === 1) await this.redis.expire(key, this.rateWindow);
+    if (sent > this.maxAttempts) {
+      throw new HttpException(
+        { code: 'OTP_EMAIL_RATE_LIMIT', message: 'Terlalu banyak permintaan kode untuk email ini. Coba lagi dalam 15 menit.' },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
   async verify(phone: string, otp: string): Promise<void> {
     const triesKey = `otp:tries:${phone}`;
     const tries = await this.redis.incr(triesKey);

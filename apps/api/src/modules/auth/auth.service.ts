@@ -30,6 +30,18 @@ export class AuthService {
 
   async register(input: RegisterRequest): Promise<{ phone: string; expiresInSeconds: number; emailSent?: boolean; devOtp?: string }> {
     const phone = normalizePhone(input.phone);
+    const email = input.email?.trim().toLowerCase();
+
+    // Cek email sudah dipakai akun lain (verified) — cegah duplikat
+    if (email) {
+      const taken = await this.prisma.user.findFirst({ where: { email, phoneVerifiedAt: { not: null } } });
+      if (taken) {
+        throw new ConflictException({
+          code: 'EMAIL_ALREADY_REGISTERED',
+          message: 'Email sudah terdaftar. Silakan login.',
+        });
+      }
+    }
 
     const existing = await this.prisma.user.findUnique({ where: { phone } });
     if (existing && existing.phoneVerifiedAt) {
@@ -39,11 +51,14 @@ export class AuthService {
       });
     }
 
+    // Per-email rate limit: max 3 OTP request / 15 menit (cegah abuse Resend quota)
+    if (email) await this.otp.assertEmailRateOk(email);
+
     const otp = await this.otp.generateAndSend(phone);
     // Kalau email disediakan & Resend aktif, kirim OTP via email
     let emailSent = false;
-    if (input.email) {
-      const result = await this.otp.sendViaEmail(input.email.trim().toLowerCase(), otp);
+    if (email) {
+      const result = await this.otp.sendViaEmail(email, otp);
       emailSent = result.ok;
     }
     // Sampai SMS gateway aktif: expose devOtp di response saat AUTH_DEV_MODE=true ATAU kalau email gagal terkirim

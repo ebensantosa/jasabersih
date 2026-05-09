@@ -31,7 +31,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @ApiOperation({ summary: 'Mulai registrasi: kirim OTP ke nomor HP' })
   register(
     @Body(new ZodValidationPipe(RegisterRequestSchema)) body: RegisterRequest,
