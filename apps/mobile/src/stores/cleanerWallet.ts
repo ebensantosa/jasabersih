@@ -57,6 +57,7 @@ type State = {
     amount: number,
     destination: { bankCode: string; accountNumber: string; accountName: string },
   ) => Promise<{ id: string }>;
+  clearLocal: () => void;
 };
 
 function persist(entries: WalletEntry[]): void {
@@ -70,6 +71,10 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
   serverPendingAmount: 0,
   syncing: false,
   syncError: null,
+  clearLocal() {
+    storage.delete(KEY);
+    set({ entries: [], hydrated: true, serverBalance: 0, serverPendingAmount: 0, syncError: null });
+  },
   async syncFromApi() {
     set({ syncing: true, syncError: null });
     try {

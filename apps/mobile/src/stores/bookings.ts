@@ -93,6 +93,7 @@ type State = {
   syncFromApi: () => Promise<void>;
   syncing: boolean;
   syncError: string | null;
+  clearLocal: () => void;
 };
 
 function persist(list: Booking[]): void {
@@ -123,6 +124,10 @@ export const useBookingsStore = create<State>((set, get) => ({
   hydrated: false,
   syncing: false,
   syncError: null,
+  clearLocal() {
+    storage.delete(BOOKINGS_KEY);
+    set({ list: [], hydrated: true, syncError: null });
+  },
   async syncFromApi() {
     set({ syncing: true, syncError: null });
     try {

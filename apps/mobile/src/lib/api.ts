@@ -32,10 +32,8 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         refreshing = null;
+        // logout() now wipes addresses/bookings/wallet/cleaner/user caches too
         useAuthStore.getState().logout();
-        // Also clear cached user profile so we go back to anonymous cleanly
-        const { useUserStore } = await import('../stores/user');
-        useUserStore.getState().clear();
       }
     }
     return Promise.reject(error);

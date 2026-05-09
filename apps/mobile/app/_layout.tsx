@@ -82,6 +82,10 @@ export default function RootLayout() {
       hydrateUser();
       // Fetch fresh app content (banners/services/config/popups) — non-blocking
       void fetchAppContent();
+      // Anonymous users: ensure no stale user-bound data leaks to UI
+      if (!useAuthStore.getState().tokens) {
+        useAuthStore.getState().logout();
+      }
       // Validate token via /auth/me first; only fire other syncs if profile fetch succeeds
       setTimeout(() => {
         if (!useAuthStore.getState().tokens) return;

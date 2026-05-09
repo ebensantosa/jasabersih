@@ -15,6 +15,7 @@ type State = {
   setAreas: (areas: string[]) => void;
   setBringsTools: (v: boolean) => void;
   hydrate: () => void;
+  clearLocal: () => void;
 };
 
 type Persistable = Pick<State, 'name' | 'serviceAreas' | 'bringsTools'>;
@@ -67,5 +68,9 @@ export const useCleanerStore = create<State>((set, get) => ({
       }
     }
     set({ hydrated: true });
+  },
+  clearLocal: () => {
+    storage.delete(CLEANER_KEY);
+    set({ name: 'Mitra Cleaner', serviceAreas: [], bringsTools: false, hydrated: true });
   },
 }));

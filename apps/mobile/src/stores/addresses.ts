@@ -28,6 +28,7 @@ type State = {
   hydrate: () => void;
   syncFromApi: () => Promise<void>;
   syncing: boolean;
+  clearLocal: () => void;
 };
 
 function persist(list: SavedAddress[]): void {
@@ -38,6 +39,10 @@ export const useAddressesStore = create<State>((set, get) => ({
   list: [],
   hydrated: false,
   syncing: false,
+  clearLocal() {
+    storage.delete(KEY);
+    set({ list: [], hydrated: true });
+  },
   async syncFromApi() {
     set({ syncing: true });
     try {

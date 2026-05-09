@@ -30,7 +30,18 @@ export const useAuthStore = create<State>((set, get) => ({
     });
     get().setTokens(res.data.data);
   },
-  logout: () => get().setTokens(null),
+  logout: () => {
+    get().setTokens(null);
+    // Wipe all user-bound caches so next session starts clean.
+    // Lazy-import to avoid module cycles.
+    void Promise.all([
+      import('./addresses').then((m) => m.useAddressesStore.getState().clearLocal?.()),
+      import('./bookings').then((m) => m.useBookingsStore.getState().clearLocal?.()),
+      import('./cleanerWallet').then((m) => m.useCleanerWalletStore.getState().clearLocal?.()),
+      import('./cleaner').then((m) => m.useCleanerStore.getState().clearLocal?.()),
+      import('./user').then((m) => m.useUserStore.getState().clear()),
+    ]).catch(() => {});
+  },
   hydrate: () => {
     const raw = storage.getString(persistKeys.authTokens);
     if (raw) {
