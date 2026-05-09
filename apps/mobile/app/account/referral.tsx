@@ -178,7 +178,7 @@ function ReferralScreen() {
               <View className="mt-2 space-y-1.5">
                 <Text className="font-sans text-xs text-ink-700">1. Bagikan kodemu ke teman/saudara</Text>
                 <Text className="font-sans text-xs text-ink-700">2. Teman pakai kodemu saat daftar/booking pertama</Text>
-                <Text className="font-sans text-xs text-ink-700">3. Setelah teman selesai order pertama â†’ bonus Rp 25K masuk wallet kamu</Text>
+                <Text className="font-sans text-xs text-ink-700">3. Setelah teman selesai order pertama, bonus Rp 25.000 masuk wallet kamu</Text>
                 <Text className="font-sans text-xs text-ink-700">4. Bonus bisa langsung kamu tarik (min Rp 50.000)</Text>
               </View>
             </View>

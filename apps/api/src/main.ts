@@ -33,7 +33,8 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
-  app.setGlobalPrefix('v1');
+  // /v1 prefix for API; /r/* (referral landing) excluded so URL stays short & shareable
+  app.setGlobalPrefix('v1', { exclude: ['r/:code'] });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());

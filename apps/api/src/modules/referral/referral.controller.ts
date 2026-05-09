@@ -55,8 +55,8 @@ export class ReferralController {
     `;
     return {
       code: r.code,
-      shareUrl: `https://jasabersih.com/r/${r.code}`,
-      shareText: `Pakai kode ${r.code} dapat diskon Rp 25.000 buat order pertama di JasaBersih!`,
+      shareUrl: `https://api.jasabersih.com/r/${r.code}`,
+      shareText: `Download JasaBersih dan pakai kode ${r.code} buat dapat diskon Rp 25.000 di order pertama!`,
       totalReferrals: Number(r.total_referrals),
       totalPaid: Number(r.total_paid),
       stats: { pending: Number(stats[0]?.pending ?? 0), qualified: Number(stats[0]?.qualified ?? 0), paid: Number(stats[0]?.paid ?? 0) },
