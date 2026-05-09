@@ -30,6 +30,8 @@ import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
+import { CleaningModeToggle } from '../../src/components/CleaningModeToggle';
+import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
 
 const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00', '17:00'];
 const DATE_OPTIONS = (() => {
@@ -106,10 +108,9 @@ function NewBooking() {
   const [pickedPackageId, setPickedPackageId] = useState<string>(initialPackage?.id ?? '');
   const pkg = PACKAGES.find((p) => p.id === pickedPackageId);
 
-  const [cleanMode, setCleanMode] = useState<'general' | 'deep'>('general');
-  const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.5 as any);
-  const deepMultiplier = Number(deepMultiplierRaw) || 1.5;
-  const modeMultiplier = cleanMode === 'deep' ? deepMultiplier : 1;
+  const cleanMode = useCleaningModeStore((s) => s.mode);
+  const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.45 as any);
+  const deepMultiplier = Number(deepMultiplierRaw) || 1.45;
 
   const [propertyType, setPropertyType] = useState<PropertyType>('Rumah');
   const [floor, setFloor] = useState<string>('1');
@@ -160,7 +161,7 @@ function NewBooking() {
   const dirtMultiplier = DIRT_LEVELS.find((d) => d.level === dirtLevel)?.multiplier ?? 1;
   const photoPenalty = dirtLevel >= 4 && photoCount < 3 ? 0.25 : 0;
   const rawPackagePrice = pkg?.price ?? 0;
-  const basePrice = Math.round(rawPackagePrice * modeMultiplier);
+  const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
   const dirtSurcharge = Math.round(basePrice * (dirtMultiplier - 1 + photoPenalty));
   const addonTotal = useMemo(
     () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + a.price, 0),
@@ -278,7 +279,7 @@ function NewBooking() {
         notes,
         photoCount,
         cleanMode,
-        cleanModeMultiplier: modeMultiplier,
+        cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
       },
       initialStatus: 'pending_payment',
     });
@@ -315,24 +316,7 @@ function NewBooking() {
           {step === 1 && (
             <>
               <Section title="Tipe Pembersihan">
-                <View className="flex-row gap-2">
-                  {([
-                    { key: 'general', label: 'General Cleaning', desc: 'Pembersihan rutin (kotor ringan-sedang)' },
-                    { key: 'deep', label: 'Deep Cleaning', desc: `Menyeluruh: kerak, jamur, nat (Ã—${deepMultiplier})` },
-                  ] as const).map((m) => {
-                    const active = cleanMode === m.key;
-                    return (
-                      <Pressable
-                        key={m.key}
-                        onPress={() => setCleanMode(m.key)}
-                        className={`flex-1 rounded-xl border p-3 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                      >
-                        <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>{m.label}</Text>
-                        <Text className="font-sans mt-0.5 text-[11px] text-ink-600">{m.desc}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                <CleaningModeToggle />
               </Section>
 
               {categoryPackages.length > 0 && (
@@ -353,8 +337,8 @@ function NewBooking() {
                           <View className="flex-row items-center justify-between">
                             <Text className="font-semibold flex-1 text-sm text-ink-900">{p.name}</Text>
                             <View className="items-end">
-                              <Text className="font-bold text-sm text-brand-600">{formatRupiah(Math.round(p.price * modeMultiplier))}</Text>
-                              {modeMultiplier !== 1 && (
+                              <Text className="font-bold text-sm text-brand-600">{formatRupiah(applyCleanMode(p.price, cleanMode, deepMultiplier))}</Text>
+                              {cleanMode === 'deep' && (
                                 <Text className="font-sans text-[10px] text-ink-400 line-through">{formatRupiah(p.price)}</Text>
                               )}
                               <Text className="font-sans text-[10px] text-ink-500">Â±{p.durationMin} menit</Text>

@@ -19,6 +19,8 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
+import { CleaningModeToggle } from '../../src/components/CleaningModeToggle';
+import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
 import { FeaturedCleaners } from '../../src/components/FeaturedCleaners';
 import { WaIcon } from '../../src/components/BrandIcon';
 import { NotifBell } from '../../src/components/NotifBell';
@@ -36,6 +38,7 @@ export default function Home() {
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
   const ALL_SERVICES = useServices();
+  const cleanMode = useCleaningModeStore((s) => s.mode);
   // Hide mode-toggles (general/deep cleaning) — they are picker options inside booking, not destinations
   const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
   const BUNDLE_CODES = new Set(['full_house', 'kantor', 'pasca_renovasi', 'subscription', 'paket_bundle']);
@@ -117,6 +120,10 @@ export default function Home() {
             sub={t('home.mode_wa_sub')}
             onPress={() => router.push('/booking/wa-survey')}
           />
+        </View>
+
+        <View className="mx-4 mt-3 rounded-2xl bg-white p-3">
+          <CleaningModeToggle />
         </View>
 
         {/* Service grid 4 col */}
@@ -205,7 +212,7 @@ export default function Home() {
                         <View>
                           <Text className="font-sans text-[9px] uppercase tracking-wider text-ink-400">Mulai dari</Text>
                           <Text className="font-extrabold text-[14px] text-brand-600">
-                            {s.startingPrice > 0 ? formatRupiah(s.startingPrice) : 'WA Survey'}
+                            {s.startingPrice > 0 ? formatRupiah(applyCleanMode(s.startingPrice, cleanMode)) : 'WA Survey'}
                           </Text>
                         </View>
                         <View className="rounded-full bg-brand-50 px-2 py-1">
@@ -251,7 +258,7 @@ export default function Home() {
                     {s.description}
                   </Text>
                   <Text className="font-bold mt-1.5 text-[12px] text-brand-600">
-                    Mulai {formatRupiah(s.startingPrice)}
+                    Mulai {formatRupiah(applyCleanMode(s.startingPrice, cleanMode))}
                   </Text>
                 </View>
               </Pressable>

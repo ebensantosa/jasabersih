@@ -29,6 +29,7 @@ import { useAuthStore } from '../src/stores/auth';
 import { useBookingsStore } from '../src/stores/bookings';
 import { useCleanerStore } from '../src/stores/cleaner';
 import { useCleanerWalletStore } from '../src/stores/cleanerWallet';
+import { useCleaningModeStore } from '../src/stores/cleaningMode';
 import { useLocationStore } from '../src/stores/location';
 import { useModeStore } from '../src/stores/mode';
 
@@ -45,6 +46,7 @@ export default function RootLayout() {
   const syncAddresses = useAddressesStore((s) => s.syncFromApi);
   const syncWallet = useCleanerWalletStore((s) => s.syncFromApi);
   const hydrateLocale = useLocaleStore((s) => s.hydrate);
+  const hydrateCleaningMode = useCleaningModeStore((s) => s.hydrate);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -73,6 +75,7 @@ export default function RootLayout() {
       hydrateAddresses();
       hydrateWallet();
       hydrateLocale();
+      hydrateCleaningMode();
       // Fetch fresh app content (banners/services/config/popups) — non-blocking
       void fetchAppContent();
       // Sync bookings + addresses + wallet from server kalau sudah login
@@ -98,6 +101,7 @@ export default function RootLayout() {
     syncBookings,
     syncAddresses,
     syncWallet,
+    hydrateCleaningMode,
   ]);
 
   // Notification tap → deep link

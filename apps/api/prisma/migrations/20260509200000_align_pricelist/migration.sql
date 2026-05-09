@@ -54,7 +54,7 @@ INSERT INTO app_config (key, value, category, description) VALUES
    'feature',
    'Disclaimer harga — tampil di booking form & paket detail'),
   ('pricing.deep_clean_multiplier',
-   '1.5',
+   '1.45',
    'feature',
-   'Multiplier biaya untuk deep cleaning vs general cleaning (e.g. 1.5 = +50%)')
+   'Multiplier biaya untuk deep cleaning vs general cleaning (1.45 = +45%, hasil dibulatkan ke atas per 1000)')
 ON CONFLICT (key) DO NOTHING;
