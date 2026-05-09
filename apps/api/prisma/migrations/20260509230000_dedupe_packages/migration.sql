@@ -2,11 +2,12 @@
 -- keep yang paling lama (created_at terlama), soft-disable sisanya.
 -- Ini fix duplicate "Kamar Standard" × 7 yang muncul di mobile.
 
+-- pricing_packages tidak punya created_at, partition by id (deterministic ordering)
 WITH ranked AS (
   SELECT id,
          ROW_NUMBER() OVER (
            PARTITION BY service_id, lower(trim(name))
-           ORDER BY created_at ASC, id ASC
+           ORDER BY id ASC
          ) AS rn
     FROM pricing_packages
    WHERE is_active = TRUE
