@@ -1,22 +1,30 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Briefcase, Mail, User } from 'lucide-react-native';
+import { ArrowLeft, Briefcase, Phone, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   Field,
-  validateEmail,
   validateMinLength,
   validatePassword,
 } from '../../src/components/Field';
+import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
+import { useUserStore } from '../../src/stores/user';
 
-type Errors = { name?: string | null; email?: string | null; password?: string | null };
-type Touched = { name?: boolean; email?: boolean; password?: boolean };
+type Errors = { name?: string | null; phone?: string | null; password?: string | null };
+type Touched = { name?: boolean; phone?: boolean; password?: boolean };
+
+function validatePhoneId(v: string): string | null {
+  const x = v.trim().replace(/\s/g, '');
+  if (!x) return 'Nomor HP wajib diisi';
+  if (!/^(\+62|62|0)8[1-9][0-9]{6,11}$/.test(x)) return 'Format harus 08123456789 atau +628123456789';
+  return null;
+}
 
 export default function Register() {
   const router = useRouter();
@@ -25,9 +33,10 @@ export default function Register() {
 
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
+  const fetchUser = useUserStore((s) => s.fetch);
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -36,29 +45,55 @@ export default function Register() {
   function validate(): boolean {
     const e: Errors = {
       name: validateMinLength(name, 2, 'Nama'),
-      email: validateEmail(email),
+      phone: validatePhoneId(phone),
       password: validatePassword(password, 8),
     };
     setErrors(e);
-    setTouched({ name: true, email: true, password: true });
-    return !e.name && !e.email && !e.password;
+    setTouched({ name: true, phone: true, password: true });
+    return !e.name && !e.phone && !e.password;
   }
 
-  function onSubmit() {
+  async function onSubmit() {
     if (!validate()) {
       toast.error('Lengkapi data yang masih kosong/salah');
       return;
     }
     setLoading(true);
-    setTokens({
-      accessToken: `dev.new.${email}.${Date.now()}`,
-      refreshToken: `dev-refresh.${email}`,
-      expiresIn: 60 * 60 * 24 * 7,
-    });
-    setMode(targetMode);
-    toast.success(`Akun berhasil dibuat, halo ${name}!`);
-    router.replace('/(tabs)');
-    setLoading(false);
+    try {
+      // Step 1: request OTP
+      const reg = await api.post('/auth/register', { phone: phone.trim(), mode: targetMode });
+      const devOtp: string | undefined = reg.data?.data?.devOtp ?? reg.data?.devOtp;
+
+      if (!devOtp) {
+        // Production / SMS-enabled: kirim user ke verify screen
+        toast.success('Kode OTP dikirim ke WhatsApp/SMS kamu');
+        router.replace({
+          pathname: '/(auth)/verify',
+          params: { phone: phone.trim(), name, password, mode: targetMode },
+        });
+        return;
+      }
+
+      // Dev mode (SMS belum aktif) — auto-verify pakai devOtp
+      const verify = await api.post('/auth/verify-otp', {
+        phone: phone.trim(),
+        otp: devOtp,
+        password,
+        fullName: name,
+        mode: targetMode,
+      });
+      const tokens = verify.data?.data ?? verify.data;
+      setTokens(tokens);
+      setMode(targetMode);
+      void fetchUser();
+      toast.success(`Akun dibuat, halo ${name}!`);
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      const msg = e?.response?.data?.error?.message ?? e?.message ?? 'Daftar gagal, coba lagi';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const isFreelancer = targetMode === 'freelancer';
@@ -109,21 +144,21 @@ export default function Register() {
               />
             </Field>
 
-            <Field label="Email" required error={touched.email ? errors.email : null}>
-              <Mail color="#94A3B8" size={18} />
+            <Field label="Nomor HP" required hint="Untuk OTP & login" error={touched.phone ? errors.phone : null}>
+              <Phone color="#94A3B8" size={18} />
               <TextInput
-                value={email}
+                value={phone}
                 onChangeText={(v) => {
-                  setEmail(v);
-                  if (touched.email) setErrors({ ...errors, email: validateEmail(v) });
+                  setPhone(v);
+                  if (touched.phone) setErrors({ ...errors, phone: validatePhoneId(v) });
                 }}
                 onBlur={() => {
-                  setTouched({ ...touched, email: true });
-                  setErrors({ ...errors, email: validateEmail(email) });
+                  setTouched({ ...touched, phone: true });
+                  setErrors({ ...errors, phone: validatePhoneId(phone) });
                 }}
-                placeholder="kamu@email.com"
+                placeholder="08123456789"
                 placeholderTextColor="#94A3B8"
-                keyboardType="email-address"
+                keyboardType="phone-pad"
                 autoCapitalize="none"
                 autoCorrect={false}
                 className="font-sans flex-1 text-sm text-ink-900"

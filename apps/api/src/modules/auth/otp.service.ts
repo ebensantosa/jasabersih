@@ -21,7 +21,7 @@ export class OtpService {
     this.rateWindow = Number(this.config.get('OTP_RATE_LIMIT_WINDOW_SECONDS') ?? 900);
   }
 
-  async generateAndSend(phone: string): Promise<void> {
+  async generateAndSend(phone: string): Promise<string> {
     const rateKey = `otp:rate:${phone}`;
     const sent = await this.redis.incr(rateKey);
     if (sent === 1) await this.redis.expire(rateKey, this.rateWindow);
@@ -38,6 +38,7 @@ export class OtpService {
 
     // Sprint 2: ganti dengan Zenziva SMS service
     this.logger.warn(`[OTP] phone=${phone} code=${otp} (DEV ONLY — kirim via SMS di Sprint 2)`);
+    return otp;
   }
 
   async verify(phone: string, otp: string): Promise<void> {
