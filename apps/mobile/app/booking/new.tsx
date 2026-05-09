@@ -71,9 +71,11 @@ export default function NewBooking() {
         price: Number(p.price),
         durationMin: Number(p.durationMin),
         scope: typeof p.scope === 'string' ? p.scope : (p.scope?.note ?? ''),
+        includes: Array.isArray((p.scope as any)?.includes) ? (p.scope as any).includes as string[] : [],
+        note: typeof p.scope === 'object' && p.scope ? (p.scope as any).note as string | undefined : undefined,
       }));
     }
-    return LOCAL_PACKAGES;
+    return LOCAL_PACKAGES.map((p) => ({ ...p, includes: [] as string[], note: undefined as string | undefined }));
   }, [apiPackages, category?.code]);
 
   // Merge API addons with local icons (icons stay hardcoded by code).
@@ -308,6 +310,8 @@ export default function NewBooking() {
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
                       const active = p.id === pickedPackageId;
+                      const includes: string[] = (p as any).includes ?? [];
+                      const note: string | undefined = (p as any).note;
                       return (
                         <Pressable
                           key={p.id}
@@ -318,11 +322,33 @@ export default function NewBooking() {
                         >
                           <View className="flex-row items-center justify-between">
                             <Text className="font-semibold flex-1 text-sm text-ink-900">{p.name}</Text>
-                            <Text className="font-bold text-sm text-brand-600">
-                              {formatRupiah(p.price)}
-                            </Text>
+                            <View className="items-end">
+                              <Text className="font-bold text-sm text-brand-600">{formatRupiah(p.price)}</Text>
+                              <Text className="font-sans text-[10px] text-ink-500">±{p.durationMin} menit</Text>
+                            </View>
                           </View>
-                          <Text className="font-sans mt-1 text-[11px] text-ink-600">{p.scope}</Text>
+                          {includes.length > 0 && (
+                            <View className="mt-2">
+                              <Text className="font-semibold mb-1 text-[10px] uppercase tracking-wider text-ink-500">Termasuk:</Text>
+                              {includes.slice(0, active ? 99 : 3).map((it, i) => (
+                                <View key={i} className="flex-row gap-1.5 py-0.5">
+                                  <Text className="font-sans text-[11px] text-success">✓</Text>
+                                  <Text className="font-sans flex-1 text-[11px] text-ink-700">{it}</Text>
+                                </View>
+                              ))}
+                              {!active && includes.length > 3 && (
+                                <Text className="font-medium mt-1 text-[10px] text-brand-600">+{includes.length - 3} item lain · tap untuk lihat semua</Text>
+                              )}
+                            </View>
+                          )}
+                          {note && (
+                            <View className="mt-2 rounded bg-amber-50 px-2 py-1">
+                              <Text className="font-sans text-[10px] text-amber-800">ⓘ {note}</Text>
+                            </View>
+                          )}
+                          {p.scope && includes.length === 0 && (
+                            <Text className="font-sans mt-1 text-[11px] text-ink-600">{p.scope}</Text>
+                          )}
                         </Pressable>
                       );
                     })}
