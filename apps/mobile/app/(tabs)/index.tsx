@@ -146,40 +146,73 @@ export default function Home() {
         </View>
 
         {BUNDLE_SERVICES.length > 0 && (
-          <View className="mx-4 mt-4">
-            <View className="mb-2 flex-row items-center justify-between">
-              <View>
-                <Text className="font-bold text-sm text-ink-900">Paket Lengkap</Text>
-                <Text className="font-sans text-[10px] text-ink-500">Combo hemat untuk area besar / berkala</Text>
+          <View className="mt-5">
+            <View className="mb-2 flex-row items-end justify-between px-4">
+              <View className="flex-1">
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="font-extrabold text-base text-ink-900">Paket Lengkap</Text>
+                  <View className="rounded bg-gradient-to-r from-orange-500 to-pink-500 px-1.5 py-0.5" style={{ backgroundColor: '#F97316' }}>
+                    <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Hemat</Text>
+                  </View>
+                </View>
+                <Text className="font-sans mt-0.5 text-[11px] text-ink-500">Combo all-in untuk rumah, kantor & berkala</Text>
               </View>
-              <View className="rounded-full bg-amber-100 px-2 py-0.5">
-                <Text className="font-bold text-[9px] uppercase tracking-wider text-amber-800">Combo</Text>
-              </View>
+              <Pressable onPress={() => router.push('/(tabs)/explore')}>
+                <Text className="font-semibold text-[12px] text-brand-600">Lihat semua ›</Text>
+              </Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2 pr-4">
-                {BUNDLE_SERVICES.map((s) => (
+              <View className="flex-row gap-3 px-4 pb-2">
+                {BUNDLE_SERVICES.map((s, idx) => (
                   <Pressable
                     key={s.code}
                     onPress={() => router.push(`/services/${s.code}`)}
-                    style={{ width: 160 }}
-                    className="overflow-hidden rounded-2xl"
+                    style={{
+                      width: 220,
+                      elevation: 4,
+                      shadowColor: '#0F172A',
+                      shadowOpacity: 0.12,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 4 },
+                    }}
+                    className="overflow-hidden rounded-2xl bg-white"
                   >
-                    <LinearGradient
-                      colors={['#1E40AF', '#7C3AED']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ padding: 12, minHeight: 110 }}
-                    >
-                      <View className="h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-                        <s.icon color="white" size={18} strokeWidth={2.2} />
+                    <View className="relative h-28 w-full bg-ink-100">
+                      <Image source={s.imageUrl} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                      <LinearGradient
+                        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={{ position: 'absolute', inset: 0 }}
+                      />
+                      <View className="absolute left-2 top-2 flex-row gap-1">
+                        <View className="rounded bg-orange-500 px-1.5 py-0.5">
+                          <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Combo</Text>
+                        </View>
+                        {idx === 0 && (
+                          <View className="rounded bg-white/95 px-1.5 py-0.5">
+                            <Text className="font-extrabold text-[9px] uppercase tracking-wider text-ink-900">Best Seller</Text>
+                          </View>
+                        )}
                       </View>
-                      <Text className="font-bold mt-2 text-[13px] text-white" numberOfLines={1}>{s.name}</Text>
-                      <Text className="font-sans mt-0.5 text-[10px] text-white/80" numberOfLines={2}>{s.description}</Text>
-                      {s.startingPrice > 0 && (
-                        <Text className="font-bold mt-1.5 text-[11px] text-white">Mulai {formatRupiah(s.startingPrice)}</Text>
-                      )}
-                    </LinearGradient>
+                      <View className="absolute bottom-2 left-2 right-2">
+                        <Text className="font-extrabold text-[14px] leading-tight text-white" numberOfLines={1}>{s.name}</Text>
+                      </View>
+                    </View>
+                    <View className="p-2.5">
+                      <Text className="font-sans text-[11px] text-ink-600" numberOfLines={2}>{s.description}</Text>
+                      <View className="mt-1.5 flex-row items-end justify-between">
+                        <View>
+                          <Text className="font-sans text-[9px] uppercase tracking-wider text-ink-400">Mulai dari</Text>
+                          <Text className="font-extrabold text-[14px] text-brand-600">
+                            {s.startingPrice > 0 ? formatRupiah(s.startingPrice) : 'WA Survey'}
+                          </Text>
+                        </View>
+                        <View className="rounded-full bg-brand-50 px-2 py-1">
+                          <Text className="font-bold text-[10px] text-brand-700">Pesan ›</Text>
+                        </View>
+                      </View>
+                    </View>
                   </Pressable>
                 ))}
               </View>
