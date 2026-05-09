@@ -835,8 +835,30 @@ function NewBooking() {
           )}
         </ScrollView>
 
-        <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
+        <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white" style={{ elevation: 8 }}>
           <SafeAreaView edges={['bottom']}>
+            {pkg && (
+              <View className="border-b border-ink-100 px-4 pt-3">
+                <View className="flex-row items-end justify-between">
+                  <View className="flex-1">
+                    <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
+                      {step === TOTAL_STEPS ? 'Total' : 'Estimasi Total'}
+                    </Text>
+                    <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(total)}</Text>
+                    <Text className="font-sans text-[10px] text-ink-500" numberOfLines={1}>
+                      {pkg.name}
+                      {cleanMode === 'deep' ? ' · Deep' : ''}
+                      {dirtMultiplier > 1 ? ` · Kotor L${dirtLevel}` : ''}
+                      {sizeSurcharge > 0 ? ` · ${areaM2}m²` : ''}
+                      {selectedAddons.size > 0 ? ` · +${selectedAddons.size} addon` : ''}
+                    </Text>
+                  </View>
+                  {step !== TOTAL_STEPS && (
+                    <Text className="font-medium text-[10px] text-ink-400">Bisa berubah saat tambah pilihan</Text>
+                  )}
+                </View>
+              </View>
+            )}
             <View className="flex-row gap-2 p-4">
               <Pressable
                 onPress={back}
@@ -849,7 +871,7 @@ function NewBooking() {
               </Pressable>
               <Pressable onPress={next} className="h-12 flex-1 items-center justify-center rounded-2xl bg-brand-600">
                 <Text className="font-bold text-sm text-white" numberOfLines={1}>
-                  {step === TOTAL_STEPS ? `Buat Pesanan Â· ${formatRupiah(total)}` : 'Lanjut'}
+                  {step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
                 </Text>
               </Pressable>
             </View>
