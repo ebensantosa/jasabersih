@@ -108,21 +108,6 @@ export default function Home() {
         style={{ marginTop: -52 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Quick mode picker */}
-        <View
-          className="mx-4 flex-row gap-2 rounded-2xl bg-white p-2.5"
-          style={{ elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8 }}
-        >
-          <ModeBtn icon={Wallet} label={t('home.mode_packages')} sub={t('home.mode_packages_sub')} onPress={() => router.push('/(tabs)/explore')} />
-          <Divider />
-          <ModeBtn
-            renderIcon={() => <WaIcon size={18} />}
-            label={t('home.mode_wa')}
-            sub={t('home.mode_wa_sub')}
-            onPress={() => router.push('/booking/wa-survey')}
-          />
-        </View>
-
         {/* Service grid 4 col */}
         <View className="mx-4 mt-3 rounded-2xl bg-white px-2 py-3">
           <View className="flex-row flex-wrap">
