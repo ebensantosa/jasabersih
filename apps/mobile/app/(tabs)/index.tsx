@@ -35,7 +35,12 @@ export default function Home() {
   const setDefault = useAddressesStore((s) => s.setDefault);
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
-  const SERVICE_CATEGORIES = useServices();
+  const ALL_SERVICES = useServices();
+  // Hide mode-toggles (general/deep cleaning) — they are picker options inside booking, not destinations
+  const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
+  const BUNDLE_CODES = new Set(['full_house', 'kos', 'kantor', 'pasca_renovasi', 'subscription', 'bundle']);
+  const SERVICE_CATEGORIES = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !BUNDLE_CODES.has(s.code));
+  const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => BUNDLE_CODES.has(s.code));
   const t = useT();
 
   return (
@@ -139,6 +144,48 @@ export default function Home() {
             ))}
           </View>
         </View>
+
+        {BUNDLE_SERVICES.length > 0 && (
+          <View className="mx-4 mt-4">
+            <View className="mb-2 flex-row items-center justify-between">
+              <View>
+                <Text className="font-bold text-sm text-ink-900">Paket Lengkap</Text>
+                <Text className="font-sans text-[10px] text-ink-500">Combo hemat untuk area besar / berkala</Text>
+              </View>
+              <View className="rounded-full bg-amber-100 px-2 py-0.5">
+                <Text className="font-bold text-[9px] uppercase tracking-wider text-amber-800">Combo</Text>
+              </View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-2 pr-4">
+                {BUNDLE_SERVICES.map((s) => (
+                  <Pressable
+                    key={s.code}
+                    onPress={() => router.push(`/services/${s.code}`)}
+                    style={{ width: 160 }}
+                    className="overflow-hidden rounded-2xl"
+                  >
+                    <LinearGradient
+                      colors={['#1E40AF', '#7C3AED']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ padding: 12, minHeight: 110 }}
+                    >
+                      <View className="h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+                        <s.icon color="white" size={18} strokeWidth={2.2} />
+                      </View>
+                      <Text className="font-bold mt-2 text-[13px] text-white" numberOfLines={1}>{s.name}</Text>
+                      <Text className="font-sans mt-0.5 text-[10px] text-white/80" numberOfLines={2}>{s.description}</Text>
+                      {s.startingPrice > 0 && (
+                        <Text className="font-bold mt-1.5 text-[11px] text-white">Mulai {formatRupiah(s.startingPrice)}</Text>
+                      )}
+                    </LinearGradient>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         <View className="mt-4">
           <BannerCarousel />
