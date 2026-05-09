@@ -37,7 +37,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException({ code: 'ACCOUNT_DELETED', message: 'Akun sudah dihapus.' });
     }
     if (u.status === 'banned') {
-      throw new UnauthorizedException({ code: 'ACCOUNT_BANNED', message: u.suspend_reason || 'Akun kamu telah di-banned. Hubungi support.' });
+      throw new UnauthorizedException({
+        code: 'ACCOUNT_BANNED',
+        message: u.suspend_reason || 'Akun kamu telah di-banned. Hubungi support.',
+        details: { reason: u.suspend_reason },
+      });
     }
     if (u.status === 'suspended') {
       // Auto-unsuspend kalau suspended_until sudah lewat
@@ -47,12 +51,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
            WHERE id = ${payload.sub}::uuid
         `;
       } else {
-        const until = u.suspended_until ? new Date(u.suspended_until).toLocaleString('id-ID') : null;
         throw new UnauthorizedException({
           code: 'ACCOUNT_SUSPENDED',
-          message: u.suspend_reason
-            ? `Akun di-suspend: ${u.suspend_reason}${until ? ` (sampai ${until})` : ''}`
-            : `Akun kamu di-suspend${until ? ` sampai ${until}` : ''}. Hubungi support.`,
+          message: u.suspend_reason || 'Akun kamu di-suspend. Hubungi support.',
+          details: {
+            reason: u.suspend_reason,
+            suspendedUntil: u.suspended_until ? new Date(u.suspended_until).toISOString() : null,
+          },
         });
       }
     }

@@ -168,6 +168,7 @@ export default function RootLayout() {
         <Stack.Screen name="cleaner/profile" />
         <Stack.Screen name="cleaner/public/[id]" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="suspended" options={{ gestureEnabled: false }} />
         <Stack.Screen name="payment/[bookingId]" />
         <Stack.Screen name="addresses/edit" />
       </Stack>

@@ -23,11 +23,16 @@ api.interceptors.response.use(
     const errorCode = error.response?.data?.error?.code;
     const errorMsg = error.response?.data?.error?.message;
 
-    // Account-level rejection (suspended/banned/deleted) — don't try refresh, force logout + show message
+    // Account-level rejection (suspended/banned/deleted) — redirect ke /suspended page
     if (error.response?.status === 401 && (errorCode === 'ACCOUNT_SUSPENDED' || errorCode === 'ACCOUNT_BANNED' || errorCode === 'ACCOUNT_DELETED')) {
-      const { toast } = await import('../stores/ui');
-      toast.error(errorMsg || 'Akun kamu tidak dapat diakses');
-      useAuthStore.getState().logout();
+      const kind = errorCode === 'ACCOUNT_BANNED' ? 'banned' : errorCode === 'ACCOUNT_DELETED' ? 'deleted' : 'suspended';
+      const details = error.response?.data?.error?.details ?? {};
+      const reason = details.reason ?? errorMsg ?? null;
+      const until = details.suspendedUntil ?? null;
+      try {
+        const { router } = await import('expo-router');
+        router.replace({ pathname: '/suspended', params: { kind, ...(reason ? { reason } : {}), ...(until ? { until } : {}) } });
+      } catch { /* router not ready (e.g. boot) — fall back to logout */ }
       return Promise.reject(error);
     }
 
