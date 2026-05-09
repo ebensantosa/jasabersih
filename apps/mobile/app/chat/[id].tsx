@@ -1,5 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Phone, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
+import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -33,7 +34,7 @@ import { toast } from '../../src/stores/ui';
 
 const QUICK_REPLIES = ['Sudah sampai?', 'Pakai pintu samping', 'Terima kasih', 'Tolong hati-hati'];
 
-export default function Chat() {
+function Chat() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
@@ -222,3 +223,5 @@ function Bubble({ isMe, text, time }: { isMe: boolean; text: string; time: numbe
     </View>
   );
 }
+
+export default withAuth(Chat);

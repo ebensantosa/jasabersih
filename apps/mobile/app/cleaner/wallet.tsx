@@ -15,8 +15,9 @@ import { formatRupiah } from '../../src/data/catalog';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { useCleanerWalletStore, MIN_WITHDRAW, type WalletEntry } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
+import { withAuth } from '../../src/components/AuthGate';
 
-export default function CleanerWallet() {
+function CleanerWallet() {
   const router = useRouter();
   const entries = useCleanerWalletStore((s) => s.entries);
   const balance = useCleanerWalletStore((s) => s.balance());
@@ -55,7 +56,7 @@ export default function CleanerWallet() {
               <Text className="font-bold mt-1 text-3xl text-white">{formatRupiah(balance)}</Text>
               {pending > 0 && (
                 <Text className="font-medium mt-1 text-[11px] text-amber-200">
-                  ⏳ {formatRupiah(pending)} dalam proses penarikan
+                  â³ {formatRupiah(pending)} dalam proses penarikan
                 </Text>
               )}
             </View>
@@ -77,7 +78,7 @@ export default function CleanerWallet() {
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-white">Tarik Saldo</Text>
                   <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Min {formatRupiah(MIN_WITHDRAW)} · ke bank / e-wallet
+                    Min {formatRupiah(MIN_WITHDRAW)} Â· ke bank / e-wallet
                   </Text>
                 </View>
               </View>
@@ -113,11 +114,11 @@ export default function CleanerWallet() {
           {/* Info komisi */}
           <View className="mt-3 rounded-2xl bg-white p-3">
             <Text className="font-bold text-xs text-ink-900">
-              💡 Skema Komisi (Mode: {bringsTools ? 'Bawa Alat' : 'Tanpa Alat'})
+              ðŸ’¡ Skema Komisi (Mode: {bringsTools ? 'Bawa Alat' : 'Tanpa Alat'})
             </Text>
             <View className="mt-2 gap-1">
               <Row label="Order < Rp 300.000" value={bringsTools ? '60%' : '40%'} />
-              <Row label="Order Rp 300.000 – 600.000" value={bringsTools ? '55%' : '40%'} />
+              <Row label="Order Rp 300.000 â€“ 600.000" value={bringsTools ? '55%' : '40%'} />
               <Row label="Order > Rp 600.000" value={bringsTools ? '50%' : '40%'} />
             </View>
             <Text className="font-sans mt-2 text-[10px] text-ink-500">
@@ -207,7 +208,7 @@ function EntryRow({ entry, last }: { entry: WalletEntry; last: boolean }) {
           <Text className="font-sans text-[10px] text-ink-400">{date}</Text>
           {statusLabel && (
             <Text className="font-bold text-[10px]" style={{ color: iconColor }}>
-              · {statusLabel}
+              Â· {statusLabel}
             </Text>
           )}
         </View>
@@ -221,3 +222,6 @@ function EntryRow({ entry, last }: { entry: WalletEntry; last: boolean }) {
     </View>
   );
 }
+
+
+export default withAuth(CleanerWallet, 'freelancer');

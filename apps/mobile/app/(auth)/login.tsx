@@ -21,6 +21,7 @@ export default function Login() {
   const setMode = useModeStore((s) => s.setMode);
   const setCleanerName = useCleanerStore((s) => s.setName);
 
+  const [loginAs, setLoginAs] = useState<'customer' | 'freelancer'>('customer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -43,6 +44,14 @@ export default function Login() {
     setLoading(true);
     try {
       const result = await login(email, password);
+      // Validate role matches selected toggle
+      if (result.user.mode !== loginAs) {
+        const want = loginAs === 'customer' ? 'Customer' : 'Cleaner';
+        const actual = result.user.mode === 'customer' ? 'Customer' : 'Cleaner';
+        toast.error(`Akun ini terdaftar sebagai ${actual}, bukan ${want}. Pilih tab yang sesuai.`);
+        setLoading(false);
+        return;
+      }
       setTokens(result.tokens);
       setMode(result.user.mode);
       if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
@@ -76,6 +85,32 @@ export default function Login() {
 
       <ScrollView className="flex-1 -mt-6" contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="mx-4 rounded-2xl bg-white p-5 shadow-sm" style={{ elevation: 6 }}>
+          <View className="mb-4 flex-row rounded-xl bg-ink-100 p-1">
+            {([
+              { key: 'customer', label: 'Customer', desc: 'Pesan layanan bersih' },
+              { key: 'freelancer', label: 'Cleaner', desc: 'Mitra cleaner' },
+            ] as const).map((r) => {
+              const active = loginAs === r.key;
+              return (
+                <Pressable
+                  key={r.key}
+                  onPress={() => setLoginAs(r.key)}
+                  className={`flex-1 items-center rounded-lg py-2 ${active ? 'bg-white shadow-sm' : ''}`}
+                  style={active ? { elevation: 2 } : undefined}
+                >
+                  <Text className={`font-bold text-[13px] ${active ? 'text-brand-700' : 'text-ink-500'}`}>{r.label}</Text>
+                  <Text className={`font-sans text-[10px] ${active ? 'text-ink-600' : 'text-ink-400'}`}>{r.desc}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View className="mb-3 rounded-lg bg-blue-50 p-2.5">
+            <Text className="font-sans text-[11px] text-blue-900">
+              {loginAs === 'customer'
+                ? 'Login sebagai Customer untuk pesan layanan, lihat history, & kelola alamat.'
+                : 'Login sebagai Cleaner untuk terima job, kelola jadwal, & dompet payout.'}
+            </Text>
+          </View>
           <View className="gap-4">
             <Field label="Email" required error={touched.email ? errors.email : null}>
               <Mail color="#94A3B8" size={18} />

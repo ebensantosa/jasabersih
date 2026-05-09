@@ -6,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SERVICE_CITIES } from '../../src/data/catalog';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { toast } from '../../src/stores/ui';
+import { withAuth } from '../../src/components/AuthGate';
 
-export default function CleanerAreas() {
+function CleanerAreas() {
   const router = useRouter();
   const areas = useCleanerStore((s) => s.serviceAreas);
   const toggle = useCleanerStore((s) => s.toggleArea);
@@ -47,7 +48,7 @@ export default function CleanerAreas() {
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
           <View className="rounded-2xl bg-brand-50 p-3">
-            <Text className="font-semibold text-xs text-brand-900">💡 Tips</Text>
+            <Text className="font-semibold text-xs text-brand-900">ðŸ’¡ Tips</Text>
             <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
               Pilih kota yang kamu sanggup datangi. Kamu hanya akan menerima job dari area ini.
               Bisa update kapan saja.
@@ -110,3 +111,6 @@ export default function CleanerAreas() {
     </>
   );
 }
+
+
+export default withAuth(CleanerAreas, 'freelancer');

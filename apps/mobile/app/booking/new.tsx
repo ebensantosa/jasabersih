@@ -29,6 +29,7 @@ import { useServices } from '../../src/hooks/useServices';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
+import { withAuth } from '../../src/components/AuthGate';
 
 const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00', '17:00'];
 const DATE_OPTIONS = (() => {
@@ -49,7 +50,7 @@ const DATE_OPTIONS = (() => {
 const STEP_LABELS = ['Properti', 'Kondisi', 'Jadwal'];
 const TOTAL_STEPS = 3;
 
-export default function NewBooking() {
+function NewBooking() {
   const router = useRouter();
   const { category: categoryCode, package: packageId } = useLocalSearchParams<{
     category: string;
@@ -180,7 +181,7 @@ export default function NewBooking() {
       const data = res.data?.data ?? res.data;
       setVoucher({ code: data.code, discount: data.discount, voucherId: data.voucherId });
       setVoucherInput('');
-      toast.success(`Voucher ${data.code} dipakai — hemat ${formatRupiah(data.discount)}!`);
+      toast.success(`Voucher ${data.code} dipakai â€” hemat ${formatRupiah(data.discount)}!`);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Voucher tidak valid');
     } finally {
@@ -227,7 +228,7 @@ export default function NewBooking() {
     setAddressError(null);
     if (dirtLevel >= 4 && photoCount < 3) {
       Alert.alert(
-        'Foto wajib di skala 4–5',
+        'Foto wajib di skala 4â€“5',
         'Min 3 foto. Tanpa foto, harga +25% sebagai ketidakpastian premium. Lanjut?',
         [
           { text: 'Batal', style: 'cancel' },
@@ -281,7 +282,7 @@ export default function NewBooking() {
       },
       initialStatus: 'pending_payment',
     });
-    toast.success('Pesanan dibuat — silakan bayar untuk mulai cari cleaner');
+    toast.success('Pesanan dibuat â€” silakan bayar untuk mulai cari cleaner');
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
 
@@ -299,7 +300,7 @@ export default function NewBooking() {
             <View className="ml-1 flex-1">
               <Text className="font-bold text-base text-ink-900">{category.name}</Text>
               <Text className="font-medium text-[11px] text-ink-500">
-                Langkah {step} dari {TOTAL_STEPS} · {STEP_LABELS[step - 1]}
+                Langkah {step} dari {TOTAL_STEPS} Â· {STEP_LABELS[step - 1]}
               </Text>
             </View>
           </View>
@@ -317,7 +318,7 @@ export default function NewBooking() {
                 <View className="flex-row gap-2">
                   {([
                     { key: 'general', label: 'General Cleaning', desc: 'Pembersihan rutin (kotor ringan-sedang)' },
-                    { key: 'deep', label: 'Deep Cleaning', desc: `Menyeluruh: kerak, jamur, nat (×${deepMultiplier})` },
+                    { key: 'deep', label: 'Deep Cleaning', desc: `Menyeluruh: kerak, jamur, nat (Ã—${deepMultiplier})` },
                   ] as const).map((m) => {
                     const active = cleanMode === m.key;
                     return (
@@ -356,7 +357,7 @@ export default function NewBooking() {
                               {modeMultiplier !== 1 && (
                                 <Text className="font-sans text-[10px] text-ink-400 line-through">{formatRupiah(p.price)}</Text>
                               )}
-                              <Text className="font-sans text-[10px] text-ink-500">±{p.durationMin} menit</Text>
+                              <Text className="font-sans text-[10px] text-ink-500">Â±{p.durationMin} menit</Text>
                             </View>
                           </View>
                           {includes.length > 0 && (
@@ -364,18 +365,18 @@ export default function NewBooking() {
                               <Text className="font-semibold mb-1 text-[10px] uppercase tracking-wider text-ink-500">Termasuk:</Text>
                               {includes.slice(0, active ? 99 : 3).map((it, i) => (
                                 <View key={i} className="flex-row gap-1.5 py-0.5">
-                                  <Text className="font-sans text-[11px] text-success">✓</Text>
+                                  <Text className="font-sans text-[11px] text-success">âœ“</Text>
                                   <Text className="font-sans flex-1 text-[11px] text-ink-700">{it}</Text>
                                 </View>
                               ))}
                               {!active && includes.length > 3 && (
-                                <Text className="font-medium mt-1 text-[10px] text-brand-600">+{includes.length - 3} item lain · tap untuk lihat semua</Text>
+                                <Text className="font-medium mt-1 text-[10px] text-brand-600">+{includes.length - 3} item lain Â· tap untuk lihat semua</Text>
                               )}
                             </View>
                           )}
                           {note && (
                             <View className="mt-2 rounded bg-amber-50 px-2 py-1">
-                              <Text className="font-sans text-[10px] text-amber-800">ⓘ {note}</Text>
+                              <Text className="font-sans text-[10px] text-amber-800">â“˜ {note}</Text>
                             </View>
                           )}
                           {p.scope && includes.length === 0 && (
@@ -437,13 +438,13 @@ export default function NewBooking() {
               </Section>
 
               <Section title="Luas Area">
-                <Label>Total Luas: {areaM2} m²</Label>
+                <Label>Total Luas: {areaM2} mÂ²</Label>
                 <View className="flex-row items-center gap-2">
                   <Pressable
                     onPress={() => setAreaM2(Math.max(10, areaM2 - 10))}
                     className="h-9 w-9 items-center justify-center rounded-full border border-ink-300"
                   >
-                    <Text className="font-bold text-brand-600">−</Text>
+                    <Text className="font-bold text-brand-600">âˆ’</Text>
                   </Pressable>
                   <View className="h-2 flex-1 rounded-full bg-ink-200">
                     <View
@@ -726,7 +727,7 @@ export default function NewBooking() {
                         className="mt-3 self-start"
                       >
                         <Text className="font-semibold text-xs text-brand-600">
-                          ← Pakai alamat tersimpan
+                          â† Pakai alamat tersimpan
                         </Text>
                       </Pressable>
                     )}
@@ -782,7 +783,7 @@ export default function NewBooking() {
                         disabled={voucherChecking || !voucherInput.trim()}
                         className={`rounded-xl px-4 py-2.5 ${voucherChecking || !voucherInput.trim() ? 'bg-brand-300' : 'bg-brand-600'}`}
                       >
-                        <Text className="font-semibold text-sm text-white">{voucherChecking ? 'Cek…' : 'Pakai'}</Text>
+                        <Text className="font-semibold text-sm text-white">{voucherChecking ? 'Cekâ€¦' : 'Pakai'}</Text>
                       </Pressable>
                     </View>
                   )}
@@ -814,7 +815,7 @@ export default function NewBooking() {
               </Pressable>
               <Pressable onPress={next} className="h-12 flex-1 items-center justify-center rounded-2xl bg-brand-600">
                 <Text className="font-bold text-sm text-white" numberOfLines={1}>
-                  {step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
+                  {step === TOTAL_STEPS ? `Buat Pesanan Â· ${formatRupiah(total)}` : 'Lanjut'}
                 </Text>
               </Pressable>
             </View>
@@ -904,3 +905,6 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
     </View>
   );
 }
+
+
+export default withAuth(NewBooking, 'customer');

@@ -8,6 +8,7 @@ import { Field, validateMinLength } from '../../src/components/Field';
 import { formatRupiah } from '../../src/data/catalog';
 import { MIN_WITHDRAW, useCleanerWalletStore } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
+import { withAuth } from '../../src/components/AuthGate';
 
 const METHODS = [
   { code: 'bca', label: 'BCA', kind: 'bank' },
@@ -21,7 +22,7 @@ const METHODS = [
 
 const QUICK_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
 
-export default function Withdraw() {
+function Withdraw() {
   const router = useRouter();
   // Prefer server-side balance (authoritative). Fallback to local sum.
   const serverBalance = useCleanerWalletStore((s) => s.serverBalance);
@@ -241,7 +242,7 @@ export default function Withdraw() {
                 </View>
               </View>
               <Text className="font-sans mt-2 text-[10px] text-ink-500">
-                Tujuan: {method.label} · {account || '(belum diisi)'} a.n. {accountName || '...'}
+                Tujuan: {method.label} Â· {account || '(belum diisi)'} a.n. {accountName || '...'}
               </Text>
             </View>
           )}
@@ -308,3 +309,6 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
     </View>
   );
 }
+
+
+export default withAuth(Withdraw, 'freelancer');

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
 import { toast } from '../../src/stores/ui';
+import { withAuth } from '../../src/components/AuthGate';
 
 type Available = {
   id: string;
@@ -28,7 +29,7 @@ type Used = {
   bookingId: string | null;
 };
 
-export default function VouchersScreen() {
+function VouchersScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<'available' | 'used'>('available');
   const [available, setAvailable] = useState<Available[]>([]);
@@ -78,7 +79,7 @@ export default function VouchersScreen() {
             <View className="flex-1 items-center justify-center px-8">
               <Tag color="#94A3B8" size={40} />
               <Text className="font-bold mt-3 text-base text-ink-900">Belum ada voucher tersedia</Text>
-              <Text className="font-sans mt-1 text-center text-xs text-ink-500">Cek lagi nanti — promo baru muncul tiap minggu.</Text>
+              <Text className="font-sans mt-1 text-center text-xs text-ink-500">Cek lagi nanti â€” promo baru muncul tiap minggu.</Text>
             </View>
           ) : (
             <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
@@ -90,7 +91,7 @@ export default function VouchersScreen() {
                         {v.type === 'percentage' ? `${v.value}% OFF` : `Rp ${v.value.toLocaleString('id-ID')} OFF`}
                       </Text>
                       <Text className="font-sans text-[11px] text-ink-500">
-                        Min order Rp {v.minOrder.toLocaleString('id-ID')}{v.maxDiscount ? ` · max diskon Rp ${v.maxDiscount.toLocaleString('id-ID')}` : ''}
+                        Min order Rp {v.minOrder.toLocaleString('id-ID')}{v.maxDiscount ? ` Â· max diskon Rp ${v.maxDiscount.toLocaleString('id-ID')}` : ''}
                       </Text>
                     </View>
                     <Pressable onPress={() => copyCode(v.code)} className="rounded-lg bg-brand-50 px-3 py-2">
@@ -143,3 +144,6 @@ function TabBtn({ label, active, onPress }: { label: string; active: boolean; on
     </Pressable>
   );
 }
+
+
+export default withAuth(VouchersScreen, 'customer');

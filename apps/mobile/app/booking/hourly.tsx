@@ -13,6 +13,7 @@ import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
 import { useMemo } from 'react';
+import { withAuth } from '../../src/components/AuthGate';
 
 const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00', '17:00'];
 const DATE_OPTIONS = (() => {
@@ -30,7 +31,7 @@ const DATE_OPTIONS = (() => {
   return out;
 })();
 
-export default function HourlyBooking() {
+function HourlyBooking() {
   const router = useRouter();
   const { category: categoryCode } = useLocalSearchParams<{ category?: string }>();
   const tokens = useAuthStore((s) => s.tokens);
@@ -111,7 +112,7 @@ export default function HourlyBooking() {
       formSnapshot: { notes: tasks },
       initialStatus: 'pending_payment',
     });
-    toast.success('Pesanan dibuat — silakan bayar untuk mulai cari cleaner');
+    toast.success('Pesanan dibuat â€” silakan bayar untuk mulai cari cleaner');
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
 
@@ -190,8 +191,8 @@ export default function HourlyBooking() {
             <View className="mb-2 flex-row gap-2 rounded-xl bg-brand-50 p-3">
               <Info color="#1D4ED8" size={16} />
               <Text className="font-medium flex-1 text-[11px] text-brand-900">
-                Wajib: tulis prioritas/urutan task. Tanpa instruksi → cleaner pakai default order
-                (KM → dapur → kamar → tamu).
+                Wajib: tulis prioritas/urutan task. Tanpa instruksi â†’ cleaner pakai default order
+                (KM â†’ dapur â†’ kamar â†’ tamu).
               </Text>
             </View>
             <TextInput
@@ -291,14 +292,14 @@ export default function HourlyBooking() {
               <View className="flex-row items-center gap-2">
                 <Clock color="#1D4ED8" size={14} />
                 <Text className="font-sans text-sm text-ink-600">
-                  {tier.name} · {hours} jam × {formatRupiah(tier.pricePerHour)}
+                  {tier.name} Â· {hours} jam Ã— {formatRupiah(tier.pricePerHour)}
                 </Text>
               </View>
               <Text className="font-bold text-base text-brand-600">{formatRupiah(total)}</Text>
             </View>
             <Text className="font-sans mt-2 text-[11px] text-ink-500">
-              Bayar di muka. Cleaner selesai lebih cepat → tidak ada refund. Lewat 5 menit dari
-              durasi → dapat notif "Mau extend?".
+              Bayar di muka. Cleaner selesai lebih cepat â†’ tidak ada refund. Lewat 5 menit dari
+              durasi â†’ dapat notif "Mau extend?".
             </Text>
           </View>
         </ScrollView>
@@ -339,3 +340,6 @@ function Label({ children, className }: { children: React.ReactNode; className?:
     </Text>
   );
 }
+
+
+export default withAuth(HourlyBooking, 'customer');

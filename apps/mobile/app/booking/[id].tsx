@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { withAuth } from '../../src/components/AuthGate';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -51,7 +52,7 @@ const TIMELINE_WA: { status: BookingStatus; label: string }[] = [
   { status: 'completed', label: 'Selesai' },
 ];
 
-export default function BookingDetail() {
+function BookingDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
@@ -693,3 +694,5 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
     </View>
   );
 }
+
+export default withAuth(BookingDetail, 'customer');

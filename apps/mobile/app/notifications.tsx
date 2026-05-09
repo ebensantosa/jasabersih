@@ -5,8 +5,9 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNotifications, type NotificationItem } from '../src/stores/notifications';
+import { withAuth } from '../src/components/AuthGate';
 
-export default function NotificationsScreen() {
+function NotificationsScreen() {
   const router = useRouter();
   const { list, loading, fetch, markAllRead } = useNotifications();
 
@@ -85,3 +86,6 @@ function ChannelIcon({ type }: { type: string }) {
     </View>
   );
 }
+
+
+export default withAuth(NotificationsScreen);

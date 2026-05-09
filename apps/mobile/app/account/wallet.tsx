@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 
 import { AccountLayout, WalletScreen } from '../../src/screens/account';
+import { withAuth } from '../../src/components/AuthGate';
 
-export default function Page() {
+function Page() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -12,3 +13,6 @@ export default function Page() {
     </>
   );
 }
+
+
+export default withAuth(Page, 'customer');

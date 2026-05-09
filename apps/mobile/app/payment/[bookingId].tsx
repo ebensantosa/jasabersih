@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
+import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Clock, Copy, ExternalLink, Loader2, ChevronRight } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -32,7 +33,7 @@ type PaymentResult = {
   instructions?: { title: string; steps: string[] }[];
 };
 
-export default function PaymentScreen() {
+function PaymentScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === bookingId));
@@ -265,3 +266,5 @@ function PaidView({ onContinue }: { onContinue: () => void }) {
     </View>
   );
 }
+
+export default withAuth(PaymentScreen, 'customer');

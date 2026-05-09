@@ -8,10 +8,11 @@ import { LocationPicker } from '../../src/components/LocationPicker';
 import { Field, validateMinLength, validatePhone } from '../../src/components/Field';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { toast } from '../../src/stores/ui';
+import { withAuth } from '../../src/components/AuthGate';
 
 const LABEL_PRESETS = ['Rumah', 'Kantor', 'Kos', 'Apartemen', 'Lainnya'];
 
-export default function EditAddress() {
+function EditAddress() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const list = useAddressesStore((s) => s.list);
@@ -173,14 +174,14 @@ export default function EditAddress() {
                 <MapPin color="#1D4ED8" size={20} strokeWidth={2.2} />
               </View>
               <View className="flex-1">
-                <Text className="font-semibold text-xs text-brand-700">📍 Pin tersimpan</Text>
+                <Text className="font-semibold text-xs text-brand-700">ðŸ“ Pin tersimpan</Text>
                 <Text className="font-medium mt-0.5 text-sm text-ink-800" numberOfLines={2}>
                   {addressLine}
                 </Text>
                 <Text className="font-sans mt-0.5 text-[10px] text-ink-400">
                   {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
                 </Text>
-                <Text className="font-bold mt-1 text-[11px] text-brand-600">Tap untuk ubah →</Text>
+                <Text className="font-bold mt-1 text-[11px] text-brand-600">Tap untuk ubah â†’</Text>
               </View>
             </Pressable>
           ) : (
@@ -205,7 +206,7 @@ export default function EditAddress() {
             <Text className="font-medium mt-1 text-[11px] text-danger">{errors.addressLine}</Text>
           )}
 
-          {/* Detail tambahan — wajib */}
+          {/* Detail tambahan â€” wajib */}
           <View className="mb-2 mt-4 flex-row items-center gap-1">
             <Text className="font-semibold text-[11px] uppercase tracking-wider text-ink-500">
               Detail Alamat
@@ -231,7 +232,7 @@ export default function EditAddress() {
             <Text className="font-medium mt-1 text-[11px] text-danger">{errors.detailNote}</Text>
           ) : (
             <Text className="font-sans mt-1 text-[10px] text-ink-500">
-              Cleaner butuh detail spesifik, bukan cuma GPS — biar tidak kesasar.
+              Cleaner butuh detail spesifik, bukan cuma GPS â€” biar tidak kesasar.
             </Text>
           )}
 
@@ -282,3 +283,6 @@ export default function EditAddress() {
     </>
   );
 }
+
+
+export default withAuth(EditAddress, 'customer');
