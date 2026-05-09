@@ -90,7 +90,12 @@ export default function RootLayout() {
       setTimeout(() => {
         if (!useAuthStore.getState().tokens) return;
         void fetchUser().then((profile) => {
-          if (!profile) return; // token invalid — interceptor already cleared it
+          if (!profile) {
+            // /auth/me failed — token bogus (orphan from old fake-register flow).
+            // Force logout so user gets a clean state instead of seeing "Pengguna" forever.
+            useAuthStore.getState().logout();
+            return;
+          }
           void syncBookings();
           void syncAddresses();
           void syncWallet();
