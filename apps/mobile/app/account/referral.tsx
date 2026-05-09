@@ -1,8 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Copy, Gift, Share2, Users } from 'lucide-react-native';
+import { ArrowLeft, Copy, Facebook, Gift, Mail, MessageCircle, Send, Share2, Twitter, Users, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -55,11 +55,63 @@ function ReferralScreen() {
     toast.success('Kode disalin');
   }
 
+  const [shareOpen, setShareOpen] = useState(false);
+
   async function shareCode() {
     if (!me) return;
-    try {
-      await Share.share({ message: me.shareText + '\n\n' + me.shareUrl, title: 'Kode Referral JasaBersih' });
-    } catch {}
+    const message = me.shareText + '\n\n' + me.shareUrl;
+
+    if (Platform.OS !== 'web') {
+      // Native: pakai OS share sheet (Android/iOS punya semua app terinstall)
+      try { await Share.share({ message, title: 'Kode Referral JasaBersih' }); } catch {}
+      return;
+    }
+
+    // Web: coba navigator.share dulu (mobile browser punya), fallback ke modal custom
+    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
+    if (nav?.share) {
+      try {
+        await nav.share({ title: 'Kode Referral JasaBersih', text: me.shareText, url: me.shareUrl });
+        return;
+      } catch { /* user cancelled or denied — fall through to modal */ }
+    }
+    setShareOpen(true);
+  }
+
+  async function shareTo(platform: 'whatsapp' | 'telegram' | 'facebook' | 'twitter' | 'email' | 'copy') {
+    if (!me) return;
+    const text = me.shareText;
+    const url = me.shareUrl;
+    const combined = `${text}\n\n${url}`;
+    let target = '';
+    switch (platform) {
+      case 'whatsapp':
+        target = `https://wa.me/?text=${encodeURIComponent(combined)}`;
+        break;
+      case 'telegram':
+        target = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+        break;
+      case 'facebook':
+        target = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
+        break;
+      case 'twitter':
+        target = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+        break;
+      case 'email':
+        target = `mailto:?subject=${encodeURIComponent('Kode Referral JasaBersih')}&body=${encodeURIComponent(combined)}`;
+        break;
+      case 'copy':
+        await Clipboard.setStringAsync(combined);
+        toast.success('Pesan + link disalin');
+        setShareOpen(false);
+        return;
+    }
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(target, '_blank', 'noopener,noreferrer');
+    } else {
+      void Linking.openURL(target).catch(() => toast.error('Tidak bisa buka aplikasi'));
+    }
+    setShareOpen(false);
   }
 
   return (
@@ -161,6 +213,55 @@ function ReferralScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+
+      <Modal visible={shareOpen} transparent animationType="fade" onRequestClose={() => setShareOpen(false)}>
+        <Pressable
+          onPress={() => setShareOpen(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}
+        >
+          <Pressable onPress={() => {}} className="w-full max-w-sm rounded-2xl bg-white p-5" style={{ elevation: 8 }}>
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="font-extrabold text-base text-ink-900">Bagikan ke</Text>
+              <Pressable onPress={() => setShareOpen(false)} hitSlop={8}>
+                <X color="#94A3B8" size={20} />
+              </Pressable>
+            </View>
+            <Text className="font-sans mb-4 text-[12px] text-ink-500">
+              Pilih platform untuk share kode referral kamu
+            </Text>
+
+            <View className="flex-row flex-wrap gap-3">
+              {[
+                { key: 'whatsapp' as const, label: 'WhatsApp', Icon: MessageCircle, bg: '#22C55E' },
+                { key: 'telegram' as const, label: 'Telegram', Icon: Send, bg: '#0EA5E9' },
+                { key: 'twitter' as const, label: 'X / Twitter', Icon: Twitter, bg: '#0F172A' },
+                { key: 'facebook' as const, label: 'Facebook', Icon: Facebook, bg: '#2563EB' },
+                { key: 'email' as const, label: 'Email', Icon: Mail, bg: '#6366F1' },
+                { key: 'copy' as const, label: 'Salin Link', Icon: Copy, bg: '#475569' },
+              ].map(({ key, label, Icon, bg }) => (
+                <Pressable
+                  key={key}
+                  onPress={() => shareTo(key)}
+                  className="items-center"
+                  style={{ width: '30%' }}
+                >
+                  <View
+                    className="h-14 w-14 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: bg }}
+                  >
+                    <Icon color="white" size={24} strokeWidth={2.2} />
+                  </View>
+                  <Text className="font-medium mt-1.5 text-center text-[10px] text-ink-700" numberOfLines={1}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text className="font-sans mt-4 text-center text-[10px] text-ink-400">
+              Atau klik <Text className="font-bold">Salin Link</Text> untuk paste dimanapun (Discord, IG DM, dll)
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
