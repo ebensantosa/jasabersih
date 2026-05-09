@@ -4,9 +4,12 @@ import type { Request, Response } from 'express';
 
 import { PrismaService } from '../../common/prisma.service';
 
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.jasabersih.app';
-const APP_STORE_URL = 'https://apps.apple.com/id/app/jasabersih/id000000000';
-const APP_DEEP_LINK_SCHEME = 'jasabersih://referral';
+const DEFAULT_PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.jasabersih.app';
+const DEFAULT_APP_STORE = 'https://apps.apple.com/id/app/jasabersih/id000000000';
+const DEFAULT_DEEP_LINK = 'jasabersih://referral';
+
+type AppLinks = { playStoreUrl: string; appStoreUrl: string; deepLinkScheme: string };
+let cachedLinks: { value: AppLinks; expiresAt: number } | null = null;
 
 /**
  * Public smart-redirect untuk link referral (https://api.jasabersih.com/r/:code).
@@ -17,6 +20,22 @@ const APP_DEEP_LINK_SCHEME = 'jasabersih://referral';
 @Controller('r')
 export class ReferralRedirectController {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async getAppLinks(): Promise<AppLinks> {
+    if (cachedLinks && cachedLinks.expiresAt > Date.now()) return cachedLinks.value;
+    const rows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
+      SELECT key, value FROM app_config
+       WHERE key IN ('app.play_store_url', 'app.app_store_url', 'app.deep_link_scheme')
+    `;
+    const map = new Map(rows.map((r) => [r.key, typeof r.value === 'string' ? r.value : r.value]));
+    const value: AppLinks = {
+      playStoreUrl: String(map.get('app.play_store_url') || DEFAULT_PLAY_STORE),
+      appStoreUrl: String(map.get('app.app_store_url') || DEFAULT_APP_STORE),
+      deepLinkScheme: String(map.get('app.deep_link_scheme') || DEFAULT_DEEP_LINK),
+    };
+    cachedLinks = { value, expiresAt: Date.now() + 60_000 };
+    return value;
+  }
 
   @Get(':code')
   @Header('Cache-Control', 'public, max-age=300')
@@ -38,19 +57,24 @@ export class ReferralRedirectController {
       isValid = Number(rows[0]?.c ?? 0) > 0;
     }
 
+    const links = await this.getAppLinks();
     const ua = (req.headers['user-agent'] || '').toLowerCase();
     const isAndroid = /android/.test(ua);
     const isIOS = /iphone|ipad|ipod/.test(ua);
-    const storeUrl = isIOS ? APP_STORE_URL : PLAY_STORE_URL;
+    const storeUrl = isIOS ? links.appStoreUrl : links.playStoreUrl;
 
-    const html = renderLandingHtml({ code: safeCode, isValid, isAndroid, isIOS, storeUrl });
+    const html = renderLandingHtml({ code: safeCode, isValid, isAndroid, isIOS, storeUrl, links });
     res.send(html);
+  }
+
+  static invalidateCache(): void {
+    cachedLinks = null;
   }
 }
 
-function renderLandingHtml(opts: { code: string; isValid: boolean; isAndroid: boolean; isIOS: boolean; storeUrl: string }): string {
-  const { code, isValid, isAndroid, isIOS, storeUrl } = opts;
-  const deepLink = `${APP_DEEP_LINK_SCHEME}/${code}`;
+function renderLandingHtml(opts: { code: string; isValid: boolean; isAndroid: boolean; isIOS: boolean; storeUrl: string; links: AppLinks }): string {
+  const { code, isValid, isAndroid, isIOS, storeUrl, links } = opts;
+  const deepLink = `${links.deepLinkScheme}/${code}`;
   const isMobile = isAndroid || isIOS;
 
   return `<!doctype html>
@@ -116,8 +140,8 @@ function renderLandingHtml(opts: { code: string; isValid: boolean; isAndroid: bo
         <li>⭐ Cleaner tervalidasi via KYC</li>
       </ul>
       <div class="stores">
-        <a href="${PLAY_STORE_URL}"><strong style="color:#1D4ED8">▶ Google Play</strong></a>
-        <a href="${APP_STORE_URL}"><strong style="color:#1D4ED8">🍎 App Store</strong></a>
+        <a href="${links.playStoreUrl}"><strong style="color:#1D4ED8">▶ Google Play</strong></a>
+        <a href="${links.appStoreUrl}"><strong style="color:#1D4ED8">🍎 App Store</strong></a>
       </div>
       <p style="font-size:12px;color:#94A3B8;margin-top:12px;text-align:center">Buka link ini di HP kamu untuk download otomatis.</p>
     `}

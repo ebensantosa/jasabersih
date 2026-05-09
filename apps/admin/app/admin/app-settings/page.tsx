@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Settings as SettingsIcon } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'contact'] as const;
+const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'contact', 'app', 'email'] as const;
 
 const HINT: Record<string, string> = {
   'brand.app_name': 'Nama app — muncul di header & splash.',
@@ -25,6 +25,9 @@ const HINT: Record<string, string> = {
   'feature.max_addresses': 'Max alamat tersimpan per user.',
   'hero.subtitle': 'Subtitle di home hero.',
   'hero.cta_label': 'CTA button label di hero.',
+  'app.play_store_url': 'URL Google Play Store (https://play.google.com/store/apps/details?id=...). Dipakai di referral landing & banner download.',
+  'app.app_store_url': 'URL Apple App Store (https://apps.apple.com/...). Dipakai di referral landing & banner download.',
+  'app.deep_link_scheme': 'Deep link scheme untuk auto-open app dari share link. Contoh: jasabersih://referral (jangan ganti kecuali tahu yang dilakukan).',
 };
 
 export default function AppSettingsPage() {

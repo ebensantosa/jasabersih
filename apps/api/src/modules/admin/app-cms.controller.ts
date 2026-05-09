@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
 import { EmailService } from '../email/email.service';
+import { ReferralRedirectController } from '../referral/referral-redirect.controller';
 
 @ApiTags('admin-app-cms')
 @ApiBearerAuth()
@@ -52,6 +53,7 @@ export class AdminAppCmsController {
     await this.audit.log({ adminId: admin.id, action: 'app_config.set', resourceType: 'app_config', changes: { key, value: body.value }, ipAddress: req.ip ?? null });
     // Invalidate email config cache when email keys change
     if (key.startsWith('email.')) this.email.invalidateCache();
+    if (key.startsWith('app.')) ReferralRedirectController.invalidateCache();
     return { ok: true };
   }
 
