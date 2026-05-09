@@ -30,7 +30,6 @@ import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
-import { CleaningModeToggle } from '../../src/components/CleaningModeToggle';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
 
 const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00', '17:00'];
@@ -109,6 +108,7 @@ function NewBooking() {
   const pkg = PACKAGES.find((p) => p.id === pickedPackageId);
 
   const cleanMode = useCleaningModeStore((s) => s.mode);
+  const setCleaningMode = useCleaningModeStore((s) => s.setMode);
   const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.45 as any);
   const deepMultiplier = Number(deepMultiplierRaw) || 1.45;
 
@@ -315,8 +315,41 @@ function NewBooking() {
         >
           {step === 1 && (
             <>
-              <Section title="Tipe Pembersihan">
-                <CleaningModeToggle />
+              <Section title="Upgrade Deep Cleaning (Opsional)">
+                <Pressable
+                  onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
+                  className={`flex-row items-start gap-3 rounded-xl border p-3 ${
+                    cleanMode === 'deep' ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
+                  }`}
+                >
+                  <View
+                    className={`mt-0.5 h-5 w-5 items-center justify-center rounded border-2 ${
+                      cleanMode === 'deep' ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                    }`}
+                  >
+                    {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center justify-between">
+                      <Text className={`font-bold text-sm ${cleanMode === 'deep' ? 'text-brand-700' : 'text-ink-900'}`}>
+                        Pakai Deep Cleaning
+                      </Text>
+                      <Text className="font-bold text-[11px] text-amber-700">+45%</Text>
+                    </View>
+                    <Text className="font-sans mt-1 text-[11px] leading-4 text-ink-600">
+                      Pembersihan menyeluruh sampai ke detail: kerak kamar mandi, jamur nat, noda
+                      membandel, bekas renovasi, sela-sela furnitur. Pakai cairan khusus &amp; waktu
+                      pengerjaan lebih lama. Cocok kalau sudah lama nggak di-deep clean.
+                    </Text>
+                    {cleanMode === 'deep' && (
+                      <View className="mt-2 rounded bg-amber-50 px-2 py-1">
+                        <Text className="font-medium text-[10px] text-amber-800">
+                          ⓘ Harga paket otomatis +45% (dibulatkan ke atas per Rp 1.000)
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </Pressable>
               </Section>
 
               {categoryPackages.length > 0 && (
