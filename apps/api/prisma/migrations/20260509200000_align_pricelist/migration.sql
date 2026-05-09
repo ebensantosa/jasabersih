@@ -2,12 +2,15 @@
 -- Includes: general cleaning paket, paket khusus, subscription bulanan, deep cleaning category
 
 -- 1. Tambah service categories proper: General Cleaning, Deep Cleaning, Subscription
+-- Note: deep_cleaning bukan service terpisah, tapi modifier (×1.5) di atas general_cleaning
 INSERT INTO services (code, name, description, is_active, display_order) VALUES
-  ('general_cleaning', 'General Cleaning', 'Pembersihan rutin: sapu, pel, lap permukaan, rapikan barang. Untuk kondisi kotor ringan-sedang.', TRUE, 1),
-  ('deep_cleaning',    'Deep Cleaning',    'Pembersihan menyeluruh termasuk kerak, jamur, nat, bekas renovasi. Lebih lama + biaya lebih.', TRUE, 2),
-  ('subscription',     'Berlangganan Bulanan', 'Paket berkala 3-6x kunjungan/bulan dengan harga lebih hemat.', TRUE, 3),
-  ('konsultasi',       'Konsultasi Khusus', 'Pembersihan area/alat khusus, harga & waktu menyesuaikan via WA Survey.', TRUE, 4)
+  ('general_cleaning', 'General Cleaning', 'Pembersihan rutin: sapu, pel, lap permukaan, rapikan barang. Untuk kondisi kotor ringan-sedang. Bisa upgrade ke Deep Cleaning saat booking.', TRUE, 1),
+  ('subscription',     'Berlangganan Bulanan', 'Paket berkala 3-6x kunjungan/bulan dengan harga lebih hemat.', TRUE, 2),
+  ('konsultasi',       'Konsultasi Khusus', 'Pembersihan area/alat khusus, harga & waktu menyesuaikan via WA Survey.', TRUE, 3)
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
+
+-- Disable deep_cleaning service kalau sebelumnya pernah ke-create (legacy)
+UPDATE services SET is_active = FALSE WHERE code = 'deep_cleaning';
 
 -- 2. Hapus paket lama yang harga/scope beda jauh (avoid duplicate confusion)
 -- Ini soft-disable saja, jangan delete (ada FK booking history)
