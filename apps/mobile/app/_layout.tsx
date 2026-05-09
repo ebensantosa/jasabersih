@@ -82,16 +82,16 @@ export default function RootLayout() {
       hydrateUser();
       // Fetch fresh app content (banners/services/config/popups) — non-blocking
       void fetchAppContent();
-      // Sync bookings + addresses + wallet from server kalau sudah login
+      // Validate token via /auth/me first; only fire other syncs if profile fetch succeeds
       setTimeout(() => {
-        if (useAuthStore.getState().tokens) {
-          void fetchUser();
+        if (!useAuthStore.getState().tokens) return;
+        void fetchUser().then((profile) => {
+          if (!profile) return; // token invalid — interceptor already cleared it
           void syncBookings();
           void syncAddresses();
           void syncWallet();
-          // Register Expo push token (idempotent — only physical devices, ignores web/sim)
           void registerForPushAsync().catch(() => {});
-        }
+        });
       }, 500);
     });
   }, [

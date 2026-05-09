@@ -33,6 +33,9 @@ api.interceptors.response.use(
       } catch {
         refreshing = null;
         useAuthStore.getState().logout();
+        // Also clear cached user profile so we go back to anonymous cleanly
+        const { useUserStore } = await import('../stores/user');
+        useUserStore.getState().clear();
       }
     }
     return Promise.reject(error);

@@ -41,8 +41,11 @@ export const useUserStore = create<State>((set) => ({
       storage.set(STORAGE_KEY, JSON.stringify(profile));
       set({ profile, loading: false });
       return profile;
-    } catch {
+    } catch (e: any) {
       set({ loading: false });
+      // 404 = endpoint not deployed yet (or removed) → don't trash session
+      // 401/403 = token invalid → interceptor already handles logout
+      // Other errors → just bail, keep cached profile
       return null;
     }
   },
