@@ -99,10 +99,14 @@ export default function Register() {
   }
 
   const isFreelancer = targetMode === 'freelancer';
+  // Tema visual beda antara Customer (biru) vs Cleaner (emerald/teal) — biar sekilas user tahu lagi daftar mana
+  const theme = isFreelancer
+    ? { gradient: ['#065F46', '#10B981'] as const, btn: 'bg-emerald-600', accent: 'text-emerald-700', linkAccent: 'text-emerald-700', bg: 'bg-emerald-50' }
+    : { gradient: ['#0B2A6F', '#1D4ED8'] as const, btn: 'bg-brand-600', accent: 'text-brand-700', linkAccent: 'text-brand-600', bg: 'bg-white' };
 
   return (
-    <View className="flex-1 bg-white">
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 220 }}>
+    <View className={`flex-1 ${theme.bg}`}>
+      <LinearGradient colors={theme.gradient} style={{ height: 240 }}>
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
             <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
@@ -110,22 +114,40 @@ export default function Register() {
             </Pressable>
           </View>
           <View className="px-6 pt-2">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+            <View className="h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
               {isFreelancer ? (
-                <Briefcase color="white" size={24} strokeWidth={2.2} />
+                <Briefcase color="white" size={26} strokeWidth={2.2} />
               ) : (
-                <User color="white" size={24} strokeWidth={2.2} />
+                <User color="white" size={26} strokeWidth={2.2} />
               )}
             </View>
-            <Text className="font-bold mt-3 text-3xl text-white">Daftar Akun</Text>
+            <View className="mt-3 self-start rounded-full bg-white/20 px-3 py-1">
+              <Text className="font-bold text-[10px] uppercase tracking-wider text-white">
+                {isFreelancer ? 'Mitra Cleaner' : 'Customer'}
+              </Text>
+            </View>
+            <Text className="font-bold mt-2 text-3xl text-white">
+              {isFreelancer ? 'Jadi Mitra Cleaner' : 'Daftar Customer'}
+            </Text>
             <Text className="font-sans mt-1 text-sm text-white/85">
-              {isFreelancer ? 'Mulai jadi Mitra Cleaner' : 'Buat akun untuk mulai pesan'}
+              {isFreelancer ? 'Kerja fleksibel, payout harian, asuransi termasuk' : 'Buat akun untuk mulai pesan layanan'}
             </Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
 
       <ScrollView className="flex-1 -mt-6" contentContainerStyle={{ paddingBottom: 40 }}>
+        {isFreelancer && (
+          <View className="mx-4 mb-3 rounded-2xl bg-emerald-100/60 p-3">
+            <Text className="font-bold text-[12px] text-emerald-900">Yang kamu dapat sebagai Mitra:</Text>
+            <View className="mt-1.5 gap-1">
+              <Text className="font-sans text-[11px] text-emerald-900">✓ Komisi 60-70% per job (lebih tinggi kalau bawa alat)</Text>
+              <Text className="font-sans text-[11px] text-emerald-900">✓ Payout harian via transfer bank</Text>
+              <Text className="font-sans text-[11px] text-emerald-900">✓ Asuransi kerja (cover kecelakaan ringan)</Text>
+              <Text className="font-sans text-[11px] text-emerald-900">✓ Pelatihan KYC + sertifikat profesional</Text>
+            </View>
+          </View>
+        )}
         <View className="mx-4 rounded-2xl bg-white p-5 shadow-sm" style={{ elevation: 6 }}>
           <View className="gap-4">
             <Field label="Nama Lengkap" required error={touched.name ? errors.name : null}>
@@ -218,27 +240,40 @@ export default function Register() {
           <Pressable
             onPress={onSubmit}
             disabled={loading}
-            className="mt-5 rounded-2xl bg-brand-600 py-4 disabled:opacity-50"
+            className={`mt-5 rounded-2xl ${theme.btn} py-4 disabled:opacity-50`}
           >
             <Text className="font-bold text-center text-sm text-white">
-              {loading ? 'Mendaftar…' : 'Daftar'}
+              {loading ? 'Mendaftar…' : isFreelancer ? 'Daftar Sebagai Cleaner' : 'Daftar Customer'}
             </Text>
           </Pressable>
 
           <Pressable onPress={() => router.replace('/(auth)/login')} className="mt-3">
             <Text className="font-sans text-center text-sm text-ink-500">
-              Sudah punya akun? <Text className="font-semibold text-brand-600">Masuk</Text>
+              Sudah punya akun? <Text className={`font-semibold ${theme.linkAccent}`}>Masuk</Text>
+            </Text>
+          </Pressable>
+
+          {/* Toggle ke mode lain */}
+          <Pressable
+            onPress={() => router.replace({ pathname: '/(auth)/register', params: { mode: isFreelancer ? 'customer' : 'freelancer' } })}
+            className="mt-3 items-center"
+          >
+            <Text className="font-sans text-center text-xs text-ink-400">
+              {isFreelancer ? 'Mau pakai sebagai customer?' : 'Mau jadi mitra cleaner?'}{' '}
+              <Text className={`font-semibold ${theme.linkAccent}`}>
+                {isFreelancer ? 'Daftar sebagai Customer' : 'Daftar sebagai Cleaner'}
+              </Text>
             </Text>
           </Pressable>
         </View>
 
         <Text className="font-sans mx-6 mt-4 text-center text-[11px] text-ink-400">
           Dengan daftar, kamu setuju dengan{' '}
-          <Text className="font-semibold text-brand-600" onPress={() => toast.comingSoon()}>
+          <Text className={`font-semibold ${theme.linkAccent}`} onPress={() => toast.comingSoon()}>
             Syarat & Ketentuan
           </Text>{' '}
           dan{' '}
-          <Text className="font-semibold text-brand-600" onPress={() => toast.comingSoon()}>
+          <Text className={`font-semibold ${theme.linkAccent}`} onPress={() => toast.comingSoon()}>
             Kebijakan Privasi
           </Text>
           .
