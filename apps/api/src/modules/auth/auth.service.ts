@@ -56,6 +56,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(input.password, 12);
 
+    const email = input.email?.trim().toLowerCase() || undefined;
     const user = await this.prisma.user.upsert({
       where: { phone },
       update: {
@@ -64,6 +65,7 @@ export class AuthService {
         phoneVerifiedAt: new Date(),
         isCustomer: mode === 'customer' ? true : undefined,
         isFreelancer: mode === 'freelancer' ? true : undefined,
+        ...(email ? { email } : {}),
       },
       create: {
         phone,
@@ -72,6 +74,7 @@ export class AuthService {
         phoneVerifiedAt: new Date(),
         isCustomer: mode === 'customer',
         isFreelancer: mode === 'freelancer',
+        ...(email ? { email } : {}),
       },
     });
 

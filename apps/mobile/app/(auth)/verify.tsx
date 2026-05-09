@@ -10,12 +10,14 @@ import { useAuthStore } from '../../src/stores/auth';
 
 export default function Verify() {
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, email: emailParam, name: nameParam, password: passwordParam, mode: modeParam } = useLocalSearchParams<{
+    phone: string; email?: string; name?: string; password?: string; mode?: string;
+  }>();
   const setTokens = useAuthStore((s) => s.setTokens);
 
   const [otp, setOtp] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+  const [name, setName] = useState(nameParam ?? '');
+  const [password, setPassword] = useState(passwordParam ?? '');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const t = useT();
@@ -28,7 +30,8 @@ export default function Verify() {
         otp,
         password,
         fullName: name,
-        mode: 'customer',
+        mode: modeParam === 'freelancer' ? 'freelancer' : 'customer',
+        ...(emailParam ? { email: emailParam } : {}),
         ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
       });
       setTokens(res.data.data);

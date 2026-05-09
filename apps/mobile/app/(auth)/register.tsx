@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Briefcase, Phone, User } from 'lucide-react-native';
+import { ArrowLeft, Briefcase, Mail, Phone, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   Field,
+  validateEmail,
   validateMinLength,
   validatePassword,
 } from '../../src/components/Field';
@@ -16,8 +17,8 @@ import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
 
-type Errors = { name?: string | null; phone?: string | null; password?: string | null };
-type Touched = { name?: boolean; phone?: boolean; password?: boolean };
+type Errors = { name?: string | null; email?: string | null; phone?: string | null; password?: string | null };
+type Touched = { name?: boolean; email?: boolean; phone?: boolean; password?: boolean };
 
 function validatePhoneId(v: string): string | null {
   const x = v.trim().replace(/\s/g, '');
@@ -36,6 +37,7 @@ export default function Register() {
   const fetchUser = useUserStore((s) => s.fetch);
 
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,12 +47,13 @@ export default function Register() {
   function validate(): boolean {
     const e: Errors = {
       name: validateMinLength(name, 2, 'Nama'),
+      email: validateEmail(email),
       phone: validatePhoneId(phone),
       password: validatePassword(password, 8),
     };
     setErrors(e);
-    setTouched({ name: true, phone: true, password: true });
-    return !e.name && !e.phone && !e.password;
+    setTouched({ name: true, email: true, phone: true, password: true });
+    return !e.name && !e.email && !e.phone && !e.password;
   }
 
   async function onSubmit() {
@@ -69,7 +72,7 @@ export default function Register() {
         toast.success('Kode OTP dikirim ke WhatsApp/SMS kamu');
         router.replace({
           pathname: '/(auth)/verify',
-          params: { phone: phone.trim(), name, password, mode: targetMode },
+          params: { phone: phone.trim(), name, email: email.trim().toLowerCase(), password, mode: targetMode },
         });
         return;
       }
@@ -80,6 +83,7 @@ export default function Register() {
         otp: devOtp,
         password,
         fullName: name,
+        email: email.trim().toLowerCase(),
         mode: targetMode,
       });
       const tokens = verify.data?.data ?? verify.data;
@@ -140,6 +144,27 @@ export default function Register() {
                 }}
                 placeholder="Nama lengkap kamu"
                 placeholderTextColor="#94A3B8"
+                className="font-sans flex-1 text-sm text-ink-900"
+              />
+            </Field>
+
+            <Field label="Email" required error={touched.email ? errors.email : null}>
+              <Mail color="#94A3B8" size={18} />
+              <TextInput
+                value={email}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (touched.email) setErrors({ ...errors, email: validateEmail(v) });
+                }}
+                onBlur={() => {
+                  setTouched({ ...touched, email: true });
+                  setErrors({ ...errors, email: validateEmail(email) });
+                }}
+                placeholder="kamu@email.com"
+                placeholderTextColor="#94A3B8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
