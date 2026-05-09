@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Briefcase, Mail, Phone, User } from 'lucide-react-native';
+import { ArrowLeft, Briefcase, Eye, EyeOff, Mail, Phone, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,6 +40,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Touched>({});
@@ -212,9 +213,12 @@ export default function Register() {
                 }}
                 placeholder="••••••••"
                 placeholderTextColor="#94A3B8"
-                secureTextEntry
+                secureTextEntry={!showPwd}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
+              <Pressable onPress={() => setShowPwd((v) => !v)} hitSlop={8}>
+                {showPwd ? <EyeOff color="#94A3B8" size={18} /> : <Eye color="#94A3B8" size={18} />}
+              </Pressable>
             </Field>
           </View>
 

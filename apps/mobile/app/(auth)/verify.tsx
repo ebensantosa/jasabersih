@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ export default function Verify() {
   const [otp, setOtp] = useState('');
   const [name, setName] = useState(nameParam ?? '');
   const [password, setPassword] = useState(passwordParam ?? '');
+  const [showPwd, setShowPwd] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const t = useT();
@@ -69,13 +70,18 @@ export default function Verify() {
             placeholder={t('auth.full_name')}
             className="rounded-xl border border-slate-300 px-4 py-3"
           />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder={t('auth.create_password')}
-            secureTextEntry
-            className="rounded-xl border border-slate-300 px-4 py-3"
-          />
+          <View className="flex-row items-center rounded-xl border border-slate-300 px-4">
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t('auth.create_password')}
+              secureTextEntry={!showPwd}
+              className="flex-1 py-3"
+            />
+            <Pressable onPress={() => setShowPwd((v) => !v)} hitSlop={8}>
+              {showPwd ? <EyeOff color="#94A3B8" size={18} /> : <Eye color="#94A3B8" size={18} />}
+            </Pressable>
+          </View>
           <TextInput
             value={referralCode}
             onChangeText={(v) => setReferralCode(v.toUpperCase())}
