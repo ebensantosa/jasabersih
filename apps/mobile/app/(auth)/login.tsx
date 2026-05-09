@@ -12,6 +12,7 @@ import { login } from '../../src/lib/devAuth';
 import { useAuthStore } from '../../src/stores/auth';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { useModeStore } from '../../src/stores/mode';
+import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
 
 export default function Login() {
@@ -20,6 +21,7 @@ export default function Login() {
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
   const setCleanerName = useCleanerStore((s) => s.setName);
+  const fetchUser = useUserStore((s) => s.fetch);
 
   const [loginAs, setLoginAs] = useState<'customer' | 'freelancer'>('customer');
   const [email, setEmail] = useState('');
@@ -54,6 +56,8 @@ export default function Login() {
       }
       setTokens(result.tokens);
       setMode(result.user.mode);
+      // Fetch full profile from /auth/me — populates name/phone/email/photo for Profile tab
+      void fetchUser();
       if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
       toast.success(`Selamat datang, ${result.user.name}`);
       router.replace('/(tabs)');

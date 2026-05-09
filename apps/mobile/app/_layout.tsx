@@ -30,6 +30,7 @@ import { useBookingsStore } from '../src/stores/bookings';
 import { useCleanerStore } from '../src/stores/cleaner';
 import { useCleanerWalletStore } from '../src/stores/cleanerWallet';
 import { useCleaningModeStore } from '../src/stores/cleaningMode';
+import { useUserStore } from '../src/stores/user';
 import { useLocationStore } from '../src/stores/location';
 import { useModeStore } from '../src/stores/mode';
 
@@ -47,6 +48,8 @@ export default function RootLayout() {
   const syncWallet = useCleanerWalletStore((s) => s.syncFromApi);
   const hydrateLocale = useLocaleStore((s) => s.hydrate);
   const hydrateCleaningMode = useCleaningModeStore((s) => s.hydrate);
+  const hydrateUser = useUserStore((s) => s.hydrate);
+  const fetchUser = useUserStore((s) => s.fetch);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -76,11 +79,13 @@ export default function RootLayout() {
       hydrateWallet();
       hydrateLocale();
       hydrateCleaningMode();
+      hydrateUser();
       // Fetch fresh app content (banners/services/config/popups) — non-blocking
       void fetchAppContent();
       // Sync bookings + addresses + wallet from server kalau sudah login
       setTimeout(() => {
         if (useAuthStore.getState().tokens) {
+          void fetchUser();
           void syncBookings();
           void syncAddresses();
           void syncWallet();
@@ -102,6 +107,8 @@ export default function RootLayout() {
     syncAddresses,
     syncWallet,
     hydrateCleaningMode,
+    hydrateUser,
+    fetchUser,
   ]);
 
   // Notification tap → deep link

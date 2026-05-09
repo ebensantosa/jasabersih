@@ -138,6 +138,28 @@ export class AuthService {
     }
   }
 
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, name: true, phone: true, email: true, photoUrl: true,
+        isCustomer: true, isFreelancer: true,
+        phoneVerifiedAt: true, createdAt: true,
+      },
+    });
+    if (!user) throw new UnauthorizedException({ code: 'USER_NOT_FOUND', message: 'User not found' });
+    return {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      photoUrl: user.photoUrl,
+      mode: user.isFreelancer ? 'freelancer' : 'customer',
+      memberSince: user.createdAt,
+      verified: !!user.phoneVerifiedAt,
+    };
+  }
+
   async logout(refreshToken: string): Promise<void> {
     if (!refreshToken) {
       throw new BadRequestException({ code: 'MISSING_REFRESH_TOKEN', message: 'refreshToken wajib.' });

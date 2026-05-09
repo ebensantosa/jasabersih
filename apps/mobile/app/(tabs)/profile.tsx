@@ -24,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useT } from '../../src/lib/i18n';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
+import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
 
 export default function Profile() {
@@ -32,7 +33,10 @@ export default function Profile() {
   const logout = useAuthStore((s) => s.logout);
   const mode = useModeStore((s) => s.mode);
   const setMode = useModeStore((s) => s.setMode);
+  const profile = useUserStore((s) => s.profile);
+  const clearUser = useUserStore((s) => s.clear);
   const t = useT();
+  const memberYear = profile?.memberSince ? new Date(profile.memberSince).getFullYear() : new Date().getFullYear();
 
   return (
     <View className="flex-1 bg-ink-50">
@@ -56,11 +60,11 @@ export default function Profile() {
                 <User color="#1D4ED8" size={26} strokeWidth={2} />
               </View>
               <View className="flex-1">
-                <Text className="font-bold text-base text-ink-900">User Test</Text>
-                <Text className="font-sans text-xs text-ink-500">user@test.com</Text>
+                <Text className="font-bold text-base text-ink-900">{profile?.name ?? profile?.phone ?? 'Pengguna'}</Text>
+                <Text className="font-sans text-xs text-ink-500">{profile?.email ?? profile?.phone ?? '-'}</Text>
                 <View className="mt-1 flex-row items-center gap-1">
                   <Star color="#F59E0B" fill="#F59E0B" size={12} />
-                  <Text className="font-medium text-[11px] text-ink-600">Member · 2026</Text>
+                  <Text className="font-medium text-[11px] text-ink-600">Member · {memberYear}</Text>
                 </View>
               </View>
               <ChevronRight color="#94A3B8" size={18} />
@@ -178,7 +182,7 @@ export default function Profile() {
 
         {tokens && (
           <Pressable
-            onPress={() => logout()}
+            onPress={() => { clearUser(); logout(); }}
             className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl bg-white p-4"
           >
             <LogOut color="#DC2626" size={18} strokeWidth={2.2} />

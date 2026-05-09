@@ -25,8 +25,24 @@ export async function login(email: string, password: string): Promise<AuthResult
   }
   const json = await res.json();
   const tokens = json.data as AuthTokens;
-  return {
-    tokens,
-    user: { email, name: email, mode: 'customer' },
-  };
+
+  // Fetch real profile using the freshly-issued access token
+  let user: AuthResult['user'] = { email, name: email, mode: 'customer' };
+  try {
+    const me = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (me.ok) {
+      const meJson = await me.json();
+      const p = meJson.data ?? meJson;
+      user = {
+        email: p.email ?? email,
+        name: p.name ?? p.phone ?? email,
+        mode: p.mode === 'freelancer' ? 'freelancer' : 'customer',
+      };
+    }
+  } catch { /* ignore — fall back to placeholder */ }
+
+  return { tokens, user };
 }
