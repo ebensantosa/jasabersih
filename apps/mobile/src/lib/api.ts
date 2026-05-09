@@ -20,6 +20,17 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+    const errorCode = error.response?.data?.error?.code;
+    const errorMsg = error.response?.data?.error?.message;
+
+    // Account-level rejection (suspended/banned/deleted) — don't try refresh, force logout + show message
+    if (error.response?.status === 401 && (errorCode === 'ACCOUNT_SUSPENDED' || errorCode === 'ACCOUNT_BANNED' || errorCode === 'ACCOUNT_DELETED')) {
+      const { toast } = await import('../stores/ui');
+      toast.error(errorMsg || 'Akun kamu tidak dapat diakses');
+      useAuthStore.getState().logout();
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !original?._retry) {
       const hasTokens = !!useAuthStore.getState().tokens;
       // No tokens = anonymous user, don't try refresh — caller handles "not logged in"
