@@ -335,12 +335,9 @@ function NewBooking() {
                     {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
                   </View>
                   <View className="flex-1">
-                    <View className="flex-row items-center justify-between">
-                      <Text className={`font-bold text-sm ${cleanMode === 'deep' ? 'text-brand-700' : 'text-ink-900'}`}>
-                        Pakai Deep Cleaning
-                      </Text>
-                      <Text className="font-bold text-[11px] text-amber-700">+45%</Text>
-                    </View>
+                    <Text className={`font-bold text-sm ${cleanMode === 'deep' ? 'text-brand-700' : 'text-ink-900'}`}>
+                      Pakai Deep Cleaning
+                    </Text>
                     <Text className="font-sans mt-1 text-[11px] leading-4 text-ink-600">
                       Pembersihan menyeluruh sampai ke detail: kerak kamar mandi, jamur nat, noda
                       membandel, bekas renovasi, sela-sela furnitur. Pakai cairan khusus &amp; waktu
@@ -349,7 +346,7 @@ function NewBooking() {
                     {cleanMode === 'deep' && (
                       <View className="mt-2 rounded bg-amber-50 px-2 py-1">
                         <Text className="font-medium text-[10px] text-amber-800">
-                          ⓘ Harga paket otomatis +45% (dibulatkan ke atas per Rp 1.000)
+                          ⓘ Harga sudah disesuaikan untuk deep cleaning
                         </Text>
                       </View>
                     )}
@@ -763,25 +760,25 @@ function NewBooking() {
                   {pkg && <Row label={pkg.name} value={formatRupiah(rawPackagePrice)} />}
                   {deepSurcharge > 0 && (
                     <Row
-                      label={`Deep Cleaning (+${Math.round((deepMultiplier - 1) * 100)}%)`}
+                      label="Upgrade Deep Cleaning"
                       value={`+${formatRupiah(deepSurcharge)}`}
                     />
                   )}
                   {sizeSurcharge > 0 && (
                     <Row
-                      label={`Estimasi luas ${areaM2} m² (+${Math.round(sizePctExtra * 100)}%)`}
+                      label={`Penyesuaian luas ${areaM2} m²`}
                       value={`+${formatRupiah(sizeSurcharge)}`}
                     />
                   )}
                   {dirtMultiplier > 1 && (
                     <Row
-                      label={`Tingkat kotor ${dirtLevel} (+${Math.round((dirtMultiplier - 1) * 100)}%)`}
+                      label={`Tingkat kotor ${dirtLevel}`}
                       value={`+${formatRupiah(Math.round(basePrice * (dirtMultiplier - 1)))}`}
                     />
                   )}
                   {photoPenalty > 0 && (
                     <Row
-                      label="Premium tanpa foto (+25%)"
+                      label="Premium tanpa foto"
                       value={`+${formatRupiah(Math.round(basePrice * 0.25))}`}
                     />
                   )}
@@ -838,25 +835,18 @@ function NewBooking() {
         <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white" style={{ elevation: 8 }}>
           <SafeAreaView edges={['bottom']}>
             {pkg && (
-              <View className="border-b border-ink-100 px-4 pt-3">
-                <View className="flex-row items-end justify-between">
-                  <View className="flex-1">
-                    <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
-                      {step === TOTAL_STEPS ? 'Total' : 'Estimasi Total'}
-                    </Text>
-                    <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(total)}</Text>
-                    <Text className="font-sans text-[10px] text-ink-500" numberOfLines={1}>
-                      {pkg.name}
-                      {cleanMode === 'deep' ? ' · Deep' : ''}
-                      {dirtMultiplier > 1 ? ` · Kotor L${dirtLevel}` : ''}
-                      {sizeSurcharge > 0 ? ` · ${areaM2}m²` : ''}
-                      {selectedAddons.size > 0 ? ` · +${selectedAddons.size} addon` : ''}
-                    </Text>
-                  </View>
-                  {step !== TOTAL_STEPS && (
-                    <Text className="font-medium text-[10px] text-ink-400">Bisa berubah saat tambah pilihan</Text>
-                  )}
+              <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-2">
+                <View className="flex-1 pr-2">
+                  <Text className="font-sans text-[9px] uppercase tracking-wider text-ink-500">
+                    {step === TOTAL_STEPS ? 'Total Bayar' : 'Estimasi Total'}
+                  </Text>
+                  <Text className="font-extrabold text-base text-brand-700">{formatRupiah(total)}</Text>
                 </View>
+                {step !== TOTAL_STEPS && (
+                  <Text className="font-medium max-w-[40%] text-right text-[9px] text-ink-400">
+                    Bisa berubah saat tambah pilihan
+                  </Text>
+                )}
               </View>
             )}
             <View className="flex-row gap-2 p-4">

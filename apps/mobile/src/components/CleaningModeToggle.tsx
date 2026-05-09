@@ -5,7 +5,7 @@ import { useCleaningModeStore, type CleaningMode } from '../stores/cleaningMode'
 
 const OPTIONS: { key: CleaningMode; label: string; desc: string; icon: typeof Sparkles }[] = [
   { key: 'general', label: 'General Cleaning', desc: 'Pembersihan rutin (kotor ringan-sedang)', icon: Sprout },
-  { key: 'deep',    label: 'Deep Cleaning',    desc: 'Menyeluruh: kerak, jamur, nat (+45%)',     icon: Sparkles },
+  { key: 'deep',    label: 'Deep Cleaning',    desc: 'Menyeluruh: kerak, jamur, nat',            icon: Sparkles },
 ];
 
 export function CleaningModeToggle({ compact = false }: { compact?: boolean }) {
