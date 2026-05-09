@@ -64,39 +64,32 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      // Step 1: request OTP (kirim ke phone + email kalau email diisi)
+      // Request OTP — backend kirim 6-digit code ke email user via Resend
       const reg = await api.post('/auth/register', {
         phone: phone.trim(),
         mode: targetMode,
         email: email.trim().toLowerCase(),
       });
-      const devOtp: string | undefined = reg.data?.data?.devOtp ?? reg.data?.devOtp;
+      const data = reg.data?.data ?? reg.data;
+      const emailSent: boolean = !!data?.emailSent;
+      const devOtp: string | undefined = data?.devOtp;
 
-      if (!devOtp) {
-        // Production / SMS-enabled: kirim user ke verify screen
-        toast.success('Kode OTP dikirim ke WhatsApp/SMS kamu');
+      if (emailSent || devOtp) {
+        toast.success(`Kode verifikasi dikirim ke ${email.trim().toLowerCase()}`);
         router.replace({
           pathname: '/(auth)/verify',
-          params: { phone: phone.trim(), name, email: email.trim().toLowerCase(), password, mode: targetMode },
+          params: {
+            phone: phone.trim(),
+            name,
+            email: email.trim().toLowerCase(),
+            password,
+            mode: targetMode,
+            ...(devOtp ? { devOtp } : {}),
+          },
         });
-        return;
+      } else {
+        toast.error('Gagal kirim email verifikasi. Cek konfigurasi Resend di admin atau hubungi support.');
       }
-
-      // Dev mode (SMS belum aktif) — auto-verify pakai devOtp
-      const verify = await api.post('/auth/verify-otp', {
-        phone: phone.trim(),
-        otp: devOtp,
-        password,
-        fullName: name,
-        email: email.trim().toLowerCase(),
-        mode: targetMode,
-      });
-      const tokens = verify.data?.data ?? verify.data;
-      setTokens(tokens);
-      setMode(targetMode);
-      void fetchUser();
-      toast.success(`Akun dibuat, halo ${name}!`);
-      router.replace('/(tabs)');
     } catch (e: any) {
       const msg = e?.response?.data?.error?.message ?? e?.message ?? 'Daftar gagal, coba lagi';
       toast.error(msg);

@@ -10,12 +10,12 @@ import { useAuthStore } from '../../src/stores/auth';
 
 export default function Verify() {
   const router = useRouter();
-  const { phone, email: emailParam, name: nameParam, password: passwordParam, mode: modeParam } = useLocalSearchParams<{
-    phone: string; email?: string; name?: string; password?: string; mode?: string;
+  const { phone, email: emailParam, name: nameParam, password: passwordParam, mode: modeParam, devOtp } = useLocalSearchParams<{
+    phone: string; email?: string; name?: string; password?: string; mode?: string; devOtp?: string;
   }>();
   const setTokens = useAuthStore((s) => s.setTokens);
 
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(devOtp ?? '');
   const [name, setName] = useState(nameParam ?? '');
   const [password, setPassword] = useState(passwordParam ?? '');
   const [showPwd, setShowPwd] = useState(false);
@@ -52,8 +52,16 @@ export default function Verify() {
         </Pressable>
       </View>
       <View className="flex-1 px-6 pt-4">
-        <Text className="text-3xl font-bold text-slate-900">{t('auth.otp_title')}</Text>
-        <Text className="mt-1 text-sm text-slate-500">{t('auth.otp_sent', { phone })}</Text>
+        <Text className="text-3xl font-bold text-slate-900">Cek Email Kamu</Text>
+        <Text className="mt-1 text-sm text-slate-500">
+          Kami kirim kode 6 digit ke <Text className="font-semibold text-slate-900">{emailParam ?? '-'}</Text>.
+          Cek inbox (atau folder spam).
+        </Text>
+        {devOtp && (
+          <Text className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+            ⓘ Dev mode aktif — kode auto-fill: <Text className="font-mono font-bold">{devOtp}</Text>
+          </Text>
+        )}
 
         <View className="mt-8 gap-4">
           <TextInput
