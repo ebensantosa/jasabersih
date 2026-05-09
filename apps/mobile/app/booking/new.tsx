@@ -315,7 +315,7 @@ function NewBooking() {
 
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={{ paddingBottom: 110 }}
+          contentContainerStyle={{ paddingBottom: 180 }}
           showsVerticalScrollIndicator={false}
         >
           {step === 1 && (
@@ -835,12 +835,12 @@ function NewBooking() {
         <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white" style={{ elevation: 8 }}>
           <SafeAreaView edges={['bottom']}>
             {pkg && (
-              <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-2">
+              <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-3">
                 <View className="flex-1 pr-2">
-                  <Text className="font-sans text-[9px] uppercase tracking-wider text-ink-500">
+                  <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
                     {step === TOTAL_STEPS ? 'Total Bayar' : 'Estimasi Total'}
                   </Text>
-                  <Text className="font-extrabold text-base text-brand-700">{formatRupiah(total)}</Text>
+                  <Text className="font-extrabold mt-0.5 text-lg text-brand-700">{formatRupiah(total)}</Text>
                 </View>
                 {step !== TOTAL_STEPS && (
                   <Text className="font-medium max-w-[40%] text-right text-[9px] text-ink-400">
