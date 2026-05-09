@@ -34,6 +34,74 @@ export default function ServiceDetail() {
     }
   }
 
+  if (code === 'konsultasi') {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="flex-row items-center px-3 py-2">
+            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+              <ArrowLeft color="#0F172A" size={22} />
+            </Pressable>
+            <Text className="font-bold flex-1 text-base text-ink-900">Konsultasi via WhatsApp</Text>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+            <View className="items-center rounded-3xl bg-emerald-50 p-6">
+              <View className="h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm" style={{ elevation: 4 }}>
+                <WaIcon size={40} />
+              </View>
+              <Text className="font-extrabold mt-4 text-center text-xl text-ink-900">
+                Bingung Pilih Layanan?
+              </Text>
+              <Text className="font-sans mt-2 text-center text-sm leading-5 text-ink-600">
+                Konsultasi langsung dengan CS kami via WhatsApp. Cocok kalau properti kamu besar,
+                kondisi unik, atau belum yakin paket mana yang pas.
+              </Text>
+            </View>
+
+            <View className="mt-4 rounded-2xl bg-white p-4" style={{ elevation: 2 }}>
+              <Text className="font-bold text-sm text-ink-900">Kapan pakai konsultasi?</Text>
+              <View className="mt-3 gap-2.5">
+                {[
+                  'Properti besar (rumah 3+ lantai, kantor, gudang)',
+                  'Pasca renovasi atau bekas banjir / kebakaran',
+                  'Kondisi sangat kotor / kerak parah / jamur tebal',
+                  'Kebutuhan khusus (alat berat, vacuum profesional)',
+                  'Belum tahu paket mana yang cocok',
+                ].map((item, i) => (
+                  <View key={i} className="flex-row gap-2">
+                    <Text className="font-bold text-emerald-600">✓</Text>
+                    <Text className="font-sans flex-1 text-[13px] text-ink-700">{item}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View className="mt-4 rounded-2xl bg-amber-50 p-3">
+              <Text className="font-semibold text-[11px] text-amber-900">ⓘ Cara kerja</Text>
+              <Text className="font-sans mt-1 text-[11px] leading-4 text-amber-900">
+                CS akan tanya detail kondisi, jadwal, &amp; lokasi → kami kirim quote harga gratis →
+                kalau setuju, langsung dijadwalkan. <Text className="font-bold">Survey gratis, tanpa biaya konsultasi.</Text>
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => router.push({ pathname: '/booking/wa-survey', params: { category: 'konsultasi' } })}
+              className="mt-5 flex-row items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4"
+              style={{ elevation: 4 }}
+            >
+              <WaIcon size={20} />
+              <Text className="font-bold text-sm text-white">Mulai Konsultasi WA</Text>
+            </Pressable>
+            <Text className="font-sans mt-2 text-center text-[10px] text-ink-500">
+              Atau kembali ke halaman sebelumnya untuk pilih paket langsung
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />

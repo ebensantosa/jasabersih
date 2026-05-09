@@ -35,7 +35,13 @@ export default function Home() {
   const setDefault = useAddressesStore((s) => s.setDefault);
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
-  const ALL_SERVICES = useServices();
+  const ALL_SERVICES_RAW = useServices();
+  // Always put 'konsultasi' last so it lands bottom-right of the grid
+  const ALL_SERVICES = [...ALL_SERVICES_RAW].sort((a, b) => {
+    if (a.code === 'konsultasi') return 1;
+    if (b.code === 'konsultasi') return -1;
+    return 0;
+  });
   // Hide mode-toggles (general/deep cleaning) — they are picker options inside booking, not destinations
   const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
   const BUNDLE_CODES = new Set(['full_house', 'kantor', 'pasca_renovasi', 'subscription', 'paket_bundle']);
@@ -120,26 +126,37 @@ export default function Home() {
         {/* Service grid 4 col */}
         <View className="mx-4 mt-3 rounded-2xl bg-white px-2 py-3">
           <View className="flex-row flex-wrap">
-            {SERVICE_CATEGORIES.map((s) => (
-              <Pressable
-                key={s.code}
-                onPress={() => router.push(`/services/${s.code}`)}
-                className="w-1/4 items-center px-1 py-2"
-              >
-                <View
-                  style={{ backgroundColor: s.iconBg }}
-                  className="h-12 w-12 items-center justify-center rounded-2xl"
+            {SERVICE_CATEGORIES.map((s) => {
+              const isKonsul = s.code === 'konsultasi';
+              return (
+                <Pressable
+                  key={s.code}
+                  onPress={() =>
+                    isKonsul
+                      ? router.push('/services/konsultasi')
+                      : router.push(`/services/${s.code}`)
+                  }
+                  className="w-1/4 items-center px-1 py-2"
                 >
-                  <s.icon color={s.iconColor} size={22} strokeWidth={2} />
-                </View>
-                <Text
-                  className="font-medium mt-1.5 text-center text-[10px] leading-tight text-ink-700"
-                  numberOfLines={2}
-                >
-                  {s.name}
-                </Text>
-              </Pressable>
-            ))}
+                  <View
+                    style={{ backgroundColor: isKonsul ? '#D1FAE5' : s.iconBg }}
+                    className="h-12 w-12 items-center justify-center rounded-2xl"
+                  >
+                    {isKonsul ? (
+                      <WaIcon size={22} />
+                    ) : (
+                      <s.icon color={s.iconColor} size={22} strokeWidth={2} />
+                    )}
+                  </View>
+                  <Text
+                    className="font-medium mt-1.5 text-center text-[10px] leading-tight text-ink-700"
+                    numberOfLines={2}
+                  >
+                    {isKonsul ? 'Konsultasi WA' : s.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
