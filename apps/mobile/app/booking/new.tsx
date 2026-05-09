@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, ArrowLeft, Camera, Check, ChevronLeft } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, Camera, Check, ChevronLeft, Minus, Plus } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -422,27 +422,62 @@ function NewBooking() {
                 </View>
               </Section>
 
-              <Section title="Luas Area">
-                <Label>Total Luas: {areaM2} mÂ²</Label>
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    onPress={() => setAreaM2(Math.max(10, areaM2 - 10))}
-                    className="h-9 w-9 items-center justify-center rounded-full border border-ink-300"
-                  >
-                    <Text className="font-bold text-brand-600">âˆ’</Text>
-                  </Pressable>
-                  <View className="h-2 flex-1 rounded-full bg-ink-200">
-                    <View
-                      className="h-2 rounded-full bg-brand-600"
-                      style={{ width: `${Math.min(100, ((areaM2 - 10) / 490) * 100)}%` }}
-                    />
+              <Section title="Perkiraan Luas">
+                <Text className="font-sans -mt-1 mb-3 text-[11px] text-ink-500">
+                  Pilih kira-kira ukuran area yang akan dibersihkan. Kalau ragu, lihat contoh di bawah.
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {[
+                    { value: 25, label: 'Kost / Studio', range: '~25 m²' },
+                    { value: 50, label: 'Rumah Kecil', range: '~50 m²' },
+                    { value: 80, label: 'Rumah Sedang', range: '~80 m²' },
+                    { value: 120, label: 'Rumah Besar', range: '~120 m²' },
+                    { value: 200, label: 'Sangat Besar', range: '200+ m²' },
+                  ].map((opt) => {
+                    const active = areaM2 === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => setAreaM2(opt.value)}
+                        className={`rounded-xl border px-3 py-2 ${
+                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
+                        }`}
+                      >
+                        <Text className={`font-bold text-[12px] ${active ? 'text-brand-700' : 'text-ink-900'}`}>
+                          {opt.label}
+                        </Text>
+                        <Text className="font-sans text-[10px] text-ink-500">{opt.range}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View className="mt-4 rounded-xl bg-ink-50 p-3">
+                  <View className="flex-row items-center justify-between">
+                    <View>
+                      <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">
+                        Atau atur sendiri
+                      </Text>
+                      <Text className="font-extrabold text-base text-ink-900">{areaM2} m²</Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Pressable
+                        onPress={() => setAreaM2(Math.max(10, areaM2 - 10))}
+                        className="h-10 w-10 items-center justify-center rounded-full border border-ink-300 bg-white"
+                      >
+                        <Minus color="#1D4ED8" size={18} strokeWidth={2.4} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setAreaM2(Math.min(500, areaM2 + 10))}
+                        className="h-10 w-10 items-center justify-center rounded-full border border-ink-300 bg-white"
+                      >
+                        <Plus color="#1D4ED8" size={18} strokeWidth={2.4} />
+                      </Pressable>
+                    </View>
                   </View>
-                  <Pressable
-                    onPress={() => setAreaM2(Math.min(500, areaM2 + 10))}
-                    className="h-9 w-9 items-center justify-center rounded-full border border-ink-300"
-                  >
-                    <Text className="font-bold text-brand-600">+</Text>
-                  </Pressable>
+                  <Text className="font-sans mt-1.5 text-[10px] text-ink-500">
+                    Tap +/- untuk naik/turun 10 m². Min 10 m², max 500 m².
+                  </Text>
                 </View>
               </Section>
             </>
