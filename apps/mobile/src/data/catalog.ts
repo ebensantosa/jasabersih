@@ -7,6 +7,8 @@ import {
   DoorOpen,
   Hammer,
   Home,
+  Car,
+  Trees,
   Refrigerator,
   Shirt,
   Snowflake,
@@ -39,6 +41,8 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { code: 'kos', name: 'Pindah Kos', description: 'Serah terima kamar', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
   { code: 'kantor', name: 'Kantor', description: 'Cleaning office', icon: Building2, iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 250_000 },
   { code: 'pasca_renovasi', name: 'Pasca Renovasi', description: 'Sisa material & debu', icon: Hammer, iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1503387762-592deb58ef4e'), startingPrice: 0 },
+  { code: 'pekarangan', name: 'Pekarangan', description: 'Sapu daun & rapikan luar', icon: Trees, iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
+  { code: 'garasi', name: 'Garasi/Teras', description: 'Bersih garasi & teras', icon: Car, iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
 ];
 
 // ============ PAKET FIXED COST (sesuai 06-pricing-modes.md) ============

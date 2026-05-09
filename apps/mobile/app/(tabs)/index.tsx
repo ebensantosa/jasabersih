@@ -38,7 +38,7 @@ export default function Home() {
   const ALL_SERVICES = useServices();
   // Hide mode-toggles (general/deep cleaning) — they are picker options inside booking, not destinations
   const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
-  const BUNDLE_CODES = new Set(['full_house', 'kos', 'kantor', 'pasca_renovasi', 'subscription', 'bundle']);
+  const BUNDLE_CODES = new Set(['full_house', 'kantor', 'pasca_renovasi', 'subscription', 'paket_bundle']);
   const SERVICE_CATEGORIES = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !BUNDLE_CODES.has(s.code));
   const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => BUNDLE_CODES.has(s.code));
   const t = useT();
