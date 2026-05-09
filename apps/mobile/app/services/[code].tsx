@@ -136,20 +136,6 @@ export default function ServiceDetail() {
               />
 
               <ModeCard
-                renderIcon={() => <Clock color="#1D4ED8" size={26} strokeWidth={2.2} />}
-                iconBg="#DBEAFE"
-                title="Per Jam"
-                tagline="Bayar per jam"
-                desc="Cleaner kerja sesuai instruksimu. Min 2 jam, kelipatan 30 menit."
-                priceHint="Mulai Rp 65.000/jam"
-                onPress={() =>
-                  ensureLogin(() =>
-                    router.push({ pathname: '/booking/hourly', params: { category: code } }),
-                  )
-                }
-              />
-
-              <ModeCard
                 renderIcon={() => <WaIcon size={26} />}
                 iconBg="#D1FAE5"
                 title="Konsultasi via WhatsApp"
@@ -165,9 +151,8 @@ export default function ServiceDetail() {
             <View className="mt-5 rounded-2xl bg-brand-50 p-3">
               <Text className="font-semibold text-[11px] text-brand-900">💡 Tips memilih</Text>
               <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
-                <Text className="font-bold">Per Ruangan</Text> cocok untuk job rutin yang jelas.{' '}
-                <Text className="font-bold">Per Jam</Text> kalau butuh fleksibel.{' '}
-                <Text className="font-bold">WA</Text> untuk properti besar / pasca renovasi.
+                <Text className="font-bold">Paket Tetap</Text> cocok untuk job rutin (harga jelas di muka).{' '}
+                <Text className="font-bold">WA Survey</Text> untuk properti besar / pasca renovasi / kebutuhan unik.
               </Text>
             </View>
           </View>

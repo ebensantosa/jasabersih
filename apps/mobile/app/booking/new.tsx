@@ -162,12 +162,17 @@ function NewBooking() {
   const photoPenalty = dirtLevel >= 4 && photoCount < 3 ? 0.25 : 0;
   const rawPackagePrice = pkg?.price ?? 0;
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
+  const deepSurcharge = cleanMode === 'deep' ? basePrice - rawPackagePrice : 0;
   const dirtSurcharge = Math.round(basePrice * (dirtMultiplier - 1 + photoPenalty));
+  // Estimasi tambah luas: baseline 60 m², +5% per 20 m² ekstra, max +20%
+  const areaSteps = Math.min(4, Math.max(0, Math.floor((areaM2 - 60) / 20)));
+  const sizePctExtra = areaSteps * 0.05;
+  const sizeSurcharge = Math.round(basePrice * sizePctExtra);
   const addonTotal = useMemo(
     () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + a.price, 0),
     [selectedAddons],
   );
-  const subtotal = basePrice + dirtSurcharge + addonTotal;
+  const subtotal = basePrice + dirtSurcharge + sizeSurcharge + addonTotal;
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherChecking, setVoucherChecking] = useState(false);
@@ -755,7 +760,19 @@ function NewBooking() {
               <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
                 <Text className="font-bold text-sm text-ink-900">Rincian Harga</Text>
                 <View className="mt-3 gap-2">
-                  {pkg && <Row label={pkg.name} value={formatRupiah(basePrice)} />}
+                  {pkg && <Row label={pkg.name} value={formatRupiah(rawPackagePrice)} />}
+                  {deepSurcharge > 0 && (
+                    <Row
+                      label={`Deep Cleaning (+${Math.round((deepMultiplier - 1) * 100)}%)`}
+                      value={`+${formatRupiah(deepSurcharge)}`}
+                    />
+                  )}
+                  {sizeSurcharge > 0 && (
+                    <Row
+                      label={`Estimasi luas ${areaM2} m² (+${Math.round(sizePctExtra * 100)}%)`}
+                      value={`+${formatRupiah(sizeSurcharge)}`}
+                    />
+                  )}
                   {dirtMultiplier > 1 && (
                     <Row
                       label={`Tingkat kotor ${dirtLevel} (+${Math.round((dirtMultiplier - 1) * 100)}%)`}

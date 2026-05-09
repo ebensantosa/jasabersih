@@ -109,8 +109,6 @@ export default function Home() {
         >
           <ModeBtn icon={Wallet} label={t('home.mode_packages')} sub={t('home.mode_packages_sub')} onPress={() => router.push('/(tabs)/explore')} />
           <Divider />
-          <ModeBtn icon={Clock} label={t('home.mode_hourly')} sub={t('home.mode_hourly_sub')} onPress={() => router.push('/booking/hourly')} />
-          <Divider />
           <ModeBtn
             renderIcon={() => <WaIcon size={18} />}
             label={t('home.mode_wa')}
