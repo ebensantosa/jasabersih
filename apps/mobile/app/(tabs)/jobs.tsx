@@ -287,9 +287,6 @@ function KycGate({ status, onCheck }: { status: string; onCheck: () => void }) {
             <Text style={{ color: 'white', textAlign: 'center', fontFamily: 'Inter_700Bold', fontSize: 14 }}>Lihat Alasan & Upload Ulang</Text>
           </Pressable>
         )}
-        <Pressable onPress={onCheck} style={{ marginTop: 8, paddingVertical: 12 }}>
-          <Text style={{ color: '#475569', textAlign: 'center', fontFamily: 'Inter_500Medium', fontSize: 12 }}>Buka Halaman KYC</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );
