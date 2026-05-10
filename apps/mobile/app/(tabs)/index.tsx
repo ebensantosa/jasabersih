@@ -204,12 +204,12 @@ export default function Home() {
         </View>
 
         {BUNDLE_SERVICES.length > 0 && (
-          <View className="mt-5">
-            <View className="mb-2 flex-row items-end justify-between px-4">
+          <View className="mx-4 mt-3 rounded-2xl bg-white pb-3 pt-4" style={{ elevation: 2 }}>
+            <View className="mb-3 flex-row items-end justify-between px-4">
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
                   <Text className="font-extrabold text-base text-ink-900">Paket Lengkap</Text>
-                  <View className="rounded bg-gradient-to-r from-orange-500 to-pink-500 px-1.5 py-0.5" style={{ backgroundColor: '#F97316' }}>
+                  <View className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#F97316' }}>
                     <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Hemat</Text>
                   </View>
                 </View>
@@ -220,7 +220,7 @@ export default function Home() {
               </Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-3 px-4 pb-2">
+              <View className="flex-row gap-3 px-4">
                 {BUNDLE_SERVICES.map((s, idx) => (
                   <Pressable
                     key={s.code}
@@ -284,38 +284,42 @@ export default function Home() {
 
         <FeaturedCleaners />
 
-        <SectionHeader
-          title={t('home.popular')}
-          actionLabel={t('home.see_all')}
-          onAction={() => router.push('/(tabs)/explore')}
-        />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row gap-3 px-4 pb-1">
-            {SERVICE_CATEGORIES.filter((s) => s.popular).map((s) => (
-              <Pressable
-                key={s.code}
-                onPress={() => router.push(`/services/${s.code}`)}
-                style={{ width: 180 }}
-                className="overflow-hidden rounded-2xl bg-white"
-              >
-                <View className="h-24 w-full bg-ink-100">
-                  <Image source={s.imageUrl} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                </View>
-                <View className="p-2.5">
-                  <Text className="font-semibold text-[13px] text-ink-900" numberOfLines={1}>
-                    {s.name}
-                  </Text>
-                  <Text className="font-sans mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
-                    {s.description}
-                  </Text>
-                  <Text className="font-bold mt-1.5 text-[12px] text-brand-600">
-                    Mulai {formatRupiah(s.startingPrice)}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
+        <View className="mx-4 mt-3 rounded-2xl bg-white pb-3 pt-4" style={{ elevation: 2 }}>
+          <View className="mb-3 flex-row items-center justify-between px-4">
+            <Text className="font-extrabold text-base text-ink-900">{t('home.popular')}</Text>
+            <Pressable onPress={() => router.push('/(tabs)/explore')} className="flex-row items-center">
+              <Text className="font-semibold text-xs text-brand-600">{t('home.see_all')}</Text>
+              <ChevronRight color="#2563EB" size={14} />
+            </Pressable>
           </View>
-        </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-3 px-4">
+              {SERVICE_CATEGORIES.filter((s) => s.popular).map((s) => (
+                <Pressable
+                  key={s.code}
+                  onPress={() => router.push(`/services/${s.code}`)}
+                  style={{ width: 180, elevation: 1 }}
+                  className="overflow-hidden rounded-xl border border-ink-100 bg-white"
+                >
+                  <View className="h-24 w-full bg-ink-100">
+                    <Image source={s.imageUrl} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  </View>
+                  <View className="p-2.5">
+                    <Text className="font-semibold text-[13px] text-ink-900" numberOfLines={1}>
+                      {s.name}
+                    </Text>
+                    <Text className="font-sans mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
+                      {s.description}
+                    </Text>
+                    <Text className="font-bold mt-1.5 text-[12px] text-brand-600">
+                      Mulai {formatRupiah(s.startingPrice)}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
 
         <SectionHeader title="Cara Kerja" />
         <View className="mx-4 rounded-2xl bg-white p-4">
