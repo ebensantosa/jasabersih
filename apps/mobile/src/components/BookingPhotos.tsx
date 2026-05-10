@@ -67,9 +67,30 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
 
   if (!canUpload && photos.length === 0) return null;
 
+  // Hint contextual untuk cleaner: foto required sebelum advance status
+  const needBefore = isCleaner && ['matched', 'on_the_way'].includes(status) && beforePhotos.length === 0;
+  const needAfter = isCleaner && status === 'in_progress' && afterPhotos.length === 0;
+
   return (
     <View className="rounded-2xl bg-white p-4">
       <Text className="font-bold mb-3 text-sm text-ink-900">Foto Pekerjaan</Text>
+
+      {needBefore && (
+        <View className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+          <Text className="font-bold text-[11px] text-amber-900">⚠ Wajib upload foto SEBELUM</Text>
+          <Text className="font-sans mt-0.5 text-[10px] leading-4 text-amber-800">
+            Upload minimal 1 foto kondisi area sebelum mulai kerja. Sistem akan blokir tombol "Mulai Kerja" sampai foto ter-upload.
+          </Text>
+        </View>
+      )}
+      {needAfter && (
+        <View className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
+          <Text className="font-bold text-[11px] text-emerald-900">📸 Foto SESUDAH dibutuhkan</Text>
+          <Text className="font-sans mt-0.5 text-[10px] leading-4 text-emerald-800">
+            Untuk tandai job selesai, upload minimal 1 foto kondisi area setelah dibersihkan sebagai bukti.
+          </Text>
+        </View>
+      )}
 
       {beforePhotos.length > 0 && <PhotoRow label="Sebelum" photos={beforePhotos} />}
       {afterPhotos.length > 0 && <PhotoRow label="Sesudah" photos={afterPhotos} />}
@@ -81,8 +102,8 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
 
       {canUpload && (
         <View className="mt-3 flex-row gap-2 border-t border-ink-100 pt-3">
-          <UploadBtn label="Sebelum" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} />
-          <UploadBtn label="Sesudah" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} />
+          <UploadBtn label="Sebelum" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} />
+          <UploadBtn label="Sesudah" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} />
           <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" />
         </View>
       )}
@@ -105,16 +126,21 @@ function PhotoRow({ label, photos }: { label: string; photos: Photo[] }) {
   );
 }
 
-function UploadBtn({ label, loading, onPress, variant }: { label: string; loading: boolean; onPress: () => void; variant?: 'warning' }) {
-  const cls = variant === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-brand-50 border-brand-200';
-  const fg = variant === 'warning' ? 'text-amber-700' : 'text-brand-700';
+function UploadBtn({ label, loading, onPress, variant }: { label: string; loading: boolean; onPress: () => void; variant?: 'warning' | 'primary' }) {
+  const cls = variant === 'warning'
+    ? 'bg-amber-50 border-amber-200'
+    : variant === 'primary'
+      ? 'bg-brand-600 border-brand-700'
+      : 'bg-brand-50 border-brand-200';
+  const fg = variant === 'warning' ? 'text-amber-700' : variant === 'primary' ? 'text-white' : 'text-brand-700';
+  const iconColor = variant === 'warning' ? '#B45309' : variant === 'primary' ? '#FFFFFF' : '#1D4ED8';
   return (
     <Pressable
       onPress={onPress}
       disabled={loading}
       className={`flex-1 flex-row items-center justify-center gap-1 rounded-xl border ${cls} px-3 py-2.5 ${loading ? 'opacity-50' : ''}`}
     >
-      {loading ? <ActivityIndicator size="small" /> : <Camera size={14} color={variant === 'warning' ? '#B45309' : '#1D4ED8'} />}
+      {loading ? <ActivityIndicator size="small" color={variant === 'primary' ? 'white' : undefined} /> : <Camera size={14} color={iconColor} />}
       <Text className={`font-semibold text-xs ${fg}`}>{label}</Text>
     </Pressable>
   );
