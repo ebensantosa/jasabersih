@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Search, X } from 'lucide-react-native';
+import { CalendarClock, ChevronRight, Search, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,9 +13,10 @@ export default function Explore() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const ALL_SERVICES = useServices();
-  // Hide mode-toggles (general/deep cleaning) — sekarang opsi dalam booking, bukan service terpisah
-  const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
+  // Hide mode-toggles (general/deep cleaning) + subscription (punya section khusus)
+  const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning', 'subscription']);
   const SERVICE_CATEGORIES = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code));
+  const subscriptionService = ALL_SERVICES.find((s) => s.code === 'subscription');
 
   const query = q.trim().toLowerCase();
   const filtered = query
@@ -61,6 +63,62 @@ export default function Explore() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+        {/* Section khusus: Berlangganan Bulanan — perhitungan & jadwal beda */}
+        {subscriptionService && !query && (
+          <Pressable
+            onPress={() => router.push(`/services/${subscriptionService.code}`)}
+            className="overflow-hidden rounded-2xl"
+            style={{ elevation: 4 }}
+          >
+            <LinearGradient
+              colors={['#7C3AED', '#A855F7']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 16 }}
+            >
+              <View className="flex-row items-start gap-3">
+                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                  <CalendarClock color="white" size={26} strokeWidth={2.2} />
+                </View>
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-1.5">
+                    <View className="rounded bg-white/20 px-1.5 py-0.5">
+                      <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Khusus</Text>
+                    </View>
+                    <View className="rounded bg-amber-400 px-1.5 py-0.5">
+                      <Text className="font-extrabold text-[9px] uppercase tracking-wider text-amber-900">Hemat</Text>
+                    </View>
+                  </View>
+                  <Text className="font-extrabold mt-1.5 text-base text-white">Berlangganan Bulanan</Text>
+                  <Text className="font-sans mt-0.5 text-[11px] leading-4 text-white/85">
+                    3-6× kunjungan per bulan dengan jadwal tetap. Lebih hemat dibanding pesan satuan.
+                  </Text>
+                </View>
+              </View>
+              <View className="mt-3 flex-row items-center justify-between rounded-xl bg-white/15 px-3 py-2">
+                <View>
+                  <Text className="font-medium text-[10px] uppercase tracking-wider text-white/70">Mulai dari</Text>
+                  <Text className="font-extrabold text-sm text-white">
+                    {subscriptionService.startingPrice > 0
+                      ? formatRupiah(subscriptionService.startingPrice) + '/bulan'
+                      : 'Konsultasi'}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1">
+                  <Text className="font-bold text-[12px] text-white">Lihat Paket</Text>
+                  <ChevronRight color="white" size={14} strokeWidth={2.4} />
+                </View>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        )}
+
+        {!query && SERVICE_CATEGORIES.length > 0 && (
+          <Text className="font-bold mt-2 text-[11px] uppercase tracking-wider text-ink-500">
+            Layanan Satuan
+          </Text>
+        )}
+
         {filtered.map((s) => (
           <Pressable
             key={s.code}
