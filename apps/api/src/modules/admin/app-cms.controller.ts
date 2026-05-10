@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
 import { EmailService } from '../email/email.service';
+import { StorageService } from '../storage/storage.service';
 import { ReferralRedirectController } from '../referral/referral-redirect.controller';
 
 @ApiTags('admin-app-cms')
@@ -17,7 +18,16 @@ export class AdminAppCmsController {
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
     private readonly email: EmailService,
+    private readonly storage: StorageService,
   ) {}
+
+  @Post('storage/configure-cors')
+  @Roles('super_admin')
+  async setupCors(@CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+    const results = await this.storage.configureCors();
+    await this.audit.log({ adminId: admin.id, action: 'storage.cors_setup', resourceType: 'r2', changes: { results }, ipAddress: req.ip ?? null });
+    return { results };
+  }
 
   // =========== APP CONFIG ===========
   @Get('config')

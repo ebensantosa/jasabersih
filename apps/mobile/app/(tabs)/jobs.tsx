@@ -31,26 +31,20 @@ type ActiveJob = {
 };
 
 export default function Jobs() {
+  return (
+    <CleanerKycGate>
+      <JobsScreen />
+    </CleanerKycGate>
+  );
+}
+
+function JobsScreen() {
   const router = useRouter();
 
   const [available, setAvailable] = useState<AvailableJob[]>([]);
   const [active, setActive] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
-  const [kycStatus, setKycStatus] = useState<string | null>(null);
-  const [kycLoading, setKycLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get('/cleaner/profile');
-        const p = res.data?.data ?? res.data;
-        setKycStatus(p?.kycStatus ?? 'pending');
-      } catch {
-        setKycStatus('pending');
-      } finally { setKycLoading(false); }
-    })();
-  }, []);
 
   async function load() {
     setLoading(true);
@@ -87,11 +81,6 @@ export default function Jobs() {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal accept');
       void load();
     }
-  }
-
-  // KYC Gate: cleaner harus approved sebelum bisa lihat/terima job
-  if (!kycLoading && kycStatus !== 'approved') {
-    return <CleanerKycGate><View /></CleanerKycGate>;
   }
 
   return (

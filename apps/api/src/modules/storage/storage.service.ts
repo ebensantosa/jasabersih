@@ -34,6 +34,14 @@ export class StorageService implements OnModuleInit {
    * ke signed URL tanpa CORS error. Idempotent — safe to call tiap startup.
    */
   async onModuleInit(): Promise<void> {
+    await this.configureCors().catch((e) => this.log.error(`CORS init failed: ${e?.message ?? e}`));
+  }
+
+  /**
+   * Configure CORS rules on R2 buckets — callable on startup OR manually via admin.
+   * Returns array of results per bucket biar admin bisa lihat error spesifik.
+   */
+  async configureCors(): Promise<Array<{ bucket: string; ok: boolean; error?: string }>> {
     const allowedOriginsRaw = process.env.R2_CORS_ORIGINS
       ?? 'https://dashboard.jasabersih.com,https://api.jasabersih.com,https://jasabersih.com,http://localhost:3000,http://localhost:3001,http://localhost:8081,http://localhost:8082';
     const origins = allowedOriginsRaw.split(',').map((o) => o.trim()).filter(Boolean);
@@ -42,7 +50,7 @@ export class StorageService implements OnModuleInit {
       CORSRules: [
         {
           AllowedOrigins: origins,
-          AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD'],
+          AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD', 'DELETE'],
           AllowedHeaders: ['*'],
           ExposeHeaders: ['ETag', 'Content-Length'],
           MaxAgeSeconds: 3600,
@@ -50,17 +58,23 @@ export class StorageService implements OnModuleInit {
       ],
     };
 
+    const results: Array<{ bucket: string; ok: boolean; error?: string }> = [];
     for (const kind of ['private', 'public'] as const) {
+      const bucketName = this.buckets[kind];
       try {
         await this.client.send(new PutBucketCorsCommand({
-          Bucket: this.buckets[kind],
+          Bucket: bucketName,
           CORSConfiguration: corsConfig,
         }));
-        this.log.log(`R2 CORS configured for ${kind} bucket (${this.buckets[kind]}) — ${origins.length} origins allowed`);
+        this.log.log(`R2 CORS OK: ${kind} (${bucketName}) — ${origins.length} origins allowed`);
+        results.push({ bucket: bucketName, ok: true });
       } catch (e: any) {
-        this.log.warn(`Failed to set CORS on ${kind} bucket: ${e?.message ?? e}`);
+        const msg = e?.name ? `${e.name}: ${e?.message ?? ''}` : String(e?.message ?? e);
+        this.log.error(`R2 CORS FAIL ${kind} (${bucketName}): ${msg}`);
+        results.push({ bucket: bucketName, ok: false, error: msg });
       }
     }
+    return results;
   }
 
   // Used by KYC/evidence upload (admin or user). Returns presigned PUT URL —
