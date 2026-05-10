@@ -26,8 +26,23 @@ import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
+import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 
 export default function Profile() {
+  const mode = useModeStore((s) => s.mode);
+  const tokens = useAuthStore((s) => s.tokens);
+  // Cleaner yang belum approve KYC: gate semua profile menu kecuali KYC link
+  if (mode === 'freelancer' && tokens) {
+    return (
+      <CleanerKycGate>
+        <ProfileScreen />
+      </CleanerKycGate>
+    );
+  }
+  return <ProfileScreen />;
+}
+
+function ProfileScreen() {
   const router = useRouter();
   const tokens = useAuthStore((s) => s.tokens);
   const logout = useAuthStore((s) => s.logout);
