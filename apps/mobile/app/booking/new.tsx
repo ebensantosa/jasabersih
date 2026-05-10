@@ -164,15 +164,42 @@ function NewBooking() {
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
   const deepSurcharge = cleanMode === 'deep' ? basePrice - rawPackagePrice : 0;
   const dirtSurcharge = Math.round(basePrice * (dirtMultiplier - 1 + photoPenalty));
-  // Estimasi tambah luas: baseline 60 m², +5% per 20 m² ekstra, max +20%
+
+  // Penyesuaian luas: baseline 60 m², +5% per 20 m² ekstra, max +20%
   const areaSteps = Math.min(4, Math.max(0, Math.floor((areaM2 - 60) / 20)));
   const sizePctExtra = areaSteps * 0.05;
   const sizeSurcharge = Math.round(basePrice * sizePctExtra);
+
+  // Lantai: floor 1 baseline; floor 2 +10%; floor 3 +20%; >3 +30%. Tanpa lift = +5% extra (capek angkut alat).
+  const floorN = floor === '>3' ? 4 : Math.max(1, parseInt(floor, 10) || 1);
+  const floorPct = floorN === 1 ? 0 : floorN === 2 ? 0.10 : floorN === 3 ? 0.20 : 0.30;
+  const noLiftPenalty = floorN >= 3 && !hasLift ? 0.05 : 0;
+  const floorPctTotal = floorPct + noLiftPenalty;
+  const floorSurcharge = Math.round(basePrice * floorPctTotal);
+
+  // Ruangan ekstra: kamar tidur ke-2+ +10% per kamar (max 4 ekstra), kamar mandi ke-2+ +5% per (max 3 ekstra)
+  const extraBedrooms = Math.min(4, Math.max(0, bedrooms - 1));
+  const extraBathrooms = Math.min(3, Math.max(0, bathrooms - 1));
+  const roomPctExtra = extraBedrooms * 0.10 + extraBathrooms * 0.05;
+  const roomSurcharge = Math.round(basePrice * roomPctExtra);
+
+  // Tipe properti modifier
+  const propertyMultiplier =
+    propertyType === 'Villa' ? 0.15 :
+    propertyType === 'Apartemen' ? 0.05 :
+    propertyType === 'Ruko' || propertyType === 'Kantor' ? 0.10 :
+    0;
+  const propertySurcharge = Math.round(basePrice * propertyMultiplier);
+
+  // Hewan peliharaan: +Rp 15k flat (extra time + risiko alergi/cleaner takut)
+  const petSurcharge = hasPet ? 15000 : 0;
+
   const addonTotal = useMemo(
     () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + a.price, 0),
     [selectedAddons],
   );
-  const subtotal = basePrice + dirtSurcharge + sizeSurcharge + addonTotal;
+  // basePrice sudah include deepSurcharge (via applyCleanMode). Surcharge lain = additive di atasnya.
+  const subtotal = basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherChecking, setVoucherChecking] = useState(false);
@@ -798,8 +825,26 @@ function NewBooking() {
                   )}
                   {sizeSurcharge > 0 && (
                     <Row
-                      label={`Penyesuaian luas ${areaM2} m²`}
+                      label={`Luas ${areaM2} m²`}
                       value={`+${formatRupiah(sizeSurcharge)}`}
+                    />
+                  )}
+                  {floorSurcharge > 0 && (
+                    <Row
+                      label={`Lantai ${floor}${noLiftPenalty > 0 ? ' (tanpa lift)' : ''}`}
+                      value={`+${formatRupiah(floorSurcharge)}`}
+                    />
+                  )}
+                  {roomSurcharge > 0 && (
+                    <Row
+                      label={`${extraBedrooms > 0 ? `+${extraBedrooms} kamar` : ''}${extraBedrooms > 0 && extraBathrooms > 0 ? ' & ' : ''}${extraBathrooms > 0 ? `+${extraBathrooms} kamar mandi` : ''}`}
+                      value={`+${formatRupiah(roomSurcharge)}`}
+                    />
+                  )}
+                  {propertySurcharge > 0 && (
+                    <Row
+                      label={`Tipe ${propertyType}`}
+                      value={`+${formatRupiah(propertySurcharge)}`}
                     />
                   )}
                   {dirtMultiplier > 1 && (
@@ -813,6 +858,9 @@ function NewBooking() {
                       label="Premium tanpa foto"
                       value={`+${formatRupiah(Math.round(basePrice * 0.25))}`}
                     />
+                  )}
+                  {petSurcharge > 0 && (
+                    <Row label="Ada hewan peliharaan" value={`+${formatRupiah(petSurcharge)}`} />
                   )}
                   {ADDONS.filter((a) => selectedAddons.has(a.code)).map((a) => (
                     <Row key={a.code} label={a.name} value={`+${formatRupiah(a.price)}`} />
