@@ -305,9 +305,6 @@ function NewBooking() {
             </Pressable>
             <View className="ml-1 flex-1">
               <Text className="font-bold text-base text-ink-900">{category.name}</Text>
-              <Text className="font-medium text-[11px] text-ink-500">
-                Langkah {step} dari {TOTAL_STEPS} · {STEP_LABELS[step - 1]}
-              </Text>
             </View>
           </View>
           <StepProgress current={step} total={TOTAL_STEPS} labels={STEP_LABELS} />
