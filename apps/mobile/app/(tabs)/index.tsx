@@ -383,7 +383,7 @@ export default function Home() {
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-white">Jadi Mitra Cleaner</Text>
                   <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Kerja fleksibel, payout harian, asuransi termasuk
+                    Kerja fleksibel, payout harian, atur jadwal sendiri
                   </Text>
                 </View>
                 <ChevronRight color="white" size={18} />

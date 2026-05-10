@@ -130,7 +130,7 @@ export default function Register() {
               {isFreelancer ? 'Jadi Mitra Cleaner' : 'Daftar Customer'}
             </Text>
             <Text className="font-sans mt-1 text-sm text-white/85">
-              {isFreelancer ? 'Kerja fleksibel, payout harian, asuransi termasuk' : 'Buat akun untuk mulai pesan layanan'}
+              {isFreelancer ? 'Kerja fleksibel, payout harian, atur jadwal sendiri' : 'Buat akun untuk mulai pesan layanan'}
             </Text>
           </View>
         </SafeAreaView>
@@ -143,8 +143,7 @@ export default function Register() {
             <View className="mt-1.5 gap-1">
               <Text className="font-sans text-[11px] text-emerald-900">✓ Komisi 60-70% per job (lebih tinggi kalau bawa alat)</Text>
               <Text className="font-sans text-[11px] text-emerald-900">✓ Payout harian via transfer bank</Text>
-              <Text className="font-sans text-[11px] text-emerald-900">✓ Asuransi kerja (cover kecelakaan ringan)</Text>
-              <Text className="font-sans text-[11px] text-emerald-900">✓ Pelatihan KYC + sertifikat profesional</Text>
+              <Text className="font-sans text-[11px] text-emerald-900">✓ Atur jadwal sendiri & pilih area kerja</Text>
             </View>
           </View>
         )}

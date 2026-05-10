@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Calendar, DollarSign, MapPin, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Calendar, DollarSign, MapPin } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,7 +11,6 @@ const PERKS = [
   { icon: DollarSign, title: 'Payout Harian', desc: 'Saldo cair ke rekening / e-wallet, tarik kapan saja.' },
   { icon: Calendar, title: 'Jam Fleksibel', desc: 'Atur sendiri jadwal kerjamu, part-time atau full-time.' },
   { icon: MapPin, title: 'Pilih Area Kerja', desc: 'Hanya terima order dari kelurahan yang kamu pilih.' },
-  { icon: ShieldCheck, title: 'Asuransi & Pelatihan', desc: 'Coverage kecelakaan kerja + training gratis.' },
 ];
 
 export default function CleanerOnboarding() {
@@ -39,7 +38,7 @@ export default function CleanerOnboarding() {
               Jadi Mitra{'\n'}Cleaner Profesional
             </Text>
             <Text className="font-sans mt-2 text-sm text-white/85">
-              Kerja fleksibel, payout harian, dapat asuransi.
+              Kerja fleksibel, payout harian, atur jadwal sendiri.
             </Text>
           </View>
         </SafeAreaView>
@@ -67,17 +66,6 @@ export default function CleanerOnboarding() {
           </View>
         </View>
 
-        <View className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <Text className="font-semibold text-xs uppercase tracking-wider text-amber-900">
-            Persyaratan
-          </Text>
-          <Text className="font-sans mt-2 text-xs leading-5 text-amber-900">
-            • KTP aktif & usia 18+{'\n'}
-            • Lulus quiz dasar (10 soal){'\n'}
-            • Pelatihan 30 menit (video in-app){'\n'}
-            • Bawa peralatan dasar (opsional — ada bonus rate)
-          </Text>
-        </View>
       </ScrollView>
 
       <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
