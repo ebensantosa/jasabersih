@@ -6,9 +6,11 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthGate } from '../../src/components/AuthGate';
+import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/stores/auth';
 import { useBookingsStore } from '../../src/stores/bookings';
+import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
 
 type ChatRow = {
@@ -158,9 +160,16 @@ function timeAgo(iso: string): string {
 }
 
 export default function Chats() {
+  const mode = useModeStore((s) => s.mode);
   return (
     <AuthGate>
-      <ChatsScreen />
+      {mode === 'freelancer' ? (
+        <CleanerKycGate>
+          <ChatsScreen />
+        </CleanerKycGate>
+      ) : (
+        <ChatsScreen />
+      )}
     </AuthGate>
   );
 }
