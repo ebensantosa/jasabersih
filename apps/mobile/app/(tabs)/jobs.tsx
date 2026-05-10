@@ -30,8 +30,6 @@ type ActiveJob = {
 
 export default function Jobs() {
   const router = useRouter();
-  const bringsTools = useCleanerStore((s) => s.bringsTools);
-  const setBringsTools = useCleanerStore((s) => s.setBringsTools);
 
   const [available, setAvailable] = useState<AvailableJob[]>([]);
   const [active, setActive] = useState<ActiveJob[]>([]);
@@ -108,26 +106,6 @@ export default function Jobs() {
             </View>
           </Pressable>
 
-          <Pressable
-            onPress={() => {
-              setBringsTools(!bringsTools);
-              api.patch('/cleaner/profile', { bringsTools: !bringsTools }).catch(() => {});
-            }}
-            className={`mt-2 flex-row items-center gap-2 rounded-xl border p-2.5 ${bringsTools ? 'border-amber-400 bg-amber-50' : 'border-ink-200 bg-white'}`}
-          >
-            <View className={`h-9 w-9 items-center justify-center rounded-xl ${bringsTools ? 'bg-amber-500' : 'bg-ink-200'}`}>
-              <Briefcase color="white" size={18} strokeWidth={2.2} />
-            </View>
-            <View className="flex-1">
-              <Text className="font-bold text-xs text-ink-900">{bringsTools ? 'Bawa Alat Sendiri' : 'Tanpa Alat'}</Text>
-              <Text className="font-medium text-[10px] text-ink-500">
-                {bringsTools ? '<300K=60% · 300-600K=55% · >600K=50%' : 'Komisi flat 40%'}
-              </Text>
-            </View>
-            <View className={`h-6 w-11 rounded-full p-0.5 ${bringsTools ? 'bg-amber-500' : 'bg-ink-300'}`}>
-              <View className={`h-5 w-5 rounded-full bg-white ${bringsTools ? 'self-end' : 'self-start'}`} />
-            </View>
-          </Pressable>
         </View>
       </SafeAreaView>
 
