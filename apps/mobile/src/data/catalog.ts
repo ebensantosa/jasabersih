@@ -32,6 +32,8 @@ export type ServiceCategory = {
   imageUrl: string;
   startingPrice: number;
   popular?: boolean;
+  /** Admin-controlled flag dari CMS — kalau false, gak muncul di home grid. */
+  showOnHome?: boolean;
 };
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [

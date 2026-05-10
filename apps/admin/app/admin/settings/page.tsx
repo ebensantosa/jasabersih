@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical, Home as HomeIcon, Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Button, Switch, Badge, useConfirm, useToast } from '../../../components/ui';
@@ -345,13 +345,38 @@ function ServicesTab() {
   async function load() { try { setList(await api.admin.configServices()); } catch (e: any) { toast.error(e?.message); } }
   useEffect(() => { void load(); }, []);
 
-  async function toggle(s: any) {
+  async function toggleActive(s: any) {
     try { await api.admin.updateService(s.id, { isActive: !s.isActive }); toast.success(`Service ${s.isActive ? 'nonaktif' : 'aktif'}kan.`); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+  async function toggleHome(s: any) {
+    try {
+      await api.admin.updateService(s.id, { showOnHome: !s.showOnHome });
+      toast.success(s.showOnHome ? 'Disembunyikan dari home.' : 'Akan tampil di home.');
+      void load();
+    } catch (e: any) { toast.error(e?.message); }
   }
   async function del(s: any) {
     const ok = await confirm({ title: 'Nonaktifkan layanan', message: `Yakin nonaktifkan "${s.name}"?`, variant: 'danger' });
     if (!ok) return;
     try { await api.admin.deactivateService(s.id); toast.success('Service nonaktifkan.'); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
+  // Reorder: pindah item up/down 1 step, lalu commit semua displayOrder ke server
+  async function move(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= list.length) return;
+    const newList = [...list];
+    [newList[idx], newList[target]] = [newList[target], newList[idx]];
+    setList(newList); // optimistic
+    const items = newList.map((s, i) => ({ id: s.id, displayOrder: i + 1 }));
+    try {
+      await api.admin.reorderServices(items);
+      toast.success('Urutan tersimpan.');
+      void load();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal urutkan');
+      void load(); // rollback
+    }
   }
 
   return (
@@ -360,23 +385,40 @@ function ServicesTab() {
         <h2 className="text-base font-semibold">Layanan ({list.length})</h2>
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Layanan</Button>
       </div>
+      <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-[11px] text-blue-900">
+        ↑↓ untuk atur urutan tampil. Toggle <HomeIcon size={11} className="inline" /> = tampil di home grid mobile (kalau off, layanan tetap muncul di tab Layanan).
+      </div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
+              <th className="w-20 px-2 py-2">Urut</th>
               <th className="px-4 py-2">Code</th><th className="px-4 py-2">Nama</th>
-              <th className="px-4 py-2">Deskripsi</th><th className="px-4 py-2">Order</th>
-              <th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th>
+              <th className="px-4 py-2">Deskripsi</th>
+              <th className="px-4 py-2">Home</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            {list.map((s) => (
+            {list.map((s, idx) => (
               <tr key={s.id} className="border-t">
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-0.5">
+                    <button onClick={() => move(idx, -1)} disabled={idx === 0} className="rounded p-1 hover:bg-slate-100 disabled:opacity-30" title="Naik"><ArrowUp size={14} /></button>
+                    <button onClick={() => move(idx, 1)} disabled={idx === list.length - 1} className="rounded p-1 hover:bg-slate-100 disabled:opacity-30" title="Turun"><ArrowDown size={14} /></button>
+                    <span className="ml-1 text-xs text-slate-400">{idx + 1}</span>
+                  </div>
+                </td>
                 <td className="px-4 py-2 font-mono text-xs">{s.code}</td>
                 <td className="px-4 py-2 font-medium">{s.name}</td>
                 <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-500">{s.description ?? '—'}</td>
-                <td className="px-4 py-2">{s.displayOrder ?? '—'}</td>
-                <td className="px-4 py-2"><button onClick={() => toggle(s)}>{s.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
+                <td className="px-4 py-2">
+                  <button onClick={() => toggleHome(s)} title={s.showOnHome ? 'Klik untuk hide dari home' : 'Klik untuk show di home'}>
+                    {s.showOnHome ? <Badge variant="blue">tampil</Badge> : <Badge>tidak</Badge>}
+                  </button>
+                </td>
+                <td className="px-4 py-2"><button onClick={() => toggleActive(s)}>{s.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
                   {s.isActive && <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(s)}>Hapus</Button>}
@@ -400,6 +442,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     description: service?.description ?? '',
     iconUrl: service?.iconUrl ?? '',
     displayOrder: service?.displayOrder ?? 0,
+    showOnHome: service?.showOnHome !== false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -413,7 +456,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     setBusy(true);
     try {
       if (isEdit) {
-        await api.admin.updateService(service.id, { name: form.name, description: form.description, iconUrl: form.iconUrl, displayOrder: form.displayOrder });
+        await api.admin.updateService(service.id, { name: form.name, description: form.description, iconUrl: form.iconUrl, displayOrder: form.displayOrder, showOnHome: form.showOnHome });
       } else {
         await api.admin.createService({ code: form.code, name: form.name, description: form.description, iconUrl: form.iconUrl, displayOrder: form.displayOrder });
       }
@@ -439,7 +482,11 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
         <Textarea label="Deskripsi" value={form.description} onChange={(v) => setForm({ ...form, description: v })} rows={3} />
         <ServiceIconUpload value={form.iconUrl} onChange={(v) => setForm({ ...form, iconUrl: v })} />
-        <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} />
+        <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} helpText="Atau pakai tombol ↑↓ di tabel untuk reorder cepat." />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-700">Tampil di Home Grid Mobile</label>
+          <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Ya, tampil di home (max 7 tile)' : 'Tidak — hanya tampil di tab Layanan'} />
+        </div>
       </div>
     </Modal>
   );

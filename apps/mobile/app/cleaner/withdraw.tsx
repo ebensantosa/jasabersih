@@ -242,7 +242,7 @@ function Withdraw() {
                 </View>
               </View>
               <Text className="font-sans mt-2 text-[10px] text-ink-500">
-                Tujuan: {method.label} Â· {account || '(belum diisi)'} a.n. {accountName || '...'}
+                Tujuan: {method.label} · {account || '(belum diisi)'} a.n. {accountName || '...'}
               </Text>
             </View>
           )}

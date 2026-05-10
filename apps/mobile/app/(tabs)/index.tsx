@@ -46,7 +46,12 @@ export default function Home() {
   // Hide mode-toggles (general/deep cleaning) — they are picker options inside booking, not destinations
   const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
   const BUNDLE_CODES = new Set(['full_house', 'kantor', 'pasca_renovasi', 'subscription', 'paket_bundle']);
-  const SERVICE_CATEGORIES = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !BUNDLE_CODES.has(s.code));
+  // Home grid: pakai showOnHome flag dari CMS (default TRUE) — admin bisa hide service tertentu
+  const SERVICE_CATEGORIES_ALL = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !BUNDLE_CODES.has(s.code) && s.showOnHome !== false);
+  // Max 7 tile + 1 "Lihat semua" = 8 total (2 baris × 4 kolom)
+  const HOME_TILE_LIMIT = 7;
+  const SERVICE_CATEGORIES = SERVICE_CATEGORIES_ALL.slice(0, HOME_TILE_LIMIT);
+  const hasMoreServices = SERVICE_CATEGORIES_ALL.length > HOME_TILE_LIMIT;
   const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => BUNDLE_CODES.has(s.code));
   const t = useT();
   const profile = useUserStore((s) => s.profile);
@@ -202,6 +207,22 @@ export default function Home() {
                 </Pressable>
               );
             })}
+            {hasMoreServices && (
+              <Pressable
+                onPress={() => router.push('/(tabs)/explore')}
+                className="w-1/4 items-center px-1 py-2"
+              >
+                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-brand-100">
+                  <ChevronRight color="#1D4ED8" size={22} strokeWidth={2.4} />
+                </View>
+                <Text
+                  className="font-medium mt-1.5 text-center text-[10px] leading-tight text-brand-700"
+                  numberOfLines={2}
+                >
+                  Lihat Semua
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
 

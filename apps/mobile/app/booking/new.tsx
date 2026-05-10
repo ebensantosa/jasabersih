@@ -306,7 +306,7 @@ function NewBooking() {
             <View className="ml-1 flex-1">
               <Text className="font-bold text-base text-ink-900">{category.name}</Text>
               <Text className="font-medium text-[11px] text-ink-500">
-                Langkah {step} dari {TOTAL_STEPS} Â· {STEP_LABELS[step - 1]}
+                Langkah {step} dari {TOTAL_STEPS} · {STEP_LABELS[step - 1]}
               </Text>
             </View>
           </View>
@@ -342,7 +342,7 @@ function NewBooking() {
                               {cleanMode === 'deep' && (
                                 <Text className="font-sans text-[10px] text-ink-400 line-through">{formatRupiah(p.price)}</Text>
                               )}
-                              <Text className="font-sans text-[10px] text-ink-500">Â±{p.durationMin} menit</Text>
+                              <Text className="font-sans text-[10px] text-ink-500">±{p.durationMin} menit</Text>
                             </View>
                           </View>
                           {includes.length > 0 && (
@@ -355,7 +355,7 @@ function NewBooking() {
                                 </View>
                               ))}
                               {!active && includes.length > 3 && (
-                                <Text className="font-medium mt-1 text-[10px] text-brand-600">+{includes.length - 3} item lain Â· tap untuk lihat semua</Text>
+                                <Text className="font-medium mt-1 text-[10px] text-brand-600">+{includes.length - 3} item lain · tap untuk lihat semua</Text>
                               )}
                             </View>
                           )}

@@ -175,7 +175,7 @@ function CleanerKycScreen() {
             })}
 
             <View className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <Text className="font-bold text-xs text-amber-900">âš ï¸ Penting</Text>
+              <Text className="font-bold text-xs text-amber-900">⚠ Penting</Text>
               <Text className="font-sans mt-1 text-[11px] text-amber-900">
                 • Pastikan foto jelas, tidak buram, semua tulisan terbaca{'\n'}
                 • Foto KTP tidak boleh di-edit / cropped sebagian{'\n'}

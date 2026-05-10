@@ -91,7 +91,7 @@ function VouchersScreen() {
                         {v.type === 'percentage' ? `${v.value}% OFF` : `Rp ${v.value.toLocaleString('id-ID')} OFF`}
                       </Text>
                       <Text className="font-sans text-[11px] text-ink-500">
-                        Min order Rp {v.minOrder.toLocaleString('id-ID')}{v.maxDiscount ? ` Â· max diskon Rp ${v.maxDiscount.toLocaleString('id-ID')}` : ''}
+                        Min order Rp {v.minOrder.toLocaleString('id-ID')}{v.maxDiscount ? ` · max diskon Rp ${v.maxDiscount.toLocaleString('id-ID')}` : ''}
                       </Text>
                     </View>
                     <Pressable onPress={() => copyCode(v.code)} className="rounded-lg bg-brand-50 px-3 py-2">

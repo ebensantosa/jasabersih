@@ -176,6 +176,8 @@ export function createClient(opts: ClientOptions) {
       updateCommissionTier: (id: string, body: any) =>
         request<unknown>('PATCH', `/admin/config/commission-tiers/${id}`, body),
       configServices: () => request<any[]>('GET', '/admin/config/services'),
+      reorderServices: (items: Array<{ id: string; displayOrder: number }>) =>
+        request<{ ok: true }>('PATCH', '/admin/config/services/reorder', { items }),
       createService: (body: any) => request<{ id: string }>('POST', '/admin/config/services', body),
       updateService: (id: string, body: any) =>
         request<unknown>('PATCH', `/admin/config/services/${id}`, body),

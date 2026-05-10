@@ -25,7 +25,7 @@ export type AppConfig = Partial<{
 }> & Record<string, unknown>;
 
 export type Banner = { id: string; title: string; subtitle: string | null; imageUrl: string; linkUrl: string | null; placement: string; sortOrder: number };
-export type ServiceItem = { id: string; code: string; name: string; description: string | null; iconUrl: string | null; displayOrder: number | null };
+export type ServiceItem = { id: string; code: string; name: string; description: string | null; iconUrl: string | null; displayOrder: number | null; showOnHome?: boolean };
 export type Addon = { id: string; code: string | null; name: string; price: number; durationMin: number; description: string | null };
 export type HourlyTier = { id: string; code: string | null; name: string | null; pricePerHour: number; minHours: number; cleanerSharePct: number };
 export type PackageItem = { id: string; serviceId: string; name: string; price: number; durationMin: number; scope: any };

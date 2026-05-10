@@ -78,7 +78,7 @@ function CleanerWallet() {
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-white">Tarik Saldo</Text>
                   <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Min {formatRupiah(MIN_WITHDRAW)} Â· ke bank / e-wallet
+                    Min {formatRupiah(MIN_WITHDRAW)} · ke bank / e-wallet
                   </Text>
                 </View>
               </View>
@@ -208,7 +208,7 @@ function EntryRow({ entry, last }: { entry: WalletEntry; last: boolean }) {
           <Text className="font-sans text-[10px] text-ink-400">{date}</Text>
           {statusLabel && (
             <Text className="font-bold text-[10px]" style={{ color: iconColor }}>
-              Â· {statusLabel}
+              · {statusLabel}
             </Text>
           )}
         </View>

@@ -32,6 +32,8 @@ export function useServices(): ServiceCategory[] {
         imageUrl: local?.imageUrl ?? SERVICE_CATEGORIES[0]!.imageUrl,
         startingPrice: minPrice,
         popular: local?.popular,
+        // Default true kalau API gak return field (backwards compat)
+        showOnHome: api.showOnHome !== false,
       };
       return merged;
     });

@@ -28,7 +28,8 @@ export class AppContentController {
          ORDER BY placement, sort_order ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
-        SELECT id, code, name, description, icon_url AS "iconUrl", display_order AS "displayOrder"
+        SELECT id, code, name, description, icon_url AS "iconUrl", display_order AS "displayOrder",
+               show_on_home AS "showOnHome"
           FROM services WHERE is_active = TRUE ORDER BY display_order ASC NULLS LAST, name ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
