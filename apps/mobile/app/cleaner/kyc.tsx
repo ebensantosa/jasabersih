@@ -61,37 +61,60 @@ function CleanerKycScreen() {
     }
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+      quality: 1,
       allowsEditing: false,
     });
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
 
+    // Validate format upfront
+    const mime = asset.mimeType ?? 'image/jpeg';
+    if (!/^image\/(jpe?g|png|webp)$/i.test(mime)) {
+      toast.error('Format tidak didukung. Pakai JPG/PNG/WebP saja.');
+      return;
+    }
+
     setUploading(docType);
     try {
-      // 1. Get signed URL
+      // 1. Compress + resize (target max 1600px, quality 0.7) — irit bandwidth & R2 storage
+      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
+      const compressed = await compressImage(asset.uri);
+      if (compressed.oversize) {
+        throw new Error(`File masih terlalu besar (${formatBytes(compressed.size)} > 5MB) walau sudah dikompres. Coba foto ulang atau crop dulu.`);
+      }
+
+      // 2. Get signed URL (force JPEG biar konsisten)
       const urlRes = await api.post('/cleaner/kyc/upload-url', {
         docType,
-        contentType: asset.mimeType ?? 'image/jpeg',
+        contentType: 'image/jpeg',
       });
       const { uploadUrl, key } = urlRes.data?.data ?? urlRes.data;
 
-      // 2. PUT file
-      const fileRes = await fetch(asset.uri);
+      // 3. PUT compressed file
+      const fileRes = await fetch(compressed.uri);
       const blob = await fileRes.blob();
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
         body: blob,
-        headers: { 'content-type': asset.mimeType ?? 'image/jpeg' },
+        headers: { 'content-type': 'image/jpeg' },
       });
-      if (!putRes.ok) throw new Error('Upload gagal');
+      if (!putRes.ok) {
+        throw new Error(`Upload ke storage gagal (HTTP ${putRes.status}). Cek koneksi internet.`);
+      }
 
-      // 3. Register doc
+      // 4. Register doc
       await api.post('/cleaner/kyc/documents', { docType, storagePath: key });
-      toast.success(`${DOC_INFO[docType].label} terupload.`);
+      toast.success(`${DOC_INFO[docType].label} terupload (${formatBytes(compressed.size)})`);
       await load();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Upload gagal');
+      const apiMsg = e?.response?.data?.error?.message;
+      const status = e?.response?.status;
+      let msg = apiMsg ?? e?.message ?? 'Upload gagal — coba lagi';
+      if (status === 413) msg = 'File terlalu besar. Coba kompres atau pilih foto lain.';
+      else if (status === 415) msg = 'Format tidak didukung. Pakai JPG/PNG/WebP saja.';
+      else if (status >= 500) msg = 'Server error. Coba lagi dalam beberapa saat.';
+      else if (e?.message?.includes('Network')) msg = 'Koneksi internet bermasalah. Cek WiFi/data.';
+      toast.error(msg);
     } finally {
       setUploading(null);
     }
@@ -181,7 +204,7 @@ function CleanerKycScreen() {
                 • Foto KTP tidak boleh di-edit / cropped sebagian{'\n'}
                 • Selfie + KTP: wajah & KTP harus terlihat jelas dalam satu frame{'\n'}
                 • Buku tabungan: nama harus sesuai KTP{'\n'}
-                • Review admin biasanya 1-2 jam kerja
+                • Review admin biasanya 1×24 jam kerja
               </Text>
             </View>
           </ScrollView>
@@ -194,7 +217,7 @@ function CleanerKycScreen() {
 function StatusBanner({ status, reason }: { status: string; reason: string | null }) {
   const variants: Record<string, { icon: any; color: string; bg: string; border: string; label: string; sub: string }> = {
     pending: { icon: Clock, color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', label: 'Belum lengkap', sub: 'Upload semua 3 dokumen untuk submit ke review.' },
-    under_review: { icon: Clock, color: '#1D4ED8', bg: '#DBEAFE', border: '#93C5FD', label: 'Dalam review admin', sub: 'Tim kami akan verifikasi dalam 1-2 jam kerja.' },
+    under_review: { icon: Clock, color: '#1D4ED8', bg: '#DBEAFE', border: '#93C5FD', label: 'Dalam review admin', sub: 'Tim kami akan verifikasi dalam 1×24 jam kerja.' },
     approved: { icon: BadgeCheck, color: '#047857', bg: '#D1FAE5', border: '#6EE7B7', label: 'Disetujui ✓', sub: 'KYC kamu sudah aktif. Selamat menerima order!' },
     rejected: { icon: X, color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', label: 'Ditolak', sub: reason ?? 'Silakan upload ulang dengan foto yang lebih jelas.' },
   };

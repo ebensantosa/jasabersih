@@ -16,6 +16,7 @@ import { useCleanerStore } from '../../src/stores/cleaner';
 import { useCleanerWalletStore, MIN_WITHDRAW, type WalletEntry } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
+import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 
 function CleanerWallet() {
   const router = useRouter();
@@ -224,4 +225,4 @@ function EntryRow({ entry, last }: { entry: WalletEntry; last: boolean }) {
 }
 
 
-export default withAuth(CleanerWallet, 'freelancer');
+export default withAuth(withCleanerKyc(CleanerWallet), 'freelancer');

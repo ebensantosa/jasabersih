@@ -9,6 +9,7 @@ import { formatRupiah } from '../../src/data/catalog';
 import { MIN_WITHDRAW, useCleanerWalletStore } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
+import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 
 const METHODS = [
   { code: 'bca', label: 'BCA', kind: 'bank' },
@@ -311,4 +312,4 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 
-export default withAuth(Withdraw, 'freelancer');
+export default withAuth(withCleanerKyc(Withdraw), 'freelancer');

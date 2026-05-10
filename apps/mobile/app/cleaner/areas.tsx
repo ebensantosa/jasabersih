@@ -7,6 +7,7 @@ import { SERVICE_CITIES } from '../../src/data/catalog';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
+import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 
 function CleanerAreas() {
   const router = useRouter();
@@ -113,4 +114,4 @@ function CleanerAreas() {
 }
 
 
-export default withAuth(CleanerAreas, 'freelancer');
+export default withAuth(withCleanerKyc(CleanerAreas), 'freelancer');

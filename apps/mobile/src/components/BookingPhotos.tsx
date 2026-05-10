@@ -29,24 +29,34 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
       const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!lib.granted) { toast.warning('Butuh akses kamera/galeri.'); return; }
     }
-    const picked = await ImagePicker.launchCameraAsync({ quality: 0.7 }).catch(() => null) ??
-      await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    const picked = await ImagePicker.launchCameraAsync({ quality: 1 }).catch(() => null) ??
+      await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
 
     setUploading(type);
     try {
-      const r = await api.post(`/cleaner/jobs/${bookingId}/photo-upload-url`, { photoType: type, contentType: asset.mimeType ?? 'image/jpeg' });
+      // Compress dulu (max 1600px, JPEG 0.7) — cleaner sering upload via 4G, irit data
+      const { compressImage, formatBytes } = await import('../lib/imageCompress');
+      const compressed = await compressImage(asset.uri);
+      if (compressed.oversize) throw new Error(`Foto terlalu besar (${formatBytes(compressed.size)} > 5MB). Coba foto ulang.`);
+
+      const r = await api.post(`/cleaner/jobs/${bookingId}/photo-upload-url`, { photoType: type, contentType: 'image/jpeg' });
       const { uploadUrl, key } = r.data?.data ?? r.data;
-      const fileRes = await fetch(asset.uri);
+      const fileRes = await fetch(compressed.uri);
       const blob = await fileRes.blob();
-      const putRes = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'content-type': asset.mimeType ?? 'image/jpeg' } });
-      if (!putRes.ok) throw new Error('Upload gagal');
+      const putRes = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'content-type': 'image/jpeg' } });
+      if (!putRes.ok) throw new Error(`Upload gagal (HTTP ${putRes.status}). Cek koneksi.`);
       await api.post(`/cleaner/jobs/${bookingId}/photos`, { photoType: type, storagePath: key });
-      toast.success(`Foto ${type === 'before' ? 'sebelum' : type === 'after' ? 'sesudah' : 'kerusakan'} ter-upload`);
+      toast.success(`Foto ${type === 'before' ? 'sebelum' : type === 'after' ? 'sesudah' : 'kerusakan'} ter-upload (${formatBytes(compressed.size)})`);
       void load();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Upload gagal');
+      const status = e?.response?.status;
+      let msg = e?.response?.data?.error?.message ?? e?.message ?? 'Upload gagal';
+      if (status === 413) msg = 'Foto terlalu besar.';
+      else if (status === 415) msg = 'Format tidak didukung. JPG/PNG/WebP saja.';
+      else if (status >= 500) msg = 'Server error. Coba lagi.';
+      toast.error(msg);
     } finally { setUploading(null); }
   }
 

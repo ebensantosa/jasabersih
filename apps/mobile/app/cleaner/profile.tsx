@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../src/lib/api';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
+import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 
 type Profile = {
   bio: string | null;
@@ -229,4 +230,4 @@ function KycBadge({ status }: { status: string }) {
 }
 
 
-export default withAuth(CleanerProfileScreen, 'freelancer');
+export default withAuth(withCleanerKyc(CleanerProfileScreen), 'freelancer');
