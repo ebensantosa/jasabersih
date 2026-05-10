@@ -194,6 +194,52 @@ export class AuthService {
     };
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    if (newPassword.length < 8) {
+      throw new BadRequestException({ code: 'WEAK_PASSWORD', message: 'Password baru min 8 karakter.' });
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException({ code: 'USER_NOT_FOUND', message: 'User not found' });
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) throw new UnauthorizedException({ code: 'WRONG_PASSWORD', message: 'Password lama salah.' });
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } });
+    // Revoke semua sesi lain biar device lain auto-logout (kecuali current — caller bisa re-login)
+    await this.prisma.$executeRaw`UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${userId}::uuid AND revoked_at IS NULL`;
+  }
+
+  async forgotPassword(identifier: string): Promise<{ ok: boolean; emailSent?: boolean; devOtp?: string }> {
+    const raw = identifier.trim();
+    const user = isLikelyEmail(raw)
+      ? await this.prisma.user.findUnique({ where: { email: raw.toLowerCase() } })
+      : await this.prisma.user.findUnique({ where: { phone: normalizePhone(raw) } });
+    // Always return ok (no enumeration leak — gak kasih tau email/phone exists atau gak)
+    if (!user || !user.email) return { ok: true };
+    await this.otp.assertEmailRateOk(user.email);
+    const otp = await this.otp.generateAndSend(user.phone);
+    let emailSent = false;
+    const result = await this.otp.sendViaEmail(user.email, otp);
+    emailSent = result.ok;
+    const devMode = process.env.AUTH_DEV_MODE === 'true';
+    return { ok: true, emailSent, ...(devMode ? { devOtp: otp } : {}) };
+  }
+
+  async resetPassword(identifier: string, otp: string, newPassword: string): Promise<void> {
+    if (newPassword.length < 8) {
+      throw new BadRequestException({ code: 'WEAK_PASSWORD', message: 'Password baru min 8 karakter.' });
+    }
+    const raw = identifier.trim();
+    const user = isLikelyEmail(raw)
+      ? await this.prisma.user.findUnique({ where: { email: raw.toLowerCase() } })
+      : await this.prisma.user.findUnique({ where: { phone: normalizePhone(raw) } });
+    if (!user) throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Email/HP atau OTP tidak valid.' });
+    await this.otp.verify(user.phone, otp);
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+    // Revoke semua sesi lama (force re-login di semua device)
+    await this.prisma.$executeRaw`UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${user.id}::uuid AND revoked_at IS NULL`;
+  }
+
   async logout(refreshToken: string): Promise<void> {
     if (!refreshToken) {
       throw new BadRequestException({ code: 'MISSING_REFRESH_TOKEN', message: 'refreshToken wajib.' });

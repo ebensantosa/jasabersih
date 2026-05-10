@@ -269,11 +269,11 @@ export default function Register() {
 
         <Text className="font-sans mx-6 mt-4 text-center text-[11px] text-ink-400">
           Dengan daftar, kamu setuju dengan{' '}
-          <Text className={`font-semibold ${theme.linkAccent}`} onPress={() => toast.comingSoon()}>
+          <Text className={`font-semibold ${theme.linkAccent}`} onPress={() => router.push('/account/terms')}>
             Syarat & Ketentuan
           </Text>{' '}
           dan{' '}
-          <Text className={`font-semibold ${theme.linkAccent}`} onPress={() => toast.comingSoon()}>
+          <Text className={`font-semibold ${theme.linkAccent}`} onPress={() => router.push('/account/privacy')}>
             Kebijakan Privasi
           </Text>
           .

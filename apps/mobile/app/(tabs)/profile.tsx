@@ -154,7 +154,7 @@ export default function Profile() {
             items={[
               { icon: CreditCard, label: 'Wallet & Penarikan', onPress: () => router.push('/cleaner/wallet') },
               { icon: MapPin, label: 'Area Layananku', onPress: () => router.push('/cleaner/areas') },
-              { icon: Briefcase, label: 'Status KYC & Verifikasi', onPress: () => toast.comingSoon() },
+              { icon: Briefcase, label: 'Status KYC & Verifikasi', onPress: () => router.push('/cleaner/kyc') },
             ]}
           />
         )}

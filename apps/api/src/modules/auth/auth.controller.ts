@@ -99,6 +99,35 @@ export class AuthController {
     return this.auth.getProfile(user.id);
   }
 
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async changePassword(
+    @Body() body: { currentPassword: string; newPassword: string },
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    if (!body?.currentPassword || !body?.newPassword) throw new Error('currentPassword + newPassword wajib');
+    await this.auth.changePassword(user.id, body.currentPassword, body.newPassword);
+  }
+
+  @Post('forgot-password')
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: { identifier: string }) {
+    return this.auth.forgotPassword(body.identifier);
+  }
+
+  @Post('reset-password')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resetPassword(
+    @Body() body: { identifier: string; otp: string; newPassword: string },
+  ): Promise<void> {
+    await this.auth.resetPassword(body.identifier, body.otp, body.newPassword);
+  }
+
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

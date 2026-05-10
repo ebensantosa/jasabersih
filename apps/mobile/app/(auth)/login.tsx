@@ -168,7 +168,7 @@ export default function Login() {
               </Pressable>
             </Field>
 
-            <Pressable className="self-end" onPress={() => toast.comingSoon()}>
+            <Pressable className="self-end" onPress={() => router.push('/(auth)/forgot-password')}>
               <Text className="font-semibold text-xs text-brand-600">Lupa password?</Text>
             </Pressable>
           </View>

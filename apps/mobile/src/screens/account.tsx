@@ -210,9 +210,7 @@ export function Security() {
   return (
     <>
       <View className="rounded-2xl bg-white">
-        <Row icon={Lock} label="Ganti Password" />
-        <Row icon={Smartphone} label="Perangkat Aktif" />
-        <Row icon={Shield} label="Two-Factor Authentication" last />
+        <Row icon={Lock} label="Ganti Password" onPress={() => router.push('/account/change-password')} last />
       </View>
       <View className="rounded-2xl bg-white">
         <Row icon={Info} label="Kebijakan Privasi" onPress={() => router.push('/account/privacy')} />

@@ -161,6 +161,7 @@ export default function RootLayout() {
         <Stack.Screen name="account/wallet" />
         <Stack.Screen name="account/notifications" />
         <Stack.Screen name="account/security" />
+        <Stack.Screen name="account/change-password" />
         <Stack.Screen name="account/help" />
         <Stack.Screen name="account/settings" />
         <Stack.Screen name="account/referral" />
