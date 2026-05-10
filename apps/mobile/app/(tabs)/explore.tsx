@@ -11,7 +11,10 @@ import { useServices } from '../../src/hooks/useServices';
 export default function Explore() {
   const router = useRouter();
   const [q, setQ] = useState('');
-  const SERVICE_CATEGORIES = useServices();
+  const ALL_SERVICES = useServices();
+  // Hide mode-toggles (general/deep cleaning) — sekarang opsi dalam booking, bukan service terpisah
+  const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
+  const SERVICE_CATEGORIES = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code));
 
   const query = q.trim().toLowerCase();
   const filtered = query
