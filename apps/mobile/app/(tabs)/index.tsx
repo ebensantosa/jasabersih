@@ -65,12 +65,6 @@ export default function Home() {
       <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 64 }}>
         <SafeAreaView edges={['top']}>
           <View className="px-4 pb-2 pt-1">
-            {firstName && (
-              <View className="mb-2 px-1">
-                <Text className="font-sans text-[11px] text-white/70">{greeting},</Text>
-                <Text className="font-extrabold text-lg text-white" numberOfLines={1}>👋 Halo, {firstName}!</Text>
-              </View>
-            )}
             <View className="flex-row items-center gap-2">
               <Pressable
                 onPress={() => {
@@ -87,7 +81,13 @@ export default function Home() {
                 </View>
                 <View className="flex-1">
                   <Text className="font-medium text-[10px] text-white/70" numberOfLines={1}>
-                    {defaultAddress ? `${t('home.send_to')} · ${defaultAddress.label}` : t('home.no_address')}
+                    {firstName
+                      ? defaultAddress
+                        ? `Hai ${firstName}, ${greeting.toLowerCase()}`
+                        : `Hai ${firstName}`
+                      : defaultAddress
+                        ? `${t('home.send_to')} · ${defaultAddress.label}`
+                        : t('home.no_address')}
                   </Text>
                   <Text
                     className="font-semibold text-xs text-white"
