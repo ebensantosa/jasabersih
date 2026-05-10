@@ -15,6 +15,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
+import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { useCleanerWalletStore } from '../../src/stores/cleanerWallet';
@@ -30,7 +31,15 @@ const LEADERBOARD = [
   { name: 'Pak Joko Susanto', city: 'Sleman', jobs: 51 },
 ];
 
-export default function Earnings() {
+export default function EarningsRoute() {
+  return (
+    <CleanerKycGate>
+      <EarningsScreen />
+    </CleanerKycGate>
+  );
+}
+
+function EarningsScreen() {
   const router = useRouter();
   const cleanerName = useCleanerStore((s) => s.name);
   const localBalance = useCleanerWalletStore((s) => s.balance());
