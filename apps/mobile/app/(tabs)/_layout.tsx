@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Briefcase, ClipboardList, Home, Search, TrendingUp, User } from 'lucide-react-native';
+import { Briefcase, ClipboardList, Home, MessageCircle, Search, TrendingUp, User } from 'lucide-react-native';
 import { Platform, Text, View } from 'react-native';
 
 import { useT } from '../../src/lib/i18n';
@@ -61,6 +61,15 @@ export default function TabsLayout() {
           href: isFreelancer ? null : '/(tabs)/bookings',
           tabBarIcon: ({ focused }) => (
             <TabItem icon={ClipboardList} label={t('tab.bookings')} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chats"
+        options={{
+          href: '/(tabs)/chats',
+          tabBarIcon: ({ focused }) => (
+            <TabItem icon={MessageCircle} label="Pesan" focused={focused} />
           ),
         }}
       />
