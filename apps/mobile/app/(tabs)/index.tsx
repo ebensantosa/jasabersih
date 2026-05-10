@@ -82,9 +82,7 @@ export default function Home() {
                 <View className="flex-1">
                   <Text className="font-medium text-[10px] text-white/70" numberOfLines={1}>
                     {firstName
-                      ? defaultAddress
-                        ? `Hai ${firstName}, ${greeting.toLowerCase()}`
-                        : `Hai ${firstName}`
+                      ? `Hai ${firstName}, ${greeting.toLowerCase()}`
                       : defaultAddress
                         ? `${t('home.send_to')} · ${defaultAddress.label}`
                         : t('home.no_address')}
