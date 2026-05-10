@@ -27,6 +27,8 @@ export type ServiceCategory = {
   icon: LucideIcon;
   iconColor: string;
   iconBg: string;
+  /** Custom icon URL dari CMS (override Lucide). Optional — fallback ke `icon`. */
+  customIconUrl?: string | null;
   imageUrl: string;
   startingPrice: number;
   popular?: boolean;

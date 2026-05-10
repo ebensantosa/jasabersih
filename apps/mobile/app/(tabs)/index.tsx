@@ -187,6 +187,8 @@ export default function Home() {
                   >
                     {isKonsul ? (
                       <WaIcon size={22} />
+                    ) : s.customIconUrl ? (
+                      <Image source={{ uri: s.customIconUrl }} style={{ width: 26, height: 26 }} contentFit="contain" />
                     ) : (
                       <s.icon color={s.iconColor} size={22} strokeWidth={2} />
                     )}

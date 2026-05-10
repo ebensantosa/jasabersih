@@ -27,7 +27,9 @@ export function useServices(): ServiceCategory[] {
         icon: (local?.icon ?? Brush) as LucideIcon,
         iconColor: local?.iconColor ?? '#475569',
         iconBg: local?.iconBg ?? '#E2E8F0',
-        imageUrl: api.iconUrl ?? local?.imageUrl ?? SERVICE_CATEGORIES[0]!.imageUrl,
+        // CMS-set icon URL kalau admin upload, override Lucide di tile grid
+        customIconUrl: (api.iconUrl as string | undefined) ?? null,
+        imageUrl: local?.imageUrl ?? SERVICE_CATEGORIES[0]!.imageUrl,
         startingPrice: minPrice,
         popular: local?.popular,
       };

@@ -438,10 +438,80 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         {!isEdit && <Input label="Code (slug, lowercase)" required value={form.code} onChange={(v) => setForm({ ...form, code: v.toLowerCase() })} error={errors.code} placeholder="kamar / dapur / full_house" />}
         <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
         <Textarea label="Deskripsi" value={form.description} onChange={(v) => setForm({ ...form, description: v })} rows={3} />
-        <Input label="Icon URL (opsional)" value={form.iconUrl} onChange={(v) => setForm({ ...form, iconUrl: v })} placeholder="https://cdn.jasabersih.com/..." />
+        <ServiceIconUpload value={form.iconUrl} onChange={(v) => setForm({ ...form, iconUrl: v })} />
         <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} />
       </div>
     </Modal>
+  );
+}
+
+// ============ SERVICE ICON UPLOAD ============
+function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  async function uploadFile(file: File) {
+    setBusy(true);
+    try {
+      const { uploadUrl, publicUrl } = await api.admin.cmsUploadUrl(file.type, 'service-icons');
+      const res = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'content-type': file.type } });
+      if (!res.ok) throw new Error('Upload gagal');
+      onChange(publicUrl);
+      toast.success('Icon ter-upload.');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Upload gagal — cek koneksi atau format file.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-slate-700">Icon Layanan (opsional)</label>
+      <p className="mb-2 text-[11px] text-slate-500">PNG/SVG transparan, ukuran ~64×64. Kalau kosong, pakai icon default Lucide.</p>
+      <div className="flex items-center gap-3">
+        {value ? (
+          <div className="relative h-16 w-16 rounded-xl border border-slate-200 bg-slate-50 p-2">
+            <img src={value} alt="icon" className="h-full w-full object-contain" />
+            <button
+              onClick={() => onChange('')}
+              type="button"
+              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-white shadow"
+              title="Hapus icon"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">
+            No icon
+          </div>
+        )}
+        <div className="flex-1">
+          <input
+            type="file"
+            accept="image/png,image/svg+xml,image/webp,image/jpeg"
+            disabled={busy}
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (f) await uploadFile(f);
+              e.target.value = '';
+            }}
+            className="block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium hover:file:bg-slate-200"
+          />
+          {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
+          {value && (
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="mt-1 w-full truncate rounded border border-slate-200 px-2 py-1 font-mono text-[10px] text-slate-500"
+              title="URL icon"
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

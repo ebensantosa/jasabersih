@@ -138,7 +138,11 @@ export default function Explore() {
                   style={{ backgroundColor: s.iconBg }}
                   className="h-7 w-7 items-center justify-center rounded-lg"
                 >
-                  <s.icon color={s.iconColor} size={16} strokeWidth={2.2} />
+                  {s.customIconUrl ? (
+                    <Image source={{ uri: s.customIconUrl }} style={{ width: 18, height: 18 }} contentFit="contain" />
+                  ) : (
+                    <s.icon color={s.iconColor} size={16} strokeWidth={2.2} />
+                  )}
                 </View>
                 <Text className="font-semibold text-sm text-ink-900">{s.name}</Text>
               </View>
