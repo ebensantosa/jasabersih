@@ -65,29 +65,10 @@ async function main() {
     });
   }
 
-  const kamar = await prisma.service.findUnique({ where: { code: 'kamar' } });
-  const dapur = await prisma.service.findUnique({ where: { code: 'dapur' } });
-  const fullHouse = await prisma.service.findUnique({ where: { code: 'full_house' } });
-
-  console.warn('Seeding pricing packages...');
-  if (kamar) {
-    await prisma.pricingPackage.create({
-      data: { serviceId: kamar.id, name: 'Kamar Standard', price: 75_000n, durationMin: 90 },
-    });
-  }
-  if (dapur) {
-    await prisma.pricingPackage.create({
-      data: { serviceId: dapur.id, name: 'Dapur Standard', price: 90_000n, durationMin: 90 },
-    });
-  }
-  if (fullHouse) {
-    await prisma.pricingPackage.create({
-      data: { serviceId: fullHouse.id, name: 'Full House Tipe 36', price: 250_000n, durationMin: 240 },
-    });
-    await prisma.pricingPackage.create({
-      data: { serviceId: fullHouse.id, name: 'Full House Tipe 45', price: 320_000n, durationMin: 300 },
-    });
-  }
+  // Note: pricing_packages diurus oleh migration canonical (20260509200000_align_pricelist) +
+  // dedupe (20260509230000_dedupe_packages). Seed legacy 'Kamar Standard' / 'Dapur Standard' /
+  // 'Full House Tipe 36/45' di-skip karena pakai create() (bukan upsert) bikin duplicate
+  // tiap deploy.
 
   console.warn('Seeding add-ons...');
   for (const a of ADD_ONS) {
