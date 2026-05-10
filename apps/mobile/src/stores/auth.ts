@@ -40,6 +40,7 @@ export const useAuthStore = create<State>((set, get) => ({
       import('./cleanerWallet').then((m) => m.useCleanerWalletStore.getState().clearLocal?.()),
       import('./cleaner').then((m) => m.useCleanerStore.getState().clearLocal?.()),
       import('./user').then((m) => m.useUserStore.getState().clear()),
+      import('./suspended').then((m) => m.useSuspendedStore.getState().clear()),
     ]).catch(() => {});
   },
   hydrate: () => {

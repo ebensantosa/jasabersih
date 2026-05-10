@@ -16,6 +16,7 @@ import { View } from 'react-native';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { IncomingJobModal } from '../src/components/IncomingJobModal';
 import { PopupRenderer } from '../src/components/PopupRenderer';
+import { SuspendedOverlay } from '../src/components/SuspendedOverlay';
 import { RealtimeJobModal } from '../src/components/RealtimeJobModal';
 import { ToastHost } from '../src/components/Toast';
 import { UpdatePromptHost } from '../src/components/UpdatePrompt';
@@ -177,6 +178,7 @@ export default function RootLayout() {
         <IncomingJobModal />
         <RealtimeJobModal />
         <PopupRenderer event="app_open" />
+        <SuspendedOverlay />
       </QueryProvider>
     </ErrorBoundary>
   );

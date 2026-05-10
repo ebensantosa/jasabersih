@@ -23,16 +23,16 @@ api.interceptors.response.use(
     const errorCode = error.response?.data?.error?.code;
     const errorMsg = error.response?.data?.error?.message;
 
-    // Account-level rejection (suspended/banned/deleted) — redirect ke /suspended page
+    // Account-level rejection — set global store, root layout akan render overlay <SuspendedOverlay />
     if (error.response?.status === 401 && (errorCode === 'ACCOUNT_SUSPENDED' || errorCode === 'ACCOUNT_BANNED' || errorCode === 'ACCOUNT_DELETED')) {
       const kind = errorCode === 'ACCOUNT_BANNED' ? 'banned' : errorCode === 'ACCOUNT_DELETED' ? 'deleted' : 'suspended';
       const details = error.response?.data?.error?.details ?? {};
-      const reason = details.reason ?? errorMsg ?? null;
-      const until = details.suspendedUntil ?? null;
-      try {
-        const { router } = await import('expo-router');
-        router.replace({ pathname: '/suspended', params: { kind, ...(reason ? { reason } : {}), ...(until ? { until } : {}) } });
-      } catch { /* router not ready (e.g. boot) — fall back to logout */ }
+      const { useSuspendedStore } = await import('../stores/suspended');
+      useSuspendedStore.getState().set({
+        kind,
+        reason: details.reason ?? errorMsg ?? null,
+        until: details.suspendedUntil ?? null,
+      });
       return Promise.reject(error);
     }
 
