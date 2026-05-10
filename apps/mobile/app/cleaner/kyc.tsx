@@ -24,6 +24,7 @@ type DocItem = {
   status: 'pending' | 'approved' | 'rejected' | null;
   uploadedAt: string;
   rejectedReason: string | null;
+  previewUrl?: string | null;
 };
 
 type StatusResponse = {
@@ -158,6 +159,16 @@ function CleanerKycScreen() {
                     <DocStatusBadge status={doc?.status ?? null} />
                   </View>
 
+                  {doc?.previewUrl && (
+                    <View className="mt-3">
+                      <Image
+                        source={{ uri: doc.previewUrl }}
+                        style={{ width: '100%', height: 180, borderRadius: 12, backgroundColor: '#F1F5F9' }}
+                        contentFit="cover"
+                      />
+                    </View>
+                  )}
+
                   {doc?.status === 'rejected' && doc.rejectedReason && (
                     <View className="mt-3 flex-row gap-2 rounded-md border border-red-200 bg-red-50 p-2">
                       <AlertCircle size={14} color="#B91C1C" />
@@ -219,6 +230,40 @@ function CleanerKycScreen() {
                 • Review admin biasanya 1×24 jam kerja
               </Text>
             </View>
+
+            {/* Submit button — enabled hanya kalau 3 doc terupload + status masih pending */}
+            {(() => {
+              const uploadedCount = (['ktp', 'selfie_ktp', 'bank_book'] as DocType[])
+                .filter((t) => docByType(t)).length;
+              const canSubmit = uploadedCount === 3 && status?.kycStatus === 'pending';
+              const alreadyReview = status?.kycStatus === 'under_review';
+              if (alreadyReview) return null;
+              return (
+                <Pressable
+                  onPress={async () => {
+                    if (!canSubmit) {
+                      toast.warning(`Lengkapi semua dokumen dulu (${uploadedCount}/3 ter-upload)`);
+                      return;
+                    }
+                    try {
+                      await api.post('/cleaner/kyc/submit');
+                      toast.success('KYC berhasil disubmit. Tunggu review admin.');
+                      await load();
+                    } catch (e: any) {
+                      toast.error(e?.response?.data?.error?.message ?? 'Gagal submit');
+                    }
+                  }}
+                  disabled={!canSubmit}
+                  className={`mt-1 flex-row items-center justify-center gap-2 rounded-2xl py-4 ${canSubmit ? 'bg-brand-600' : 'bg-ink-200'}`}
+                  style={canSubmit ? { elevation: 4 } : undefined}
+                >
+                  <Check color="white" size={18} strokeWidth={2.4} />
+                  <Text className="font-bold text-sm text-white">
+                    {canSubmit ? 'Submit untuk Review Admin' : `Submit (${uploadedCount}/3 dokumen)`}
+                  </Text>
+                </Pressable>
+              );
+            })()}
           </ScrollView>
         )}
       </SafeAreaView>

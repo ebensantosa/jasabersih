@@ -26,16 +26,30 @@ export class CleanerKycController {
     const profile = await this.prisma.$queryRaw<{ kyc_status: string; rejection_reason: string | null }[]>`
       SELECT kyc_status, rejection_reason FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
-    const docs = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+    const docs = await this.prisma.$queryRaw<Array<{
+      id: string; docType: string; status: string | null; uploadedAt: Date;
+      verifiedAt: Date | null; rejectedReason: string | null; storage_path: string;
+    }>>`
       SELECT id, doc_type AS "docType", status, uploaded_at AS "uploadedAt",
-             verified_at AS "verifiedAt", rejected_reason AS "rejectedReason"
+             verified_at AS "verifiedAt", rejected_reason AS "rejectedReason",
+             storage_path
         FROM kyc_documents WHERE user_id = ${user.id}::uuid
         ORDER BY uploaded_at DESC
     `;
+    // Generate signed preview URL per doc (private bucket, expires 5min)
+    const docsWithPreview = await Promise.all(docs.map(async (d) => ({
+      id: d.id,
+      docType: d.docType,
+      status: d.status,
+      uploadedAt: d.uploadedAt,
+      verifiedAt: d.verifiedAt,
+      rejectedReason: d.rejectedReason,
+      previewUrl: d.storage_path ? await this.storage.getSignedReadUrl('private', d.storage_path, 300).catch(() => null) : null,
+    })));
     return {
       kycStatus: profile[0]?.kyc_status ?? 'pending',
       rejectionReason: profile[0]?.rejection_reason ?? null,
-      documents: docs,
+      documents: docsWithPreview,
       requiredDocTypes: ALLOWED_DOC_TYPES,
     };
   }
@@ -104,17 +118,35 @@ export class CleanerKycController {
       `;
     }
 
-    // Kalau semua 3 doc sudah uploaded → set profile under_review
+    // Auto-set under_review DIHAPUS — sekarang harus explicit POST /submit dari user
+    return { ok: true };
+  }
+
+  // Cleaner explicit submit: cek semua 3 dokumen ada → set profile under_review
+  @Post('submit')
+  async submit(@CurrentUser() user: AuthenticatedUser) {
     const counts = await this.prisma.$queryRaw<{ uploaded: number }[]>`
       SELECT COUNT(DISTINCT doc_type)::int AS uploaded
         FROM kyc_documents
        WHERE user_id = ${user.id}::uuid AND doc_type IN ('ktp', 'selfie_ktp', 'bank_book')
     `;
-    if ((counts[0]?.uploaded ?? 0) >= 3) {
-      await this.prisma.$executeRaw`
-        UPDATE cleaner_profiles SET kyc_status = 'under_review' WHERE user_id = ${user.id}::uuid AND kyc_status NOT IN ('approved')
-      `;
+    if ((counts[0]?.uploaded ?? 0) < 3) {
+      throw new BadRequestException({ code: 'KYC_INCOMPLETE', message: 'Lengkapi semua 3 dokumen sebelum submit.' });
     }
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string }[]>`
+      SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    `;
+    const status = profile[0]?.kyc_status;
+    if (status === 'approved') {
+      throw new BadRequestException({ code: 'KYC_APPROVED', message: 'KYC sudah disetujui.' });
+    }
+    if (status === 'under_review') {
+      throw new BadRequestException({ code: 'KYC_UNDER_REVIEW', message: 'KYC sudah disubmit. Tunggu hasil review.' });
+    }
+    await this.prisma.$executeRaw`
+      UPDATE cleaner_profiles SET kyc_status = 'under_review', rejection_reason = NULL
+       WHERE user_id = ${user.id}::uuid
+    `;
     return { ok: true };
   }
 
