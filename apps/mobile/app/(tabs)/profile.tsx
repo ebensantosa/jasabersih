@@ -93,40 +93,8 @@ export default function Profile() {
           </Pressable>
         )}
 
-        {tokens && (
-          <View className="rounded-2xl bg-white p-1.5">
-            <View className="flex-row">
-              <Pressable
-                onPress={() => setMode('customer')}
-                className={`flex-1 items-center rounded-xl py-2.5 ${
-                  mode === 'customer' ? 'bg-brand-600' : 'bg-transparent'
-                }`}
-              >
-                <Text
-                  className={`font-semibold text-xs ${
-                    mode === 'customer' ? 'text-white' : 'text-ink-500'
-                  }`}
-                >
-                  Mode Customer
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setMode('freelancer')}
-                className={`flex-1 items-center rounded-xl py-2.5 ${
-                  mode === 'freelancer' ? 'bg-brand-700' : 'bg-transparent'
-                }`}
-              >
-                <Text
-                  className={`font-semibold text-xs ${
-                    mode === 'freelancer' ? 'text-white' : 'text-ink-500'
-                  }`}
-                >
-                  Mode Cleaner
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
+        {/* Mode toggle dihapus — role akun (customer/cleaner) sekarang hard-locked
+            sesuai pilihan saat register. Cegah confusion + role-switch jadi celah security. */}
 
         {!tokens && (
           <Pressable

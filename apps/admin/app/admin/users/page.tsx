@@ -128,6 +128,7 @@ export default function UsersPage() {
                     <>
                       <th className="px-4 py-2">Rating</th>
                       <th className="px-4 py-2">Jobs</th>
+                      <th className="px-4 py-2">Alat</th>
                     </>
                   )}
                   <th className="px-4 py-2">Status</th>
@@ -149,6 +150,20 @@ export default function UsersPage() {
                       <>
                         <td className="px-4 py-2">⭐ {r.rating != null ? Number(r.rating).toFixed(2) : '—'}</td>
                         <td className="px-4 py-2 font-bold">{Number(r.jobsDone ?? 0)}</td>
+                        <td className="px-4 py-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.admin.updateCleaner(r.id, { bringsTools: !r.bringsTools });
+                                toast.success(r.bringsTools ? 'Set ke Tanpa Alat' : 'Set ke Bawa Alat');
+                                void load();
+                              } catch (e: any) { toast.error(e?.message ?? 'Gagal update'); }
+                            }}
+                            title="Klik untuk toggle"
+                          >
+                            {r.bringsTools ? <Badge variant="green">Bawa Alat</Badge> : <Badge>Tanpa Alat</Badge>}
+                          </button>
+                        </td>
                       </>
                     )}
                     <td className="px-4 py-2"><StatusBadge status={r.status ?? 'active'} /></td>

@@ -59,9 +59,9 @@ function CleanerProfileScreen() {
   async function save() {
     setSaving(true);
     try {
+      // bringsTools sengaja gak dikirim — admin-only field
       await api.patch('/cleaner/profile', {
         bio,
-        bringsTools,
         isAvailable,
         serviceAreas: areasText.split(',').map((s) => s.trim()).filter(Boolean),
         languages: languagesText.split(',').map((s) => s.trim()).filter(Boolean),
@@ -120,18 +120,24 @@ function CleanerProfileScreen() {
               />
             </View>
 
-            {/* Tools toggle */}
-            <View className="flex-row items-center justify-between rounded-2xl bg-white p-4">
-              <View className="flex-1">
-                <Text className="font-bold text-sm text-ink-900">Bawa Alat Sendiri</Text>
-                <Text className="font-sans mt-0.5 text-[11px] text-ink-500">Komisi lebih besar (sampai 60%) kalau aktif</Text>
+            {/* Tools status (read-only — admin set di dashboard) */}
+            <View className="rounded-2xl bg-white p-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="font-bold text-sm text-ink-900">Status Peralatan</Text>
+                  <Text className="font-sans mt-0.5 text-[11px] text-ink-500">
+                    {bringsTools ? 'Bawa alat sendiri (komisi lebih tinggi)' : 'Tanpa alat (alat disediakan customer)'}
+                  </Text>
+                </View>
+                <View className={`rounded-full px-3 py-1 ${bringsTools ? 'bg-emerald-100' : 'bg-ink-100'}`}>
+                  <Text className={`font-bold text-[10px] uppercase tracking-wider ${bringsTools ? 'text-emerald-800' : 'text-ink-600'}`}>
+                    {bringsTools ? 'Bawa Alat' : 'Tanpa Alat'}
+                  </Text>
+                </View>
               </View>
-              <Switch
-                value={bringsTools}
-                onValueChange={setBringsTools}
-                trackColor={{ false: '#E2E8F0', true: '#1D4ED8' }}
-                thumbColor="white"
-              />
+              <Text className="font-sans mt-2 text-[10px] leading-4 text-ink-400">
+                Status ini diatur oleh admin. Hubungi CS jika ingin ubah ke "Bawa Alat" (perlu verifikasi peralatan).
+              </Text>
             </View>
 
             <View className="rounded-2xl bg-white p-4">

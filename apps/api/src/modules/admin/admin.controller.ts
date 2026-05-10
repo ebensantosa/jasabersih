@@ -209,6 +209,32 @@ export class AdminController {
     return { id: userId, phone, name: body.name, kycStatus, tier };
   }
 
+  // PATCH /admin/cleaners/:id — admin update bringsTools / tier / serviceAreas
+  @Patch('cleaners/:id')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async updateCleaner(
+    @Param('id') id: string,
+    @Body() body: { bringsTools?: boolean; tier?: string; serviceAreas?: string[] },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (body.bringsTools !== undefined) {
+      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET brings_tools = ${body.bringsTools}, updated_at = NOW() WHERE user_id = ${id}::uuid`;
+    }
+    if (body.tier !== undefined) {
+      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET tier = ${body.tier}, updated_at = NOW() WHERE user_id = ${id}::uuid`;
+    }
+    if (body.serviceAreas !== undefined) {
+      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET service_areas = ${JSON.stringify(body.serviceAreas)}::jsonb, updated_at = NOW() WHERE user_id = ${id}::uuid`;
+    }
+    await this.audit.log({
+      adminId: admin.id, action: 'cleaner.update', resourceType: 'cleaner_profile', resourceId: id,
+      changes: body, ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
   // DELETE /admin/cleaners/:id — soft-delete (deleted_at + status banned + revoke sessions)
   @Delete('cleaners/:id')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)
