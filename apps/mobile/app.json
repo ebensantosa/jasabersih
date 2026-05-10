@@ -17,7 +17,18 @@
       "versionCode": 2,
       "edgeToEdgeEnabled": true
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1E40AF",
+          "resizeMode": "contain",
+          "imageWidth": 180
+        }
+      ]
+    ],
     "experiments": { "typedRoutes": false },
     "extra": {
       "apiBaseUrl": "https://api.jasabersih.com/v1",

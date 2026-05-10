@@ -17,6 +17,7 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { IncomingJobModal } from '../src/components/IncomingJobModal';
 import { PopupRenderer } from '../src/components/PopupRenderer';
 import { SuspendedOverlay } from '../src/components/SuspendedOverlay';
+import { SplashOverlay } from '../src/components/SplashOverlay';
 import { RealtimeJobModal } from '../src/components/RealtimeJobModal';
 import { ToastHost } from '../src/components/Toast';
 import { UpdatePromptHost } from '../src/components/UpdatePrompt';
@@ -134,7 +135,14 @@ export default function RootLayout() {
   }, []);
 
   if (!fontsLoaded) {
-    return <View className="flex-1 bg-white" />;
+    // Render minimal app supaya SplashOverlay (di dalam tree) bisa pakai useConfig
+    return (
+      <ErrorBoundary>
+        <QueryProvider>
+          <SplashOverlay visible />
+        </QueryProvider>
+      </ErrorBoundary>
+    );
   }
 
   return (

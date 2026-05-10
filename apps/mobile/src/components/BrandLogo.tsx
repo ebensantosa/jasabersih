@@ -12,7 +12,11 @@ export function BrandLogo({
   showName?: boolean;
   variant?: 'light' | 'dark';
 }) {
-  const logoUrl = useConfig('brand.logo_url', '' as any) as string;
+  const rawLogo = useConfig('brand.logo_url', '' as any) as unknown;
+  // Handle berbagai bentuk dari config: null, string 'null', "", object — normalize ke valid URL atau ''
+  const logoUrl = (typeof rawLogo === 'string' && rawLogo.trim() && rawLogo.trim().toLowerCase() !== 'null' && /^https?:\/\//.test(rawLogo.trim()))
+    ? rawLogo.trim()
+    : '';
   const appName = useConfig('brand.app_name', 'JasaBersih') as string;
 
   const textColor = variant === 'light' ? 'text-white' : 'text-ink-900';
