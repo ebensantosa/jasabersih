@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, PutBucketCorsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as crypto from 'crypto';
 
 export type BucketKind = 'private' | 'public';
 
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit {
   private readonly log = new Logger(StorageService.name);
   private readonly client: S3Client;
   private readonly buckets: Record<BucketKind, string>;
@@ -27,6 +27,40 @@ export class StorageService {
       public: config.getOrThrow<string>('R2_BUCKET_PUBLIC'),
     };
     this.publicBaseUrl = config.getOrThrow<string>('R2_PUBLIC_BASE_URL').replace(/\/$/, '');
+  }
+
+  /**
+   * Auto-configure CORS rules on R2 buckets supaya browser bisa PUT langsung
+   * ke signed URL tanpa CORS error. Idempotent — safe to call tiap startup.
+   */
+  async onModuleInit(): Promise<void> {
+    const allowedOriginsRaw = process.env.R2_CORS_ORIGINS
+      ?? 'https://dashboard.jasabersih.com,https://api.jasabersih.com,https://jasabersih.com,http://localhost:3000,http://localhost:3001,http://localhost:8081,http://localhost:8082';
+    const origins = allowedOriginsRaw.split(',').map((o) => o.trim()).filter(Boolean);
+
+    const corsConfig = {
+      CORSRules: [
+        {
+          AllowedOrigins: origins,
+          AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD'],
+          AllowedHeaders: ['*'],
+          ExposeHeaders: ['ETag', 'Content-Length'],
+          MaxAgeSeconds: 3600,
+        },
+      ],
+    };
+
+    for (const kind of ['private', 'public'] as const) {
+      try {
+        await this.client.send(new PutBucketCorsCommand({
+          Bucket: this.buckets[kind],
+          CORSConfiguration: corsConfig,
+        }));
+        this.log.log(`R2 CORS configured for ${kind} bucket (${this.buckets[kind]}) — ${origins.length} origins allowed`);
+      } catch (e: any) {
+        this.log.warn(`Failed to set CORS on ${kind} bucket: ${e?.message ?? e}`);
+      }
+    }
   }
 
   // Used by KYC/evidence upload (admin or user). Returns presigned PUT URL —
