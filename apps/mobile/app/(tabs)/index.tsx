@@ -63,10 +63,10 @@ export default function Home() {
     <View className="flex-1 bg-ink-50">
       {/* Hero header dengan U-shape curve (Gojek/Traveloka style) — gradient lebih cerah & welcoming */}
       <LinearGradient
-        colors={['#1E40AF', '#3B82F6', '#60A5FA']}
+        colors={['#0B2A6F', '#1E40AF', '#2563EB']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ paddingBottom: 80 }}
+        style={{ paddingBottom: 48 }}
       >
         {/* Decorative blob untuk depth visual (pojok kanan atas) */}
         <View
@@ -144,7 +144,7 @@ export default function Home() {
             </Pressable>
           </View>
         </SafeAreaView>
-        {/* U-shape curve di bawah header — bg same as content (ink-50) dengan rounded top besar */}
+        {/* U-shape curve tipis di bawah header */}
         <View
           pointerEvents="none"
           style={{
@@ -152,10 +152,10 @@ export default function Home() {
             bottom: -1,
             left: 0,
             right: 0,
-            height: 32,
-            backgroundColor: '#F8FAFC', // ink-50
-            borderTopLeftRadius: 32,
-            borderTopRightRadius: 32,
+            height: 20,
+            backgroundColor: '#F8FAFC',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
           }}
         />
       </LinearGradient>
@@ -163,7 +163,7 @@ export default function Home() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ marginTop: -32 }}
+        style={{ marginTop: -20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Service grid 4 col */}
