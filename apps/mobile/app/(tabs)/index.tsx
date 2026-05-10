@@ -64,24 +64,24 @@ export default function Home() {
                     setPickerOpen(true);
                   }
                 }}
-                className="flex-1 flex-row items-center gap-1.5 rounded-full bg-white/15 px-3 py-2"
+                className="flex-1 flex-row items-center gap-2.5 rounded-2xl bg-white/15 px-3 py-2"
               >
-                <MapPin color="white" size={14} strokeWidth={2.4} />
+                <View className="h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                  <MapPin color="white" size={15} strokeWidth={2.4} />
+                </View>
                 <View className="flex-1">
-                  <Text className="font-medium text-[10px] text-white/70">
+                  <Text className="font-medium text-[10px] text-white/70" numberOfLines={1}>
                     {defaultAddress ? `${t('home.send_to')} · ${defaultAddress.label}` : t('home.no_address')}
                   </Text>
-                  <View className="flex-row items-center gap-1">
-                    <Text
-                      className="font-semibold flex-1 text-xs text-white"
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {defaultAddress?.addressLine ?? t('home.tap_to_add')}
-                    </Text>
-                    <ChevronDown color="white" size={12} />
-                  </View>
+                  <Text
+                    className="font-semibold text-xs text-white"
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {defaultAddress?.addressLine ?? t('home.tap_to_add')}
+                  </Text>
                 </View>
+                <ChevronDown color="rgba(255,255,255,0.7)" size={16} />
               </Pressable>
               <View className="rounded-full bg-white/15">
                 <NotifBell tint="white" />
