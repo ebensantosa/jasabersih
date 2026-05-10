@@ -28,6 +28,7 @@ import { useT } from '../../src/lib/i18n';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { shortenAddress } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
+import { useUserStore } from '../../src/stores/user';
 
 export default function Home() {
   const router = useRouter();
@@ -48,6 +49,15 @@ export default function Home() {
   const SERVICE_CATEGORIES = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !BUNDLE_CODES.has(s.code));
   const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => BUNDLE_CODES.has(s.code));
   const t = useT();
+  const profile = useUserStore((s) => s.profile);
+  const firstName = profile?.name?.trim().split(' ')[0] ?? null;
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 11) return 'Selamat pagi';
+    if (h < 15) return 'Selamat siang';
+    if (h < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  })();
 
   return (
     <View className="flex-1 bg-ink-50">
@@ -55,6 +65,12 @@ export default function Home() {
       <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 64 }}>
         <SafeAreaView edges={['top']}>
           <View className="px-4 pb-2 pt-1">
+            {firstName && (
+              <View className="mb-2 px-1">
+                <Text className="font-sans text-[11px] text-white/70">{greeting},</Text>
+                <Text className="font-extrabold text-lg text-white" numberOfLines={1}>👋 Halo, {firstName}!</Text>
+              </View>
+            )}
             <View className="flex-row items-center gap-2">
               <Pressable
                 onPress={() => {
