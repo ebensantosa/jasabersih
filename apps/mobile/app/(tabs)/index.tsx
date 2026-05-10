@@ -61,8 +61,38 @@ export default function Home() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      {/* Compact gradient header */}
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 64 }}>
+      {/* Hero header dengan U-shape curve (Gojek/Traveloka style) — gradient lebih cerah & welcoming */}
+      <LinearGradient
+        colors={['#1E40AF', '#3B82F6', '#60A5FA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingBottom: 80 }}
+      >
+        {/* Decorative blob untuk depth visual (pojok kanan atas) */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -60,
+            right: -60,
+            width: 220,
+            height: 220,
+            borderRadius: 110,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+          }}
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 40,
+            right: 30,
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: 'rgba(255,255,255,0.06)',
+          }}
+        />
         <SafeAreaView edges={['top']}>
           <View className="px-4 pb-2 pt-1">
             <View className="flex-row items-center gap-2">
@@ -114,12 +144,26 @@ export default function Home() {
             </Pressable>
           </View>
         </SafeAreaView>
+        {/* U-shape curve di bawah header — bg same as content (ink-50) dengan rounded top besar */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: -1,
+            left: 0,
+            right: 0,
+            height: 32,
+            backgroundColor: '#F8FAFC', // ink-50
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+          }}
+        />
       </LinearGradient>
 
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ marginTop: -52 }}
+        style={{ marginTop: -32 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Service grid 4 col */}
