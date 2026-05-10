@@ -140,12 +140,12 @@ export default function Register() {
 
       <ScrollView className="flex-1 -mt-6" contentContainerStyle={{ paddingBottom: 40 }}>
         {isFreelancer && (
-          <View className="mx-4 mb-3 rounded-2xl bg-emerald-100/60 p-3">
+          <View className="mx-4 mb-3 rounded-2xl bg-white p-3" style={{ elevation: 2 }}>
             <Text className="font-bold text-[12px] text-emerald-900">Yang kamu dapat sebagai Mitra:</Text>
             <View className="mt-1.5 gap-1">
-              <Text className="font-sans text-[11px] text-emerald-900">✓ Komisi 60-70% per job (lebih tinggi kalau bawa alat)</Text>
-              <Text className="font-sans text-[11px] text-emerald-900">✓ Payout harian via transfer bank</Text>
-              <Text className="font-sans text-[11px] text-emerald-900">✓ Atur jadwal sendiri & pilih area kerja</Text>
+              <Text className="font-sans text-[11px] text-ink-700">✓ Payout harian via transfer bank</Text>
+              <Text className="font-sans text-[11px] text-ink-700">✓ Atur jadwal sendiri & pilih area kerja</Text>
+              <Text className="font-sans text-[11px] text-ink-700">✓ Order steady dari customer terverifikasi</Text>
             </View>
           </View>
         )}
