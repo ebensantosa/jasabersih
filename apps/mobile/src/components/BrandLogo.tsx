@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { Sparkles } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { useConfig } from '../stores/appContent';
@@ -28,11 +29,13 @@ export function BrandLogo({
       ) : (
         <View
           style={{ width: size, height: size }}
-          className={`items-center justify-center rounded-2xl ${variant === 'light' ? 'bg-white/15' : 'bg-brand-50'}`}
+          className={`items-center justify-center rounded-2xl ${variant === 'light' ? 'bg-white/20' : 'bg-brand-50'}`}
         >
-          <Text className={`font-bold text-base ${variant === 'light' ? 'text-white' : 'text-brand-700'}`}>
-            {appName.slice(0, 2).toUpperCase()}
-          </Text>
+          <Sparkles
+            color={variant === 'light' ? '#FFFFFF' : '#1D4ED8'}
+            size={Math.round(size * 0.55)}
+            strokeWidth={2.2}
+          />
         </View>
       )}
       {showName && (

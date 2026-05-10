@@ -90,8 +90,8 @@ export default function Login() {
             </Pressable>
           </View>
           <View className="px-6 pt-2">
-            <BrandLogo size={48} showName={false} variant="light" />
-            <Text className="font-bold mt-3 text-3xl text-white">{t('login.welcome_emoji')}</Text>
+            <BrandLogo size={56} showName />
+            <Text className="font-bold mt-4 text-3xl text-white">{t('login.welcome_emoji')}</Text>
             <Text className="font-sans mt-1 text-sm text-white/85">{t('login.subtitle')}</Text>
           </View>
         </SafeAreaView>

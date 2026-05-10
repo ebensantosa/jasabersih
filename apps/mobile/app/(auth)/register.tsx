@@ -114,22 +114,24 @@ export default function Register() {
             </Pressable>
           </View>
           <View className="px-6 pt-2">
-            <View className="h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
-              {isFreelancer ? (
-                <Briefcase color="white" size={26} strokeWidth={2.2} />
-              ) : (
-                <User color="white" size={26} strokeWidth={2.2} />
-              )}
+            <View className="flex-row items-center gap-3">
+              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                {isFreelancer ? (
+                  <Briefcase color="white" size={22} strokeWidth={2.2} />
+                ) : (
+                  <User color="white" size={22} strokeWidth={2.2} />
+                )}
+              </View>
+              <View className="rounded-full bg-white/20 px-3 py-1">
+                <Text className="font-bold text-[10px] uppercase tracking-wider text-white">
+                  {isFreelancer ? 'Mitra Cleaner' : 'Customer'}
+                </Text>
+              </View>
             </View>
-            <View className="mt-3 self-start rounded-full bg-white/20 px-3 py-1">
-              <Text className="font-bold text-[10px] uppercase tracking-wider text-white">
-                {isFreelancer ? 'Mitra Cleaner' : 'Customer'}
-              </Text>
-            </View>
-            <Text className="font-bold mt-2 text-3xl text-white">
+            <Text className="font-extrabold mt-4 text-3xl leading-9 text-white">
               {isFreelancer ? 'Jadi Mitra Cleaner' : 'Daftar Customer'}
             </Text>
-            <Text className="font-sans mt-1 text-sm text-white/85">
+            <Text className="font-sans mt-1.5 text-sm leading-5 text-white/85">
               {isFreelancer ? 'Kerja fleksibel, payout harian, atur jadwal sendiri' : 'Buat akun untuk mulai pesan layanan'}
             </Text>
           </View>
