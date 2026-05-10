@@ -100,7 +100,7 @@ function CleanerProfileScreen() {
                 <KycBadge status={profile?.kycStatus ?? 'pending'} />
               </View>
               <View className="mt-3 flex-row gap-3">
-                <Stat icon={<Star size={14} color="#FACC15" fill="#FACC15" strokeWidth={1} />} label="Rating" value={profile?.ratingAvg != null ? `${Number(profile.ratingAvg).toFixed(2)}` : 'â€“'} sub={`${profile?.ratingCount ?? 0} review`} />
+                <Stat icon={<Star size={14} color="#FACC15" fill="#FACC15" strokeWidth={1} />} label="Rating" value={profile?.ratingAvg != null ? `${Number(profile.ratingAvg).toFixed(2)}` : '–'} sub={`${profile?.ratingCount ?? 0} review`} />
                 <Stat icon={<BadgeCheck size={14} color="#1D4ED8" />} label="Job Selesai" value={String(profile?.totalJobsDone ?? 0)} sub="all-time" />
                 <Stat icon={<Wrench size={14} color="#475569" />} label="Tier" value={(profile?.tier ?? 'pending').toUpperCase()} sub="" />
               </View>
@@ -139,7 +139,7 @@ function CleanerProfileScreen() {
               <TextInput
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Cerita pengalaman & spesialisasi kamuâ€¦"
+                placeholder="Cerita pengalaman & spesialisasi kamu…"
                 placeholderTextColor="#94A3B8"
                 multiline
                 style={{ minHeight: 80, textAlignVertical: 'top' }}
@@ -175,7 +175,7 @@ function CleanerProfileScreen() {
                 onPress={() => router.push('/cleaner/kyc')}
                 className="rounded-2xl border border-amber-200 bg-amber-50 p-4"
               >
-                <Text className="font-bold text-sm text-amber-900">Selesaikan Verifikasi KYC â†’</Text>
+                <Text className="font-bold text-sm text-amber-900">Selesaikan Verifikasi KYC →</Text>
                 <Text className="font-sans mt-1 text-[11px] text-amber-900">Wajib agar bisa menerima order & menarik saldo.</Text>
               </Pressable>
             )}
@@ -209,7 +209,7 @@ function Stat({ icon, label, value, sub }: { icon: React.ReactNode; label: strin
 
 function KycBadge({ status }: { status: string }) {
   const cfg: Record<string, { bg: string; color: string; label: string }> = {
-    approved: { bg: '#D1FAE5', color: '#047857', label: 'KYC âœ“' },
+    approved: { bg: '#D1FAE5', color: '#047857', label: 'KYC ✓' },
     under_review: { bg: '#DBEAFE', color: '#1D4ED8', label: 'KYC Review' },
     rejected: { bg: '#FEE2E2', color: '#B91C1C', label: 'KYC Rejected' },
     pending: { bg: '#FEF3C7', color: '#B45309', label: 'KYC Pending' },

@@ -196,7 +196,7 @@ function ReferralScreen() {
                   {history.map((h) => (
                     <View key={h.id} className="flex-row items-center justify-between border-t border-ink-100 pt-2">
                       <View className="flex-1">
-                        <Text className="font-medium text-sm text-ink-900">{h.referredName ?? 'â€”'}</Text>
+                        <Text className="font-medium text-sm text-ink-900">{h.referredName ?? '—'}</Text>
                         <Text className="font-sans text-[11px] text-ink-500">
                           {new Date(h.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </Text>
@@ -279,7 +279,7 @@ function StatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: '#FEF3C7', color: '#B45309', label: 'menunggu' },
     qualified: { bg: '#DBEAFE', color: '#1D4ED8', label: 'qualified' },
-    paid: { bg: '#D1FAE5', color: '#047857', label: 'paid âœ“' },
+    paid: { bg: '#D1FAE5', color: '#047857', label: 'paid ✓' },
   };
   const c = cfg[status] ?? cfg.pending!;
   return (

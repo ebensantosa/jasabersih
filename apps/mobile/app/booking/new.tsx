@@ -187,7 +187,7 @@ function NewBooking() {
       const data = res.data?.data ?? res.data;
       setVoucher({ code: data.code, discount: data.discount, voucherId: data.voucherId });
       setVoucherInput('');
-      toast.success(`Voucher ${data.code} dipakai â€” hemat ${formatRupiah(data.discount)}!`);
+      toast.success(`Voucher ${data.code} dipakai — hemat ${formatRupiah(data.discount)}!`);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Voucher tidak valid');
     } finally {
@@ -234,7 +234,7 @@ function NewBooking() {
     setAddressError(null);
     if (dirtLevel >= 4 && photoCount < 3) {
       Alert.alert(
-        'Foto wajib di skala 4â€“5',
+        'Foto wajib di skala 4–5',
         'Min 3 foto. Tanpa foto, harga +25% sebagai ketidakpastian premium. Lanjut?',
         [
           { text: 'Batal', style: 'cancel' },
@@ -288,7 +288,7 @@ function NewBooking() {
       },
       initialStatus: 'pending_payment',
     });
-    toast.success('Pesanan dibuat â€” silakan bayar untuk mulai cari cleaner');
+    toast.success('Pesanan dibuat — silakan bayar untuk mulai cari cleaner');
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
 
@@ -350,7 +350,7 @@ function NewBooking() {
                               <Text className="font-semibold mb-1 text-[10px] uppercase tracking-wider text-ink-500">Termasuk:</Text>
                               {includes.slice(0, active ? 99 : 3).map((it, i) => (
                                 <View key={i} className="flex-row gap-1.5 py-0.5">
-                                  <Text className="font-sans text-[11px] text-success">âœ“</Text>
+                                  <Text className="font-sans text-[11px] text-success">✓</Text>
                                   <Text className="font-sans flex-1 text-[11px] text-ink-700">{it}</Text>
                                 </View>
                               ))}
@@ -747,7 +747,7 @@ function NewBooking() {
                         className="mt-3 self-start"
                       >
                         <Text className="font-semibold text-xs text-brand-600">
-                          â† Pakai alamat tersimpan
+                          ←  Pakai alamat tersimpan
                         </Text>
                       </Pressable>
                     )}
@@ -849,7 +849,7 @@ function NewBooking() {
                         disabled={voucherChecking || !voucherInput.trim()}
                         className={`rounded-xl px-4 py-2.5 ${voucherChecking || !voucherInput.trim() ? 'bg-brand-300' : 'bg-brand-600'}`}
                       >
-                        <Text className="font-semibold text-sm text-white">{voucherChecking ? 'Cekâ€¦' : 'Pakai'}</Text>
+                        <Text className="font-semibold text-sm text-white">{voucherChecking ? 'Cek…' : 'Pakai'}</Text>
                       </Pressable>
                     </View>
                   )}

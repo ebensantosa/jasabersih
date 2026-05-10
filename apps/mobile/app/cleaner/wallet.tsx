@@ -118,7 +118,7 @@ function CleanerWallet() {
             </Text>
             <View className="mt-2 gap-1">
               <Row label="Order < Rp 300.000" value={bringsTools ? '60%' : '40%'} />
-              <Row label="Order Rp 300.000 â€“ 600.000" value={bringsTools ? '55%' : '40%'} />
+              <Row label="Order Rp 300.000 – 600.000" value={bringsTools ? '55%' : '40%'} />
               <Row label="Order > Rp 600.000" value={bringsTools ? '50%' : '40%'} />
             </View>
             <Text className="font-sans mt-2 text-[10px] text-ink-500">

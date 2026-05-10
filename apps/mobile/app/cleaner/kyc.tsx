@@ -165,7 +165,7 @@ function CleanerKycScreen() {
                       doc?.status === 'pending' ? 'text-brand-700' :
                       'text-white'
                     }`}>
-                      {isUploading ? 'Uploadingâ€¦' :
+                      {isUploading ? 'Uploading…' :
                        doc?.status === 'approved' ? 'Sudah Disetujui' :
                        doc ? 'Ganti Foto' : 'Upload Foto'}
                     </Text>
@@ -177,11 +177,11 @@ function CleanerKycScreen() {
             <View className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <Text className="font-bold text-xs text-amber-900">âš ï¸ Penting</Text>
               <Text className="font-sans mt-1 text-[11px] text-amber-900">
-                â€¢ Pastikan foto jelas, tidak buram, semua tulisan terbaca{'\n'}
-                â€¢ Foto KTP tidak boleh di-edit / cropped sebagian{'\n'}
-                â€¢ Selfie + KTP: wajah & KTP harus terlihat jelas dalam satu frame{'\n'}
-                â€¢ Buku tabungan: nama harus sesuai KTP{'\n'}
-                â€¢ Review admin biasanya 1-2 jam kerja
+                • Pastikan foto jelas, tidak buram, semua tulisan terbaca{'\n'}
+                • Foto KTP tidak boleh di-edit / cropped sebagian{'\n'}
+                • Selfie + KTP: wajah & KTP harus terlihat jelas dalam satu frame{'\n'}
+                • Buku tabungan: nama harus sesuai KTP{'\n'}
+                • Review admin biasanya 1-2 jam kerja
               </Text>
             </View>
           </ScrollView>
@@ -195,7 +195,7 @@ function StatusBanner({ status, reason }: { status: string; reason: string | nul
   const variants: Record<string, { icon: any; color: string; bg: string; border: string; label: string; sub: string }> = {
     pending: { icon: Clock, color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', label: 'Belum lengkap', sub: 'Upload semua 3 dokumen untuk submit ke review.' },
     under_review: { icon: Clock, color: '#1D4ED8', bg: '#DBEAFE', border: '#93C5FD', label: 'Dalam review admin', sub: 'Tim kami akan verifikasi dalam 1-2 jam kerja.' },
-    approved: { icon: BadgeCheck, color: '#047857', bg: '#D1FAE5', border: '#6EE7B7', label: 'Disetujui âœ“', sub: 'KYC kamu sudah aktif. Selamat menerima order!' },
+    approved: { icon: BadgeCheck, color: '#047857', bg: '#D1FAE5', border: '#6EE7B7', label: 'Disetujui ✓', sub: 'KYC kamu sudah aktif. Selamat menerima order!' },
     rejected: { icon: X, color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', label: 'Ditolak', sub: reason ?? 'Silakan upload ulang dengan foto yang lebih jelas.' },
   };
   const v = variants[status] ?? variants.pending!;
