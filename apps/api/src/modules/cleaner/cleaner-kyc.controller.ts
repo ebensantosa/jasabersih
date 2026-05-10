@@ -49,6 +49,17 @@ export class CleanerKycController {
     if (!ALLOWED_MIME.includes(body?.contentType)) {
       throw new BadRequestException(`contentType harus salah satu: ${ALLOWED_MIME.join(', ')}`);
     }
+    // Block upload kalau status under_review atau approved (cegah race condition)
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string }[]>`
+      SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    `;
+    const status = profile[0]?.kyc_status;
+    if (status === 'under_review') {
+      throw new BadRequestException({ code: 'KYC_UNDER_REVIEW', message: 'KYC kamu sedang direview admin. Tunggu hasil review sebelum upload ulang.' });
+    }
+    if (status === 'approved') {
+      throw new BadRequestException({ code: 'KYC_APPROVED', message: 'KYC kamu sudah disetujui. Hubungi CS jika perlu update dokumen.' });
+    }
     return this.storage.createUploadUrl({
       bucket: 'private',
       keyPrefix: `kyc/${user.id}/${body.docType}`,

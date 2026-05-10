@@ -165,34 +165,46 @@ function CleanerKycScreen() {
                     </View>
                   )}
 
-                  <Pressable
-                    onPress={() => pickAndUpload(t)}
-                    disabled={isUploading || doc?.status === 'approved'}
-                    className={`mt-3 flex-row items-center justify-center gap-2 rounded-xl py-3 ${
-                      doc?.status === 'approved' ? 'bg-ink-100' :
-                      doc?.status === 'pending' ? 'bg-brand-50 border border-brand-200' :
-                      'bg-brand-600'
-                    } ${isUploading ? 'opacity-60' : ''}`}
-                  >
-                    {isUploading ? (
-                      <ActivityIndicator color={doc?.status === 'approved' ? '#0F172A' : 'white'} size="small" />
-                    ) : doc?.status === 'approved' ? (
-                      <Check size={16} color="#047857" />
-                    ) : doc ? (
-                      <Upload size={16} color="#1D4ED8" />
-                    ) : (
-                      <Camera size={16} color="white" />
-                    )}
-                    <Text className={`font-semibold text-sm ${
-                      doc?.status === 'approved' ? 'text-ink-700' :
-                      doc?.status === 'pending' ? 'text-brand-700' :
-                      'text-white'
-                    }`}>
-                      {isUploading ? 'Uploading…' :
-                       doc?.status === 'approved' ? 'Sudah Disetujui' :
-                       doc ? 'Ganti Foto' : 'Upload Foto'}
-                    </Text>
-                  </Pressable>
+                  {(() => {
+                    const overallReview = status?.kycStatus === 'under_review';
+                    const isApproved = doc?.status === 'approved';
+                    const locked = isApproved || overallReview;
+                    return (
+                      <Pressable
+                        onPress={() => pickAndUpload(t)}
+                        disabled={isUploading || locked}
+                        className={`mt-3 flex-row items-center justify-center gap-2 rounded-xl py-3 ${
+                          isApproved ? 'bg-ink-100' :
+                          overallReview ? 'bg-ink-100' :
+                          doc?.status === 'pending' ? 'bg-brand-50 border border-brand-200' :
+                          'bg-brand-600'
+                        } ${isUploading ? 'opacity-60' : ''}`}
+                      >
+                        {isUploading ? (
+                          <ActivityIndicator color={locked ? '#0F172A' : 'white'} size="small" />
+                        ) : isApproved ? (
+                          <Check size={16} color="#047857" />
+                        ) : overallReview ? (
+                          <Clock size={16} color="#475569" />
+                        ) : doc ? (
+                          <Upload size={16} color="#1D4ED8" />
+                        ) : (
+                          <Camera size={16} color="white" />
+                        )}
+                        <Text className={`font-semibold text-sm ${
+                          isApproved ? 'text-ink-700' :
+                          overallReview ? 'text-ink-500' :
+                          doc?.status === 'pending' ? 'text-brand-700' :
+                          'text-white'
+                        }`}>
+                          {isUploading ? 'Uploading…' :
+                           isApproved ? 'Sudah Disetujui' :
+                           overallReview ? 'Menunggu Review Admin' :
+                           doc ? 'Ganti Foto' : 'Upload Foto'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })()}
                 </View>
               );
             })}
