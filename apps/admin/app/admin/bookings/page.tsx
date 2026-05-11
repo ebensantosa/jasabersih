@@ -183,7 +183,7 @@ export default function Bookings() {
         </div>
       )}
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
             <Loader2 className="animate-spin" size={16} /> Memuat data…
