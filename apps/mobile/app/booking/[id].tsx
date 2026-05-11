@@ -97,36 +97,17 @@ function BookingDetail() {
     && !id?.startsWith('bk_')
     && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status);
 
-  if (!booking) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
-        <Pressable onPress={() => router.back()} className="mt-4">
-          <Text className="font-semibold text-brand-600">Kembali</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
-
-  const color = STATUS_COLOR[booking.status];
-  const timeline = booking.pricingMode === 'wa_survey' ? TIMELINE_WA : TIMELINE_PACKAGE;
-  const currentIdx = timeline.findIndex((t) => t.status === booking.status);
-
-  // Live elapsed time saat status searching → countdown 15 menit untuk fallback ke WA
+  // ───── ALL HOOKS BEFORE ANY EARLY RETURN ─────
+  // Hook rules require unconditional ordering — moving these above the
+  // !booking guard fixed "Rendered fewer hooks than expected" crash.
   const SEARCH_TIMEOUT_SEC = 15 * 60;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    if (booking.status !== 'searching') return;
+    if (booking?.status !== 'searching') return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [booking.status]);
-  const elapsedSec = booking.status === 'searching' ? Math.floor((now - booking.createdAt) / 1000) : 0;
-  const remainingSec = Math.max(0, SEARCH_TIMEOUT_SEC - elapsedSec);
-  const minLeft = Math.floor(remainingSec / 60);
-  const secLeft = remainingSec % 60;
-  const searchTimeout = booking.status === 'searching' && remainingSec === 0;
+  }, [booking?.status]);
 
-  // Poll backend untuk live broadcastedTo + canonical timeout (server source of truth)
   const [broadcastedTo, setBroadcastedTo] = useState<number | undefined>(undefined);
   useEffect(() => {
     if (!id || booking?.status !== 'searching' || id.startsWith('bk_')) return;
@@ -142,6 +123,28 @@ function BookingDetail() {
     const t = setInterval(poll, 10_000);
     return () => { cancelled = true; clearInterval(t); };
   }, [id, booking?.status]);
+
+  if (!booking) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+        <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
+        <Pressable onPress={() => router.back()} className="mt-4">
+          <Text className="font-semibold text-brand-600">Kembali</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  const color = STATUS_COLOR[booking.status];
+  const timeline = booking.pricingMode === 'wa_survey' ? TIMELINE_WA : TIMELINE_PACKAGE;
+  const currentIdx = timeline.findIndex((t) => t.status === booking.status);
+
+  // Live searching countdown derivations (cheap, no hooks)
+  const elapsedSec = booking.status === 'searching' ? Math.floor((now - booking.createdAt) / 1000) : 0;
+  const remainingSec = Math.max(0, SEARCH_TIMEOUT_SEC - elapsedSec);
+  const minLeft = Math.floor(remainingSec / 60);
+  const secLeft = remainingSec % 60;
+  const searchTimeout = booking.status === 'searching' && remainingSec === 0;
 
   // Free cancel window countdown (10s setelah bayar)
   const paidElapsedSec = booking.paidAt ? Math.floor((now - booking.paidAt) / 1000) : 0;
