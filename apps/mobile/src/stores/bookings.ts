@@ -144,7 +144,9 @@ export const useBookingsStore = create<State>((set, get) => ({
           : {
               id: s.id,
               pricingMode: (s.pricingMode ?? 'package') as PricingMode,
-              categoryCode: '', categoryName: s.serviceName ?? 'Layanan', categoryImage: s.serviceIcon ?? '',
+              categoryCode: '',
+              categoryName: s.packageName ?? s.serviceName ?? 'Layanan',
+              categoryImage: s.serviceIcon ?? '',
               addressLine: s.address ?? '',
               scheduledAt: s.scheduledAt ?? new Date().toISOString(),
               status: mapServerStatus(s.status),
