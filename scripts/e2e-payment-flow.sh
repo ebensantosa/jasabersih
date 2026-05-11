@@ -23,7 +23,7 @@ echo "  token: ${FLIP_TOKEN:0:8}…"
 
 step "Login as customer ($CUSTOMER_PHONE)"
 CUSTOMER_TOKEN=$(curl -fsS -X POST "$API/auth/login" -H 'content-type: application/json' \
-  -d "{\"identifier\":\"$CUSTOMER_PHONE\",\"password\":\"$CUSTOMER_PASS\"}" \
+  -d "{\"phone\":\"$CUSTOMER_PHONE\",\"password\":\"$CUSTOMER_PASS\"}" \
   | jq -r '.data.accessToken // .accessToken')
 [ -z "$CUSTOMER_TOKEN" ] || [ "$CUSTOMER_TOKEN" = "null" ] && die "Customer login failed"
 echo "  ok"
@@ -69,7 +69,7 @@ echo "  status=$B_STATUS ✓"
 
 step "Login as cleaner ($CLEANER_PHONE)"
 CLEANER_TOKEN=$(curl -fsS -X POST "$API/auth/login" -H 'content-type: application/json' \
-  -d "{\"identifier\":\"$CLEANER_PHONE\",\"password\":\"$CLEANER_PASS\"}" \
+  -d "{\"phone\":\"$CLEANER_PHONE\",\"password\":\"$CLEANER_PASS\"}" \
   | jq -r '.data.accessToken // .accessToken')
 [ -z "$CLEANER_TOKEN" ] || [ "$CLEANER_TOKEN" = "null" ] && die "Cleaner login failed"
 echo "  ok"
