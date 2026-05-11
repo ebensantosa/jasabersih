@@ -60,7 +60,6 @@ function BookingDetail() {
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
   const cancel = useBookingsStore((s) => s.cancel);
   const setStatus = useBookingsStore((s) => s.setStatus);
-  const markPaid = useBookingsStore((s) => s.markPaid);
   const mode = useModeStore((s) => s.mode);
   const isCleaner = mode === 'freelancer';
   const [showDispute, setShowDispute] = useState(false);
@@ -206,10 +205,10 @@ function BookingDetail() {
 
   function onPay() {
     if (!booking) return;
-    // Local-only booking (belum sync ke server) → fall back ke mock pay
+    // Booking yang gagal sync ke server (id masih bk_xxx) tidak bisa dibayar —
+    // Flip butuh booking_id real di DB. User harus retry create booking dulu.
     if (booking.id.startsWith('bk_')) {
-      markPaid(booking.id);
-      toast.success('Pembayaran berhasil (offline mode) — mencari cleaner…');
+      toast.error('Pesanan belum tersimpan di server. Tutup dan buat ulang pesanan.');
       return;
     }
     router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id } });

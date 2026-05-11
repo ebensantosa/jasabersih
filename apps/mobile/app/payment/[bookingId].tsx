@@ -153,21 +153,22 @@ function PaymentScreen() {
         ) : payment ? (
           <PaymentDetailView payment={payment} />
         ) : (
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+            <View className="rounded-2xl bg-white p-4">
+              <Text className="font-bold text-sm text-ink-900">Bayar dengan Flip</Text>
+              <Text className="font-sans mt-1 text-[11px] text-ink-500">
+                Pilih metode pembayaran (Virtual Account, QRIS, E-Wallet) di halaman Flip. Kembali otomatis ke pesanan setelah berhasil.
+              </Text>
+            </View>
             <Pressable
               onPress={payViaFlip}
               disabled={creating}
               className="items-center rounded-2xl bg-brand-600 px-4 py-4 shadow"
             >
-              <Text className="font-bold text-base text-white">{creating ? 'Memuat…' : 'Bayar via Flip'}</Text>
-              <Text className="font-medium mt-1 text-[11px] text-white/85">Virtual Account · QRIS · E-Wallet</Text>
+              <Text className="font-bold text-base text-white">
+                {creating ? 'Memuat…' : booking ? `Bayar ${formatRupiah(booking.totalPrice)}` : 'Bayar via Flip'}
+              </Text>
             </Pressable>
-            {channels && channels.length > 0 && (
-              <>
-                <Text className="text-center text-[11px] uppercase tracking-wider text-ink-400">atau metode lain</Text>
-                <ChannelPicker channels={channels} disabled={creating} onPick={pickAndCreate} />
-              </>
-            )}
           </ScrollView>
         )}
       </SafeAreaView>
