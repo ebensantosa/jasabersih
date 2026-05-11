@@ -32,21 +32,28 @@ import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
 
-// Schedule options: "1 jam dari sekarang" atau "Besok jam X".
-// Bisnis policy: bukan freeform datetime — supaya cleaner job board sederhana
-// (cleaner pilih dari list pendek, tidak menebak ketersediaan hari random).
-const TOMORROW_SLOTS = ['08:00', '10:00', '13:00', '15:00'];
+// Schedule options. Operasional: 07:00–21:00.
+// - Kalau "secepatnya" (sekarang+1jam) jatuh di dalam jam ops → tampil opsi Secepatnya
+// - Sisanya: slot besok pagi sampai sore dalam jam ops (mulai 07:00)
+// Bukan freeform datetime — biar job board cleaner pendek & predictable.
+const OPS_START_HOUR = 7;
+const OPS_END_HOUR = 21;
+const TOMORROW_SLOTS = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00'];
 function buildScheduleOptions(): { id: string; label: string; sub: string; iso: string }[] {
   const opts: { id: string; label: string; sub: string; iso: string }[] = [];
   const inOneHour = new Date(Date.now() + 60 * 60 * 1000);
-  const hh = String(inOneHour.getHours()).padStart(2, '0');
-  const mm = String(inOneHour.getMinutes()).padStart(2, '0');
-  opts.push({
-    id: 'now+1h',
-    label: 'Secepatnya',
-    sub: `1 jam lagi (jam ${hh}:${mm})`,
-    iso: inOneHour.toISOString(),
-  });
+  const oneHourHour = inOneHour.getHours();
+  const withinOps = oneHourHour >= OPS_START_HOUR && oneHourHour < OPS_END_HOUR;
+  if (withinOps) {
+    const hh = String(inOneHour.getHours()).padStart(2, '0');
+    const mm = String(inOneHour.getMinutes()).padStart(2, '0');
+    opts.push({
+      id: 'now+1h',
+      label: 'Secepatnya',
+      sub: `1 jam lagi (jam ${hh}:${mm})`,
+      iso: inOneHour.toISOString(),
+    });
+  }
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   for (const t of TOMORROW_SLOTS) {
