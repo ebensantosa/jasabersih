@@ -72,11 +72,8 @@ function PaymentScreen() {
       if (!url || !paymentId) throw new Error('Checkout URL kosong dari server.');
       // On web we can't iframe Flip (X-Frame-Options) — fall back to new tab.
       // On native: open in-app WebView modal.
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank');
-      } else {
-        setFlipUrl(url);
-      }
+      // Native: in-app WebView modal. Web: in-app iframe overlay (same flipUrl state)
+      setFlipUrl(url);
       setFlipPaymentId(paymentId);
       // Poll status — webhook will mark paid; UI auto-closes WebView on detect.
       pollTimerRef.current = setInterval(async () => {
@@ -184,6 +181,15 @@ function PaymentScreen() {
               <Text className="font-sans text-[11px] text-ink-500">Tetap di halaman ini sampai pembayaran selesai</Text>
             </View>
           </View>
+          {flipUrl && Platform.OS === 'web' && (
+            // @ts-expect-error host elem
+            <iframe
+              src={flipUrl}
+              style={{ flex: 1, border: 'none', width: '100%', height: '100%' } as any}
+              allow="payment *; clipboard-write"
+              title="Flip Checkout"
+            />
+          )}
           {flipUrl && Platform.OS !== 'web' && (
             <WebView
               source={{ uri: flipUrl }}
