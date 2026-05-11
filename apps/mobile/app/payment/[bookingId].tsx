@@ -3,8 +3,9 @@ import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Building2, CheckCircle2, Copy, QrCode, RefreshCw } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 
@@ -21,6 +22,7 @@ type DirectResult = {
   accountNumber: string | null;
   qrString: string | null;
   expiredAt: string | null;
+  paymentUrl?: string | null;
 };
 
 // Stylized brand badges — no external image deps so always renders.
@@ -174,7 +176,7 @@ function MethodPicker({ disabled, onPick }: { disabled: boolean; onPick: (bank: 
 }
 
 function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () => void }) {
-  if (data.senderBankType === 'qris' && data.qrString) {
+  if ((data.senderBankType === 'qris' || data.senderBankType === 'wallet_account') && data.qrString) {
     return (
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         <View className="items-center rounded-2xl bg-white p-5">
@@ -232,6 +234,21 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
         </View>
         <PollingHint />
       </ScrollView>
+    );
+  }
+
+  // Fallback: QRIS without raw string OR any method without VA — embed Flip's
+  // hosted checkout in WebView (in-app, no external browser).
+  if (data.paymentUrl) {
+    return (
+      <>
+        {Platform.OS === 'web' ? (
+          // @ts-expect-error host elem
+          <iframe src={data.paymentUrl} style={{ flex: 1, border: 'none', width: '100%', height: '100%' } as any} title="Flip QRIS" />
+        ) : (
+          <WebView source={{ uri: data.paymentUrl }} startInLoadingState style={{ flex: 1 }} />
+        )}
+      </>
     );
   }
 

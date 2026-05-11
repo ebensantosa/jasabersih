@@ -156,6 +156,9 @@ export class PaymentsController {
          WHERE id = ${paymentId}::uuid
       `;
 
+      const checkoutUrl = result.link_url
+        ? (/^https?:\/\//i.test(result.link_url) ? result.link_url : `https://${result.link_url}`)
+        : null;
       return {
         paymentId,
         provider: 'flip',
@@ -164,6 +167,7 @@ export class PaymentsController {
         senderBankType: body.senderBankType,
         accountNumber: accountNumber ?? null,
         qrString: qrString ?? null,
+        paymentUrl: checkoutUrl,
         expiredAt,
         linkId: result.link_id,
       };
