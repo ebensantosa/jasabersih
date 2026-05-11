@@ -198,16 +198,20 @@ export const useBookingsStore = create<State>((set, get) => ({
 
     // Fire-and-forget: POST ke API. Kalau sukses, replace tempId dgn server uuid.
     if (b.pricingMode !== 'wa_survey') {
+      // Only forward UUID-shaped IDs to API (local catalog uses string codes
+      // like "pkg_kamar_standard" that fail backend Zod uuid validation).
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const safePackageId = b.packageId && UUID_RE.test(b.packageId) ? b.packageId : undefined;
       const payload = {
         pricingMode: b.pricingMode,
-        packageId: b.packageId,
-        hourlyTierId: b.hourlyTierCode ? undefined : undefined, // tier id sebenernya — TODO map dari code
+        packageId: safePackageId,
+        hourlyTierId: undefined,
         hoursBooked: b.hours,
         scheduledAt: b.scheduledAt,
         addressLine: b.addressLine,
         baseAmount: Math.round(b.basePrice),
         totalAmount: Math.round(b.totalPrice),
-        formSnapshot: b.formSnapshot ?? {},
+        formSnapshot: { ...(b.formSnapshot ?? {}), localPackageCode: safePackageId ? undefined : b.packageId, packageName: b.packageName },
         customerNotes: undefined,
       };
       api.post('/bookings', payload)
