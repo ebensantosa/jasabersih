@@ -108,6 +108,16 @@ export function createClient(opts: ClientOptions) {
         request<unknown[]>('GET', `/admin/bookings${qs(params as any)}`),
       assignCleaner: (bookingId: string, cleanerId: string) =>
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
+      forceCancelBooking: (bookingId: string, reason: string, refundAmount?: number) =>
+        request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-cancel`, { reason, refundAmount }),
+      forceCompleteBooking: (bookingId: string, reason: string) =>
+        request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-complete`, { reason }),
+      forceMarkPaid: (bookingId: string, reason: string, method?: string, reference?: string) =>
+        request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-mark-paid`, { reason, method, reference }),
+      bulkBookingAction: (ids: string[], action: 'cancel' | 'complete' | 'mark_paid' | 'delete', reason: string) =>
+        request<{ ok: true; results: { id: string; ok: boolean; error?: string }[]; total: number; succeeded: number }>(
+          'POST', `/admin/bookings/bulk-action`, { ids, action, reason },
+        ),
       listCleaners: (params?: { status?: string }) =>
         request<unknown[]>('GET', `/admin/cleaners${qs(params)}`),
       createCleaner: (body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean }) =>

@@ -190,6 +190,113 @@ export class AdminBookingsController {
     return { ok: true };
   }
 
+  @Post(':id/force-mark-paid')
+  @Roles('super_admin', 'ops')
+  async forceMarkPaid(
+    @Param('id') id: string,
+    @Body() body: { reason: string; method?: string; reference?: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body?.reason || body.reason.trim().length < 5) {
+      throw new BadRequestException('Alasan wajib (min 5 karakter).');
+    }
+    const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string | null; total_amount: number; status: string; payment_status: string | null }[]>`
+      SELECT id, customer_id, total_amount, status, payment_status
+        FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const booking = rows[0];
+    if (!booking) throw new NotFoundException('Booking tidak ditemukan.');
+    if (booking.payment_status === 'paid') {
+      throw new BadRequestException('Booking sudah berstatus paid.');
+    }
+
+    const nextStatus = booking.status === 'pending_payment' ? 'searching' : booking.status;
+    const method = body.method ?? 'manual_admin';
+    const reference = body.reference ?? `admin:${admin.id}`;
+
+    await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        UPDATE bookings
+           SET payment_status = 'paid',
+               paid_at = COALESCE(paid_at, NOW()),
+               status = ${nextStatus},
+               broadcast_started_at = CASE WHEN ${nextStatus} = 'searching' THEN COALESCE(broadcast_started_at, NOW()) ELSE broadcast_started_at END
+         WHERE id = ${id}::uuid
+      `,
+      this.prisma.$executeRaw`
+        INSERT INTO payments (booking_id, amount, status, paid_at, method, reference)
+        VALUES (${id}::uuid, ${booking.total_amount}::bigint, 'paid', NOW(), ${method}, ${reference})
+      `,
+    ]);
+
+    if (booking.customer_id) {
+      void this.push.send({
+        userId: booking.customer_id, channel: 'booking',
+        title: 'Pembayaran dikonfirmasi',
+        body: 'Admin telah mengonfirmasi pembayaran kamu. Mencari cleaner...',
+        data: { type: 'payment_confirmed', bookingId: id },
+      }).catch(() => {});
+    }
+
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'booking.force_mark_paid',
+      resourceType: 'booking',
+      resourceId: id,
+      changes: { reason: body.reason, method, reference, amount: booking.total_amount },
+      ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
+  @Post('bulk-action')
+  @Roles('super_admin', 'ops')
+  async bulkAction(
+    @Body() body: { ids: string[]; action: 'cancel' | 'complete' | 'mark_paid' | 'delete'; reason: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!Array.isArray(body?.ids) || body.ids.length === 0) {
+      throw new BadRequestException('ids wajib (array non-empty).');
+    }
+    if (body.ids.length > 200) {
+      throw new BadRequestException('Maksimal 200 booking per bulk action.');
+    }
+    if (!body?.reason || body.reason.trim().length < 5) {
+      throw new BadRequestException('Alasan wajib (min 5 karakter).');
+    }
+    const allowed = ['cancel', 'complete', 'mark_paid', 'delete'] as const;
+    if (!allowed.includes(body.action)) throw new BadRequestException('Action tidak valid.');
+
+    const results: { id: string; ok: boolean; error?: string }[] = [];
+    for (const id of body.ids) {
+      try {
+        if (body.action === 'cancel') {
+          await this.forceCancel(id, { reason: body.reason }, admin, req);
+        } else if (body.action === 'complete') {
+          await this.forceComplete(id, { reason: body.reason }, admin, req);
+        } else if (body.action === 'mark_paid') {
+          await this.forceMarkPaid(id, { reason: body.reason }, admin, req);
+        } else if (body.action === 'delete') {
+          await this.prisma.$executeRaw`DELETE FROM bookings WHERE id = ${id}::uuid`;
+          await this.audit.log({
+            adminId: admin.id,
+            action: 'booking.delete',
+            resourceType: 'booking',
+            resourceId: id,
+            changes: { reason: body.reason },
+            ipAddress: req.ip ?? null,
+          });
+        }
+        results.push({ id, ok: true });
+      } catch (e: any) {
+        results.push({ id, ok: false, error: e?.message ?? 'unknown' });
+      }
+    }
+    return { ok: true, results, total: body.ids.length, succeeded: results.filter((r) => r.ok).length };
+  }
+
   @Post(':id/reassign')
   @Roles('super_admin', 'ops')
   async reassign(

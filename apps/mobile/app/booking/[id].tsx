@@ -216,9 +216,9 @@ function BookingDetail() {
 
   const modeLabel =
     booking.pricingMode === 'package'
-      ? `Paket Tetap · ${booking.packageName}`
+      ? booking.packageName ? `Paket Tetap · ${booking.packageName}` : 'Paket Tetap'
       : booking.pricingMode === 'hourly'
-        ? `Per Jam · ${booking.hourlyTierName} × ${booking.hours}j`
+        ? `Per Jam${booking.hourlyTierName ? ` · ${booking.hourlyTierName}` : ''}${booking.hours ? ` × ${booking.hours}j` : ''}`
         : 'Konsultasi WhatsApp';
 
   return (
@@ -474,31 +474,6 @@ function BookingDetail() {
             </Pressable>
           )}
 
-          {!isCleaner &&
-            booking.status !== 'canceled' &&
-            booking.status !== 'completed' &&
-            booking.pricingMode !== 'wa_survey' && (
-              <View className="mx-4 mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                <Text className="font-semibold text-[11px] uppercase tracking-wider text-amber-900">
-                  DEV — Simulate status
-                </Text>
-                <View className="mt-2 flex-row flex-wrap gap-2">
-                  {(['matched', 'on_the_way', 'in_progress', 'completed'] as BookingStatus[]).map(
-                    (s) => (
-                      <Pressable
-                        key={s}
-                        onPress={() => booking && setStatus(booking.id, s)}
-                        className="rounded-lg bg-white px-3 py-1.5"
-                      >
-                        <Text className="font-semibold text-[11px] text-amber-900">
-                          {STATUS_LABEL[s]}
-                        </Text>
-                      </Pressable>
-                    ),
-                  )}
-                </View>
-              </View>
-            )}
         </ScrollView>
 
         {/* CUSTOMER bottom actions */}
