@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
+import { Image } from 'expo-image';
 
 import { api } from '../../src/lib/api';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -21,6 +22,9 @@ type DirectResult = {
   qrString: string | null;
   expiredAt: string | null;
 };
+
+// Bank logos hosted by Flip — official, stable URLs.
+const BANK_LOGO = (code: string) => `https://bigflip.id/assets/img/icon/ic_bank_${code}.png`;
 
 const VA_METHODS: { code: string; name: string; sub?: string }[] = [
   { code: 'bca', name: 'BCA Virtual Account' },
@@ -115,11 +119,15 @@ function MethodPicker({ disabled, onPick }: { disabled: boolean; onPick: (bank: 
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS</Text>
         <Pressable
           disabled={disabled}
-          onPress={() => onPick('qris', 'qris')}
+          onPress={() => onPick('qris', 'wallet_account')}
           className="flex-row items-center gap-3 rounded-2xl bg-white p-4"
         >
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-brand-50">
-            <QrCode color="#1D4ED8" size={24} />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-white">
+            <Image
+              source={{ uri: 'https://bigflip.id/assets/img/icon/ic_qris.png' }}
+              style={{ width: 40, height: 40 }}
+              contentFit="contain"
+            />
           </View>
           <View className="flex-1">
             <Text className="font-bold text-sm text-ink-900">QRIS — Semua e-wallet & m-banking</Text>
@@ -138,8 +146,12 @@ function MethodPicker({ disabled, onPick }: { disabled: boolean; onPick: (bank: 
               onPress={() => onPick(m.code, 'virtual_account')}
               className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''}`}
             >
-              <View className="h-10 w-12 items-center justify-center rounded bg-ink-100">
-                <Text className="font-bold text-[10px] uppercase text-ink-700">{m.code}</Text>
+              <View className="h-10 w-12 items-center justify-center rounded bg-white">
+                <Image
+                  source={{ uri: BANK_LOGO(m.code) }}
+                  style={{ width: 40, height: 28 }}
+                  contentFit="contain"
+                />
               </View>
               <Text className="flex-1 font-semibold text-sm text-ink-900">{m.name}</Text>
               <Building2 color="#94A3B8" size={16} />
