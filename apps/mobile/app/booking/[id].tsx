@@ -222,6 +222,36 @@ function BookingDetail() {
         ? `Per Jam${booking.hourlyTierName ? ` · ${booking.hourlyTierName}` : ''}${booking.hours ? ` × ${booking.hours}j` : ''}`
         : 'Konsultasi WhatsApp';
 
+  // Full-screen searching mode: hide chrome, only show searching view + 5s cancel window
+  if (!isCleaner && booking.status === 'searching' && !searchTimeout) {
+    const SEARCH_CANCEL_WINDOW_SEC = 5;
+    const canStillCancel = elapsedSec <= SEARCH_CANCEL_WINDOW_SEC;
+    const cancelLeft = Math.max(0, SEARCH_CANCEL_WINDOW_SEC - elapsedSec);
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 bg-ink-50">
+          <SafeAreaView edges={['top', 'bottom']} className="flex-1">
+            <View className="flex-1 justify-center px-4">
+              <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
+            </View>
+            <View className="px-4 pb-4">
+              <Pressable
+                disabled={!canStillCancel}
+                onPress={onCancel}
+                className={`items-center rounded-2xl border py-3 ${canStillCancel ? 'border-red-300 bg-white' : 'border-ink-200 bg-ink-100'}`}
+              >
+                <Text className={`font-bold text-sm ${canStillCancel ? 'text-red-600' : 'text-ink-400'}`}>
+                  {canStillCancel ? `Batalkan (${cancelLeft}s)` : 'Tidak bisa dibatalkan — sedang dicari'}
+                </Text>
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
