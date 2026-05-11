@@ -218,7 +218,14 @@ export const useBookingsStore = create<State>((set, get) => ({
           persist(updated);
           set({ list: updated });
         })
-        .catch(() => { /* keep local only — user can retry via sync */ });
+        .catch((err) => {
+          // Surface to user — silent fail = booking stuck local-only,
+          // cleaner gak akan pernah lihat, customer ngira sedang searching.
+          import('./ui').then(({ toast }) => {
+            const msg = err?.response?.data?.message ?? err?.message ?? 'Gagal kirim ke server';
+            toast.error(`Pesanan belum tersimpan di server: ${msg}. Tap untuk retry.`);
+          }).catch(() => {});
+        });
     }
 
     return booking;
