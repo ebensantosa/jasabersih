@@ -126,6 +126,23 @@ function BookingDetail() {
   const secLeft = remainingSec % 60;
   const searchTimeout = booking.status === 'searching' && remainingSec === 0;
 
+  // Poll backend untuk live broadcastedTo + canonical timeout (server source of truth)
+  const [broadcastedTo, setBroadcastedTo] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!id || booking?.status !== 'searching' || id.startsWith('bk_')) return;
+    let cancelled = false;
+    async function poll() {
+      try {
+        const r = await api.get(`/bookings/${id}/search-status`);
+        const d = r.data?.data ?? r.data;
+        if (!cancelled) setBroadcastedTo(Number(d?.broadcastedTo ?? 0));
+      } catch { /* silent */ }
+    }
+    void poll();
+    const t = setInterval(poll, 10_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [id, booking?.status]);
+
   // Free cancel window countdown (10s setelah bayar)
   const paidElapsedSec = booking.paidAt ? Math.floor((now - booking.paidAt) / 1000) : 0;
   const freeCancelLeft = Math.max(0, FREE_CANCEL_WINDOW_SEC - paidElapsedSec);
@@ -248,7 +265,7 @@ function BookingDetail() {
           {/* Live searching indicator + countdown — customer only */}
           {!isCleaner && booking.status === 'searching' && !searchTimeout && (
             <View className="mx-4 mt-3">
-              <SearchingCleanerView elapsedSec={elapsedSec} />
+              <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
             </View>
           )}
 

@@ -61,6 +61,27 @@ export class BookingsController {
     return rows[0];
   }
 
+  // Live searching stats — dipakai customer screen untuk render Gojek-style UI
+  @Get(':id/search-status')
+  async searchStatus(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRaw<{ status: string; created_at: Date; customer_id: string }[]>`
+      SELECT status, created_at, customer_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new BadRequestException('Booking tidak ditemukan');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu');
+    const elapsedSec = Math.floor((Date.now() - new Date(b.created_at).getTime()) / 1000);
+    const TIMEOUT_SEC = 15 * 60;
+    return {
+      status: b.status,
+      elapsedSec,
+      timeoutSec: TIMEOUT_SEC,
+      remainingSec: Math.max(0, TIMEOUT_SEC - elapsedSec),
+      broadcastedTo: b.status === 'searching' ? this.jobs.getCleanerPoolSize() : 0,
+      timedOut: b.status === 'searching' && elapsedSec >= TIMEOUT_SEC,
+    };
+  }
+
   @Post()
   async create(
     @CurrentUser() user: AuthenticatedUser,

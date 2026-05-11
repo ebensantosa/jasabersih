@@ -113,6 +113,11 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { ok: true };
   }
 
+  /** Berapa cleaner online di pool available room (for searching stats). */
+  getCleanerPoolSize(): number {
+    return this.server?.sockets?.adapter?.rooms?.get(ROOM_AVAILABLE)?.size ?? 0;
+  }
+
   // Called by services (PaymentsController, BookingsController) saat status → searching
   async broadcastIncomingJob(bookingId: string): Promise<void> {
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
