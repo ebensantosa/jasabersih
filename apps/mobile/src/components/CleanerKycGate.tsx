@@ -1,11 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { BadgeCheck, Briefcase, ClipboardCheck, FileText, Wallet } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { api } from '../lib/api';
+import { useCleanerKycStore } from '../stores/cleanerKyc';
 
 /**
  * Wrap cleaner-only screens. Block access sampai kyc_status='approved'.
@@ -13,23 +12,15 @@ import { api } from '../lib/api';
  */
 export function CleanerKycGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [kycStatus, setKycStatus] = useState<string | null>(null);
+  // Status di-share via global store (CleanerLockOverlay yang fetch).
+  // null = belum tau (cold start) → kasih kesempatan ke children render dulu
+  // supaya gak ada flash gate di approved cleaner.
+  const kycStatus = useCleanerKycStore((s) => s.status);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get('/cleaner/profile');
-        const p = res.data?.data ?? res.data;
-        setKycStatus(p?.kycStatus ?? 'pending');
-      } catch {
-        setKycStatus('pending');
-      }
-    })();
-  }, []);
-
-  // Optimistic: kalau lagi loading, asumsi belum approved → langsung render gate.
-  // Kalau API confirm approved, swap ke children. No flash spinner.
-  if (kycStatus === 'approved') return <>{children}</>;
+  // Default optimistic: anggap approved kalau status null (belum di-fetch).
+  // CleanerLockOverlay akan force redirect ke /cleaner/kyc kalau ternyata
+  // bukan approved — jadi user gak akan stuck di tab restricted.
+  if (kycStatus === null || kycStatus === 'approved') return <>{children}</>;
 
   const isPending = kycStatus === 'pending';
   const isReview = kycStatus === 'under_review';

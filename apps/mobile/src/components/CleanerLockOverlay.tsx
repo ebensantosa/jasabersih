@@ -1,8 +1,9 @@
 import { router, usePathname } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/auth';
+import { useCleanerKycStore } from '../stores/cleanerKyc';
 import { useModeStore } from '../stores/mode';
 
 /**
@@ -14,21 +15,21 @@ export function CleanerLockOverlay() {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
   const pathname = usePathname();
-  const [kycStatus, setKycStatus] = useState<string | null>(null);
+  const kycStatus = useCleanerKycStore((s) => s.status);
+  const setKycStatus = useCleanerKycStore((s) => s.setStatus);
+  const hydrate = useCleanerKycStore((s) => s.hydrate);
+
+  // Hydrate persisted status on mount → no flash on cold start
+  useEffect(() => { hydrate(); }, [hydrate]);
 
   const fetchStatus = useCallback(async () => {
-    if (!tokens || mode !== 'freelancer') {
-      setKycStatus(null);
-      return;
-    }
+    if (!tokens || mode !== 'freelancer') return;
     try {
       const res = await api.get('/cleaner/profile');
       const p = res.data?.data ?? res.data;
       setKycStatus(p?.kycStatus ?? 'pending');
-    } catch {
-      setKycStatus('pending');
-    }
-  }, [tokens, mode]);
+    } catch { /* keep cached */ }
+  }, [tokens, mode, setKycStatus]);
 
   useEffect(() => { void fetchStatus(); }, [fetchStatus]);
 

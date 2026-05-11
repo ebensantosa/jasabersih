@@ -41,6 +41,7 @@ export const useAuthStore = create<State>((set, get) => ({
       import('./cleaner').then((m) => m.useCleanerStore.getState().clearLocal?.()),
       import('./user').then((m) => m.useUserStore.getState().clear()),
       import('./suspended').then((m) => m.useSuspendedStore.getState().clear()),
+      import('./cleanerKyc').then((m) => m.useCleanerKycStore.getState().clear()),
     ]).catch(() => {});
   },
   hydrate: () => {
