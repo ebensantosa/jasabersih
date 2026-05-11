@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Settings as SettingsIcon } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'contact', 'app', 'email'] as const;
+const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'contact', 'app', 'email', 'payment'] as const;
 
 const HINT: Record<string, string> = {
   'brand.app_name': 'Nama app — muncul di header & splash.',
@@ -28,6 +28,11 @@ const HINT: Record<string, string> = {
   'app.play_store_url': 'URL Google Play Store (https://play.google.com/store/apps/details?id=...). Dipakai di referral landing & banner download.',
   'app.app_store_url': 'URL Apple App Store (https://apps.apple.com/...). Dipakai di referral landing & banner download.',
   'app.deep_link_scheme': 'Deep link scheme untuk auto-open app dari share link. Contoh: jasabersih://referral (jangan ganti kecuali tahu yang dilakukan).',
+  // ── Flip.id payment gateway ──
+  'payment.flip_enabled': 'Aktifkan Flip sebagai payment gateway. Set true setelah credential terisi.',
+  'payment.flip_is_production': 'true = pakai bigflip.id production. false = pakai sandbox untuk testing.',
+  'payment.flip_secret_key': 'Secret key dari Flip for Business → Settings → API & Callback. Disimpan ter-mask.',
+  'payment.flip_validation_token': 'Validation Token dari Flip — dipakai verify callback (string-equal). Webhook URL yang harus di-set di Flip dashboard: https://api.jasabersih.com/v1/payments/flip/callback',
 };
 
 export default function AppSettingsPage() {

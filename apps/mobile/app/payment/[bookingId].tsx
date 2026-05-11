@@ -58,6 +58,40 @@ function PaymentScreen() {
     return () => { if (pollTimerRef.current) clearInterval(pollTimerRef.current); };
   }, []);
 
+  async function payViaFlip() {
+    if (!bookingId) return;
+    setCreating(true);
+    try {
+      const res = await api.post('/payments/flip/create', { bookingId });
+      const data = res.data?.data ?? res.data;
+      const url: string | undefined = data?.checkoutUrl;
+      const paymentId: string | undefined = data?.paymentId;
+      if (!url || !paymentId) throw new Error('Checkout URL kosong dari server.');
+      // Open Flip checkout in browser/WebView
+      await Linking.openURL(url);
+      // Poll status
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const r = await api.get(`/payments/${paymentId}`);
+          const status = (r.data?.data ?? r.data)?.status;
+          if (status === 'paid') {
+            setPaid(true);
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            void syncBookings();
+            setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
+          } else if (['failed', 'cancelled', 'expired'].includes(status)) {
+            toast.error('Pembayaran gagal/dibatalkan. Coba lagi.');
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          }
+        } catch {}
+      }, 5000);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal create pembayaran Flip');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   async function pickAndCreate(method: string) {
     if (!bookingId) return;
     setCreating(true);
@@ -107,15 +141,23 @@ function PaymentScreen() {
           <PaidView onContinue={() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId! } })} />
         ) : payment ? (
           <PaymentDetailView payment={payment} />
-        ) : !channels ? (
-          <View className="flex-1 items-center justify-center"><ActivityIndicator color="#1D4ED8" /></View>
-        ) : channels.length === 0 ? (
-          <View className="flex-1 items-center justify-center px-8">
-            <Text className="font-bold text-base text-ink-900">Pembayaran belum tersedia</Text>
-            <Text className="font-sans mt-1 text-center text-sm text-ink-500">Tripay belum dikonfigurasi. Hubungi CS.</Text>
-          </View>
         ) : (
-          <ChannelPicker channels={channels} disabled={creating} onPick={pickAndCreate} />
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+            <Pressable
+              onPress={payViaFlip}
+              disabled={creating}
+              className="items-center rounded-2xl bg-brand-600 px-4 py-4 shadow"
+            >
+              <Text className="font-bold text-base text-white">{creating ? 'Memuat…' : 'Bayar via Flip'}</Text>
+              <Text className="font-medium mt-1 text-[11px] text-white/85">Virtual Account · QRIS · E-Wallet</Text>
+            </Pressable>
+            {channels && channels.length > 0 && (
+              <>
+                <Text className="text-center text-[11px] uppercase tracking-wider text-ink-400">atau metode lain</Text>
+                <ChannelPicker channels={channels} disabled={creating} onPick={pickAndCreate} />
+              </>
+            )}
+          </ScrollView>
         )}
       </SafeAreaView>
     </>

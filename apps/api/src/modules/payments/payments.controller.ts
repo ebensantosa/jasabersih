@@ -9,6 +9,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 import { TripayService } from './tripay.service';
+import { FlipService } from './flip.service';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -16,9 +17,147 @@ export class PaymentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tripay: TripayService,
+    private readonly flip: FlipService,
     private readonly push: PushService,
     private readonly jobs: JobsGateway,
   ) {}
+
+  // ============ FLIP ============
+
+  // Create Flip bill for a booking. Returns checkout URL (open in WebView).
+  @Post('flip/create')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async flipCreate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { bookingId: string },
+  ) {
+    if (!body?.bookingId) throw new BadRequestException('bookingId wajib.');
+
+    const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string; total_amount: number; status: string }[]>`
+      SELECT id, customer_id, total_amount, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new NotFoundException('Booking tidak ditemukan.');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu.');
+    if (b.status !== 'pending_payment') throw new BadRequestException(`Booking status ${b.status} — tidak bisa create payment.`);
+
+    const userRows = await this.prisma.$queryRaw<{ name: string | null; email: string | null; phone: string }[]>`
+      SELECT name, email, phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
+    `;
+    const u = userRows[0];
+    if (!u) throw new NotFoundException('User tidak ditemukan.');
+
+    const merchantRef = `JBSIH-${b.id.slice(0, 8)}-${Date.now().toString(36)}`;
+    const amount = Number(b.total_amount);
+
+    const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO payments (booking_id, user_id, amount, payment_method, status, provider, tripay_merchant_ref)
+      VALUES (${b.id}::uuid, ${user.id}::uuid, ${amount}::bigint, 'flip', 'pending', 'flip', ${merchantRef})
+      RETURNING id
+    `;
+    const paymentId = inserted[0]!.id;
+
+    try {
+      const result = await this.flip.createBill({
+        title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
+        amount,
+        refId: merchantRef,
+        customerName: u.name ?? 'JasaBersih Customer',
+        customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
+        customerPhone: u.phone,
+        redirectUrl: `https://jasabersih.com/booking/${b.id}`,
+      });
+
+      await this.prisma.$executeRaw`
+        UPDATE payments
+           SET flip_link_id = ${String(result.link_id)},
+               payment_url = ${result.link_url}
+         WHERE id = ${paymentId}::uuid
+      `;
+
+      return {
+        paymentId,
+        provider: 'flip',
+        amount,
+        checkoutUrl: result.link_url,
+        linkId: result.link_id,
+      };
+    } catch (e) {
+      await this.prisma.$executeRaw`UPDATE payments SET status = 'failed' WHERE id = ${paymentId}::uuid`;
+      throw e;
+    }
+  }
+
+  // Flip webhook. Flip POSTs application/x-www-form-urlencoded with `data` (JSON)
+  // and `token` (validation token). No HMAC — just string-equal token check.
+  @Post('flip/callback')
+  async flipCallback(@Req() req: Request) {
+    const body: any = req.body ?? {};
+    const token: string | undefined = typeof body.token === 'string' ? body.token : undefined;
+    if (!(await this.flip.verifyCallbackToken(token))) {
+      throw new BadRequestException('Invalid Flip token');
+    }
+    let data: any;
+    try {
+      data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+    } catch { throw new BadRequestException('Invalid JSON in data'); }
+    if (!data) throw new BadRequestException('data missing');
+
+    const linkId: string | number | undefined = data.bill_link_id ?? data.id;
+    const status: string | undefined = data.status; // SUCCESSFUL | FAILED | PENDING | CANCELLED
+
+    if (!linkId) return { ok: false, reason: 'no link id' };
+
+    const payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string }[]>`
+      SELECT id, booking_id, user_id, status FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
+    `;
+    const p = payRows[0];
+    if (!p) return { ok: false, reason: 'payment not found' };
+
+    const raw = JSON.stringify(data);
+    if (status === 'SUCCESSFUL' && p.status !== 'paid') {
+      await this.prisma.$transaction([
+        this.prisma.$executeRaw`
+          UPDATE payments SET status = 'paid', paid_at = NOW(),
+            flip_bill_id = ${String(data.id ?? '')},
+            callback_payload = ${raw}::jsonb
+            WHERE id = ${p.id}::uuid
+        `,
+        ...(p.booking_id ? [
+          this.prisma.$executeRaw`
+            UPDATE bookings SET status = 'searching', paid_at = NOW()
+              WHERE id = ${p.booking_id}::uuid AND status = 'pending_payment'
+          `,
+        ] : []),
+      ]);
+      if (p.user_id) {
+        void this.push.send({
+          userId: p.user_id, channel: 'booking',
+          title: 'Pembayaran berhasil',
+          body: 'Kami sedang mencari cleaner untuk kamu.',
+          data: { type: 'payment_paid', bookingId: p.booking_id, paymentId: p.id },
+        }).catch(() => {});
+      }
+      if (p.booking_id) void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
+    } else if ((status === 'FAILED' || status === 'CANCELLED') && !['failed', 'cancelled'].includes(p.status)) {
+      const next = status.toLowerCase();
+      await this.prisma.$executeRaw`
+        UPDATE payments SET status = ${next}, callback_payload = ${raw}::jsonb
+          WHERE id = ${p.id}::uuid
+      `;
+      if (p.user_id) {
+        void this.push.send({
+          userId: p.user_id, channel: 'booking',
+          title: 'Pembayaran gagal',
+          body: 'Silakan coba lagi atau pilih metode lain.',
+          data: { type: `payment_${next}`, bookingId: p.booking_id },
+        }).catch(() => {});
+      }
+    }
+    return { ok: true };
+  }
+
 
   // List active payment channels (public — for picker UI)
   @Get('channels')

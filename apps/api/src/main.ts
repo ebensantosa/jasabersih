@@ -9,7 +9,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { json, raw } from 'body-parser';
+import { json, raw, urlencoded } from 'body-parser';
 
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/response.interceptor';
@@ -20,6 +20,8 @@ async function bootstrap() {
 
   // Tripay webhook butuh raw body untuk verifikasi HMAC signature
   app.use('/v1/payments/callback', raw({ type: '*/*' }));
+  // Flip webhook POSTs application/x-www-form-urlencoded
+  app.use('/v1/payments/flip/callback', urlencoded({ extended: true, limit: '1mb' }));
   // Default JSON parser untuk semua route lain
   app.use(json({ limit: '5mb' }));
 
