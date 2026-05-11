@@ -144,8 +144,13 @@ export class PaymentsController {
       });
 
       const billPayment = result?.bill_payment ?? {};
-      const accountNumber: string | undefined = billPayment?.receiver_bank_account?.account_number;
-      const qrString: string | undefined = billPayment?.qr_code_data ?? billPayment?.qrcode_string;
+      const receiverAcc = billPayment?.receiver_bank_account ?? {};
+      const accountNumber: string | undefined = receiverAcc?.account_number;
+      // QRIS EMV string lives at bill_payment.receiver_bank_account.qr_code_data per Flip Direct API docs
+      const qrString: string | undefined =
+        receiverAcc?.qr_code_data
+        ?? billPayment?.qr_code_data
+        ?? billPayment?.qrcode_string;
       const expiredAt = result?.expired_date ?? null;
 
       await this.prisma.$executeRaw`
