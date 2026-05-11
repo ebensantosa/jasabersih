@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { withAuth } from '../../src/components/AuthGate';
+import { SearchingCleanerView } from '../../src/components/SearchingCleanerView';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -246,22 +247,8 @@ function BookingDetail() {
 
           {/* Live searching indicator + countdown — customer only */}
           {!isCleaner && booking.status === 'searching' && !searchTimeout && (
-            <View className="mx-4 mt-3 rounded-2xl bg-brand-50 p-4">
-              <View className="flex-row items-center gap-2">
-                <Clock color="#1D4ED8" size={16} strokeWidth={2.4} />
-                <Text className="font-semibold text-sm text-brand-900">Mencari cleaner…</Text>
-              </View>
-              <Text className="font-sans mt-1 text-[12px] text-brand-900">
-                Order sudah di-broadcast ke cleaner di area kamu. Biasanya match dalam 5–10 menit.
-              </Text>
-              <View className="mt-2 flex-row items-center gap-1">
-                <Text className="font-medium text-[10px] text-brand-700">
-                  Sisa waktu sebelum auto-fallback:
-                </Text>
-                <Text className="font-bold text-[11px] text-brand-700">
-                  {minLeft}:{String(secLeft).padStart(2, '0')}
-                </Text>
-              </View>
+            <View className="mx-4 mt-3">
+              <SearchingCleanerView elapsedSec={elapsedSec} />
             </View>
           )}
 
