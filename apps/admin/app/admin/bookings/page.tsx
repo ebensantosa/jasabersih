@@ -115,7 +115,7 @@ export default function Bookings() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">Pesanan</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Pesanan <span className="ml-2 align-middle text-[10px] font-mono text-slate-400">v2</span></h1>
       <p className="text-sm text-slate-500">Manage order, assign cleaner manual, resolve sengketa</p>
 
       {error === 'offline' && <OfflineCard onRetry={load} />}

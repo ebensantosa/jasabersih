@@ -47,14 +47,17 @@ log "Seed master data (idempotent)…"
 # Clean tsbuildinfo cache + dist so tsc actually emits (incremental cache bug).
 log "Build NestJS API…"
 (cd apps/api && rm -rf dist *.tsbuildinfo .tsbuildinfo && npx nest build)
+[[ -f apps/api/dist/main.js ]] || die "API build did not produce dist/main.js"
 
 # 5. Build Admin ----------------------------------------------------------
+# Wipe BOTH .next and node_modules/.cache so Next can't reuse stale workspace package output.
 log "Build Admin Next.js…"
-(cd apps/admin && rm -rf .next && npx next build)
+(cd apps/admin && rm -rf .next node_modules/.cache && npx next build)
+[[ -d apps/admin/.next/server/app/admin ]] || die "Admin build did not produce .next/server/app/admin"
 
-# 6. Reload pm2 -----------------------------------------------------------
-log "pm2 reload ecosystem.config.js"
-pm2 reload "$APP_DIR/deploy/ecosystem.config.js" --update-env \
+# 6. Restart pm2 (FULL restart, not reload — reload doesn't always reload Next's loaded chunks)
+log "pm2 restart (force fresh process)"
+pm2 restart "$APP_DIR/deploy/ecosystem.config.js" --update-env \
   || pm2 start "$APP_DIR/deploy/ecosystem.config.js"
 pm2 save
 
@@ -77,8 +80,8 @@ if [[ $api_ok -eq 0 || $admin_ok -eq 0 ]]; then
     npm install --no-audit --no-fund --include=dev --legacy-peer-deps
     (cd apps/api && npx prisma generate)
     (cd apps/api && rm -rf dist *.tsbuildinfo .tsbuildinfo && npx nest build)
-    (cd apps/admin && rm -rf .next && npx next build)
-    pm2 reload "$APP_DIR/deploy/ecosystem.config.js" --update-env
+    (cd apps/admin && rm -rf .next node_modules/.cache && npx next build)
+    pm2 restart "$APP_DIR/deploy/ecosystem.config.js" --update-env
     pm2 save
     die "Rolled back to ${PREV_SHA:0:7}. Check pm2 logs jasabersih-api / jasabersih-admin."
   else
