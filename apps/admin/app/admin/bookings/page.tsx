@@ -33,6 +33,11 @@ export default function Bookings() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openMenu, setOpenMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [needsAttention, setNeedsAttention] = useState<Awaited<ReturnType<typeof api.admin.bookingsNeedsAttention>>>([]);
+
+  useEffect(() => {
+    api.admin.bookingsNeedsAttention().then(setNeedsAttention).catch(() => setNeedsAttention([]));
+  }, [orders]);
 
   function toggleSel(id: string) {
     setSelected((prev) => {
@@ -161,6 +166,37 @@ export default function Bookings() {
           ))}
         </div>
       </div>
+
+      {needsAttention.length > 0 && (
+        <div className="mt-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚠️</span>
+            <div className="text-sm font-bold text-amber-900">
+              {needsAttention.length} booking belum diambil cleaner — kemungkinan di luar coverage area, butuh assign manual
+            </div>
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {needsAttention.slice(0, 5).map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-slate-900">{b.customerName ?? '—'} · {b.serviceName ?? '—'}</div>
+                  <div className="truncate text-slate-500">{b.addressLine}</div>
+                  <div className="text-amber-700">Searching {Math.floor(b.searchingSec / 60)} menit</div>
+                </div>
+                <button
+                  onClick={() => setAssigning(b.id)}
+                  className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white"
+                >
+                  Assign Manual
+                </button>
+              </div>
+            ))}
+            {needsAttention.length > 5 && (
+              <div className="pt-1 text-center text-[11px] text-amber-800">+{needsAttention.length - 5} lainnya</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {selected.size > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">

@@ -83,15 +83,23 @@ export class CleanerJobsController {
     return rows.map((r) => ({ ...r, url: this.storage.getPublicUrl(r.storagePath as string) }));
   }
 
-  // List bookings searching that this cleaner can take. Filter by service area di future.
+  // List bookings searching that this cleaner can take.
+  // Filter by service_areas: if cleaner has set areas, only show jobs whose
+  // address_line contains any of those area strings. Empty/null areas → show all
+  // (don't block onboarding cleaners who haven't set their coverage yet).
   @Get('available')
   async available(@CurrentUser() user: AuthenticatedUser) {
-    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null }[]>`
-      SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any }[]>`
+      SELECT kyc_status, service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
     if (profile[0]?.kyc_status !== 'approved') return [];
 
-    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+    const rawAreas = profile[0]?.service_areas;
+    const areas: string[] = Array.isArray(rawAreas)
+      ? rawAreas.filter((a) => typeof a === 'string' && a.trim().length > 0)
+      : [];
+
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt", b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
@@ -100,6 +108,13 @@ export class CleanerJobsController {
        WHERE b.status = 'searching' AND b.cleaner_id IS NULL
        ORDER BY b.created_at DESC LIMIT 50
     `;
+
+    if (areas.length === 0) return rows;
+    const lcAreas = areas.map((a) => a.toLowerCase());
+    return rows.filter((r) => {
+      const addr = String(r.addressLine ?? '').toLowerCase();
+      return lcAreas.some((a) => addr.includes(a));
+    });
   }
 
   // Active jobs assigned to this cleaner (not completed/cancelled)

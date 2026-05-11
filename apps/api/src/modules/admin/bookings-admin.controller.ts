@@ -18,6 +18,29 @@ export class AdminBookingsController {
     private readonly push: PushService,
   ) {}
 
+  // Bookings yang searching > 5 menit dan belum ada cleaner ambil — kemungkinan
+  // di luar coverage area. Admin perlu lihat ini untuk assign manual.
+  @Get('needs-attention')
+  @Roles('super_admin', 'ops', 'support')
+  async needsAttention() {
+    return this.prisma.$queryRaw`
+      SELECT b.id, b.address_line AS "addressLine", b.total_amount AS "totalAmount",
+             b.scheduled_at AS "scheduledAt", b.created_at AS "createdAt",
+             b.broadcast_started_at AS "broadcastStartedAt",
+             EXTRACT(EPOCH FROM (NOW() - COALESCE(b.broadcast_started_at, b.created_at)))::int AS "searchingSec",
+             s.name AS "serviceName",
+             cu.name AS "customerName", cu.phone AS "customerPhone"
+        FROM bookings b
+        LEFT JOIN services s ON s.id = b.service_id
+        LEFT JOIN users cu ON cu.id = b.customer_id
+       WHERE b.status = 'searching'
+         AND b.cleaner_id IS NULL
+         AND COALESCE(b.broadcast_started_at, b.created_at) < NOW() - INTERVAL '5 minutes'
+       ORDER BY b.created_at ASC
+       LIMIT 100
+    `;
+  }
+
   // Detail lengkap booking — header, timeline (timestamps), customer, cleaner, payment, photos
   @Get(':id')
   @Roles('super_admin', 'ops', 'support', 'fraud_analyst')
