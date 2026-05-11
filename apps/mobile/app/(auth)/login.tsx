@@ -69,7 +69,11 @@ export default function Login() {
       // Fetch full profile from /auth/me — populates name/phone/email/photo for Profile tab
       void fetchUser();
       if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
-      toast.success(`Selamat datang, ${result.user.name}`);
+      // Toast 'Selamat datang' hanya untuk customer.
+      // Cleaner: skip — KYC gate akan show context yang lebih relevant
+      if (result.user.mode === 'customer') {
+        toast.success(`Selamat datang, ${result.user.name}`);
+      }
       // Cleaner: jangan ke (tabs) dulu — CleanerLockOverlay handle routing
       // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
       router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : '/(tabs)');
