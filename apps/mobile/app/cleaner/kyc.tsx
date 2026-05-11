@@ -141,6 +141,8 @@ function CleanerKycScreen() {
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color="#1D4ED8" />
           </View>
+        ) : status?.kycStatus === 'under_review' ? (
+          <ReviewPendingView onRefresh={load} />
         ) : (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             <StatusBanner status={status?.kycStatus ?? 'pending'} reason={status?.rejectionReason ?? null} />
@@ -300,5 +302,52 @@ function DocStatusBadge({ status }: { status: 'pending' | 'approved' | 'rejected
   return <View className="rounded-full bg-amber-100 px-2 py-0.5"><Text className="font-medium text-[10px] text-amber-800">menunggu review</Text></View>;
 }
 
+
+function ReviewPendingView({ onRefresh }: { onRefresh: () => void | Promise<void> }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
+      <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 32, alignItems: 'center', flexGrow: 1 }}>
+        <View style={{ height: 96, width: 96, borderRadius: 48, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' }}>
+          <Clock color="#1D4ED8" size={42} strokeWidth={2.2} />
+        </View>
+        <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: '#0F172A', marginTop: 20, textAlign: 'center' }}>
+          Sedang Dalam Review
+        </Text>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#475569', marginTop: 8, textAlign: 'center', lineHeight: 20, paddingHorizontal: 12 }}>
+          Tim admin sedang verifikasi dokumen KYC kamu. Biasanya selesai dalam{' '}
+          <Text style={{ fontFamily: 'Inter_700Bold', color: '#0F172A' }}>1×24 jam kerja</Text>.
+          Notifikasi akan dikirim begitu hasilnya keluar.
+        </Text>
+
+        <View style={{ marginTop: 28, width: '100%', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16 }}>
+          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#0F172A', marginBottom: 10 }}>Apa yang dicek admin?</Text>
+          {[
+            'Foto KTP jelas, tidak buram, semua tulisan terbaca',
+            'Selfie + KTP: wajah & KTP terlihat jelas dalam satu frame',
+            'Buku tabungan: nama sesuai KTP',
+            'KTP masih aktif & usia 18+',
+          ].map((line) => (
+            <View key={line} style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+              <Text style={{ color: '#1D4ED8', fontSize: 12 }}>•</Text>
+              <Text style={{ flex: 1, fontFamily: 'Inter_400Regular', fontSize: 12, color: '#475569', lineHeight: 18 }}>{line}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Pressable
+          onPress={onRefresh}
+          style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, backgroundColor: '#EFF6FF' }}
+        >
+          <Clock color="#1D4ED8" size={14} strokeWidth={2.4} />
+          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#1D4ED8' }}>Cek Status Lagi</Text>
+        </Pressable>
+
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 16, textAlign: 'center' }}>
+          Ada kendala? Hubungi CS via WhatsApp dari halaman bantuan.
+        </Text>
+      </ScrollView>
+    </View>
+  );
+}
 
 export default withAuth(CleanerKycScreen, 'freelancer');
