@@ -32,21 +32,36 @@ import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
 
-const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00', '17:00'];
-const DATE_OPTIONS = (() => {
-  const out: { label: string; iso: string; date: string }[] = [];
-  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    out.push({
-      label: i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : days[d.getDay()] ?? '',
-      date: String(d.getDate()),
-      iso: d.toISOString().slice(0, 10),
+// Schedule options: "1 jam dari sekarang" atau "Besok jam X".
+// Bisnis policy: bukan freeform datetime — supaya cleaner job board sederhana
+// (cleaner pilih dari list pendek, tidak menebak ketersediaan hari random).
+const TOMORROW_SLOTS = ['08:00', '10:00', '13:00', '15:00'];
+function buildScheduleOptions(): { id: string; label: string; sub: string; iso: string }[] {
+  const opts: { id: string; label: string; sub: string; iso: string }[] = [];
+  const inOneHour = new Date(Date.now() + 60 * 60 * 1000);
+  const hh = String(inOneHour.getHours()).padStart(2, '0');
+  const mm = String(inOneHour.getMinutes()).padStart(2, '0');
+  opts.push({
+    id: 'now+1h',
+    label: 'Secepatnya',
+    sub: `1 jam lagi (jam ${hh}:${mm})`,
+    iso: inOneHour.toISOString(),
+  });
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  for (const t of TOMORROW_SLOTS) {
+    const [h, m] = t.split(':').map(Number);
+    const d = new Date(tomorrow);
+    d.setHours(h ?? 0, m ?? 0, 0, 0);
+    opts.push({
+      id: `tomorrow-${t}`,
+      label: 'Besok',
+      sub: `jam ${t}`,
+      iso: d.toISOString(),
     });
   }
-  return out;
-})();
+  return opts;
+}
 
 const STEP_LABELS = ['Properti', 'Kondisi', 'Jadwal'];
 const TOTAL_STEPS = 3;
@@ -141,8 +156,9 @@ function NewBooking() {
   );
   const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
 
-  const [date, setDate] = useState(DATE_OPTIONS[0]?.iso ?? '');
-  const [time, setTime] = useState('10:00');
+  const SCHEDULE_OPTIONS = useMemo(() => buildScheduleOptions(), []);
+  const [scheduleId, setScheduleId] = useState(SCHEDULE_OPTIONS[0]?.id ?? '');
+  const scheduleIso = SCHEDULE_OPTIONS.find((o) => o.id === scheduleId)?.iso ?? new Date().toISOString();
   const [address, setAddress] = useState(
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
   );
@@ -283,7 +299,7 @@ function NewBooking() {
       packageId: pkg.id,
       packageName: cleanMode === 'deep' ? `${pkg.name} (Deep Cleaning)` : pkg.name,
       addressLine: address,
-      scheduledAt: `${date} ${time}`,
+      scheduledAt: scheduleIso,
       addOns: ADDONS.filter((a) => selectedAddons.has(a.code)).map((a) => ({
         code: a.code,
         name: a.name,
@@ -680,52 +696,27 @@ function NewBooking() {
 
           {step === 3 && (
             <>
-              <Section title="Tanggal & Jam">
-                <Label>Tanggal</Label>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View className="flex-row gap-2">
-                    {DATE_OPTIONS.map((d) => {
-                      const active = d.iso === date;
-                      return (
-                        <Pressable
-                          key={d.iso}
-                          onPress={() => setDate(d.iso)}
-                          className={`w-16 items-center rounded-xl border py-3 ${
-                            active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
-                          }`}
-                        >
-                          <Text
-                            className={`font-medium text-[11px] ${active ? 'text-white' : 'text-ink-500'}`}
-                          >
-                            {d.label}
-                          </Text>
-                          <Text
-                            className={`font-bold mt-0.5 text-lg ${active ? 'text-white' : 'text-ink-900'}`}
-                          >
-                            {d.date}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-                <Label className="mt-4">Jam Mulai</Label>
-                <View className="flex-row flex-wrap gap-2">
-                  {TIME_SLOTS.map((t) => {
-                    const active = t === time;
+              <Section title="Kapan dikerjakan">
+                <View className="gap-2">
+                  {SCHEDULE_OPTIONS.map((o) => {
+                    const active = o.id === scheduleId;
                     return (
                       <Pressable
-                        key={t}
-                        onPress={() => setTime(t)}
-                        className={`rounded-xl border px-4 py-2.5 ${
-                          active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
+                        key={o.id}
+                        onPress={() => setScheduleId(o.id)}
+                        className={`flex-row items-center justify-between rounded-xl border px-4 py-3 ${
+                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
                         }`}
                       >
-                        <Text
-                          className={`font-semibold text-xs ${active ? 'text-white' : 'text-ink-700'}`}
-                        >
-                          {t}
-                        </Text>
+                        <View>
+                          <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>
+                            {o.label}
+                          </Text>
+                          <Text className="font-medium mt-0.5 text-[11px] text-ink-500">{o.sub}</Text>
+                        </View>
+                        <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'}`}>
+                          {active && <View className="h-2 w-2 rounded-full bg-white" />}
+                        </View>
                       </Pressable>
                     );
                   })}

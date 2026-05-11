@@ -235,7 +235,7 @@ function BookingDetail() {
             <View className="flex-1 justify-center px-4">
               <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
             </View>
-            <View className="px-4 pb-4">
+            <View className="gap-2 px-4 pb-4">
               <Pressable
                 disabled={!canStillCancel}
                 onPress={onCancel}
@@ -245,6 +245,15 @@ function BookingDetail() {
                   {canStillCancel ? `Batalkan (${cancelLeft}s)` : 'Tidak bisa dibatalkan — sedang dicari'}
                 </Text>
               </Pressable>
+              <Pressable
+                onPress={() => router.replace('/')}
+                className="items-center rounded-2xl bg-brand-600 py-3"
+              >
+                <Text className="font-bold text-sm text-white">Kembali ke beranda</Text>
+              </Pressable>
+              <Text className="px-2 text-center text-[11px] text-ink-500">
+                Pencarian tetap berjalan di latar. Notifikasi akan dikirim saat cleaner menerima.
+              </Text>
             </View>
           </SafeAreaView>
         </View>
