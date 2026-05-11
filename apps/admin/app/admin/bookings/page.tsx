@@ -31,7 +31,7 @@ export default function Bookings() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [busy, setBusy] = useState(false);
 
   function toggleSel(id: string) {
@@ -254,17 +254,24 @@ export default function Bookings() {
                             <UserPlus size={12} /> Assign
                           </button>
                         )}
-                        <div className="relative">
+                        <div>
                           <button
-                            onClick={() => setOpenMenu(openMenu === o.id ? null : o.id)}
+                            onClick={(e) => {
+                              if (openMenu?.id === o.id) { setOpenMenu(null); return; }
+                              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              setOpenMenu({ id: o.id, top: r.bottom + 4, left: r.right - 176 });
+                            }}
                             className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-100"
                           >
                             <MoreHorizontal size={14} />
                           </button>
-                          {openMenu === o.id && (
+                          {openMenu?.id === o.id && (
                             <>
-                              <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
-                              <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+                              <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(null)} />
+                              <div
+                                className="fixed z-50 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                style={{ top: openMenu.top, left: openMenu.left }}
+                              >
                                 {o.status === 'pending_payment' && (
                                   <button onClick={() => rowAction(o.id, 'mark_paid')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50">
                                     <Wallet size={12} className="text-emerald-600" /> Tandai Lunas
