@@ -23,9 +23,12 @@ PREV_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
 log "Current commit: ${PREV_SHA:0:7}"
 
 # 1. Pull latest -----------------------------------------------------------
-log "git fetch + reset --hard origin/main"
+log "git fetch + reset --hard origin/main + clean stray files"
 git fetch origin --prune
 git reset --hard origin/main
+# Wipe untracked compiled junk (stale .js/.d.ts from manual tsc) — these
+# poison Node module resolution for workspace packages.
+git clean -fdx -e node_modules -e .env -e .env.* -e apps/admin/.next -e apps/api/dist
 NEW_SHA="$(git rev-parse HEAD)"
 log "Deploying commit: ${NEW_SHA:0:7}"
 
