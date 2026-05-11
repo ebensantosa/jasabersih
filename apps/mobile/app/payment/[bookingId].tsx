@@ -23,17 +23,20 @@ type DirectResult = {
   expiredAt: string | null;
 };
 
-// Bank logos hosted by Flip — official, stable URLs.
-const BANK_LOGO = (code: string) => `https://bigflip.id/assets/img/icon/ic_bank_${code}.png`;
-
-const VA_METHODS: { code: string; name: string; sub?: string }[] = [
-  { code: 'bca', name: 'BCA Virtual Account' },
-  { code: 'bni', name: 'BNI Virtual Account' },
-  { code: 'bri', name: 'BRI Virtual Account' },
-  { code: 'mandiri', name: 'Mandiri Virtual Account' },
-  { code: 'cimb', name: 'CIMB Niaga Virtual Account' },
-  { code: 'permata', name: 'Permata Virtual Account' },
-  { code: 'bsi', name: 'BSI Virtual Account' },
+// Stylized brand badges — no external image deps so always renders.
+const VA_METHODS: {
+  code: string;
+  name: string;
+  bg: string;
+  fg: string;
+  label: string;
+}[] = [
+  { code: 'bca',     name: 'BCA Virtual Account',         bg: '#0060AF', fg: '#FFFFFF', label: 'BCA' },
+  { code: 'bni',     name: 'BNI Virtual Account',         bg: '#F36F21', fg: '#FFFFFF', label: 'BNI' },
+  { code: 'bri',     name: 'BRI Virtual Account',         bg: '#00529C', fg: '#FFFFFF', label: 'BRI' },
+  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#003D79', fg: '#FFD200', label: 'mandiri' },
+  { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#7A1A1A', fg: '#FFFFFF', label: 'CIMB' },
+  { code: 'permata', name: 'Permata Virtual Account',     bg: '#00853F', fg: '#FFFFFF', label: 'Permata' },
 ];
 
 function PaymentScreen() {
@@ -122,12 +125,8 @@ function MethodPicker({ disabled, onPick }: { disabled: boolean; onPick: (bank: 
           onPress={() => onPick('qris', 'wallet_account')}
           className="flex-row items-center gap-3 rounded-2xl bg-white p-4"
         >
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-white">
-            <Image
-              source={{ uri: 'https://bigflip.id/assets/img/icon/ic_qris.png' }}
-              style={{ width: 40, height: 40 }}
-              contentFit="contain"
-            />
+          <View className="h-12 w-14 items-center justify-center rounded-xl" style={{ backgroundColor: '#ED1C24' }}>
+            <Text className="font-bold text-xs text-white">QRIS</Text>
           </View>
           <View className="flex-1">
             <Text className="font-bold text-sm text-ink-900">QRIS — Semua e-wallet & m-banking</Text>
@@ -146,12 +145,16 @@ function MethodPicker({ disabled, onPick }: { disabled: boolean; onPick: (bank: 
               onPress={() => onPick(m.code, 'virtual_account')}
               className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''}`}
             >
-              <View className="h-10 w-12 items-center justify-center rounded bg-white">
-                <Image
-                  source={{ uri: BANK_LOGO(m.code) }}
-                  style={{ width: 40, height: 28 }}
-                  contentFit="contain"
-                />
+              <View
+                className="h-10 w-14 items-center justify-center rounded"
+                style={{ backgroundColor: m.bg }}
+              >
+                <Text
+                  className="font-bold text-[11px]"
+                  style={{ color: m.fg, textTransform: m.label === 'mandiri' ? 'lowercase' : 'uppercase' }}
+                >
+                  {m.label}
+                </Text>
               </View>
               <Text className="flex-1 font-semibold text-sm text-ink-900">{m.name}</Text>
               <Building2 color="#94A3B8" size={16} />
