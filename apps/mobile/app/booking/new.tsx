@@ -1,5 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, ArrowLeft, Camera, Check, ChevronLeft, Minus, Plus } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, Minus, Plus } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,42 +33,29 @@ import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
 
-// Schedule options. Operasional: 07:00–21:00.
-// - Kalau "secepatnya" (sekarang+1jam) jatuh di dalam jam ops → tampil opsi Secepatnya
-// - Sisanya: slot besok pagi sampai sore dalam jam ops (mulai 07:00)
-// Bukan freeform datetime — biar job board cleaner pendek & predictable.
+// Operasional 07:00–21:00. Earliest slot = sekarang + 1 jam (snap ke ops window).
 const OPS_START_HOUR = 7;
 const OPS_END_HOUR = 21;
-const TOMORROW_SLOTS = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00'];
-function buildScheduleOptions(): { id: string; label: string; sub: string; iso: string }[] {
-  const opts: { id: string; label: string; sub: string; iso: string }[] = [];
-  const inOneHour = new Date(Date.now() + 60 * 60 * 1000);
-  const oneHourHour = inOneHour.getHours();
-  const withinOps = oneHourHour >= OPS_START_HOUR && oneHourHour < OPS_END_HOUR;
-  if (withinOps) {
-    const hh = String(inOneHour.getHours()).padStart(2, '0');
-    const mm = String(inOneHour.getMinutes()).padStart(2, '0');
-    opts.push({
-      id: 'now+1h',
-      label: 'Secepatnya',
-      sub: `1 jam lagi (jam ${hh}:${mm})`,
-      iso: inOneHour.toISOString(),
-    });
+function earliestAvailable(): Date {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  if (d.getHours() < OPS_START_HOUR) {
+    d.setHours(OPS_START_HOUR, 0, 0, 0);
+  } else if (d.getHours() >= OPS_END_HOUR) {
+    d.setDate(d.getDate() + 1);
+    d.setHours(OPS_START_HOUR, 0, 0, 0);
   }
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  for (const t of TOMORROW_SLOTS) {
-    const [h, m] = t.split(':').map(Number);
-    const d = new Date(tomorrow);
-    d.setHours(h ?? 0, m ?? 0, 0, 0);
-    opts.push({
-      id: `tomorrow-${t}`,
-      label: 'Besok',
-      sub: `jam ${t}`,
-      iso: d.toISOString(),
-    });
-  }
-  return opts;
+  return d;
+}
+function formatScheduleLabel(d: Date): string {
+  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+  const diff = (dd.getTime() - today.getTime()) / (24 * 3600 * 1000);
+  const dayLabel = diff === 0 ? 'Hari ini' : diff === 1 ? 'Besok' : `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${dayLabel} · ${hh}:${mm}`;
 }
 
 const STEP_LABELS = ['Properti', 'Kondisi', 'Jadwal'];
@@ -163,9 +151,9 @@ function NewBooking() {
   );
   const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
 
-  const SCHEDULE_OPTIONS = useMemo(() => buildScheduleOptions(), []);
-  const [scheduleId, setScheduleId] = useState(SCHEDULE_OPTIONS[0]?.id ?? '');
-  const scheduleIso = SCHEDULE_OPTIONS.find((o) => o.id === scheduleId)?.iso ?? new Date().toISOString();
+  const [scheduleAt, setScheduleAt] = useState<Date>(() => earliestAvailable());
+  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
+  const scheduleIso = scheduleAt.toISOString();
   const [address, setAddress] = useState(
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
   );
@@ -704,30 +692,65 @@ function NewBooking() {
           {step === 3 && (
             <>
               <Section title="Kapan dikerjakan">
-                <View className="gap-2">
-                  {SCHEDULE_OPTIONS.map((o) => {
-                    const active = o.id === scheduleId;
-                    return (
-                      <Pressable
-                        key={o.id}
-                        onPress={() => setScheduleId(o.id)}
-                        className={`flex-row items-center justify-between rounded-xl border px-4 py-3 ${
-                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
-                        }`}
-                      >
-                        <View>
-                          <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>
-                            {o.label}
-                          </Text>
-                          <Text className="font-medium mt-0.5 text-[11px] text-ink-500">{o.sub}</Text>
-                        </View>
-                        <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'}`}>
-                          {active && <View className="h-2 w-2 rounded-full bg-white" />}
-                        </View>
-                      </Pressable>
-                    );
-                  })}
+                <View className="flex-row gap-2">
+                  <Pressable
+                    onPress={() => setPickerMode('date')}
+                    className="flex-1 flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
+                  >
+                    <View>
+                      <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Tanggal</Text>
+                      <Text className="font-bold mt-0.5 text-sm text-ink-900">
+                        {formatScheduleLabel(scheduleAt).split(' · ')[0]}
+                      </Text>
+                    </View>
+                    <Calendar color="#1D4ED8" size={18} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setPickerMode('time')}
+                    className="flex-1 flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
+                  >
+                    <View>
+                      <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Jam</Text>
+                      <Text className="font-bold mt-0.5 text-sm text-ink-900">
+                        {String(scheduleAt.getHours()).padStart(2, '0')}:{String(scheduleAt.getMinutes()).padStart(2, '0')}
+                      </Text>
+                    </View>
+                    <Clock color="#1D4ED8" size={18} />
+                  </Pressable>
                 </View>
+                <Text className="mt-2 text-[11px] text-ink-500">
+                  Operasional 07:00–21:00. Paling cepat 1 jam dari sekarang.
+                </Text>
+                {pickerMode && (
+                  <DateTimePicker
+                    value={scheduleAt}
+                    mode={pickerMode}
+                    minimumDate={earliestAvailable()}
+                    is24Hour
+                    onChange={(_, selected) => {
+                      const wasMode = pickerMode;
+                      setPickerMode(null);
+                      if (!selected) return;
+                      const next = new Date(scheduleAt);
+                      if (wasMode === 'date') {
+                        next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+                      } else {
+                        next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+                      }
+                      // Enforce ops window
+                      if (next.getHours() < OPS_START_HOUR) next.setHours(OPS_START_HOUR, 0, 0, 0);
+                      if (next.getHours() >= OPS_END_HOUR) next.setHours(OPS_END_HOUR - 1, 0, 0, 0);
+                      // Enforce min = now+1h
+                      const min = earliestAvailable();
+                      if (next.getTime() < min.getTime()) {
+                        toast.error('Jadwal minimal 1 jam dari sekarang');
+                        setScheduleAt(min);
+                        return;
+                      }
+                      setScheduleAt(next);
+                    }}
+                  />
+                )}
               </Section>
 
               <Section title="Alamat">

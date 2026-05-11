@@ -16,6 +16,7 @@
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/cli": "^54.0.24",
     "@gorhom/bottom-sheet": "^5.2.9",
+    "@react-native-community/datetimepicker": "8.4.5",
     "@jasabersih/api-client": "*",
     "@jasabersih/shared-types": "*",
     "@jasabersih/ui-kit": "*",
