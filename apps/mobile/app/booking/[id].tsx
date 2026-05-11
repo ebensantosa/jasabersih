@@ -11,6 +11,7 @@ import {
   Clock,
   MapPin,
   MessageCircle,
+  Sparkles,
   XCircle,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
@@ -237,12 +238,16 @@ function BookingDetail() {
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <View className="flex-row items-center gap-3">
-              <View className="h-14 w-14 overflow-hidden rounded-xl bg-ink-100">
-                <Image
-                  source={booking.categoryImage}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="cover"
-                />
+              <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-ink-100">
+                {booking.categoryImage ? (
+                  <Image
+                    source={booking.categoryImage}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <Sparkles color="#64748B" size={24} strokeWidth={2} />
+                )}
               </View>
               <View className="flex-1">
                 <Text className="font-bold text-base text-ink-900">{booking.categoryName}</Text>

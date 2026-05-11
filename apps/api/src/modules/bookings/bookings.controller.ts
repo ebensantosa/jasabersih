@@ -38,7 +38,7 @@ export class BookingsController {
     return this.prisma.$queryRawUnsafe(
       `SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.total_amount AS total,
               b.scheduled_at AS "scheduledAt", b.address_line AS address, b.created_at AS "createdAt",
-              s.name AS "serviceName", cl.name AS "cleanerName"
+              s.name AS "serviceName", s.icon_url AS "serviceIcon", cl.name AS "cleanerName"
        FROM bookings b
        LEFT JOIN services s ON s.id = b.service_id
        LEFT JOIN users cl ON cl.id = b.cleaner_id
@@ -51,7 +51,7 @@ export class BookingsController {
   @Get(':id')
   async get(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
-      `SELECT b.*, s.name AS service_name FROM bookings b
+      `SELECT b.*, s.name AS service_name, s.icon_url AS service_icon FROM bookings b
        LEFT JOIN services s ON s.id = b.service_id
        WHERE b.id = $1::uuid AND (b.customer_id = $2::uuid OR b.cleaner_id = $2::uuid) LIMIT 1`,
       id,

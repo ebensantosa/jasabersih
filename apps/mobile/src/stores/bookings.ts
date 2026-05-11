@@ -140,11 +140,11 @@ export const useBookingsStore = create<State>((set, get) => ({
       const serverMapped: Booking[] = items.map((s) => {
         const existing = local.find((b) => b.id === s.id);
         const total = Number(s.total ?? 0);
-        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerName: s.cleanerName ?? existing.cleanerName, scheduledAt: s.scheduledAt ?? existing.scheduledAt }
+        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerName: s.cleanerName ?? existing.cleanerName, scheduledAt: s.scheduledAt ?? existing.scheduledAt, categoryImage: s.serviceIcon ?? existing.categoryImage }
           : {
               id: s.id,
               pricingMode: (s.pricingMode ?? 'package') as PricingMode,
-              categoryCode: '', categoryName: s.serviceName ?? 'Layanan', categoryImage: '',
+              categoryCode: '', categoryName: s.serviceName ?? 'Layanan', categoryImage: s.serviceIcon ?? '',
               addressLine: s.address ?? '',
               scheduledAt: s.scheduledAt ?? new Date().toISOString(),
               status: mapServerStatus(s.status),
