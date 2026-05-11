@@ -4,8 +4,9 @@ import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Clock, Copy, ExternalLink, Loader2, ChevronRight } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 import { api } from '../../src/lib/api';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -43,6 +44,8 @@ function PaymentScreen() {
   const [creating, setCreating] = useState(false);
   const [payment, setPayment] = useState<PaymentResult | null>(null);
   const [paid, setPaid] = useState(false);
+  const [flipUrl, setFlipUrl] = useState<string | null>(null);
+  const [flipPaymentId, setFlipPaymentId] = useState<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -67,24 +70,32 @@ function PaymentScreen() {
       const url: string | undefined = data?.checkoutUrl;
       const paymentId: string | undefined = data?.paymentId;
       if (!url || !paymentId) throw new Error('Checkout URL kosong dari server.');
-      // Open Flip checkout in browser/WebView
-      await Linking.openURL(url);
-      // Poll status
+      // On web we can't iframe Flip (X-Frame-Options) — fall back to new tab.
+      // On native: open in-app WebView modal.
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        setFlipUrl(url);
+      }
+      setFlipPaymentId(paymentId);
+      // Poll status — webhook will mark paid; UI auto-closes WebView on detect.
       pollTimerRef.current = setInterval(async () => {
         try {
           const r = await api.get(`/payments/${paymentId}`);
           const status = (r.data?.data ?? r.data)?.status;
           if (status === 'paid') {
             setPaid(true);
+            setFlipUrl(null);
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             void syncBookings();
             setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
           } else if (['failed', 'cancelled', 'expired'].includes(status)) {
+            setFlipUrl(null);
             toast.error('Pembayaran gagal/dibatalkan. Coba lagi.');
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           }
         } catch {}
-      }, 5000);
+      }, 4000);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal create pembayaran Flip');
     } finally {
@@ -160,6 +171,45 @@ function PaymentScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+
+      <Modal visible={!!flipUrl} animationType="slide" onRequestClose={() => setFlipUrl(null)}>
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="flex-row items-center gap-2 border-b border-ink-100 px-3 py-2">
+            <Pressable onPress={() => setFlipUrl(null)} className="h-10 w-10 items-center justify-center">
+              <ArrowLeft color="#0F172A" size={22} />
+            </Pressable>
+            <View className="flex-1">
+              <Text className="font-bold text-base text-ink-900">Pembayaran Flip</Text>
+              <Text className="font-sans text-[11px] text-ink-500">Tetap di halaman ini sampai pembayaran selesai</Text>
+            </View>
+          </View>
+          {flipUrl && Platform.OS !== 'web' && (
+            <WebView
+              source={{ uri: flipUrl }}
+              startInLoadingState
+              renderLoading={() => (
+                <View className="absolute inset-0 items-center justify-center bg-white">
+                  <ActivityIndicator color="#1D4ED8" />
+                </View>
+              )}
+              onNavigationStateChange={(nav) => {
+                // Flip redirects ke redirect_url saat selesai → kita pake jasabersih.com/booking/{id}
+                if (nav.url.includes('/booking/') && flipPaymentId) {
+                  // Trigger immediate poll
+                  api.get(`/payments/${flipPaymentId}`).then((r) => {
+                    const status = (r.data?.data ?? r.data)?.status;
+                    if (status === 'paid') {
+                      setPaid(true);
+                      setFlipUrl(null);
+                      void syncBookings();
+                    }
+                  }).catch(() => {});
+                }
+              }}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </>
   );
 }
