@@ -58,10 +58,16 @@ log "Build Admin Next.js…"
 (cd apps/admin && rm -rf .next node_modules/.cache && npx next build)
 [[ -d apps/admin/.next/server/app/admin ]] || die "Admin build did not produce .next/server/app/admin"
 
-# 6. Restart pm2 (FULL restart, not reload — reload doesn't always reload Next's loaded chunks)
-log "pm2 restart (force fresh process)"
-pm2 restart "$APP_DIR/deploy/ecosystem.config.js" --update-env \
-  || pm2 start "$APP_DIR/deploy/ecosystem.config.js"
+# 6. Restart pm2 (FULL restart + kill orphans on ports first)
+# Orphan Next.js processes can hold ports 5000/5001 → pm2 EADDRINUSE crash loop
+# while the orphan serves stale code. Kill before restart.
+log "Kill any orphan listeners on :5000/:5001"
+pm2 stop jasabersih-api jasabersih-admin 2>/dev/null || true
+fuser -k 5000/tcp 2>/dev/null || true
+fuser -k 5001/tcp 2>/dev/null || true
+sleep 2
+log "pm2 start ecosystem.config.js (fresh)"
+pm2 start "$APP_DIR/deploy/ecosystem.config.js" --update-env
 pm2 save
 
 # 7. Health check + auto-rollback -----------------------------------------
