@@ -82,7 +82,7 @@ type State = {
   hydrated: boolean;
   create: (
     b: Omit<Booking, 'id' | 'createdAt' | 'messages' | 'status'> & { initialStatus?: BookingStatus },
-  ) => Booking;
+  ) => Promise<Booking>;
   setStatus: (id: string, status: BookingStatus) => void;
   markPaid: (id: string) => void;
   cancel: (id: string, refund?: number) => void;
@@ -182,7 +182,7 @@ export const useBookingsStore = create<State>((set, get) => ({
     persist(list);
     set({ list });
   },
-  create: ({ initialStatus, ...b }) => {
+  create: async ({ initialStatus, ...b }) => {
     const tempId = 'bk_' + Math.random().toString(36).slice(2, 10);
     const status: BookingStatus = initialStatus ?? 'searching';
     const booking: Booking = {
@@ -196,7 +196,8 @@ export const useBookingsStore = create<State>((set, get) => ({
     persist(next);
     set({ list: next });
 
-    // Fire-and-forget: POST ke API. Kalau sukses, replace tempId dgn server uuid.
+    // Await POST ke API so caller can navigate with the FINAL server UUID
+    // (avoids race where store swaps id but caller still has tempId).
     if (b.pricingMode !== 'wa_survey') {
       // Only forward UUID-shaped IDs to API (local catalog uses string codes
       // like "pkg_kamar_standard" that fail backend Zod uuid validation).
@@ -214,22 +215,27 @@ export const useBookingsStore = create<State>((set, get) => ({
         formSnapshot: { ...(b.formSnapshot ?? {}), localPackageCode: safePackageId ? undefined : b.packageId, packageName: b.packageName },
         customerNotes: undefined,
       };
-      api.post('/bookings', payload)
-        .then((res) => {
-          const serverId = res.data?.data?.id ?? res.data?.id;
-          if (!serverId) return;
+      try {
+        const res = await api.post('/bookings', payload);
+        const serverId = res.data?.data?.id ?? res.data?.id;
+        if (serverId) {
           const updated = get().list.map((row) => row.id === tempId ? { ...row, id: serverId } : row);
           persist(updated);
           set({ list: updated });
-        })
-        .catch((err) => {
-          // Surface to user — silent fail = booking stuck local-only,
-          // cleaner gak akan pernah lihat, customer ngira sedang searching.
-          import('./ui').then(({ toast }) => {
-            const msg = err?.response?.data?.message ?? err?.message ?? 'Gagal kirim ke server';
-            toast.error(`Pesanan belum tersimpan di server: ${msg}. Tap untuk retry.`);
-          }).catch(() => {});
-        });
+          return { ...booking, id: serverId };
+        }
+      } catch (err: any) {
+        const msg = err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? 'Gagal kirim ke server';
+        try {
+          const { toast } = await import('./ui');
+          toast.error(`Pesanan belum tersimpan: ${msg}`);
+        } catch {}
+        // Drop the local-only stub so user gets clean retry instead of stuck bk_ booking
+        const cleaned = get().list.filter((row) => row.id !== tempId);
+        persist(cleaned);
+        set({ list: cleaned });
+        throw err;
+      }
     }
 
     return booking;

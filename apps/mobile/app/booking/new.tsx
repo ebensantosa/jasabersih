@@ -284,9 +284,11 @@ function NewBooking() {
     doSubmit();
   }
 
-  function doSubmit() {
+  async function doSubmit() {
     if (!pkg || !category) return;
-    const booking = create({
+    let booking;
+    try {
+      booking = await create({
       pricingMode: 'package',
       categoryCode: category.code,
       categoryName: category.name,
@@ -325,7 +327,11 @@ function NewBooking() {
         cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
       },
       initialStatus: 'pending_payment',
-    });
+      });
+    } catch {
+      // Error toast already shown by store; abort navigation.
+      return;
+    }
     toast.success('Pesanan dibuat — silakan bayar untuk mulai cari cleaner');
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
