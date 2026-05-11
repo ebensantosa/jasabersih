@@ -69,10 +69,16 @@ export class PaymentsController {
         redirectUrl: `https://jasabersih.com/booking/${b.id}`,
       });
 
+      // Flip returns link_url without protocol (e.g. "flip.id/pwf-sandbox/..").
+      // Normalize to absolute https URL so browser/WebView opens correctly.
+      const checkoutUrl = /^https?:\/\//i.test(result.link_url)
+        ? result.link_url
+        : `https://${result.link_url}`;
+
       await this.prisma.$executeRaw`
         UPDATE payments
            SET flip_link_id = ${String(result.link_id)},
-               payment_url = ${result.link_url}
+               payment_url = ${checkoutUrl}
          WHERE id = ${paymentId}::uuid
       `;
 
@@ -80,7 +86,7 @@ export class PaymentsController {
         paymentId,
         provider: 'flip',
         amount,
-        checkoutUrl: result.link_url,
+        checkoutUrl,
         linkId: result.link_id,
       };
     } catch (e) {
