@@ -26,8 +26,7 @@ export class AdminBookingsController {
     return this.prisma.$queryRaw`
       SELECT b.id, b.address_line AS "addressLine", b.total_amount AS "totalAmount",
              b.scheduled_at AS "scheduledAt", b.created_at AS "createdAt",
-             b.broadcast_started_at AS "broadcastStartedAt",
-             EXTRACT(EPOCH FROM (NOW() - COALESCE(b.broadcast_started_at, b.created_at)))::int AS "searchingSec",
+             EXTRACT(EPOCH FROM (NOW() - COALESCE(b.paid_at, b.created_at)))::int AS "searchingSec",
              s.name AS "serviceName",
              cu.name AS "customerName", cu.phone AS "customerPhone"
         FROM bookings b
@@ -35,7 +34,7 @@ export class AdminBookingsController {
         LEFT JOIN users cu ON cu.id = b.customer_id
        WHERE b.status = 'searching'
          AND b.cleaner_id IS NULL
-         AND COALESCE(b.broadcast_started_at, b.created_at) < NOW() - INTERVAL '5 minutes'
+         AND COALESCE(b.paid_at, b.created_at) < NOW() - INTERVAL '5 minutes'
        ORDER BY b.created_at ASC
        LIMIT 100
     `;
@@ -224,13 +223,13 @@ export class AdminBookingsController {
     if (!body?.reason || body.reason.trim().length < 5) {
       throw new BadRequestException('Alasan wajib (min 5 karakter).');
     }
-    const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string | null; total_amount: number; status: string; payment_status: string | null }[]>`
-      SELECT id, customer_id, total_amount, status, payment_status
+    const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string | null; total_amount: number; status: string; paid_at: Date | null }[]>`
+      SELECT id, customer_id, total_amount, status, paid_at
         FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
     const booking = rows[0];
     if (!booking) throw new NotFoundException('Booking tidak ditemukan.');
-    if (booking.payment_status === 'paid') {
+    if (booking.paid_at) {
       throw new BadRequestException('Booking sudah berstatus paid.');
     }
 
@@ -241,10 +240,8 @@ export class AdminBookingsController {
     await this.prisma.$transaction([
       this.prisma.$executeRaw`
         UPDATE bookings
-           SET payment_status = 'paid',
-               paid_at = COALESCE(paid_at, NOW()),
-               status = ${nextStatus},
-               broadcast_started_at = CASE WHEN ${nextStatus} = 'searching' THEN COALESCE(broadcast_started_at, NOW()) ELSE broadcast_started_at END
+           SET paid_at = COALESCE(paid_at, NOW()),
+               status = ${nextStatus}
          WHERE id = ${id}::uuid
       `,
       this.prisma.$executeRaw`
