@@ -17,6 +17,7 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { IncomingJobModal } from '../src/components/IncomingJobModal';
 import { PopupRenderer } from '../src/components/PopupRenderer';
 import { SuspendedOverlay } from '../src/components/SuspendedOverlay';
+import { CleanerLockOverlay } from '../src/components/CleanerLockOverlay';
 import { SplashOverlay } from '../src/components/SplashOverlay';
 import { RealtimeJobModal } from '../src/components/RealtimeJobModal';
 import { ToastHost } from '../src/components/Toast';
@@ -188,6 +189,7 @@ export default function RootLayout() {
         <RealtimeJobModal />
         <PopupRenderer event="app_open" />
         <SuspendedOverlay />
+        <CleanerLockOverlay />
       </QueryProvider>
     </ErrorBoundary>
   );

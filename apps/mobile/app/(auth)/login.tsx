@@ -70,7 +70,9 @@ export default function Login() {
       void fetchUser();
       if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
       toast.success(`Selamat datang, ${result.user.name}`);
-      router.replace('/(tabs)');
+      // Cleaner: jangan ke (tabs) dulu — CleanerLockOverlay handle routing
+      // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
+      router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : '/(tabs)');
     } catch (e) {
       const msg = (e as Error).message;
       setErrors({ email: ' ', password: msg });

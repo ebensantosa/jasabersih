@@ -1,0 +1,61 @@
+import { router, usePathname } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+
+import { api } from '../lib/api';
+import { useAuthStore } from '../stores/auth';
+import { useModeStore } from '../stores/mode';
+
+/**
+ * Root-level guard: kalau user freelancer + KYC bukan approved,
+ * force redirect ke /cleaner/kyc. User gak bisa keluar dari KYC page
+ * sampai admin approve. Polling tiap 20s untuk auto-unlock saat approved.
+ */
+export function CleanerLockOverlay() {
+  const tokens = useAuthStore((s) => s.tokens);
+  const mode = useModeStore((s) => s.mode);
+  const pathname = usePathname();
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    if (!tokens || mode !== 'freelancer') {
+      setKycStatus(null);
+      return;
+    }
+    try {
+      const res = await api.get('/cleaner/profile');
+      const p = res.data?.data ?? res.data;
+      setKycStatus(p?.kycStatus ?? 'pending');
+    } catch {
+      setKycStatus('pending');
+    }
+  }, [tokens, mode]);
+
+  useEffect(() => { void fetchStatus(); }, [fetchStatus]);
+
+  // Refresh tiap 20s — auto unlock kalau admin approve di server
+  useEffect(() => {
+    if (!tokens || mode !== 'freelancer') return;
+    const t = setInterval(fetchStatus, 20_000);
+    return () => clearInterval(t);
+  }, [tokens, mode, fetchStatus]);
+
+  useEffect(() => {
+    if (!tokens || mode !== 'freelancer' || kycStatus === null) return;
+
+    if (kycStatus !== 'approved') {
+      // Force ke /cleaner/kyc kalau gak lagi di KYC page atau auth pages
+      const allowedPaths = ['/cleaner/kyc', '/(auth)/', '/suspended'];
+      const isAllowed = allowedPaths.some((p) => pathname?.startsWith(p));
+      if (!isAllowed) {
+        router.replace('/cleaner/kyc');
+      }
+    } else {
+      // Approved cleaner stuck di KYC page → auto-redirect ke Job Board
+      if (pathname === '/cleaner/kyc') {
+        router.replace('/(tabs)/jobs');
+      }
+    }
+  }, [tokens, mode, kycStatus, pathname]);
+
+  return null;
+}
