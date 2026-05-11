@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, Minus, Plus } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -692,36 +692,40 @@ function NewBooking() {
           {step === 3 && (
             <>
               <Section title="Kapan dikerjakan">
-                <View className="flex-row gap-2">
-                  <Pressable
-                    onPress={() => setPickerMode('date')}
-                    className="flex-1 flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
-                  >
-                    <View>
-                      <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Tanggal</Text>
-                      <Text className="font-bold mt-0.5 text-sm text-ink-900">
-                        {formatScheduleLabel(scheduleAt).split(' · ')[0]}
-                      </Text>
-                    </View>
-                    <Calendar color="#1D4ED8" size={18} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setPickerMode('time')}
-                    className="flex-1 flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
-                  >
-                    <View>
-                      <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Jam</Text>
-                      <Text className="font-bold mt-0.5 text-sm text-ink-900">
-                        {String(scheduleAt.getHours()).padStart(2, '0')}:{String(scheduleAt.getMinutes()).padStart(2, '0')}
-                      </Text>
-                    </View>
-                    <Clock color="#1D4ED8" size={18} />
-                  </Pressable>
-                </View>
+                {Platform.OS === 'web' ? (
+                  <WebSchedulePicker value={scheduleAt} onChange={setScheduleAt} />
+                ) : (
+                  <View className="flex-row gap-2">
+                    <Pressable
+                      onPress={() => setPickerMode('date')}
+                      className="flex-1 flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
+                    >
+                      <View>
+                        <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Tanggal</Text>
+                        <Text className="font-bold mt-0.5 text-sm text-ink-900">
+                          {formatScheduleLabel(scheduleAt).split(' · ')[0]}
+                        </Text>
+                      </View>
+                      <Calendar color="#1D4ED8" size={18} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPickerMode('time')}
+                      className="flex-1 flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
+                    >
+                      <View>
+                        <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Jam</Text>
+                        <Text className="font-bold mt-0.5 text-sm text-ink-900">
+                          {String(scheduleAt.getHours()).padStart(2, '0')}:{String(scheduleAt.getMinutes()).padStart(2, '0')}
+                        </Text>
+                      </View>
+                      <Clock color="#1D4ED8" size={18} />
+                    </Pressable>
+                  </View>
+                )}
                 <Text className="mt-2 text-[11px] text-ink-500">
                   Operasional 07:00–21:00. Paling cepat 1 jam dari sekarang.
                 </Text>
-                {pickerMode && (
+                {Platform.OS !== 'web' && pickerMode && (
                   <DateTimePicker
                     value={scheduleAt}
                     mode={pickerMode}
@@ -1053,5 +1057,72 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
+
+// Web-only schedule picker — uses native HTML <input type="date|time"> via
+// React Native Web. Validates ops window 07–21 and min lead-time = now+1h.
+function WebSchedulePicker({ value, onChange }: { value: Date; onChange: (d: Date) => void }) {
+  const min = earliestAvailable();
+  const minDateStr = `${min.getFullYear()}-${String(min.getMonth() + 1).padStart(2, '0')}-${String(min.getDate()).padStart(2, '0')}`;
+  const dateStr = `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  const timeStr = `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+  const inputStyle = {
+    flex: 1,
+    padding: '12px 14px',
+    borderRadius: 12,
+    border: '1px solid #E2E8F0',
+    background: 'white',
+    fontSize: 14,
+    color: '#0F172A',
+    outline: 'none',
+    fontFamily: 'inherit',
+  } as any;
+
+  function commit(next: Date) {
+    if (next.getHours() < OPS_START_HOUR) next.setHours(OPS_START_HOUR, 0, 0, 0);
+    if (next.getHours() >= OPS_END_HOUR) next.setHours(OPS_END_HOUR - 1, 0, 0, 0);
+    if (next.getTime() < earliestAvailable().getTime()) {
+      toast.error('Jadwal minimal 1 jam dari sekarang');
+      onChange(earliestAvailable());
+      return;
+    }
+    onChange(next);
+  }
+
+  // @ts-expect-error — host elements work in react-native-web
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {/* @ts-expect-error host elem */}
+      <input
+        type="date"
+        value={dateStr}
+        min={minDateStr}
+        onChange={(e: any) => {
+          const [y, m, d] = String(e.target.value).split('-').map(Number);
+          if (!y || !m || !d) return;
+          const next = new Date(value);
+          next.setFullYear(y, (m ?? 1) - 1, d);
+          commit(next);
+        }}
+        style={inputStyle}
+      />
+      {/* @ts-expect-error host elem */}
+      <input
+        type="time"
+        value={timeStr}
+        min={`${String(OPS_START_HOUR).padStart(2, '0')}:00`}
+        max={`${String(OPS_END_HOUR - 1).padStart(2, '0')}:59`}
+        step={60 * 15}
+        onChange={(e: any) => {
+          const [h, m] = String(e.target.value).split(':').map(Number);
+          if (h == null || m == null) return;
+          const next = new Date(value);
+          next.setHours(h, m, 0, 0);
+          commit(next);
+        }}
+        style={inputStyle}
+      />
+    </div>
+  );
+}
 
 export default withAuth(NewBooking, 'customer');
