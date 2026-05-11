@@ -109,12 +109,17 @@ export class CleanerJobsController {
        ORDER BY b.created_at DESC LIMIT 50
     `;
 
+    // Area dipakai sebagai PRIORITAS (sort), bukan exclude. Approved cleaner
+    // tetap lihat semua searching jobs — biar gak ada job stuck cuma karena
+    // string area tidak persis match dengan alamat customer.
     if (areas.length === 0) return rows;
     const lcAreas = areas.map((a) => a.toLowerCase());
-    return rows.filter((r) => {
+    const scored = rows.map((r) => {
       const addr = String(r.addressLine ?? '').toLowerCase();
-      return lcAreas.some((a) => addr.includes(a));
+      const inArea = lcAreas.some((a) => addr.includes(a));
+      return { ...r, inArea };
     });
+    return scored.sort((a, b) => Number(b.inArea) - Number(a.inArea));
   }
 
   // Active jobs assigned to this cleaner (not completed/cancelled)
