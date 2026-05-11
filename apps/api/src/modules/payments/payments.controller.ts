@@ -95,6 +95,84 @@ export class PaymentsController {
     }
   }
 
+  // Direct API: VA / QRIS — return native instructions (no WebView).
+  @Post('flip/create-direct')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async flipCreateDirect(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { bookingId: string; senderBank: string; senderBankType: 'virtual_account' | 'qris' | 'wallet_account' },
+  ) {
+    if (!body?.bookingId || !body?.senderBank || !body?.senderBankType) {
+      throw new BadRequestException('bookingId, senderBank, senderBankType wajib.');
+    }
+
+    const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string; total_amount: number; status: string }[]>`
+      SELECT id, customer_id, total_amount, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new NotFoundException('Booking tidak ditemukan.');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu.');
+    if (b.status !== 'pending_payment') throw new BadRequestException(`Status ${b.status} tidak bisa bayar.`);
+
+    const userRows = await this.prisma.$queryRaw<{ name: string | null; email: string | null; phone: string }[]>`
+      SELECT name, email, phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
+    `;
+    const u = userRows[0]!;
+    const merchantRef = `JBSIH-${b.id.slice(0, 8)}-${Date.now().toString(36)}`;
+    const amount = Number(b.total_amount);
+    const methodLabel = `flip_${body.senderBankType}_${body.senderBank}`;
+
+    const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO payments (booking_id, user_id, amount, payment_method, status, provider, tripay_merchant_ref)
+      VALUES (${b.id}::uuid, ${user.id}::uuid, ${amount}::bigint, ${methodLabel}, 'pending', 'flip', ${merchantRef})
+      RETURNING id
+    `;
+    const paymentId = inserted[0]!.id;
+
+    try {
+      const result = await this.flip.createDirectBill({
+        title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
+        amount,
+        refId: merchantRef,
+        customerName: u.name ?? 'JasaBersih Customer',
+        customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
+        customerPhone: u.phone,
+        redirectUrl: `https://jasabersih.com/booking/${b.id}`,
+        senderBank: body.senderBank,
+        senderBankType: body.senderBankType,
+      });
+
+      const billPayment = result?.bill_payment ?? {};
+      const accountNumber: string | undefined = billPayment?.receiver_bank_account?.account_number;
+      const qrString: string | undefined = billPayment?.qr_code_data ?? billPayment?.qrcode_string;
+      const expiredAt = result?.expired_date ?? null;
+
+      await this.prisma.$executeRaw`
+        UPDATE payments
+           SET flip_link_id = ${String(result.link_id ?? '')},
+               pay_code = ${accountNumber ?? null},
+               payment_url = ${result.link_url ?? null}
+         WHERE id = ${paymentId}::uuid
+      `;
+
+      return {
+        paymentId,
+        provider: 'flip',
+        amount,
+        senderBank: body.senderBank,
+        senderBankType: body.senderBankType,
+        accountNumber: accountNumber ?? null,
+        qrString: qrString ?? null,
+        expiredAt,
+        linkId: result.link_id,
+      };
+    } catch (e) {
+      await this.prisma.$executeRaw`UPDATE payments SET status = 'failed' WHERE id = ${paymentId}::uuid`;
+      throw e;
+    }
+  }
+
   // Flip webhook. Flip POSTs application/x-www-form-urlencoded with `data` (JSON)
   // and `token` (validation token). No HMAC — just string-equal token check.
   @Post('flip/callback')

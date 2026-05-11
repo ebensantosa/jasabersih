@@ -80,6 +80,48 @@ export class FlipService {
     return `Basic ${Buffer.from(`${secretKey}:`).toString('base64')}`;
   }
 
+  // Direct API: pre-select method (VA bank or QRIS) so user doesn't see
+  // Flip's hosted picker page. Response includes account_number / qr_string
+  // we render natively in our app.
+  async createDirectBill(input: FlipCreateInput & {
+    senderBank: string;          // bca|bni|bri|mandiri|cimb|permata|bsi|qris
+    senderBankType: 'virtual_account' | 'qris' | 'wallet_account';
+  }): Promise<any> {
+    const c = await this.getCreds();
+    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+
+    const form = new URLSearchParams();
+    form.set('title', input.title);
+    form.set('type', 'SINGLE');
+    form.set('amount', String(input.amount));
+    form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
+    form.set('redirect_url', input.redirectUrl ?? '');
+    form.set('is_address_required', '0');
+    form.set('is_phone_number_required', '0');
+    form.set('step', '3'); // 3 = direct (skip method picker)
+    form.set('sender_bank', input.senderBank);
+    form.set('sender_bank_type', input.senderBankType);
+    if (input.customerName) form.set('sender_name', input.customerName);
+    if (input.customerEmail) form.set('sender_email', input.customerEmail);
+    if (input.customerPhone) form.set('sender_phone_number', input.customerPhone);
+
+    const res = await fetch(`${c.baseUrl}/pwf/bill`, {
+      method: 'POST',
+      headers: {
+        Authorization: this.authHeader(c.secretKey),
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: form.toString(),
+    });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok || json?.code) {
+      this.log.error(`flip direct-bill failed: ${JSON.stringify(json)}`);
+      throw new BadRequestException(json?.message ?? json?.error ?? 'Gagal create direct bill di Flip.');
+    }
+    return json;
+  }
+
   async createBill(input: FlipCreateInput): Promise<FlipCreateResult> {
     const c = await this.getCreds();
     if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
