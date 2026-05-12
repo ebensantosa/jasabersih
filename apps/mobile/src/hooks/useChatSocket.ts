@@ -9,6 +9,7 @@ export function useChatSocket(bookingId: string | undefined) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<Status>('connecting');
   const [otherTyping, setOtherTyping] = useState(false);
+  const [otherOnline, setOtherOnline] = useState(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load history via REST first
@@ -53,6 +54,10 @@ export function useChatSocket(bookingId: string | undefined) {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       typingTimerRef.current = setTimeout(() => setOtherTyping(false), 3000);
     }
+    function onPresence(payload: { userId: string; online: boolean }) {
+      // Server hanya mengirim event presence dari/about peer (bukan self).
+      setOtherOnline(!!payload?.online);
+    }
 
     if (socket.connected) onConnect();
     socket.on('connect', onConnect);
@@ -60,6 +65,7 @@ export function useChatSocket(bookingId: string | undefined) {
     socket.on('connect_error', onConnectError);
     socket.on('message', onMessage);
     socket.on('typing', onTyping);
+    socket.on('presence', onPresence);
 
     return () => {
       socket.emit('leave', { bookingId });
@@ -68,6 +74,8 @@ export function useChatSocket(bookingId: string | undefined) {
       socket.off('connect_error', onConnectError);
       socket.off('message', onMessage);
       socket.off('typing', onTyping);
+      socket.off('presence', onPresence);
+      setOtherOnline(false);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, [bookingId]);
@@ -88,5 +96,5 @@ export function useChatSocket(bookingId: string | undefined) {
     socket.emit('typing', { bookingId, typing: isTyping });
   }, [bookingId]);
 
-  return { messages, status, otherTyping, send, setTyping };
+  return { messages, status, otherTyping, otherOnline, send, setTyping };
 }

@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Phone, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
+import { ArrowLeft, Send, ShieldAlert, AlertCircle, Smile, Star } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -33,6 +33,7 @@ function decodeJwtSub(token: string | undefined): string | null {
 import { toast } from '../../src/stores/ui';
 
 const QUICK_REPLIES = ['Sudah sampai?', 'Pakai pintu samping', 'Terima kasih', 'Tolong hati-hati'];
+const EMOJIS = ['👍', '🙏', '❤️', '😀', '😅', '😊', '😢', '🤝', '✅', '👌', '🏠', '🚪', '⏰', '📍', '🙋', '🚿'];
 
 function Chat() {
   const router = useRouter();
@@ -40,8 +41,9 @@ function Chat() {
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
 
-  const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
+  const { messages, status, otherTyping, otherOnline, send, setTyping } = useChatSocket(id);
   const [text, setText] = useState('');
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -128,17 +130,14 @@ function Chat() {
                   </View>
                 )}
               </View>
-              <Text className={`font-medium text-[11px] ${status === 'connected' ? 'text-success' : 'text-ink-400'}`}>
-                {status === 'connected' ? (otherTyping ? 'sedang mengetik…' : 'Online · tap untuk lihat profil') :
-                 status === 'connecting' ? 'Menyambung…' :
-                 status === 'error' ? 'Koneksi error' : 'Offline'}
+              <Text className={`font-medium text-[11px] ${otherOnline ? 'text-success' : 'text-ink-400'}`}>
+                {status === 'connecting' ? 'Menyambung…' :
+                 status === 'error' ? 'Koneksi error' :
+                 status !== 'connected' ? 'Offline' :
+                 otherTyping ? 'sedang mengetik…' :
+                 otherOnline ? 'Online · tap untuk lihat profil' :
+                 'Offline · tap untuk lihat profil'}
               </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => toast.warning('Demi keamanan & garansi, komunikasi hanya via in-app chat')}
-              className="h-10 w-10 items-center justify-center rounded-full bg-brand-50"
-            >
-              <Phone color="#1D4ED8" size={18} strokeWidth={2.2} />
             </Pressable>
           </View>
         </SafeAreaView>
@@ -189,11 +188,31 @@ function Chat() {
 
         {/* Composer */}
         <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
+          {emojiOpen && (
+            <View className="flex-row flex-wrap gap-1 border-b border-ink-100 px-3 py-2">
+              {EMOJIS.map((e) => (
+                <Pressable
+                  key={e}
+                  onPress={() => { setText((t) => t + e); }}
+                  className="h-9 w-9 items-center justify-center rounded-lg bg-ink-50"
+                >
+                  <Text className="text-xl">{e}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
           <View className="flex-row items-center gap-2 px-3 py-2">
+            <Pressable
+              onPress={() => setEmojiOpen((v) => !v)}
+              className={`h-11 w-11 items-center justify-center rounded-full ${emojiOpen ? 'bg-amber-100' : 'bg-ink-100'}`}
+            >
+              <Smile color={emojiOpen ? '#B45309' : '#475569'} size={20} strokeWidth={2.2} />
+            </Pressable>
             <TextInput
               value={text}
               onChangeText={onChangeText}
               onBlur={() => setTyping(false)}
+              onFocus={() => setEmojiOpen(false)}
               placeholder="Tulis pesan…"
               placeholderTextColor="#94A3B8"
               multiline

@@ -86,7 +86,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: AuthedSocket): void {
+    // Broadcast offline presence ke semua booking room yg dia ikut
+    const userId = client.data?.userId;
+    if (userId) {
+      for (const r of client.rooms) {
+        if (r.startsWith('booking:')) {
+          client.to(r).emit('presence', { userId, online: false });
+        }
+      }
+    }
     this.log.log(`socket ${client.id} disconnected`);
+  }
+
+  // Cek apakah user lain (selain me) ada di room
+  private otherUserOnline(bookingId: string, myUserId: string): boolean {
+    const room = this.server.sockets.adapter.rooms.get(roomName(bookingId));
+    if (!room) return false;
+    for (const sid of room) {
+      const s = this.server.sockets.sockets.get(sid) as AuthedSocket | undefined;
+      if (s?.data?.userId && s.data.userId !== myUserId) return true;
+    }
+    return false;
   }
 
   // Client joins a booking room — both customer & cleaner harus join.
@@ -106,12 +126,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     await client.join(roomName(body.bookingId));
     this.log.log(`user ${client.data.userId.slice(0, 8)}… joined room ${body.bookingId.slice(0, 8)}…`);
+
+    // Beritahu peer (kalau ada di room) bahwa user ini online; balas ke joiner
+    // status peer-nya saat ini.
+    const peerId = client.data.userId === b.customer_id ? b.cleaner_id : b.customer_id;
+    client.to(roomName(body.bookingId)).emit('presence', { userId: client.data.userId, online: true });
+    const peerOnline = this.otherUserOnline(body.bookingId, client.data.userId);
+    client.emit('presence', { userId: peerId, online: peerOnline });
     return { ok: true };
   }
 
   @SubscribeMessage('leave')
   async onLeave(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: { bookingId: string }): Promise<{ ok: boolean }> {
     if (!body?.bookingId) return { ok: false };
+    client.to(roomName(body.bookingId)).emit('presence', { userId: client.data.userId, online: false });
     await client.leave(roomName(body.bookingId));
     return { ok: true };
   }
