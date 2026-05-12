@@ -25,7 +25,7 @@ const FILTERS: { key: OrderStatus | 'all' | 'needs_manual'; label: string }[] = 
 ];
 
 export default function Bookings() {
-  const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [filter, setFilter] = useState<OrderStatus | 'all' | 'needs_manual'>('all');
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
