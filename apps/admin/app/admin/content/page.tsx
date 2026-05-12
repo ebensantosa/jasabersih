@@ -1,17 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Trash2, Pencil, ExternalLink } from 'lucide-react';
+import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Sparkles, Trash2, Pencil, ExternalLink } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-type Tab = 'banners' | 'pages' | 'announcements' | 'areas' | 'packages' | 'addons';
+type Tab = 'banners' | 'pages' | 'announcements' | 'areas' | 'services' | 'packages' | 'addons';
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'banners', label: 'Banner', icon: ImageIcon },
   { key: 'pages', label: 'Halaman Statis', icon: FileText },
   { key: 'announcements', label: 'Pengumuman', icon: Megaphone },
   { key: 'areas', label: 'Area Layanan', icon: MapPin },
+  { key: 'services', label: 'Layanan (Icon)', icon: Sparkles },
   { key: 'packages', label: 'Paket Harga', icon: Package },
   { key: 'addons', label: 'Add-Ons', icon: Plus },
 ];
@@ -34,6 +35,7 @@ export default function CmsPage() {
         {tab === 'pages' && <PagesTab />}
         {tab === 'announcements' && <AnnouncementsTab />}
         {tab === 'areas' && <AreasTab />}
+        {tab === 'services' && <ServicesTab />}
         {tab === 'packages' && <PackagesTab />}
         {tab === 'addons' && <AddonsTab />}
       </div>
@@ -723,6 +725,118 @@ function AddonFormModal({ addon, onClose, onSaved }: { addon: any | null; onClos
             <Switch checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Aktif' : 'Nonaktif'} />
           </div>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+// ============ SERVICES (icons / display) ============
+function ServicesTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [list, setList] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function load() {
+    try { setList(await api.admin.configServices()); }
+    catch (e: any) { toast.error(e?.message); }
+  }
+  useEffect(() => { void load(); }, []);
+
+  async function del(s: any) {
+    const ok = await confirm({ title: 'Hapus layanan', message: `Yakin hapus "${s.name}"?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.deleteService(s.id); toast.success('Layanan dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Layanan ({list.length})</h2>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Layanan</Button>
+      </div>
+      <p className="mt-1 text-xs text-slate-500">Atur nama, deskripsi, dan icon yang muncul di home customer & list layanan.</p>
+      <div className="mt-4 overflow-hidden rounded-md border bg-white">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <tr><th className="px-4 py-2">Icon</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Tampil di Home</th><th className="px-4 py-2">Sort</th><th className="px-4 py-2">Aksi</th></tr>
+          </thead>
+          <tbody>
+            {list.map((s) => (
+              <tr key={s.id} className="border-t hover:bg-slate-50">
+                <td className="px-4 py-2">
+                  {s.iconUrl
+                    ? <img src={s.iconUrl} alt="" className="h-12 w-12 rounded object-cover border" />
+                    : <div className="h-12 w-12 rounded bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">no icon</div>}
+                </td>
+                <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? '—'}</div></td>
+                <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
+                <td className="px-4 py-2"><Badge>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
+                <td className="px-4 py-2 text-xs">{s.sortOrder}</td>
+                <td className="px-4 py-2 text-right">
+                  <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
+                  <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(s)}>Hapus</Button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada layanan.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {editing !== null && <ServiceFormModal service={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+    </div>
+  );
+}
+
+function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const isEdit = !!service;
+  const [form, setForm] = useState({
+    code: service?.code ?? '',
+    name: service?.name ?? '',
+    description: service?.description ?? '',
+    iconUrl: service?.iconUrl ?? '',
+    showOnHome: service?.showOnHome ?? true,
+    sortOrder: service?.sortOrder ?? 0,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (!form.code) e.code = 'Wajib.';
+    if (!form.name) e.name = 'Wajib.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      if (isEdit) await api.admin.updateService(service.id, form);
+      else await api.admin.createService(form);
+      toast.success(isEdit ? 'Layanan di-update.' : 'Layanan dibuat.');
+      onSaved();
+    } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit ${service.name}` : 'Tambah Layanan'}
+      open={true}
+      onClose={onClose}
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Input label="Code" required value={form.code} onChange={(v) => setForm({ ...form, code: v })} error={errors.code} placeholder="kamar, dapur, kantor, dll" disabled={isEdit} helpText="Lowercase, tanpa spasi. Tidak bisa diubah setelah dibuat." />
+        <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih Kamar" />
+        <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Cleaning kamar tidur" />
+        <ImageUpload value={form.iconUrl} onChange={(url) => setForm({ ...form, iconUrl: url })} folder="services" />
+        <Input label="Sort Order" type="number" value={String(form.sortOrder)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan." />
+        <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Tampil di Home' : 'Sembunyikan dari Home'} />
       </div>
     </Modal>
   );
