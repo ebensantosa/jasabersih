@@ -52,10 +52,24 @@ export class BookingsController {
 
   @Get(':id')
   async get(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    // Explicit columns — exclude `location` (PostGIS GEOGRAPHY tidak bisa
+    // di-JSON-serialize → response 500). Pakai ST_X/ST_Y kalau perlu lat/lng.
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
-      `SELECT b.*, s.name AS service_name, s.icon_url AS service_icon FROM bookings b
-       LEFT JOIN services s ON s.id = b.service_id
-       WHERE b.id = $1::uuid AND (b.customer_id = $2::uuid OR b.cleaner_id = $2::uuid) LIMIT 1`,
+      `SELECT b.id, b.status, b.pricing_mode, b.total_amount, b.base_amount,
+              b.scheduled_at, b.address_line, b.customer_notes, b.form_snapshot,
+              b.customer_id, b.cleaner_id, b.service_id, b.package_id,
+              b.cleaner_payout, b.matched_at, b.paid_at, b.canceled_at,
+              b.completed_at, b.created_at,
+              ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
+              s.name AS service_name, s.icon_url AS service_icon,
+              cu.name AS customer_name, cu.phone AS customer_phone,
+              cl.name AS cleaner_name, cl.phone AS cleaner_phone
+         FROM bookings b
+         LEFT JOIN services s ON s.id = b.service_id
+         LEFT JOIN users cu ON cu.id = b.customer_id
+         LEFT JOIN users cl ON cl.id = b.cleaner_id
+        WHERE b.id = $1::uuid AND (b.customer_id = $2::uuid OR b.cleaner_id = $2::uuid)
+        LIMIT 1`,
       id,
       user.id,
     );
