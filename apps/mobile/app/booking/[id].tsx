@@ -741,4 +741,5 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
-export default withAuth(BookingDetail, 'customer');
+// Both customer + cleaner can view (component branches on isCleaner internally).
+export default withAuth(BookingDetail);
