@@ -43,6 +43,39 @@ function detectBlockReason(content: string): { reason: string; userMsg: string }
   return null;
 }
 
+// Anti-spam rate limit (per user, in-memory sliding window).
+// Tier:
+//   - max 5 pesan / 10 detik (burst protection)
+//   - max 30 pesan / 1 menit (sustained protection)
+// Ditambah block kalau pesan identik beruntun (≥3 kali).
+const RATE_WINDOWS = [
+  { windowMs: 10_000, max: 5, label: '10 detik' },
+  { windowMs: 60_000, max: 30, label: '1 menit' },
+] as const;
+const DUPLICATE_LIMIT = 3;
+const userSendLog = new Map<string, { at: number; content: string }[]>();
+
+function checkRateLimit(userId: string, content: string): { ok: true } | { ok: false; userMsg: string } {
+  const now = Date.now();
+  const log = (userSendLog.get(userId) ?? []).filter((e) => now - e.at < 60_000);
+  for (const w of RATE_WINDOWS) {
+    const count = log.filter((e) => now - e.at < w.windowMs).length;
+    if (count >= w.max) {
+      userSendLog.set(userId, log);
+      return { ok: false, userMsg: `Terlalu banyak pesan (max ${w.max} per ${w.label}). Tunggu sebentar ya.` };
+    }
+  }
+  const normalized = content.trim().toLowerCase();
+  const recentSame = log.filter((e) => e.content === normalized && now - e.at < 30_000).length;
+  if (recentSame >= DUPLICATE_LIMIT) {
+    userSendLog.set(userId, log);
+    return { ok: false, userMsg: 'Stop spam pesan sama. Variasikan isi pesannya ya.' };
+  }
+  log.push({ at: now, content: normalized });
+  userSendLog.set(userId, log);
+  return { ok: true };
+}
+
 // Allow CORS from admin dashboard + mobile (Expo dev + production scheme)
 @WebSocketGateway({
   namespace: '/chat',
@@ -152,6 +185,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<{ ok: boolean; messageId?: string; blocked?: boolean; blockReason?: string; userMessage?: string; error?: string }> {
     if (!body?.bookingId || !body?.content) return { ok: false, error: 'bookingId & content required' };
     if (body.content.length > 2000) return { ok: false, error: 'message too long (max 2000)' };
+
+    // Anti-spam: throttling per user + block duplikat beruntun
+    const rl = checkRateLimit(client.data.userId, body.content);
+    if (!rl.ok) {
+      return { ok: true, blocked: true, blockReason: 'rate_limit', userMessage: rl.userMsg };
+    }
 
     // Verify participant + get recipient
     const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null }[]>`
