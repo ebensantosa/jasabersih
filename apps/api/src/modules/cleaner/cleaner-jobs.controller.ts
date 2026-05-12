@@ -89,8 +89,9 @@ export class CleanerJobsController {
   // (don't block onboarding cleaners who haven't set their coverage yet).
   @Get('available')
   async available(@CurrentUser() user: AuthenticatedUser) {
-    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any }[]>`
-      SELECT kyc_status, service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any; brings_tools: boolean | null }[]>`
+      SELECT kyc_status, service_areas, brings_tools
+        FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
     if (profile[0]?.kyc_status !== 'approved') return [];
 
@@ -100,24 +101,47 @@ export class CleanerJobsController {
       : [];
 
     // NOTE: kolom total_amount sengaja TIDAK di-expose ke cleaner.
-    // Cleaner hanya perlu tau bagiannya (cleaner_payout).
-    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+    // Compute estimated cleaner_payout on-the-fly via commission_tiers
+    // — kolom cleaner_payout di bookings baru di-set saat accept, jadi
+    // sebelum itu null/0 → cleaner gak tau bagiannya.
+    const bringsTools = !!profile[0]?.brings_tools;
+    const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+      SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
+        FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+    `;
+    function estPayout(total: number): number {
+      const tier = tiers.find((t) => total >= Number(t.range_min ?? 0) && (t.range_max == null || total <= Number(t.range_max)));
+      const pct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+      return Math.round(total * pct / 100);
+    }
+
+    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null }[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
+             b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
              s.name AS "serviceName", s.icon_url AS "serviceIconUrl"
         FROM bookings b LEFT JOIN services s ON s.id = b.service_id
        WHERE b.status = 'searching' AND b.cleaner_id IS NULL
        ORDER BY b.created_at DESC LIMIT 50
     `;
+    // Strip totalAmount sebelum return ke cleaner; replace cleanerPayout
+    // with estimated value if the booking row hasn't been computed yet.
+    const enriched = rows.map((r) => {
+      const { totalAmount, ...rest } = r;
+      const computed = r.cleanerPayout && Number(r.cleanerPayout) > 0
+        ? Number(r.cleanerPayout)
+        : estPayout(Number(totalAmount ?? 0));
+      return { ...rest, cleanerPayout: computed };
+    });
 
     // HARD FILTER: cleaner yang sudah pilih area cuma lihat job di area mereka.
     // Cegah cleaner Jakarta dapat customer Yogyakarta. Cleaner yang belum
     // pilih area sama sekali (areas=[]) tetap lihat semua (biar gak block
     // onboarding flow).
-    if (areas.length === 0) return rows;
+    if (areas.length === 0) return enriched;
     const lcAreas = areas.map((a) => a.toLowerCase());
-    return rows.filter((r) => {
+    return enriched.filter((r) => {
       const addr = String(r.addressLine ?? '').toLowerCase();
       return lcAreas.some((a) => addr.includes(a));
     });
