@@ -23,7 +23,7 @@ export class AutoCompleteService {
       SELECT id, customer_id, cleaner_id, cleaner_payout
         FROM bookings
        WHERE status = 'in_progress'
-         AND COALESCE(started_at, in_progress_at, matched_at, created_at) < NOW() - (${STALE_HOURS}::int * INTERVAL '1 hour')
+         AND COALESCE(started_at, matched_at, created_at) < NOW() - (${STALE_HOURS}::int * INTERVAL '1 hour')
     `;
     if (stale.length === 0) return;
 
