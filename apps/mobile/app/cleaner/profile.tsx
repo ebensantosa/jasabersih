@@ -60,9 +60,9 @@ function CleanerProfileScreen() {
   async function save() {
     setSaving(true);
     try {
+      // bringsTools INTENTIONALLY not sent — admin-only (anti-fraud).
       await api.patch('/cleaner/profile', {
         bio,
-        bringsTools,
         isAvailable,
         serviceAreas: areasText.split(',').map((s) => s.trim()).filter(Boolean),
         languages: languagesText.split(',').map((s) => s.trim()).filter(Boolean),
@@ -121,24 +121,23 @@ function CleanerProfileScreen() {
               />
             </View>
 
-            {/* Tools toggle — cleaner-controlled, mempengaruhi share commission */}
+            {/* Tools status — read-only, admin-controlled (anti-fraud) */}
             <View className="rounded-2xl bg-white p-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="font-bold text-sm text-ink-900">Bawa Alat Sendiri</Text>
+                  <Text className="font-bold text-sm text-ink-900">Status Peralatan</Text>
                   <Text className="font-sans mt-0.5 text-[11px] text-ink-500">
-                    {bringsTools ? 'Komisi lebih tinggi karena kamu pakai alatmu sendiri' : 'Alat disediakan customer — komisi standar'}
+                    {bringsTools ? 'Bawa alat sendiri (komisi lebih tinggi)' : 'Pakai alat dari kantor'}
                   </Text>
                 </View>
-                <Switch
-                  value={bringsTools}
-                  onValueChange={setBringsTools}
-                  trackColor={{ false: '#E2E8F0', true: '#10B981' }}
-                  thumbColor="white"
-                />
+                <View className={`rounded-full px-3 py-1 ${bringsTools ? 'bg-emerald-100' : 'bg-ink-100'}`}>
+                  <Text className={`font-bold text-[10px] uppercase tracking-wider ${bringsTools ? 'text-emerald-800' : 'text-ink-600'}`}>
+                    {bringsTools ? 'Bawa Alat' : 'Pakai Alat Kantor'}
+                  </Text>
+                </View>
               </View>
               <Text className="font-sans mt-2 text-[10px] leading-4 text-ink-400">
-                Aktifkan jika kamu siap bawa peralatan (sapu, pel, vacuum, cairan pembersih). Berlaku untuk job berikutnya.
+                Status diatur admin setelah verifikasi peralatan. Hubungi CS untuk perubahan.
               </Text>
             </View>
 
