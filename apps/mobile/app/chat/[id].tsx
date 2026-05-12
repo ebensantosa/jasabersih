@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { useAuthStore } from '../../src/stores/auth';
 import { useBookingsStore } from '../../src/stores/bookings';
+import { useModeStore } from '../../src/stores/mode';
 
 // Decode JWT (no verify, just extract `sub` claim) to get current user id.
 function decodeJwtSub(token: string | undefined): string | null {
@@ -40,6 +41,7 @@ function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
+  const isCleaner = useModeStore((s) => s.mode === 'freelancer');
 
   const { messages, status, otherTyping, otherOnline, send, setTyping } = useChatSocket(id);
   const [text, setText] = useState('');
@@ -142,19 +144,27 @@ function Chat() {
           </View>
         </SafeAreaView>
 
-        {/* Safety banner + Report button */}
+        {/* Safety banner — pesan beda untuk cleaner vs customer */}
         <View className="flex-row items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">
           <ShieldAlert color="#92400E" size={14} />
           <View className="flex-1">
-            <Text className="font-sans text-[11px] text-amber-900">
-              Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app — dapat <Text className="font-bold">voucher Rp 50.000</Text>.
-            </Text>
-            <Pressable
-              onPress={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })}
-              className="mt-1.5 self-start rounded-md bg-amber-200 px-2 py-1"
-            >
-              <Text className="font-bold text-[10px] text-amber-900">🚩 Lapor Cleaner</Text>
-            </Pressable>
+            {isCleaner ? (
+              <Text className="font-sans text-[11px] text-amber-900">
+                Dilarang ajak komunikasi atau transaksi <Text className="font-bold">di luar app</Text>. Semua chat & pembayaran wajib via JasaBersih.
+              </Text>
+            ) : (
+              <>
+                <Text className="font-sans text-[11px] text-amber-900">
+                  Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app — dapat <Text className="font-bold">voucher Rp 50.000</Text>.
+                </Text>
+                <Pressable
+                  onPress={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })}
+                  className="mt-1.5 self-start rounded-md bg-amber-200 px-2 py-1"
+                >
+                  <Text className="font-bold text-[10px] text-amber-900">🚩 Lapor Cleaner</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
 
