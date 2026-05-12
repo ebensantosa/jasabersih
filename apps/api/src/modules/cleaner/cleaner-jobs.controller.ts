@@ -111,17 +111,16 @@ export class CleanerJobsController {
        ORDER BY b.created_at DESC LIMIT 50
     `;
 
-    // Area dipakai sebagai PRIORITAS (sort), bukan exclude. Approved cleaner
-    // tetap lihat semua searching jobs — biar gak ada job stuck cuma karena
-    // string area tidak persis match dengan alamat customer.
+    // HARD FILTER: cleaner yang sudah pilih area cuma lihat job di area mereka.
+    // Cegah cleaner Jakarta dapat customer Yogyakarta. Cleaner yang belum
+    // pilih area sama sekali (areas=[]) tetap lihat semua (biar gak block
+    // onboarding flow).
     if (areas.length === 0) return rows;
     const lcAreas = areas.map((a) => a.toLowerCase());
-    const scored = rows.map((r) => {
+    return rows.filter((r) => {
       const addr = String(r.addressLine ?? '').toLowerCase();
-      const inArea = lcAreas.some((a) => addr.includes(a));
-      return { ...r, inArea };
+      return lcAreas.some((a) => addr.includes(a));
     });
-    return scored.sort((a, b) => Number(b.inArea) - Number(a.inArea));
   }
 
   // Active jobs assigned to this cleaner (not completed/cancelled)
@@ -145,10 +144,25 @@ export class CleanerJobsController {
   // HTTP fallback untuk accept (kalau socket ga konek). Atomic, race-safe.
   @Post(':id/accept')
   async accept(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null }[]>`
-      SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any }[]>`
+      SELECT kyc_status, service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
     if (profile[0]?.kyc_status !== 'approved') throw new ForbiddenException('KYC belum approved.');
+
+    // Defense in depth: re-check area at accept time so cleaner can't bypass
+    // the /available filter via direct API call.
+    const rawAreas = profile[0]?.service_areas;
+    const areas: string[] = Array.isArray(rawAreas)
+      ? rawAreas.filter((a: any) => typeof a === 'string' && a.trim().length > 0)
+      : [];
+    if (areas.length > 0) {
+      const addrRow = await this.prisma.$queryRaw<{ address_line: string | null }[]>`
+        SELECT address_line FROM bookings WHERE id = ${id}::uuid LIMIT 1
+      `;
+      const addr = String(addrRow[0]?.address_line ?? '').toLowerCase();
+      const inArea = areas.some((a) => addr.includes(a.toLowerCase()));
+      if (!inArea) throw new ForbiddenException('Job ini di luar area layananmu.');
+    }
 
     const updated = await this.prisma.$executeRaw`
       UPDATE bookings

@@ -1,9 +1,11 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Check, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Check, Lightbulb, MapPin } from 'lucide-react-native';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SERVICE_CITIES } from '../../src/data/catalog';
+import { api } from '../../src/lib/api';
+import { useAppContent } from '../../src/stores/appContent';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
@@ -15,13 +17,29 @@ function CleanerAreas() {
   const toggle = useCleanerStore((s) => s.toggleArea);
   const setAreas = useCleanerStore((s) => s.setAreas);
 
-  function save() {
+  // Source of truth: service_areas dari CMS. Dedupe by city. Kalau admin
+  // belum config any, default tampil [] supaya cleaner gak bisa pilih kota
+  // yang belum dilayani perusahaan.
+  const serviceAreas = useAppContent((s) => s.content.serviceAreas);
+  const cities = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of serviceAreas) if (a.city) set.add(a.city);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [serviceAreas]);
+
+  async function save() {
     if (areas.length === 0) {
       toast.warning('Pilih minimal 1 area');
       return;
     }
-    toast.success(`${areas.length} area tersimpan`);
-    router.back();
+    try {
+      // Sync to backend so /cleaner/jobs/available filters by these.
+      await api.patch('/cleaner/profile', { serviceAreas: areas });
+      toast.success(`${areas.length} area tersimpan`);
+      router.back();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal simpan ke server');
+    }
   }
 
   return (
@@ -36,7 +54,7 @@ function CleanerAreas() {
             <View className="ml-1 flex-1">
               <Text className="font-bold text-base text-ink-900">Area Layananku</Text>
               <Text className="font-medium text-[11px] text-ink-500">
-                {areas.length} dari {SERVICE_CITIES.length} kota dipilih
+                {areas.length} dari {cities.length} kota dipilih
               </Text>
             </View>
             {areas.length > 0 && (
@@ -48,53 +66,63 @@ function CleanerAreas() {
         </SafeAreaView>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-          <View className="rounded-2xl bg-brand-50 p-3">
-            <Text className="font-semibold text-xs text-brand-900">ðŸ’¡ Tips</Text>
-            <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
-              Pilih kota yang kamu sanggup datangi. Kamu hanya akan menerima job dari area ini.
-              Bisa update kapan saja.
-            </Text>
+          <View className="flex-row items-start gap-2 rounded-2xl bg-brand-50 p-3">
+            <Lightbulb color="#1D4ED8" size={16} />
+            <View className="flex-1">
+              <Text className="font-semibold text-xs text-brand-900">Tips</Text>
+              <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
+                Pilih kota yang kamu sanggup datangi. Kamu hanya akan menerima job dari area ini.
+              </Text>
+            </View>
           </View>
 
           <Text className="font-semibold mt-4 mb-2 text-[11px] uppercase tracking-wider text-ink-500">
             Pilih Kota
           </Text>
-          <View className="overflow-hidden rounded-2xl bg-white">
-            {SERVICE_CITIES.map((c, i) => {
-              const active = areas.includes(c);
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => toggle(c)}
-                  className={`flex-row items-center gap-3 px-4 py-3.5 ${
-                    i < SERVICE_CITIES.length - 1 ? 'border-b border-ink-100' : ''
-                  }`}
-                >
-                  <View
-                    className={`h-9 w-9 items-center justify-center rounded-xl ${
-                      active ? 'bg-brand-600' : 'bg-ink-100'
+          {cities.length === 0 ? (
+            <View className="rounded-2xl bg-white p-6 items-center">
+              <Text className="font-sans text-center text-[11px] text-ink-500">
+                Belum ada kota yang dilayani. Hubungi admin untuk konfirmasi.
+              </Text>
+            </View>
+          ) : (
+            <View className="overflow-hidden rounded-2xl bg-white">
+              {cities.map((c, i) => {
+                const active = areas.includes(c);
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => toggle(c)}
+                    className={`flex-row items-center gap-3 px-4 py-3.5 ${
+                      i < cities.length - 1 ? 'border-b border-ink-100' : ''
                     }`}
                   >
-                    <MapPin color={active ? 'white' : '#64748B'} size={16} strokeWidth={2.2} />
-                  </View>
-                  <Text
-                    className={`font-medium flex-1 text-sm ${
-                      active ? 'text-brand-700' : 'text-ink-800'
-                    }`}
-                  >
-                    {c}
-                  </Text>
-                  <View
-                    className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
-                      active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'
-                    }`}
-                  >
-                    {active && <Check color="white" size={14} strokeWidth={3} />}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <View
+                      className={`h-9 w-9 items-center justify-center rounded-xl ${
+                        active ? 'bg-brand-600' : 'bg-ink-100'
+                      }`}
+                    >
+                      <MapPin color={active ? 'white' : '#64748B'} size={16} strokeWidth={2.2} />
+                    </View>
+                    <Text
+                      className={`font-medium flex-1 text-sm ${
+                        active ? 'text-brand-700' : 'text-ink-800'
+                      }`}
+                    >
+                      {c}
+                    </Text>
+                    <View
+                      className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
+                        active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'
+                      }`}
+                    >
+                      {active && <Check color="white" size={14} strokeWidth={3} />}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </ScrollView>
 
         <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
