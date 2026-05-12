@@ -99,7 +99,7 @@ function ProfileScreen() {
                 <View className="flex-1">
                   <Text className="font-bold text-base text-white">Login / Daftar</Text>
                   <Text className="font-sans text-xs text-white/85">
-                    Akses pesanan, wallet, dan promo
+                    Akses pesanan, alamat, dan promo
                   </Text>
                 </View>
                 <ArrowRight color="white" size={18} />
@@ -146,7 +146,6 @@ function ProfileScreen() {
           title={t('profile.account')}
           items={[
             { icon: MapPin, label: t('profile.addresses'), onPress: () => router.push('/account/addresses') },
-            { icon: CreditCard, label: t('profile.wallet'), onPress: () => router.push('/account/wallet') },
             { icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') },
             { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },

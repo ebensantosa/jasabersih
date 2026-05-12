@@ -202,13 +202,37 @@ export class PaymentsController {
 
     if (!linkId) return { ok: false, reason: 'no link id' };
 
-    const payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string }[]>`
-      SELECT id, booking_id, user_id, status FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
+    const payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string; amount: number }[]>`
+      SELECT id, booking_id, user_id, status, amount FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
     `;
     const p = payRows[0];
     if (!p) return { ok: false, reason: 'payment not found' };
 
     const raw = JSON.stringify(data);
+    // Amount mismatch guard — Flip QRIS sometimes accepts arbitrary amount if
+    // the QR isn't amount-locked. Reject if paid amount != expected.
+    const paidAmount = Number(data?.amount ?? data?.bill_payment?.amount ?? 0);
+    const expected = Number(p.amount);
+    if (status === 'SUCCESSFUL' && paidAmount > 0 && Math.abs(paidAmount - expected) > 1) {
+      // Mark as disputed/underpaid — needs admin attention, do NOT advance booking.
+      await this.prisma.$executeRaw`
+        UPDATE payments
+           SET status = 'underpaid',
+               callback_payload = ${raw}::jsonb,
+               admin_notes = 'Paid ' || ${paidAmount}::text || ' but expected ' || ${expected}::text
+         WHERE id = ${p.id}::uuid
+      `;
+      if (p.user_id) {
+        void this.push.send({
+          userId: p.user_id, channel: 'booking',
+          title: 'Pembayaran kurang',
+          body: `Kamu bayar Rp ${paidAmount.toLocaleString('id-ID')}, harusnya Rp ${expected.toLocaleString('id-ID')}. Tim CS akan hubungi.`,
+          data: { type: 'payment_underpaid', bookingId: p.booking_id },
+        }).catch(() => {});
+      }
+      return { ok: true, warning: 'amount_mismatch' };
+    }
+
     if (status === 'SUCCESSFUL' && p.status !== 'paid') {
       await this.prisma.$transaction([
         this.prisma.$executeRaw`

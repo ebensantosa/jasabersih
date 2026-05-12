@@ -108,6 +108,10 @@ export function createClient(opts: ClientOptions) {
         request<unknown[]>('GET', `/admin/bookings${qs(params as any)}`),
       assignCleaner: (bookingId: string, cleanerId: string) =>
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
+      getBookingDetail: (bookingId: string) =>
+        request<{ booking: any; photos: { id: string; photoType: string; url: string; uploadedAt: string }[]; charges: any[]; payments: any[] }>(
+          'GET', `/admin/bookings/${bookingId}`,
+        ),
       bookingsNeedsAttention: () =>
         request<{ id: string; addressLine: string; totalAmount: number; scheduledAt: string; createdAt: string; searchingSec: number; serviceName: string | null; customerName: string | null; customerPhone: string | null }[]>(
           'GET', `/admin/bookings/needs-attention`,

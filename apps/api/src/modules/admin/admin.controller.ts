@@ -39,6 +39,9 @@ export class AdminController {
       LEFT JOIN users cl ON cl.id = b.cleaner_id
       LEFT JOIN services s ON s.id = b.service_id
       WHERE 1=1
+        -- Hide unpaid bookings — admin only sees orders that customer
+        -- actually paid for. pending_payment + canceled-while-unpaid clutter.
+        AND b.paid_at IS NOT NULL
         AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
         AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)
         AND (${to ?? null}::date IS NULL OR b.created_at < (${to ?? null}::date + INTERVAL '1 day'))

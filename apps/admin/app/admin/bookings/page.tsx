@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
+import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
+import { Modal } from '../../../components/ui';
 
 import { ApiOffline, api } from '../../../lib/api';
 import { useConfirm, usePrompt, useToast } from '../../../components/ui';
@@ -34,6 +35,7 @@ export default function Bookings() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openMenu, setOpenMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [detail, setDetail] = useState<string | null>(null);
   const prompt = usePrompt();
   const confirm = useConfirm();
   const toast = useToast();
@@ -308,6 +310,13 @@ export default function Bookings() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setDetail(o.id)}
+                          className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-100"
+                          title="Lihat detail"
+                        >
+                          <Eye size={14} />
+                        </button>
                         {canAssign && (
                           <button
                             onClick={() => setAssigning(o.id)}
@@ -383,6 +392,81 @@ export default function Bookings() {
           }}
         />
       )}
+
+      {detail && <BookingDetailModal bookingId={detail} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof api.admin.getBookingDetail>> | null>(null);
+  useEffect(() => { api.admin.getBookingDetail(bookingId).then(setData).catch(() => {}); }, [bookingId]);
+
+  const before = data?.photos?.filter((p) => p.photoType === 'before') ?? [];
+  const after = data?.photos?.filter((p) => p.photoType === 'after') ?? [];
+  const damage = data?.photos?.filter((p) => p.photoType === 'damage') ?? [];
+
+  return (
+    <Modal title="Detail Pesanan" open={true} onClose={onClose} size="lg">
+      {!data ? (
+        <div className="py-12 text-center text-sm text-slate-500">Memuat…</div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-slate-500">ID</div>
+            <div className="font-mono text-xs">{(data.booking as any)?.id}</div>
+            <div className="mt-2 grid grid-cols-2 gap-3 text-xs">
+              <div><b>Customer:</b><br/>{(data.booking as any)?.customer_name} · {(data.booking as any)?.customer_phone}</div>
+              <div><b>Cleaner:</b><br/>{(data.booking as any)?.cleaner_name ?? '—'}</div>
+              <div><b>Status:</b> {(data.booking as any)?.status}</div>
+              <div><b>Total:</b> Rp {Number((data.booking as any)?.total_amount ?? 0).toLocaleString('id-ID')}</div>
+              <div><b>Jadwal:</b> {new Date((data.booking as any)?.scheduled_at).toLocaleString('id-ID')}</div>
+              <div><b>Bayar:</b> {(data.booking as any)?.paid_at ? new Date((data.booking as any).paid_at).toLocaleString('id-ID') : '—'}</div>
+            </div>
+            <div className="mt-2 text-xs"><b>Alamat:</b> {(data.booking as any)?.address_line}</div>
+          </div>
+
+          {before.length + after.length + damage.length > 0 && (
+            <div>
+              <div className="text-sm font-bold text-slate-900 mb-2">Foto Pengerjaan</div>
+              <PhotoSection title="Sebelum" photos={before} />
+              <PhotoSection title="Sesudah" photos={after} />
+              {damage.length > 0 && <PhotoSection title="⚠️ Kerusakan" photos={damage} />}
+            </div>
+          )}
+
+          {data.payments?.length > 0 && (
+            <div>
+              <div className="text-sm font-bold text-slate-900 mb-2">Riwayat Pembayaran</div>
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 text-left text-[10px] uppercase text-slate-500"><tr><th className="px-2 py-1">Status</th><th className="px-2 py-1">Amount</th><th className="px-2 py-1">Paid At</th></tr></thead>
+                <tbody>
+                  {data.payments.map((p: any) => (
+                    <tr key={p.id} className="border-t"><td className="px-2 py-1">{p.status}</td><td className="px-2 py-1">Rp {Number(p.amount).toLocaleString('id-ID')}</td><td className="px-2 py-1">{p.paidAt ? new Date(p.paidAt).toLocaleString('id-ID') : '—'}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function PhotoSection({ title, photos }: { title: string; photos: { url: string; uploadedAt: string }[] }) {
+  if (photos.length === 0) return null;
+  return (
+    <div className="mb-3">
+      <div className="text-[11px] font-semibold text-slate-700 mb-1">{title} ({photos.length})</div>
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map((p, i) => (
+          <a key={i} href={p.url} target="_blank" rel="noreferrer" className="block">
+            <img src={p.url} alt={title} className="aspect-square w-full rounded-lg border border-slate-200 object-cover hover:opacity-80" />
+            <div className="mt-1 text-[10px] text-slate-500">{new Date(p.uploadedAt).toLocaleString('id-ID')}</div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

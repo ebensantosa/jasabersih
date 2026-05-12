@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
+import { StorageService } from '../storage/storage.service';
 
 @ApiTags('admin-bookings')
 @ApiBearerAuth()
@@ -16,6 +17,7 @@ export class AdminBookingsController {
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
     private readonly push: PushService,
+    private readonly storage: StorageService,
   ) {}
 
   // Bookings yang searching > 5 menit dan belum ada cleaner ambil — kemungkinan
@@ -57,10 +59,14 @@ export class AdminBookingsController {
     if (rows.length === 0) throw new NotFoundException('Booking tidak ditemukan.');
     const booking = rows[0];
 
-    const photos = await this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT id, photo_type AS "photoType", url, uploaded_at AS "uploadedAt"
+    const photos = await this.prisma.$queryRaw<{ id: string; photoType: string; storagePath: string; uploadedAt: Date }[]>`
+      SELECT id, photo_type AS "photoType", storage_path AS "storagePath", uploaded_at AS "uploadedAt"
         FROM booking_photos WHERE booking_id = ${id}::uuid ORDER BY uploaded_at ASC
     `;
+    const photosWithUrl = photos.map((p) => ({
+      ...p,
+      url: this.storage.getPublicUrl(p.storagePath),
+    }));
 
     const charges = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, charge_type AS "chargeType", amount, description, created_at AS "createdAt"
@@ -72,7 +78,7 @@ export class AdminBookingsController {
         FROM payments WHERE booking_id = ${id}::uuid ORDER BY id DESC LIMIT 5
     `;
 
-    return { booking, photos, charges, payments };
+    return { booking, photos: photosWithUrl, charges, payments };
   }
 
   @Post(':id/force-cancel')

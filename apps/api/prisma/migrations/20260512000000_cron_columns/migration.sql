@@ -3,6 +3,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cleaner_reminder_sent_at  TIMESTAM
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_reminder_sent_at TIMESTAMPTZ;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS rating_reminder_sent_at   TIMESTAMPTZ;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS admin_notes               TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS admin_notes               TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_bookings_cleaner_reminder
   ON bookings(scheduled_at)

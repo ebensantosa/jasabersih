@@ -65,8 +65,10 @@ export class TokenService {
   // Admin login: admin_users.id is NOT in users table, so skip user_sessions row.
   // Token revocation for admin relies on JWT expiry only (no DB-backed session).
   async issueForAdmin(adminId: string, email: string): Promise<IssuedTokens> {
-    const accessTtl = this.config.get<string>('JWT_ACCESS_TTL') ?? '15m';
-    const refreshTtl = this.config.get<string>('JWT_REFRESH_TTL') ?? '30d';
+    // Admin sessions get a much longer access TTL — admin uses dashboard
+    // continuously throughout the day, no reason to force re-login every 15min.
+    const accessTtl = this.config.get<string>('JWT_ADMIN_ACCESS_TTL') ?? '7d';
+    const refreshTtl = this.config.get<string>('JWT_ADMIN_REFRESH_TTL') ?? '90d';
     const payload: JwtPayload = { sub: adminId, phone: email };
     const accessToken = await this.jwt.signAsync(payload, {
       secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
