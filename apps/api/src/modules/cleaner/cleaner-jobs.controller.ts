@@ -120,7 +120,7 @@ export class CleanerJobsController {
              b.scheduled_at AS "scheduledAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
              s.icon_url AS "serviceIconUrl"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
@@ -157,7 +157,7 @@ export class CleanerJobsController {
       SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
              pp.name AS "packageName",
              u.name AS "customerName", u.phone AS "customerPhone"
         FROM bookings b
