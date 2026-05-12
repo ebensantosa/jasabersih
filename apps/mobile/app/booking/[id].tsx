@@ -487,7 +487,8 @@ function BookingDetail() {
             </View>
           )}
 
-          {booking.totalPrice > 0 && (
+          {/* Cleaner gak perlu lihat rincian harga customer — sembunyikan blok pembayaran. */}
+          {!isCleaner && booking.totalPrice > 0 && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
                 {t('bd.payment')}

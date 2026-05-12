@@ -17,7 +17,6 @@ type AvailableJob = {
   pricingMode: string;
   addressLine: string;
   scheduledAt: string;
-  totalAmount: number;
   cleanerPayout: number | null;
   serviceName: string | null;
 };
@@ -27,7 +26,7 @@ type ActiveJob = {
   status: string;
   serviceName: string | null;
   scheduledAt: string;
-  totalAmount: number;
+  cleanerPayout?: number | null;
 };
 
 export default function Jobs() {
@@ -53,8 +52,8 @@ function JobsScreen() {
         api.get('/cleaner/jobs/available'),
         api.get('/cleaner/jobs/active'),
       ]);
-      setAvailable(((a.data?.data ?? []) as any[]).map((j: any) => ({ ...j, totalAmount: Number(j.totalAmount), cleanerPayout: j.cleanerPayout ? Number(j.cleanerPayout) : null })));
-      setActive(((ac.data?.data ?? []) as any[]).map((j: any) => ({ ...j, totalAmount: Number(j.totalAmount) })));
+      setAvailable(((a.data?.data ?? []) as any[]).map((j: any) => ({ ...j, cleanerPayout: j.cleanerPayout ? Number(j.cleanerPayout) : null })));
+      setActive(((ac.data?.data ?? []) as any[]).map((j: any) => ({ ...j })));
     } catch {
       // silent
     } finally { setLoading(false); }
@@ -147,7 +146,6 @@ function JobsScreen() {
                     </Text>
                   </View>
                   <View className="items-end">
-                    <Text className="font-bold text-sm text-ink-900">{formatRupiah(j.totalAmount)}</Text>
                     <ChevronRight color="#94A3B8" size={14} />
                   </View>
                 </Pressable>
@@ -175,8 +173,8 @@ function JobsScreen() {
         ) : (
           <View className="gap-3">
             {available.map((b) => {
-              const earning = b.cleanerPayout ?? calculateCleanerEarning(b.totalAmount, bringsTools);
-              const sharePct = Math.round(calculateCleanerShare(b.totalAmount, bringsTools) * 100);
+              // Cleaner cuma lihat bagiannya — totalAmount tidak di-expose dari backend.
+              const earning = b.cleanerPayout ?? 0;
               return (
                 <View key={b.id} className="rounded-2xl bg-white p-3">
                   <View className="flex-row items-start justify-between gap-2">
@@ -186,7 +184,10 @@ function JobsScreen() {
                         {b.pricingMode === 'package' ? 'Paket Tetap' : b.pricingMode === 'hourly' ? 'Per Jam' : b.pricingMode}
                       </Text>
                     </View>
-                    <Text className="font-bold text-sm text-ink-900">{formatRupiah(b.totalAmount)}</Text>
+                    <View className="items-end">
+                      <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-400">Bagianmu</Text>
+                      <Text className="font-bold text-sm text-emerald-700">{formatRupiah(earning)}</Text>
+                    </View>
                   </View>
                   <View className="mt-2 flex-row items-center gap-1">
                     <Calendar color="#94A3B8" size={11} />
@@ -207,7 +208,7 @@ function JobsScreen() {
                       </View>
                       <View className="flex-row items-baseline gap-1">
                         <Text className="font-bold text-base text-success">{formatRupiah(earning)}</Text>
-                        <Text className="font-medium text-[10px] text-ink-500">({sharePct}%{bringsTools ? ' · alat' : ''})</Text>
+                        {bringsTools && <Text className="font-medium text-[10px] text-ink-500">+ pakai alat</Text>}
                       </View>
                     </View>
                     <Pressable

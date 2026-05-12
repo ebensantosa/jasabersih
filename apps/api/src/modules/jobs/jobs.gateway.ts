@@ -134,8 +134,9 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!rows[0]) return;
     const job = rows[0];
 
-    // Realtime socket broadcast — cleaner yang Job Board terbuka langsung lihat
-    this.server.to(ROOM_AVAILABLE).emit('incoming-job', job);
+    // Realtime socket broadcast — strip totalAmount (cleaner gak perlu tau harga asli)
+    const { totalAmount: _hidden, ...jobForCleaner } = job;
+    this.server.to(ROOM_AVAILABLE).emit('incoming-job', jobForCleaner);
     const onlineCount = this.server.sockets.adapter.rooms.get(ROOM_AVAILABLE)?.size ?? 0;
 
     // Push notif blast ke approved + available cleaners (max 50 per broadcast).
@@ -152,10 +153,9 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     `.catch(() => [] as { user_id: string }[]);
 
     const payout = Number(job.cleanerPayout ?? 0);
-    const totalLabel = `Rp ${Number(job.totalAmount).toLocaleString('id-ID')}`;
-    const payoutLabel = payout > 0 ? `Bagianmu Rp ${payout.toLocaleString('id-ID')}` : '';
     const title = `Job baru: ${job.serviceName ?? 'Layanan'}`;
-    const body = `${totalLabel}${payoutLabel ? ' · ' + payoutLabel : ''} · ${job.addressLine.split(',').slice(0, 2).join(',')}`;
+    // Hanya tampilkan share cleaner, bukan total customer bayar.
+    const body = `${payout > 0 ? `Bagianmu Rp ${payout.toLocaleString('id-ID')} · ` : ''}${job.addressLine.split(',').slice(0, 2).join(',')}`;
 
     await Promise.all(
       cleaners.map((c) =>

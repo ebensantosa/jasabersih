@@ -99,9 +99,11 @@ export class CleanerJobsController {
       ? rawAreas.filter((a) => typeof a === 'string' && a.trim().length > 0)
       : [];
 
+    // NOTE: kolom total_amount sengaja TIDAK di-expose ke cleaner.
+    // Cleaner hanya perlu tau bagiannya (cleaner_payout).
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
-             b.scheduled_at AS "scheduledAt", b.total_amount AS "totalAmount",
+             b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
              s.name AS "serviceName", s.icon_url AS "serviceIconUrl"
         FROM bookings b LEFT JOIN services s ON s.id = b.service_id
@@ -127,7 +129,7 @@ export class CleanerJobsController {
   async active(@CurrentUser() user: AuthenticatedUser) {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
-             b.scheduled_at AS "scheduledAt", b.total_amount AS "totalAmount",
+             b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
              s.name AS "serviceName",
              u.name AS "customerName", u.phone AS "customerPhone"
