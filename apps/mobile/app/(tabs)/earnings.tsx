@@ -88,17 +88,11 @@ function EarningsScreen() {
           style={{ elevation: 4 }}
         >
           <LinearGradient colors={['#1D4ED8', '#2563EB']} style={{ padding: 16 }}>
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="font-medium text-[11px] text-white/70">Saldo Bisa Ditarik</Text>
-                <Text className="font-bold mt-1 text-2xl text-white">{formatRupiah(balance)}</Text>
-              </View>
-              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                <ArrowDownToLine color="white" size={22} strokeWidth={2.2} />
-              </View>
-            </View>
-            <View className="mt-3 self-start rounded-full bg-white/15 px-3 py-1">
-              <Text className="font-semibold text-[10px] text-white">Tarik Saldo →</Text>
+            <Text className="font-medium text-[11px] text-white/70">Saldo Bisa Ditarik</Text>
+            <Text className="font-bold mt-1 text-2xl text-white">{formatRupiah(balance)}</Text>
+            <View className="mt-3 flex-row items-center justify-center gap-1.5 rounded-xl bg-white py-2.5">
+              <ArrowDownToLine color="#1D4ED8" size={16} strokeWidth={2.4} />
+              <Text className="font-bold text-sm text-brand-700">Tarik Saldo</Text>
             </View>
           </LinearGradient>
         </Pressable>
