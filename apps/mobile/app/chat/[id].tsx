@@ -109,7 +109,13 @@ function Chat() {
       <KeyboardAvoidingView className="flex-1 bg-ink-50" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <SafeAreaView edges={['top']} className="bg-white">
           <View className="flex-row items-center gap-2 border-b border-ink-100 px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace('/(tabs)/chats');
+              }}
+              className="h-10 w-10 items-center justify-center"
+            >
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
