@@ -63,9 +63,16 @@ log "Build Admin Next.js…"
 # while the orphan serves stale code. Kill before restart.
 log "Kill any orphan listeners on :5000/:5001"
 pm2 stop jasabersih-api jasabersih-admin 2>/dev/null || true
-fuser -k 5000/tcp 2>/dev/null || true
-fuser -k 5001/tcp 2>/dev/null || true
+# Try plain fuser first; if orphan owned by root we need sudo (deploy user
+# can't signal root processes). The sudoers rule for `deploy` must allow
+# NOPASSWD on /usr/bin/fuser (see deploy/setup-vps.sh).
+fuser -k 5000/tcp 2>/dev/null || sudo -n fuser -k 5000/tcp 2>/dev/null || true
+fuser -k 5001/tcp 2>/dev/null || sudo -n fuser -k 5001/tcp 2>/dev/null || true
 sleep 2
+# Sanity check: confirm ports are actually free now
+if ss -tln 2>/dev/null | grep -qE ':(5000|5001)\b'; then
+  warn "Port 5000/5001 still occupied after kill — pm2 start will likely fail."
+fi
 log "pm2 start ecosystem.config.js (fresh)"
 pm2 start "$APP_DIR/deploy/ecosystem.config.js" --update-env
 pm2 save
