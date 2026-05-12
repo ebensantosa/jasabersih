@@ -113,7 +113,7 @@ export class AdminController {
     return { id: userId, phone, name: body.name };
   }
 
-  // DELETE /admin/customers/:id — soft-delete customer
+  // DELETE /admin/customers/:id — hard delete customer
   @Delete('customers/:id')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
@@ -249,7 +249,7 @@ export class AdminController {
     return { ok: true };
   }
 
-  // DELETE /admin/cleaners/:id — soft-delete (deleted_at + status banned + revoke sessions)
+  // DELETE /admin/cleaners/:id — hard delete cleaner (NULL non-cascade FKs + DELETE user)
   @Delete('cleaners/:id')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')

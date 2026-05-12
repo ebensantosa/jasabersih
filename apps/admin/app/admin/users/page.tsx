@@ -39,7 +39,7 @@ export default function UsersPage() {
     const label = tab === 'customer' ? 'Customer' : 'Cleaner';
     const ok = await confirm({
       title: `Hapus ${r.name ?? r.phone}?`,
-      message: `${label} ini akan di-soft-delete (tidak bisa login lagi). Data history tetap untuk audit.`,
+      message: `${label} ini akan dihapus permanen dari database. Tindakan ini tidak bisa dibatalkan.`,
       variant: 'danger',
       confirmLabel: `Hapus ${label}`,
     });

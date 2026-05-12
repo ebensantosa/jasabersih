@@ -31,7 +31,7 @@ export default function KycPage() {
   async function deleteCleaner(c: Cleaner) {
     const ok = await confirm({
       title: `Hapus ${c.name ?? c.phone}?`,
-      message: 'Cleaner ini akan di-soft-delete (tidak bisa login lagi). Data history tetap tersimpan untuk audit.',
+      message: 'Cleaner ini akan dihapus permanen dari database. Tindakan ini tidak bisa dibatalkan.',
       variant: 'danger',
       confirmLabel: 'Hapus Cleaner',
     });
