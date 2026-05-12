@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ArrowDownToLine,
   Award,
@@ -16,20 +16,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
+import { api } from '../../src/lib/api';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { useCleanerWalletStore } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
 
-// Mock leaderboard — nominal earning DI-SENSOR untuk privacy.
-// Sprint 2: ambil dari /v1/cleaner/leaderboard?month=YYYY-MM
-const LEADERBOARD = [
-  { name: 'Pak Eko Wibowo', city: 'Yogyakarta', jobs: 87 },
-  { name: 'Bu Sari Indah', city: 'Sleman', jobs: 72 },
-  { name: 'Mas Andi Pratama', city: 'Bantul', jobs: 65 },
-  { name: 'Bu Wati Suryani', city: 'Yogyakarta', jobs: 58 },
-  { name: 'Pak Joko Susanto', city: 'Sleman', jobs: 51 },
-];
+type LeaderboardEntry = { name: string; city: string | null; jobs: number };
+type LeaderboardMe = { rank: number | null; jobs: number; earnings: number };
 
 export default function EarningsRoute() {
   return (
@@ -48,8 +42,18 @@ function EarningsScreen() {
   const entries = useCleanerWalletStore((s) => s.entries);
   const syncWallet = useCleanerWalletStore((s) => s.syncFromApi);
 
-  // Refresh wallet on tab focus
-  useFocusEffect(useCallback(() => { void syncWallet(); }, [syncWallet]));
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardMe, setLeaderboardMe] = useState<LeaderboardMe>({ rank: null, jobs: 0, earnings: 0 });
+
+  // Refresh wallet + leaderboard on tab focus
+  useFocusEffect(useCallback(() => {
+    void syncWallet();
+    api.get('/cleaner/leaderboard').then((r) => {
+      const d = r.data?.data ?? r.data;
+      setLeaderboard(Array.isArray(d?.top) ? d.top : []);
+      if (d?.me) setLeaderboardMe(d.me);
+    }).catch(() => {});
+  }, [syncWallet]));
   const list = useBookingsStore((s) => s.list);
 
   const now = new Date();
@@ -144,37 +148,44 @@ function EarningsScreen() {
             </Pressable>
           </View>
           <View className="gap-2">
-            {LEADERBOARD.map((c, i) => {
-              const rank = i + 1;
-              return (
-                <View
-                  key={c.name}
-                  className={`flex-row items-center gap-3 rounded-xl p-2.5 ${
-                    rank <= 3 ? 'bg-amber-50' : 'bg-ink-50'
-                  }`}
-                >
-                  <RankBadge rank={rank} />
-                  <View className="flex-1">
-                    <Text className="font-semibold text-xs text-ink-900">{c.name}</Text>
-                    <Text className="font-medium text-[10px] text-ink-500">
-                      {c.city} · {c.jobs} job selesai
-                    </Text>
+            {leaderboard.length === 0 ? (
+              <Text className="font-sans py-4 text-center text-[11px] text-ink-500">
+                Belum ada cleaner yang selesaikan job bulan ini.
+              </Text>
+            ) : (
+              leaderboard.map((c, i) => {
+                const rank = i + 1;
+                return (
+                  <View
+                    key={`${c.name}-${i}`}
+                    className={`flex-row items-center gap-3 rounded-xl p-2.5 ${
+                      rank <= 3 ? 'bg-amber-50' : 'bg-ink-50'
+                    }`}
+                  >
+                    <RankBadge rank={rank} />
+                    <View className="flex-1">
+                      <Text className="font-semibold text-xs text-ink-900">{c.name}</Text>
+                      <Text className="font-medium text-[10px] text-ink-500">
+                        {c.city ? `${c.city} · ` : ''}{c.jobs} job selesai
+                      </Text>
+                    </View>
+                    <Text className="font-medium text-[10px] text-ink-400">Rp ●●●</Text>
                   </View>
-                  <Text className="font-medium text-[10px] text-ink-400">Rp ●●●</Text>
-                </View>
-              );
-            })}
+                );
+              })
+            )}
             <View className="mt-2 border-t border-ink-100 pt-2">
               <View className="flex-row items-center gap-3 rounded-xl bg-brand-50 p-2.5">
-                <RankBadge rank={LEADERBOARD.length + 1} isYou />
+                <RankBadge rank={leaderboardMe.rank ?? leaderboard.length + 1} isYou />
                 <View className="flex-1">
                   <Text className="font-bold text-xs text-brand-700">{cleanerName} (kamu)</Text>
                   <Text className="font-medium text-[10px] text-ink-500">
-                    {completedJobs} job selesai bulan ini
+                    {leaderboardMe.jobs || completedJobs} job selesai bulan ini
+                    {leaderboardMe.rank ? ` · peringkat #${leaderboardMe.rank}` : ''}
                   </Text>
                 </View>
                 <Text className="font-bold text-xs text-brand-700">
-                  {formatRupiah(thisMonthEarnings)}
+                  {formatRupiah(leaderboardMe.earnings || thisMonthEarnings)}
                 </Text>
               </View>
             </View>
