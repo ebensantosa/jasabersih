@@ -6,14 +6,12 @@ import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Sparkle
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-type Tab = 'banners' | 'pages' | 'announcements' | 'areas' | 'cityRequests' | 'services' | 'packages' | 'addons';
+// Layanan + Area Layanan are now standalone sidebar pages (/admin/services and /admin/areas).
+type Tab = 'banners' | 'pages' | 'announcements' | 'packages' | 'addons';
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'banners', label: 'Banner', icon: ImageIcon },
   { key: 'pages', label: 'Halaman Statis', icon: FileText },
   { key: 'announcements', label: 'Pengumuman', icon: Megaphone },
-  { key: 'areas', label: 'Area Layanan', icon: MapPin },
-  { key: 'cityRequests', label: 'Request Kota', icon: MapPin },
-  { key: 'services', label: 'Layanan (Icon)', icon: Sparkles },
   { key: 'packages', label: 'Paket Harga', icon: Package },
   { key: 'addons', label: 'Add-Ons', icon: Plus },
 ];
@@ -35,9 +33,6 @@ export default function CmsPage() {
         {tab === 'banners' && <BannersTab />}
         {tab === 'pages' && <PagesTab />}
         {tab === 'announcements' && <AnnouncementsTab />}
-        {tab === 'areas' && <AreasTab />}
-        {tab === 'cityRequests' && <CityRequestsTab />}
-        {tab === 'services' && <ServicesTab />}
         {tab === 'packages' && <PackagesTab />}
         {tab === 'addons' && <AddonsTab />}
       </div>

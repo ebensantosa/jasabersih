@@ -8,6 +8,8 @@ import {
   BadgeCheck,
   CalendarCheck,
   FileText,
+  MapPinned,
+  Sparkles,
   LogOut,
   Gift,
   Megaphone,
@@ -36,6 +38,8 @@ const NAV = [
   { href: '/admin/vouchers', label: 'Vouchers', icon: Tag },
   { href: '/admin/referrals', label: 'Referrals', icon: Gift },
   { href: '/admin/chat', label: 'Chat Audit', icon: MessageSquare },
+  { href: '/admin/services', label: 'Layanan', icon: Sparkles },
+  { href: '/admin/areas', label: 'Area Layanan', icon: MapPinned, badge: 'cityRequests' as const },
   { href: '/admin/content', label: 'Content / CMS', icon: FileText },
   { href: '/admin/popups', label: 'Pop-up Promo', icon: Megaphone },
   { href: '/admin/broadcast', label: 'Broadcast Push', icon: Send },
@@ -47,6 +51,7 @@ const NAV = [
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null | 'loading'>('loading');
+  const [cityRequestsCount, setCityRequestsCount] = useState(0);
 
   useEffect(() => {
     const s = getSession();
@@ -56,6 +61,22 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       setSession(s);
     }
   }, [router]);
+
+  // Poll city request demand for sidebar badge — every 60s, lightweight.
+  useEffect(() => {
+    if (session === 'loading' || !session) return;
+    let cancelled = false;
+    async function fetchCount() {
+      try {
+        const { api } = await import('../../lib/api');
+        const rows: any[] = await api.admin.listCityRequests();
+        if (!cancelled) setCityRequestsCount(rows.reduce((a, r) => a + (r.requestCount ?? 0), 0));
+      } catch {/* silent */}
+    }
+    void fetchCount();
+    const t = setInterval(fetchCount, 60_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [session]);
 
   function logout() {
     clearSession();
@@ -79,15 +100,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="text-[11px] text-slate-500">Admin Dashboard</div>
         </div>
         <nav className="flex-1 space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-slate-100"
-            >
-              <Icon size={16} /> {label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const badgeCount = item.badge === 'cityRequests' ? cityRequestsCount : 0;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-slate-100"
+              >
+                <Icon size={16} />
+                <span className="flex-1">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {badgeCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
         <div className="mt-4 border-t border-slate-200 pt-4">
           <div className="mb-2 px-2">
