@@ -46,8 +46,15 @@ export class AdminBookingsController {
   @Get(':id')
   @Roles('super_admin', 'ops', 'support', 'fraud_analyst')
   async detail(@Param('id') id: string) {
+    // Explicit columns — exclude PostGIS location (JSON serialize fail → 500)
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT b.*, s.name AS service_name,
+      SELECT b.id, b.status, b.pricing_mode, b.total_amount, b.base_amount,
+             b.scheduled_at, b.address_line, b.customer_notes, b.form_snapshot,
+             b.customer_id, b.cleaner_id, b.service_id, b.package_id,
+             b.cleaner_payout, b.matched_at, b.paid_at, b.canceled_at,
+             b.completed_at, b.created_at,
+             ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
+             s.name AS service_name,
              cu.name AS customer_name, cu.phone AS customer_phone, cu.email AS customer_email,
              cl.name AS cleaner_name, cl.phone AS cleaner_phone
         FROM bookings b
