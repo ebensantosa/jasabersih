@@ -432,6 +432,34 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             <div className="mt-2 text-xs"><b>Alamat:</b> {(data.booking as any)?.address_line}</div>
           </div>
 
+          {(() => {
+            const total = Number((data.booking as any)?.total_amount ?? 0);
+            const payout = Number((data.booking as any)?.cleaner_payout ?? 0);
+            if (total <= 0) return null;
+            const platform = Math.max(total - payout, 0);
+            const pct = total > 0 ? (payout / total) * 100 : 0;
+            return (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <div className="mb-1.5 text-sm font-bold text-emerald-900">Pembagian Pendapatan</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Cleaner terima</div>
+                    <div className="text-base font-bold text-emerald-700">Rp {payout.toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-slate-500">{pct.toFixed(1)}% dari total</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Platform fee</div>
+                    <div className="text-base font-bold text-slate-700">Rp {platform.toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-slate-500">{(100 - pct).toFixed(1)}% dari total</div>
+                  </div>
+                </div>
+                {payout === 0 && (
+                  <div className="mt-1.5 text-[10px] text-amber-700">⚠️ Cleaner payout belum di-set (kemungkinan booking belum match cleaner).</div>
+                )}
+              </div>
+            );
+          })()}
+
           {before.length + after.length + damage.length > 0 && (
             <div>
               <div className="text-sm font-bold text-slate-900 mb-2">Foto Pengerjaan</div>
