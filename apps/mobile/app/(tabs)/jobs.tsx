@@ -137,7 +137,7 @@ function JobsScreen() {
                   className="flex-row items-center gap-2 rounded-xl bg-white p-3"
                 >
                   <View className="flex-1">
-                    <Text className="font-semibold text-sm text-ink-900">{j.serviceName ?? '—'}</Text>
+                    <Text className="font-semibold text-sm text-ink-900">{j.serviceName ?? 'Layanan'}</Text>
                     <Text className="font-medium text-[11px]" style={{ color: '#047857' }}>
                       {j.status === 'matched' ? 'Dijadwalkan' :
                        j.status === 'on_the_way' || j.status === 'cleaner_otw' ? 'Otw lokasi' :
