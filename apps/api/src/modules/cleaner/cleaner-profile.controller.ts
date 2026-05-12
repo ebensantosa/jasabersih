@@ -10,7 +10,9 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
 const UpdateProfileSchema = z.object({
   bio: z.string().max(1000).optional(),
-  // bringsTools sengaja gak di-allow — admin-only field via /admin/cleaners
+  // Cleaner sendiri toggle — mempengaruhi share commission yang mereka terima
+  // (with_tools = lebih besar). Validasi business logic di app.
+  bringsTools: z.boolean().optional(),
   serviceAreas: z.array(z.string()).optional(),
   languages: z.array(z.string()).optional(),
   isAvailable: z.boolean().optional(),
@@ -56,6 +58,7 @@ export class CleanerProfileController {
     `;
 
     if (body.bio !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET bio = ${body.bio}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+    if (body.bringsTools !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET brings_tools = ${body.bringsTools}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     if (body.serviceAreas !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET service_areas = ${JSON.stringify(body.serviceAreas)}::jsonb, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     if (body.languages !== undefined) {
       // text[] requires array literal — use raw param
