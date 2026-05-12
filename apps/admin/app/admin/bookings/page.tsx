@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
 
 import { ApiOffline, api } from '../../../lib/api';
+import { useConfirm, usePrompt, useToast } from '../../../components/ui';
 import {
   STATUS_BADGE,
   type Order,
@@ -33,6 +34,9 @@ export default function Bookings() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openMenu, setOpenMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const prompt = usePrompt();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [needsAttention, setNeedsAttention] = useState<Awaited<ReturnType<typeof api.admin.bookingsNeedsAttention>>>([]);
 
   useEffect(() => {
@@ -50,8 +54,16 @@ export default function Bookings() {
 
   async function rowAction(id: string, action: 'cancel' | 'complete' | 'mark_paid' | 'delete') {
     const labels = { cancel: 'batalkan', complete: 'tandai selesai', mark_paid: 'tandai lunas', delete: 'hapus' };
-    const reason = window.prompt(`Alasan untuk ${labels[action]} (min 5 karakter):`);
-    if (!reason || reason.trim().length < 5) return;
+    const reason = await prompt({
+      title: `Konfirmasi ${labels[action]}`,
+      message: `Alasan untuk ${labels[action]} pesanan ini:`,
+      placeholder: 'Min 5 karakter',
+      multiline: true,
+      minLength: 5,
+      variant: action === 'delete' || action === 'cancel' ? 'danger' : 'primary',
+      confirmLabel: 'Lanjut',
+    });
+    if (!reason) return;
     setBusy(true);
     try {
       if (action === 'cancel') await api.admin.forceCancelBooking(id, reason);
@@ -59,9 +71,10 @@ export default function Bookings() {
       else if (action === 'mark_paid') await api.admin.forceMarkPaid(id, reason);
       else if (action === 'delete') await api.admin.bulkBookingAction([id], 'delete', reason);
       setOpenMenu(null);
+      toast.success('Berhasil');
       await load();
     } catch (e) {
-      alert((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -70,17 +83,30 @@ export default function Bookings() {
   async function bulkAction(action: 'cancel' | 'complete' | 'mark_paid' | 'delete') {
     if (selected.size === 0) return;
     const labels = { cancel: 'membatalkan', complete: 'menyelesaikan', mark_paid: 'menandai lunas', delete: 'menghapus' };
-    const reason = window.prompt(`Alasan untuk ${labels[action]} ${selected.size} booking (min 5 karakter):`);
-    if (!reason || reason.trim().length < 5) return;
-    if (!window.confirm(`Yakin ${labels[action]} ${selected.size} booking?`)) return;
+    const reason = await prompt({
+      title: `${labels[action]} ${selected.size} booking`,
+      message: `Alasan untuk ${labels[action]} ${selected.size} booking sekaligus:`,
+      placeholder: 'Min 5 karakter',
+      multiline: true,
+      minLength: 5,
+      variant: action === 'delete' || action === 'cancel' ? 'danger' : 'primary',
+      confirmLabel: 'Lanjut',
+    });
+    if (!reason) return;
+    const ok = await confirm({
+      title: 'Konfirmasi bulk action',
+      message: `Yakin ${labels[action]} ${selected.size} booking? Tindakan ini tidak bisa dibatalkan.`,
+      variant: action === 'delete' ? 'danger' : 'primary',
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await api.admin.bulkBookingAction(Array.from(selected), action, reason);
-      alert(`Selesai: ${res.succeeded}/${res.total} sukses.`);
+      toast.success(`Selesai: ${res.succeeded}/${res.total} sukses.`);
       setSelected(new Set());
       await load();
     } catch (e) {
-      alert((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -410,12 +436,13 @@ function AssignModal({
     })();
   }, []);
 
+  const toast = useToast();
   async function pick(cleanerId: string) {
     try {
       await api.admin.assignCleaner(bookingId, cleanerId);
       onAssigned();
     } catch (e) {
-      alert((e as Error).message);
+      toast.error((e as Error).message);
     }
   }
 

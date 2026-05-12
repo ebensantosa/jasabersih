@@ -64,6 +64,29 @@ export function useConfirm() {
 }
 
 // ============================================================
+// PROMPT (replaces window.prompt) — returns string or null on cancel
+// ============================================================
+type PromptOpts = {
+  title: string;
+  message?: string;
+  placeholder?: string;
+  initialValue?: string;
+  multiline?: boolean;
+  minLength?: number;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: 'danger' | 'primary';
+};
+
+const PromptCtx = createContext<((opts: PromptOpts) => Promise<string | null>) | null>(null);
+
+export function usePrompt() {
+  const ctx = useContext(PromptCtx);
+  if (!ctx) throw new Error('usePrompt must be used within UiProvider');
+  return ctx;
+}
+
+// ============================================================
 // TOAST (replaces alert)
 // ============================================================
 type Toast = { id: number; type: 'success' | 'error' | 'info'; message: string };
@@ -85,11 +108,36 @@ export function useToast() {
 // ============================================================
 export function UiProvider({ children }: { children: ReactNode }) {
   const [confirmState, setConfirmState] = useState<(ConfirmOpts & { resolve: (v: boolean) => void }) | null>(null);
+  const [promptState, setPromptState] = useState<(PromptOpts & { resolve: (v: string | null) => void }) | null>(null);
+  const [promptValue, setPromptValue] = useState('');
+  const [promptError, setPromptError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const confirm = useCallback((opts: ConfirmOpts) => {
     return new Promise<boolean>((resolve) => setConfirmState({ ...opts, resolve }));
   }, []);
+
+  const prompt = useCallback((opts: PromptOpts) => {
+    setPromptValue(opts.initialValue ?? '');
+    setPromptError(null);
+    return new Promise<string | null>((resolve) => setPromptState({ ...opts, resolve }));
+  }, []);
+
+  function commitPrompt() {
+    if (!promptState) return;
+    const v = promptValue.trim();
+    if (promptState.minLength && v.length < promptState.minLength) {
+      setPromptError(`Minimal ${promptState.minLength} karakter.`);
+      return;
+    }
+    promptState.resolve(v);
+    setPromptState(null);
+  }
+  function cancelPrompt() {
+    if (!promptState) return;
+    promptState.resolve(null);
+    setPromptState(null);
+  }
 
   const pushToast = useCallback((type: Toast['type'], message: string) => {
     const id = Date.now() + Math.random();
@@ -105,6 +153,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
 
   return (
     <ConfirmCtx.Provider value={confirm}>
+      <PromptCtx.Provider value={prompt}>
       <ToastCtx.Provider value={toast}>
         {children}
 
@@ -138,6 +187,56 @@ export function UiProvider({ children }: { children: ReactNode }) {
           </Modal>
         )}
 
+        {/* Prompt dialog */}
+        {promptState && (
+          <Modal
+            title={promptState.title}
+            open={true}
+            onClose={cancelPrompt}
+            size="sm"
+            footer={
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={cancelPrompt}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+                >
+                  {promptState.cancelLabel ?? 'Batal'}
+                </button>
+                <button
+                  onClick={commitPrompt}
+                  className={`rounded-md px-4 py-2 text-sm font-medium text-white ${
+                    promptState.variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-700 hover:bg-blue-800'
+                  }`}
+                >
+                  {promptState.confirmLabel ?? 'Lanjut'}
+                </button>
+              </div>
+            }
+          >
+            {promptState.message && <p className="mb-2 text-sm text-slate-700">{promptState.message}</p>}
+            {promptState.multiline ? (
+              <textarea
+                autoFocus
+                value={promptValue}
+                onChange={(e) => { setPromptValue(e.target.value); setPromptError(null); }}
+                placeholder={promptState.placeholder}
+                rows={3}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            ) : (
+              <input
+                autoFocus
+                value={promptValue}
+                onChange={(e) => { setPromptValue(e.target.value); setPromptError(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitPrompt(); }}
+                placeholder={promptState.placeholder}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            )}
+            {promptError && <p className="mt-2 text-xs text-red-600">{promptError}</p>}
+          </Modal>
+        )}
+
         {/* Toasts */}
         <div className="pointer-events-none fixed right-4 top-4 z-[100] flex flex-col gap-2">
           {toasts.map((t) => {
@@ -160,6 +259,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
           })}
         </div>
       </ToastCtx.Provider>
+      </PromptCtx.Provider>
     </ConfirmCtx.Provider>
   );
 }
