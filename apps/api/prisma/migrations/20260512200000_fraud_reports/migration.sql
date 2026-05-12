@@ -1,18 +1,21 @@
 -- Customer reports cleaner for off-platform contact / payment / fraud.
 -- Approved reports earn the customer a Rp 50k voucher (configurable via
 -- app_config 'fraud.report_reward_amount'). One report per booking.
+-- FK constraints intentionally omitted — validation done in app code.
+-- (Earlier attempt with FK to bookings/users/admin_users failed in production
+-- with "no unique constraint matching" — likely schema-qualified mismatch.)
 CREATE TABLE IF NOT EXISTS fraud_reports (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  booking_id    UUID REFERENCES bookings(id),
-  reporter_id   UUID NOT NULL REFERENCES users(id),
-  reported_id   UUID REFERENCES users(id),
-  category      VARCHAR(50) NOT NULL,    -- ask_phone | ask_payment_outside | inappropriate | other
+  booking_id    UUID,
+  reporter_id   UUID NOT NULL,
+  reported_id   UUID,
+  category      VARCHAR(50) NOT NULL,
   description   TEXT,
-  evidence_urls JSONB DEFAULT '[]',      -- screenshots di R2
-  status        VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected
-  reward_voucher_code VARCHAR(50),       -- voucher code yang diberikan ke reporter saat approved
+  evidence_urls JSONB DEFAULT '[]',
+  status        VARCHAR(20) DEFAULT 'pending',
+  reward_voucher_code VARCHAR(50),
   admin_notes   TEXT,
-  reviewed_by   UUID REFERENCES admin_users(id),
+  reviewed_by   UUID,
   reviewed_at   TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (booking_id, reporter_id)
