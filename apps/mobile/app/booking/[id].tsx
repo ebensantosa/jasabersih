@@ -15,7 +15,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -133,13 +133,29 @@ function BookingDetail() {
     return () => { cancelled = true; clearInterval(t); };
   }, [id, booking?.status]);
 
+  // Saat booking belum ada di store + bukan local stub: kasih kesempatan
+  // fetchOne (~1-2 detik). Tanpa loading state, user kena flash "tidak ditemukan"
+  // walau sebenarnya lagi loading dari server.
+  const [fetchTriedAt, setFetchTriedAt] = useState(0);
+  useEffect(() => { setFetchTriedAt(Date.now()); }, [id]);
+  const stillFetching = !booking && id && !id.startsWith('bk_') && (Date.now() - fetchTriedAt < 4000);
+
   if (!booking) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
-        <Pressable onPress={() => router.back()} className="mt-4">
-          <Text className="font-semibold text-brand-600">Kembali</Text>
-        </Pressable>
+        {stillFetching ? (
+          <>
+            <ActivityIndicator color="#1D4ED8" />
+            <Text className="font-sans mt-2 text-ink-500">Memuat pesanan…</Text>
+          </>
+        ) : (
+          <>
+            <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
+            <Pressable onPress={() => router.back()} className="mt-4">
+              <Text className="font-semibold text-brand-600">Kembali</Text>
+            </Pressable>
+          </>
+        )}
       </SafeAreaView>
     );
   }
