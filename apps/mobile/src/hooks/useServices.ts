@@ -29,7 +29,8 @@ export function useServices(): ServiceCategory[] {
         iconBg: local?.iconBg ?? '#E2E8F0',
         // CMS-set icon URL kalau admin upload, override Lucide di tile grid
         customIconUrl: (api.iconUrl as string | undefined) ?? null,
-        imageUrl: local?.imageUrl ?? SERVICE_CATEGORIES[0]!.imageUrl,
+        // Cover image: prefer admin-set from CMS, fallback ke local hardcoded
+        imageUrl: ((api as any).coverImageUrl as string | undefined) ?? local?.imageUrl ?? SERVICE_CATEGORIES[0]!.imageUrl,
         startingPrice: minPrice,
         popular: local?.popular,
         // Default true kalau API gak return field (backwards compat)

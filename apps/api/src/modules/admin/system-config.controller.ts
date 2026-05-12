@@ -69,6 +69,7 @@ export class SystemConfigController {
   async listServices() {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, code, name, description, icon_url AS "iconUrl",
+             cover_image_url AS "coverImageUrl",
              is_active AS "isActive", display_order AS "displayOrder",
              show_on_home AS "showOnHome"
         FROM services ORDER BY display_order ASC NULLS LAST, name ASC
@@ -97,14 +98,14 @@ export class SystemConfigController {
   @Post('services')
   @Roles('super_admin', 'ops')
   async createService(
-    @Body() body: { code: string; name: string; description?: string; iconUrl?: string; displayOrder?: number },
+    @Body() body: { code: string; name: string; description?: string; iconUrl?: string; coverImageUrl?: string; displayOrder?: number },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
     if (!body.code || !body.name) throw new BadRequestException('code & name wajib.');
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
-      INSERT INTO services (code, name, description, icon_url, display_order, is_active)
-      VALUES (${body.code}, ${body.name}, ${body.description ?? null}, ${body.iconUrl ?? null}, ${body.displayOrder ?? null}, TRUE)
+      INSERT INTO services (code, name, description, icon_url, cover_image_url, display_order, is_active)
+      VALUES (${body.code}, ${body.name}, ${body.description ?? null}, ${body.iconUrl ?? null}, ${body.coverImageUrl ?? null}, ${body.displayOrder ?? null}, TRUE)
       RETURNING id
     `;
     const newId = rows[0]?.id;
@@ -124,13 +125,14 @@ export class SystemConfigController {
   @Roles('super_admin', 'ops')
   async updateService(
     @Param('id') id: string,
-    @Body() body: { name?: string; description?: string; iconUrl?: string; isActive?: boolean; displayOrder?: number; showOnHome?: boolean },
+    @Body() body: { name?: string; description?: string; iconUrl?: string; coverImageUrl?: string; isActive?: boolean; displayOrder?: number; showOnHome?: boolean },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
     if (body.name !== undefined) await this.prisma.$executeRaw`UPDATE services SET name = ${body.name} WHERE id = ${id}::uuid`;
     if (body.description !== undefined) await this.prisma.$executeRaw`UPDATE services SET description = ${body.description} WHERE id = ${id}::uuid`;
     if (body.iconUrl !== undefined) await this.prisma.$executeRaw`UPDATE services SET icon_url = ${body.iconUrl} WHERE id = ${id}::uuid`;
+    if (body.coverImageUrl !== undefined) await this.prisma.$executeRaw`UPDATE services SET cover_image_url = ${body.coverImageUrl} WHERE id = ${id}::uuid`;
     if (body.isActive !== undefined) await this.prisma.$executeRaw`UPDATE services SET is_active = ${body.isActive} WHERE id = ${id}::uuid`;
     if (body.displayOrder !== undefined) await this.prisma.$executeRaw`UPDATE services SET display_order = ${body.displayOrder}::int WHERE id = ${id}::uuid`;
     if (body.showOnHome !== undefined) await this.prisma.$executeRaw`UPDATE services SET show_on_home = ${body.showOnHome}::boolean WHERE id = ${id}::uuid`;

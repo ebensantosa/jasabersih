@@ -40,13 +40,24 @@ export default function CmsPage() {
   );
 }
 
-async function uploadToR2(file: File, folder: string): Promise<string | null> {
+const ALLOWED_IMG_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMG_MB = 2;
+
+async function uploadToR2(file: File, folder: string): Promise<{ url: string | null; error?: string }> {
+  if (!ALLOWED_IMG_TYPES.includes(file.type)) {
+    return { url: null, error: 'Format harus JPG, PNG, atau WebP.' };
+  }
+  if (file.size > MAX_IMG_MB * 1024 * 1024) {
+    return { url: null, error: `Ukuran maksimal ${MAX_IMG_MB}MB (file kamu ${(file.size / 1024 / 1024).toFixed(1)}MB).` };
+  }
   try {
     const { uploadUrl, publicUrl } = await api.admin.cmsUploadUrl(file.type, folder);
     const res = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'content-type': file.type } });
-    if (!res.ok) throw new Error('Upload gagal');
-    return publicUrl;
-  } catch { return null; }
+    if (!res.ok) return { url: null, error: `Upload ke R2 gagal (HTTP ${res.status}).` };
+    return { url: publicUrl };
+  } catch (e: any) {
+    return { url: null, error: e?.message ?? 'Network error saat upload.' };
+  }
 }
 
 function ImageUpload({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
@@ -63,13 +74,15 @@ function ImageUpload({ value, onChange, folder }: { value: string; onChange: (ur
           const f = e.target.files?.[0];
           if (!f) return;
           setBusy(true);
-          const url = await uploadToR2(f, folder);
+          const { url, error } = await uploadToR2(f, folder);
           setBusy(false);
           if (url) { onChange(url); toast.success('Image ter-upload.'); }
-          else toast.error('Upload gagal — cek koneksi atau format file.');
+          else toast.error(error ?? 'Upload gagal.');
+          (e.target as HTMLInputElement).value = '';
         }}
         className="w-full text-xs"
       />
+      <p className="mt-1 text-[10px] text-slate-500">JPG, PNG, atau WebP. Max {MAX_IMG_MB}MB.</p>
       {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
     </div>
   );

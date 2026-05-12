@@ -6,22 +6,40 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Badge, Button, Input, Modal, Switch, Textarea, useConfirm, useToast } from '../../../components/ui';
 
-async function uploadToR2(file: File, folder: string): Promise<string | null> {
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_SIZE_MB = 2;
+
+async function uploadToR2(file: File, folder: string): Promise<{ url: string | null; error?: string }> {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { url: null, error: 'Format harus JPG, PNG, atau WebP.' };
+  }
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+    return { url: null, error: `Ukuran maksimal ${MAX_SIZE_MB}MB (file kamu ${(file.size / 1024 / 1024).toFixed(1)}MB).` };
+  }
   try {
     const { uploadUrl, publicUrl } = await api.admin.cmsUploadUrl(file.type, folder);
     const res = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'content-type': file.type } });
-    if (!res.ok) throw new Error('Upload gagal');
-    return publicUrl;
-  } catch { return null; }
+    if (!res.ok) return { url: null, error: `Upload ke R2 gagal (HTTP ${res.status}).` };
+    return { url: publicUrl };
+  } catch (e: any) {
+    return { url: null, error: e?.message ?? 'Network error saat upload.' };
+  }
 }
 
-function ImageUpload({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
+function ImageUpload({ value, onChange, folder, label, previewClass, hint }: {
+  value: string;
+  onChange: (url: string) => void;
+  folder: string;
+  label?: string;
+  previewClass?: string;
+  hint?: string;
+}) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-slate-700">Icon Layanan</label>
-      {value && <img src={value} alt="" className="mb-2 h-24 w-24 rounded border object-cover" />}
+      <label className="mb-1 block text-xs font-medium text-slate-700">{label ?? 'Gambar'}</label>
+      {value && <img src={value} alt="" className={`mb-2 rounded border object-cover ${previewClass ?? 'h-24 w-24'}`} />}
       <input
         type="file"
         accept="image/jpeg,image/png,image/webp"
@@ -29,13 +47,15 @@ function ImageUpload({ value, onChange, folder }: { value: string; onChange: (ur
           const f = e.target.files?.[0];
           if (!f) return;
           setBusy(true);
-          const url = await uploadToR2(f, folder);
+          const { url, error } = await uploadToR2(f, folder);
           setBusy(false);
           if (url) { onChange(url); toast.success('Image ter-upload.'); }
-          else toast.error('Upload gagal.');
+          else toast.error(error ?? 'Upload gagal.');
+          (e.target as HTMLInputElement).value = ''; // allow same-file re-pick
         }}
         className="w-full text-xs"
       />
+      <p className="mt-1 text-[10px] text-slate-500">{hint ?? `JPG, PNG, atau WebP. Max ${MAX_SIZE_MB}MB.`}</p>
       {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
     </div>
   );
@@ -115,6 +135,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     name: service?.name ?? '',
     description: service?.description ?? '',
     iconUrl: service?.iconUrl ?? '',
+    coverImageUrl: service?.coverImageUrl ?? '',
     showOnHome: service?.showOnHome ?? true,
     displayOrder: service?.displayOrder ?? 0,
   });
@@ -153,7 +174,22 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         <Input label="Code" required value={form.code} onChange={(v) => isEdit ? null : setForm({ ...form, code: v })} error={errors.code} placeholder="kamar, dapur, kantor" helpText={isEdit ? 'Tidak bisa diubah setelah dibuat.' : 'Lowercase, tanpa spasi.'} />
         <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih Kamar" />
         <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Cleaning kamar tidur" />
-        <ImageUpload value={form.iconUrl} onChange={(url) => setForm({ ...form, iconUrl: url })} folder="services" />
+        <ImageUpload
+          label="Icon Layanan (kotak kecil di list)"
+          value={form.iconUrl}
+          onChange={(url) => setForm({ ...form, iconUrl: url })}
+          folder="services"
+          previewClass="h-24 w-24"
+          hint="JPG/PNG/WebP, max 2MB. Square 200x200px disarankan."
+        />
+        <ImageUpload
+          label="Cover Image (banner besar di halaman detail)"
+          value={form.coverImageUrl}
+          onChange={(url) => setForm({ ...form, coverImageUrl: url })}
+          folder="services/covers"
+          previewClass="h-32 w-full"
+          hint="JPG/PNG/WebP, max 2MB. Landscape 1200x600px disarankan."
+        />
         <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan." />
         <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Tampil di Home' : 'Sembunyikan dari Home'} />
       </div>
