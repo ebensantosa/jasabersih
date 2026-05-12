@@ -146,4 +146,53 @@ export class CleanerWalletController {
       return { id: wid, amount: body.amount, status: 'pending' };
     });
   }
+
+  // GET /v1/cleaner/leaderboard?month=YYYY-MM — top 5 cleaner bulan ini + posisi user
+  @Get('leaderboard')
+  async leaderboard(@CurrentUser() user: AuthenticatedUser, @Query('month') month?: string) {
+    // Default: bulan berjalan. Format expected: YYYY-MM
+    const ref = month && /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : null;
+    const monthStart = ref ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+
+    const rows = await this.prisma.$queryRaw<{ userId: string; name: string | null; city: string | null; jobs: number; earnings: number }[]>`
+      WITH monthly AS (
+        SELECT b.cleaner_id AS user_id,
+               COUNT(*)::int AS jobs,
+               COALESCE(SUM(b.cleaner_payout), 0)::bigint AS earnings
+          FROM bookings b
+         WHERE b.status = 'completed'
+           AND b.cleaner_id IS NOT NULL
+           AND b.completed_at >= ${monthStart}::date
+           AND b.completed_at < (${monthStart}::date + INTERVAL '1 month')
+         GROUP BY b.cleaner_id
+      )
+      SELECT m.user_id AS "userId",
+             u.name,
+             COALESCE(cp.service_areas->>0, NULL) AS city,
+             m.jobs,
+             m.earnings::int AS earnings,
+             RANK() OVER (ORDER BY m.jobs DESC, m.earnings DESC) AS rnk
+        FROM monthly m
+        JOIN users u ON u.id = m.user_id
+        LEFT JOIN cleaner_profiles cp ON cp.user_id = m.user_id
+       ORDER BY rnk ASC
+    `;
+
+    const top = rows.slice(0, 5).map((r) => ({
+      name: r.name ?? 'Cleaner',
+      city: r.city ?? null,
+      jobs: Number(r.jobs),
+    }));
+
+    const me = rows.find((r) => r.userId === user.id);
+    const meRank = me ? rows.findIndex((r) => r.userId === user.id) + 1 : null;
+
+    return {
+      month: monthStart.slice(0, 7),
+      top,
+      me: me
+        ? { rank: meRank, jobs: Number(me.jobs), earnings: Number(me.earnings) }
+        : { rank: null, jobs: 0, earnings: 0 },
+    };
+  }
 }
