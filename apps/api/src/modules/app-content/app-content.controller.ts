@@ -16,7 +16,7 @@ export class AppContentController {
   // active announcement (latest), commission tiers.
   @Get('content')
   async content() {
-    const [config, banners, services, addons, packages, announcement, commissionTiers] = await Promise.all([
+    const [config, banners, services, addons, packages, announcement, commissionTiers, serviceAreas] = await Promise.all([
       this.prisma.$queryRaw<Record<string, unknown>[]>`SELECT key, value FROM app_config`,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT id, title, subtitle, image_url AS "imageUrl", link_url AS "linkUrl",
@@ -52,6 +52,12 @@ export class AppContentController {
                cleaner_share_no_tools AS "shareNoTools", cleaner_share_with_tools AS "shareWithTools"
           FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
       `,
+      this.prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT id, name, city, radius_m AS "radiusM",
+               surge_multiplier AS "surgeMultiplier",
+               ST_X(centroid::geometry) AS lng, ST_Y(centroid::geometry) AS lat
+          FROM service_areas WHERE is_active = TRUE ORDER BY city ASC, name ASC
+      `,
     ]);
 
     // Convert config rows to flat object
@@ -67,6 +73,7 @@ export class AppContentController {
       packages,
       announcement: announcement[0] ?? null,
       commissionTiers,
+      serviceAreas,
     };
   }
 

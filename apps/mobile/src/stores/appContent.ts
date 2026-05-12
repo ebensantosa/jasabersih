@@ -31,6 +31,7 @@ export type HourlyTier = { id: string; code: string | null; name: string | null;
 export type PackageItem = { id: string; serviceId: string; name: string; price: number; durationMin: number; scope: any };
 export type Announcement = { id: string; title: string; body: string; severity: 'info' | 'warning' | 'critical'; audience: string };
 export type CommissionTier = { id: string; rangeMin: number | null; rangeMax: number | null; shareNoTools: number; shareWithTools: number };
+export type ServiceArea = { id: string; name: string; city: string; radiusM: number; surgeMultiplier: number; lat: number; lng: number };
 
 export type AppContent = {
   config: AppConfig;
@@ -41,6 +42,7 @@ export type AppContent = {
   packages: PackageItem[];
   announcement: Announcement | null;
   commissionTiers: CommissionTier[];
+  serviceAreas: ServiceArea[];
 };
 
 const EMPTY: AppContent = {
@@ -52,6 +54,7 @@ const EMPTY: AppContent = {
   packages: [],
   announcement: null,
   commissionTiers: [],
+  serviceAreas: [],
 };
 
 type AppContentStore = {
@@ -62,7 +65,7 @@ type AppContentStore = {
   fetch: (force?: boolean) => Promise<void>;
 };
 
-const TTL_MS = 5 * 60_000; // 5 minutes — refresh on next app foreground after this
+const TTL_MS = 30_000; // 30s — keeps mobile in sync with admin CMS edits without forcing manual refresh
 
 export const useAppContent = create<AppContentStore>((set, get) => ({
   content: EMPTY,
@@ -90,6 +93,7 @@ export const useAppContent = create<AppContentStore>((set, get) => ({
           packages: (data.packages ?? []).map((p: any) => ({ ...p, price: coerce(p.price) })),
           announcement: data.announcement ?? null,
           commissionTiers: (data.commissionTiers ?? []).map((c: any) => ({ ...c, rangeMin: c.rangeMin == null ? null : coerce(c.rangeMin), rangeMax: c.rangeMax == null ? null : coerce(c.rangeMax), shareNoTools: coerce(c.shareNoTools), shareWithTools: coerce(c.shareWithTools) })),
+          serviceAreas: (data.serviceAreas ?? []).map((a: any) => ({ ...a, radiusM: coerce(a.radiusM), surgeMultiplier: Number(a.surgeMultiplier ?? 1), lat: Number(a.lat), lng: Number(a.lng) })),
         },
         loading: false,
         lastFetchedAt: Date.now(),

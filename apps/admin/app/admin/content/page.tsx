@@ -136,7 +136,7 @@ function BannerFormModal({ banner, onClose, onSaved }: { banner: any | null; onC
     imageUrl: banner?.imageUrl ?? '',
     linkUrl: banner?.linkUrl ?? '',
     placement: banner?.placement ?? 'home_hero',
-    sortOrder: banner?.sortOrder ?? 0,
+    displayOrder: banner?.displayOrder ?? 0,
     isActive: banner?.isActive ?? true,
     startsAt: banner?.startsAt ? new Date(banner.startsAt).toISOString().slice(0, 16) : '',
     endsAt: banner?.endsAt ? new Date(banner.endsAt).toISOString().slice(0, 16) : '',
@@ -193,7 +193,7 @@ function BannerFormModal({ banner, onClose, onSaved }: { banner: any | null; onC
           onChange={(v) => setForm({ ...form, placement: v })}
         />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Sort Order" type="number" value={String(form.sortOrder)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) })} />
+          <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} />
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700">Status</label>
             <Switch checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={form.isActive ? 'Aktif' : 'Nonaktif'} />
@@ -772,7 +772,7 @@ function ServicesTab() {
                 <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? '—'}</div></td>
                 <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
                 <td className="px-4 py-2"><Badge>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
-                <td className="px-4 py-2 text-xs">{s.sortOrder}</td>
+                <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
                   <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(s)}>Hapus</Button>
@@ -797,7 +797,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     description: service?.description ?? '',
     iconUrl: service?.iconUrl ?? '',
     showOnHome: service?.showOnHome ?? true,
-    sortOrder: service?.sortOrder ?? 0,
+    displayOrder: service?.displayOrder ?? 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -835,7 +835,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih Kamar" />
         <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Cleaning kamar tidur" />
         <ImageUpload value={form.iconUrl} onChange={(url) => setForm({ ...form, iconUrl: url })} folder="services" />
-        <Input label="Sort Order" type="number" value={String(form.sortOrder)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan." />
+        <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan." />
         <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Tampil di Home' : 'Sembunyikan dari Home'} />
       </div>
     </Modal>

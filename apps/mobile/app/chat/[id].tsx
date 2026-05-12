@@ -147,7 +147,7 @@ function Chat() {
         <View className="flex-row items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">
           <ShieldAlert color="#92400E" size={14} />
           <Text className="font-sans flex-1 text-[11px] text-amber-900">
-            Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Komunikasi & pembayaran wajib via app — biar dapat asuransi & garansi.
+            Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Komunikasi & pembayaran wajib via app — biar dapat garansi pengerjaan.
           </Text>
         </View>
 
