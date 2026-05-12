@@ -35,6 +35,7 @@ const NAV = [
   { href: '/admin/wallet', label: 'Wallet & Withdrawal', icon: Wallet },
   { href: '/admin/disputes', label: 'Disputes', icon: ShieldAlert },
   { href: '/admin/fraud', label: 'Fraud Signals', icon: ShieldAlert },
+  { href: '/admin/fraud-reports', label: 'Fraud Reports', icon: ShieldAlert },
   { href: '/admin/vouchers', label: 'Vouchers', icon: Tag },
   { href: '/admin/referrals', label: 'Referrals', icon: Gift },
   { href: '/admin/chat', label: 'Chat Audit', icon: MessageSquare },

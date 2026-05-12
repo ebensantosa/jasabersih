@@ -253,6 +253,10 @@ export function createClient(opts: ClientOptions) {
       serviceAreas: () => request<any[]>('GET', '/admin/cms/service-areas'),
       listCityRequests: () => request<any[]>('GET', '/admin/cms/city-requests'),
       deleteCityRequest: (id: string) => request<{ ok: true }>('DELETE', `/admin/cms/city-requests/${id}`),
+      listFraudReports: (status?: 'pending' | 'approved' | 'rejected') =>
+        request<any[]>('GET', `/admin/fraud-reports${status ? `?status=${status}` : ''}`),
+      reviewFraudReport: (id: string, decision: 'approved' | 'rejected', adminNotes?: string) =>
+        request<{ ok: true; voucherCode: string | null }>('POST', `/admin/fraud-reports/${id}/review`, { decision, adminNotes }),
       createServiceArea: (body: any) => request<{ id: string }>('POST', '/admin/cms/service-areas', body),
       updateServiceArea: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/service-areas/${id}`, body),
       deleteServiceArea: (id: string) => request<unknown>('DELETE', `/admin/cms/service-areas/${id}`),

@@ -21,6 +21,7 @@ import { RatingsModule } from './modules/ratings/ratings.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { EmailModule } from './modules/email/email.module';
+import { FraudReportModule } from './modules/fraud/fraud-report.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { EmailModule } from './modules/email/email.module';
     ReferralModule,
     JobsModule,
     EmailModule,
+    FraudReportModule,
   ],
   controllers: [HealthController],
 })

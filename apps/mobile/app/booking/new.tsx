@@ -766,6 +766,7 @@ function NewBooking() {
                   <DateTimePicker
                     value={scheduleAt}
                     mode={pickerMode}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     minimumDate={earliestAvailable()}
                     is24Hour
                     onChange={(event, selected) => {

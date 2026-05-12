@@ -16,10 +16,21 @@ function NotificationsScreen() {
     return () => { void markAllRead(); }; // mark read saat keluar
   }, []);
 
-  function onTap(n: NotificationItem) {
+  async function onTap(n: NotificationItem) {
     const data = n.data as Record<string, unknown> | null;
     const type = data?.type as string | undefined;
     const bookingId = data?.bookingId as string | undefined;
+
+    // Force-sync booking store before navigating so screen reflects current
+    // server status (e.g., notif 'payment_timeout_cancel' → booking is now
+    // 'canceled' on server; without sync, mobile would show stale state).
+    if (bookingId) {
+      try {
+        const { useBookingsStore } = await import('../src/stores/bookings');
+        await useBookingsStore.getState().syncFromApi();
+      } catch {/* silent */}
+    }
+
     if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
     else if (bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
     else if (type === 'kyc_approved' || type === 'kyc_rejected') router.push('/cleaner/kyc');
