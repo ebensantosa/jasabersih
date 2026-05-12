@@ -348,6 +348,13 @@ function BookingDetail() {
             </View>
           </View>
 
+          {/* Foto Pekerjaan — cleaner: taruh di atas biar gak kelewat upload before/after */}
+          {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
+            <View className="mx-4 mt-3">
+              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
+            </View>
+          )}
+
           {/* Live searching indicator + countdown — customer only */}
           {!isCleaner && booking.status === 'searching' && !searchTimeout && (
             <View className="mx-4 mt-3">
@@ -556,7 +563,7 @@ function BookingDetail() {
             </View>
           )}
 
-          {!booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
+          {!isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
               <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
             </View>
