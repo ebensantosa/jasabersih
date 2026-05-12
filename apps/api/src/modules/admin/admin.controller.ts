@@ -138,14 +138,24 @@ export class AdminController {
       throw new BadRequestException('Customer masih punya booking aktif — selesaikan dulu sebelum hapus');
     }
 
-    await this.prisma.$executeRaw`
-      UPDATE users SET deleted_at = NOW(), status = 'banned',
-                       suspend_reason = ${body.reason || 'Dihapus oleh admin'}
-       WHERE id = ${id}::uuid
-    `;
-    await this.prisma.$executeRaw`
-      UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${id}::uuid AND revoked_at IS NULL
-    `;
+    // Hard delete
+    await this.prisma.$executeRaw`UPDATE bookings SET cleaner_id = NULL WHERE cleaner_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE bookings SET customer_id = NULL WHERE customer_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE booking_photos SET uploaded_by = NULL WHERE uploaded_by = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE messages SET sender_id = NULL WHERE sender_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE messages SET recipient_id = NULL WHERE recipient_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE referrals SET referrer_id = NULL WHERE referrer_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE referrals SET referred_id = NULL WHERE referred_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE ratings SET rater_id = NULL WHERE rater_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE ratings SET ratee_id = NULL WHERE ratee_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE wallet_ledger_entries SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE payments SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE voucher_usage SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`DELETE FROM referral_codes WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`DELETE FROM users WHERE id = ${id}::uuid`;
+
     await this.audit.log({
       adminId: admin.id, action: 'customer.delete', resourceType: 'user', resourceId: id,
       changes: { reason: body.reason ?? null, name: rows[0]!.name }, ipAddress: req.ip ?? null,
@@ -265,17 +275,23 @@ export class AdminController {
       throw new BadRequestException('Cleaner masih punya job aktif — selesaikan dulu sebelum hapus');
     }
 
-    await this.prisma.$executeRaw`
-      UPDATE users
-         SET deleted_at = NOW(),
-             status = 'banned',
-             suspend_reason = ${body.reason || 'Dihapus oleh admin'}
-       WHERE id = ${id}::uuid
-    `;
-    // Revoke semua refresh token aktif → user langsung ke-logout
-    await this.prisma.$executeRaw`
-      UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${id}::uuid AND revoked_at IS NULL
-    `;
+    // Hard delete — NULL out non-cascading FK refs, lalu DELETE user (CASCADE handle sisanya)
+    await this.prisma.$executeRaw`UPDATE bookings SET cleaner_id = NULL WHERE cleaner_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE bookings SET customer_id = NULL WHERE customer_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE booking_photos SET uploaded_by = NULL WHERE uploaded_by = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE messages SET sender_id = NULL WHERE sender_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE messages SET recipient_id = NULL WHERE recipient_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE referrals SET referrer_id = NULL WHERE referrer_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE referrals SET referred_id = NULL WHERE referred_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE ratings SET rater_id = NULL WHERE rater_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE ratings SET ratee_id = NULL WHERE ratee_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE wallet_ledger_entries SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE payments SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE voucher_usage SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`DELETE FROM referral_codes WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`DELETE FROM users WHERE id = ${id}::uuid`;
 
     await this.audit.log({
       adminId: admin.id,
