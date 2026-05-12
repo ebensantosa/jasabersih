@@ -16,6 +16,7 @@ import {
 const FILTERS: { key: OrderStatus | 'all' | 'needs_manual'; label: string }[] = [
   { key: 'all', label: 'Semua' },
   { key: 'needs_manual', label: '⚠️ Butuh Assign Manual' },
+  { key: 'pending_payment', label: '💳 Belum Bayar' },
   { key: 'searching', label: 'Cari Cleaner' },
   { key: 'matched', label: 'Sudah Match' },
   { key: 'in_progress', label: 'Dikerjakan' },
