@@ -12,7 +12,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
-import { useCleanerStore } from '../../src/stores/cleaner';
 import { useCleanerWalletStore, MIN_WITHDRAW, type WalletEntry } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
@@ -23,7 +22,6 @@ function CleanerWallet() {
   const entries = useCleanerWalletStore((s) => s.entries);
   const balance = useCleanerWalletStore((s) => s.balance());
   const pending = useCleanerWalletStore((s) => s.pendingTotal());
-  const bringsTools = useCleanerStore((s) => s.bringsTools);
 
   const totalEarning = entries
     .filter((e) => e.type === 'earning')
@@ -112,21 +110,6 @@ function CleanerWallet() {
             </View>
           </View>
 
-          {/* Info komisi */}
-          <View className="mt-3 rounded-2xl bg-white p-3">
-            <Text className="font-bold text-xs text-ink-900">
-              ðŸ’¡ Skema Komisi (Mode: {bringsTools ? 'Bawa Alat' : 'Tanpa Alat'})
-            </Text>
-            <View className="mt-2 gap-1">
-              <Row label="Order < Rp 300.000" value={bringsTools ? '60%' : '40%'} />
-              <Row label="Order Rp 300.000 – 600.000" value={bringsTools ? '55%' : '40%'} />
-              <Row label="Order > Rp 600.000" value={bringsTools ? '50%' : '40%'} />
-            </View>
-            <Text className="font-sans mt-2 text-[10px] text-ink-500">
-              Ubah mode "Bawa Alat / Tanpa Alat" di Job Board.
-            </Text>
-          </View>
-
           {/* Riwayat */}
           <Text className="font-bold mt-5 mb-2 text-sm text-ink-900">Riwayat Transaksi</Text>
           {entries.length === 0 ? (
@@ -146,15 +129,6 @@ function CleanerWallet() {
         </ScrollView>
       </View>
     </>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-row items-center justify-between">
-      <Text className="font-sans text-[11px] text-ink-600">{label}</Text>
-      <Text className="font-bold text-[11px] text-brand-700">{value}</Text>
-    </View>
   );
 }
 
