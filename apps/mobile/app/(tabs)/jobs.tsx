@@ -45,6 +45,7 @@ function JobsScreen() {
   const [active, setActive] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
+  const bringsTools = useCleanerStore((s) => s.bringsTools);
 
   async function load() {
     setLoading(true);
