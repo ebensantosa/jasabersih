@@ -52,10 +52,10 @@ export class AdminController {
     // status=active → KYC-approved & user aktif (siap di-assign). Selain itu treat as kyc_status literal.
     const where =
       status === 'active'
-        ? `WHERE u.is_freelancer = TRUE AND u.status = 'active' AND COALESCE(u.deleted_at::text, '') = '' AND cp.kyc_status = 'approved'`
+        ? `WHERE u.is_freelancer = TRUE AND u.status = 'active' AND u.deleted_at IS NULL AND cp.kyc_status = 'approved'`
         : status
-          ? `WHERE u.is_freelancer = TRUE AND cp.kyc_status = '${status.replace(/'/g, '')}'`
-          : `WHERE u.is_freelancer = TRUE`;
+          ? `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL AND cp.kyc_status = '${status.replace(/'/g, '')}'`
+          : `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL`;
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         u.id, u.name, u.phone, u.created_at AS "joinedAt",
@@ -298,7 +298,7 @@ export class AdminController {
         u.is_freelancer AS "isFreelancer",
         (SELECT COUNT(*) FROM bookings WHERE customer_id = u.id) AS "totalOrders"
       FROM users u
-      WHERE u.is_customer = TRUE
+      WHERE u.is_customer = TRUE AND u.deleted_at IS NULL
       ORDER BY u.created_at DESC
       LIMIT 100
     `);

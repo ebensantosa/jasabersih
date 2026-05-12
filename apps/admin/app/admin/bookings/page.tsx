@@ -285,7 +285,9 @@ export default function Bookings() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {filtered.map((o) => {
                 const s = STATUS_BADGE[o.status];
-                const canAssign = o.status === 'searching' || !o.cleanerName;
+                const isTerminal = o.status === 'completed' || o.status === 'canceled';
+                const canAssign = !isTerminal && (!o.cleanerName || ['searching', 'matched', 'on_the_way', 'in_progress', 'disputed'].includes(o.status));
+                const isReassign = canAssign && !!o.cleanerName;
                 return (
                   <tr key={o.id} className={`hover:bg-slate-50 ${needsManualIds.has(o.id) ? 'border-l-4 border-amber-400 bg-amber-50/30' : ''}`}>
                     <td className="px-3 py-3">
@@ -326,9 +328,10 @@ export default function Bookings() {
                         {canAssign && (
                           <button
                             onClick={() => setAssigning(o.id)}
-                            className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-white"
+                            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white ${isReassign ? 'bg-blue-700' : 'bg-primary'}`}
+                            title={isReassign ? 'Ganti cleaner' : 'Assign cleaner'}
                           >
-                            <UserPlus size={12} /> Assign
+                            <UserPlus size={12} /> {isReassign ? 'Ganti' : 'Assign'}
                           </button>
                         )}
                         <div>
@@ -354,7 +357,7 @@ export default function Bookings() {
                                     <Wallet size={12} className="text-emerald-600" /> Tandai Lunas
                                   </button>
                                 )}
-                                {o.cleanerName && ['matched', 'on_the_way', 'in_progress'].includes(o.status) && (
+                                {o.cleanerName && ['searching', 'matched', 'on_the_way', 'in_progress', 'disputed'].includes(o.status) && (
                                   <button
                                     onClick={() => { setOpenMenu(null); setAssigning(o.id); }}
                                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50"
