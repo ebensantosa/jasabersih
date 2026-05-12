@@ -91,6 +91,8 @@ type State = {
   setListInternal: (list: Booking[]) => void;
   // API integration — pull server state, push local mutations
   syncFromApi: () => Promise<void>;
+  /** Fetch a single booking by id from server (works for cleaner too) and seed into list. */
+  fetchOne: (id: string) => Promise<void>;
   syncing: boolean;
   syncError: string | null;
   clearLocal: () => void;
@@ -181,6 +183,35 @@ export const useBookingsStore = create<State>((set, get) => ({
   setListInternal: (list) => {
     persist(list);
     set({ list });
+  },
+  fetchOne: async (id: string) => {
+    try {
+      const r = await api.get(`/bookings/${id}`);
+      const s: any = r.data?.data ?? r.data;
+      if (!s?.id) return;
+      const total = Number(s.total_amount ?? s.total ?? 0);
+      const mapped: Booking = {
+        id: s.id,
+        pricingMode: (s.pricing_mode ?? s.pricingMode ?? 'package') as PricingMode,
+        categoryCode: '',
+        categoryName: s.service_name ?? s.serviceName ?? 'Layanan',
+        categoryImage: s.service_icon ?? s.serviceIcon ?? '',
+        addressLine: s.address_line ?? s.address ?? '',
+        scheduledAt: s.scheduled_at ?? s.scheduledAt ?? new Date().toISOString(),
+        status: mapServerStatus(s.status),
+        createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now(),
+        addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
+        cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
+        paidAt: s.paid_at ? new Date(s.paid_at).getTime() : undefined,
+        formSnapshot: s.form_snapshot ?? s.formSnapshot ?? {},
+        messages: [],
+      };
+      const cur = get().list;
+      const without = cur.filter((b) => b.id !== mapped.id);
+      const next = [mapped, ...without];
+      persist(next);
+      set({ list: next });
+    } catch { /* silent */ }
   },
   create: async ({ initialStatus, ...b }) => {
     const tempId = 'bk_' + Math.random().toString(36).slice(2, 10);

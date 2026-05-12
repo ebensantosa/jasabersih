@@ -59,8 +59,16 @@ function BookingDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
+  const fetchOne = useBookingsStore((s) => s.fetchOne);
   const cancel = useBookingsStore((s) => s.cancel);
   const setStatus = useBookingsStore((s) => s.setStatus);
+
+  // Cleaner mostly opens jobs they accepted — those rows aren't in their
+  // local store yet (store seeded from /bookings which is customer-only).
+  // Fetch + seed on mount when missing.
+  useEffect(() => {
+    if (id && !id.startsWith('bk_') && !booking) void fetchOne(id);
+  }, [id, booking, fetchOne]);
   const mode = useModeStore((s) => s.mode);
   const isCleaner = mode === 'freelancer';
   const [showDispute, setShowDispute] = useState(false);
