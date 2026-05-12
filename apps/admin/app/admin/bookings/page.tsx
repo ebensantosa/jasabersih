@@ -354,6 +354,14 @@ export default function Bookings() {
                                     <Wallet size={12} className="text-emerald-600" /> Tandai Lunas
                                   </button>
                                 )}
+                                {o.cleanerName && ['matched', 'on_the_way', 'in_progress'].includes(o.status) && (
+                                  <button
+                                    onClick={() => { setOpenMenu(null); setAssigning(o.id); }}
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50"
+                                  >
+                                    <UserPlus size={12} className="text-blue-700" /> Ganti Cleaner
+                                  </button>
+                                )}
                                 {o.status !== 'completed' && o.status !== 'canceled' && (
                                   <button onClick={() => rowAction(o.id, 'complete')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50">
                                     <CheckCircle2 size={12} className="text-blue-700" /> Tandai Selesai
@@ -391,6 +399,7 @@ export default function Bookings() {
       {assigning && (
         <AssignModal
           bookingId={assigning}
+          currentCleanerName={(orders ?? []).find((o) => o.id === assigning)?.cleanerName ?? null}
           onClose={() => setAssigning(null)}
           onAssigned={() => {
             setAssigning(null);
@@ -527,15 +536,18 @@ function OfflineCard({ onRetry }: { onRetry: () => void }) {
 
 function AssignModal({
   bookingId,
+  currentCleanerName,
   onClose,
   onAssigned,
 }: {
   bookingId: string;
+  currentCleanerName?: string | null;
   onClose: () => void;
   onAssigned: () => void;
 }) {
   const [cleaners, setCleaners] = useState<{ id: string; name: string; rating?: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const isReassign = !!currentCleanerName;
 
   useEffect(() => {
     void (async () => {
@@ -555,9 +567,25 @@ function AssignModal({
   }, []);
 
   const toast = useToast();
+  const prompt = usePrompt();
   async function pick(cleanerId: string) {
     try {
-      await api.admin.assignCleaner(bookingId, cleanerId);
+      if (isReassign) {
+        const reason = await prompt({
+          title: 'Alasan ganti cleaner',
+          message: `Cleaner sekarang: ${currentCleanerName}. Kenapa diganti?`,
+          placeholder: 'Min 5 karakter',
+          multiline: true,
+          minLength: 5,
+          variant: 'primary',
+          confirmLabel: 'Ganti',
+        });
+        if (!reason) return;
+        await api.admin.reassignCleaner(bookingId, cleanerId, reason);
+        toast.success('Cleaner berhasil diganti');
+      } else {
+        await api.admin.assignCleaner(bookingId, cleanerId);
+      }
       onAssigned();
     } catch (e) {
       toast.error((e as Error).message);
@@ -573,8 +601,13 @@ function AssignModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
       >
-        <h3 className="text-lg font-bold">Assign Cleaner Manual</h3>
+        <h3 className="text-lg font-bold">{isReassign ? 'Ganti Cleaner' : 'Assign Cleaner Manual'}</h3>
         <p className="mt-1 text-xs text-slate-500">Order: {bookingId}</p>
+        {isReassign && (
+          <p className="mt-1 text-xs text-amber-700">
+            Cleaner sekarang: <b>{currentCleanerName}</b> — pilih pengganti.
+          </p>
+        )}
         <div className="mt-4 space-y-2">
           {loading && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
