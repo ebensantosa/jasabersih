@@ -47,6 +47,14 @@ const TIMELINE_PACKAGE: { status: BookingStatus; label: string }[] = [
   { status: 'completed', label: 'Selesai' },
 ];
 
+// Cleaner POV: skip 'searching' (mereka udah accept), start dari 'Job Diterima'.
+const TIMELINE_CLEANER: { status: BookingStatus; label: string }[] = [
+  { status: 'matched', label: 'Job Diterima' },
+  { status: 'on_the_way', label: 'Berangkat ke Lokasi' },
+  { status: 'in_progress', label: 'Sedang Mengerjakan' },
+  { status: 'completed', label: 'Selesai' },
+];
+
 const TIMELINE_WA: { status: BookingStatus; label: string }[] = [
   { status: 'wa_survey_pending', label: 'Menunggu CS Hubungi' },
   { status: 'pending_payment', label: 'Quote Siap, Tunggu Bayar' },
@@ -161,7 +169,9 @@ function BookingDetail() {
   }
 
   const color = STATUS_COLOR[booking.status];
-  const timeline = booking.pricingMode === 'wa_survey' ? TIMELINE_WA : TIMELINE_PACKAGE;
+  const timeline = isCleaner
+    ? TIMELINE_CLEANER
+    : booking.pricingMode === 'wa_survey' ? TIMELINE_WA : TIMELINE_PACKAGE;
   const currentIdx = timeline.findIndex((t) => t.status === booking.status);
 
   // Live searching countdown derivations (cheap, no hooks)
