@@ -273,7 +273,7 @@ function NewBooking() {
     if (dirtLevel >= 4 && photoCount < 3) {
       Alert.alert(
         'Foto wajib di skala 4–5',
-        'Min 3 foto. Tanpa foto, harga +25% sebagai ketidakpastian premium. Lanjut?',
+        'Min 3 foto disarankan agar cleaner siap dengan alat & estimasi waktu yang tepat. Lanjut tanpa foto?',
         [
           { text: 'Batal', style: 'cancel' },
           { text: 'Lanjut', onPress: doSubmit },
@@ -557,7 +557,7 @@ function NewBooking() {
                   <View className="mt-3 flex-row gap-2 rounded-xl bg-amber-50 p-3">
                     <AlertTriangle color="#B45309" size={16} />
                     <Text className="font-medium flex-1 text-[11px] text-amber-900">
-                      Foto wajib min 3. Tanpa foto: harga +25%.
+                      Min 3 foto agar cleaner siap dengan alat & estimasi waktu yang tepat.
                     </Text>
                   </View>
                 )}
