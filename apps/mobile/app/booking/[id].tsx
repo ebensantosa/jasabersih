@@ -297,7 +297,7 @@ function BookingDetail() {
             <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
-            <Text className="font-bold ml-1 text-base text-white">Detail Pesanan</Text>
+            <Text className="font-bold ml-1 text-base text-white">{isCleaner ? 'Detail Job' : 'Detail Pesanan'}</Text>
           </View>
         </SafeAreaView>
 
@@ -316,11 +316,16 @@ function BookingDetail() {
                 )}
               </View>
               <View className="flex-1">
+                <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-400">
+                  {isCleaner ? 'JOB AKTIF' : 'PESANANMU'}
+                </Text>
                 <Text className="font-bold text-base text-ink-900">{booking.categoryName}</Text>
                 <Text className="font-medium text-[11px] text-ink-500">{modeLabel}</Text>
-                <Text className="font-medium text-[10px] text-ink-400">
-                  ID: {booking.id.toUpperCase()}
-                </Text>
+                {!isCleaner && (
+                  <Text className="font-medium text-[10px] text-ink-400">
+                    ID: {booking.id.toUpperCase()}
+                  </Text>
+                )}
               </View>
             </View>
             <View
@@ -428,24 +433,16 @@ function BookingDetail() {
                 <Detail icon={Clock} label="Durasi" value={`${booking.hours} jam`} />
               )}
             </View>
-            {/* Maps + WA buttons — visible whenever cleaner is matched, esp. for cleaner side */}
+            {/* Maps button — single, prominent (cleaner pakai untuk navigasi).
+                Chat dipindah ke bottom action bar biar gak duplikat. */}
             {['matched', 'on_the_way', 'in_progress'].includes(booking.status) && (
-              <View className="mt-3 flex-row gap-2">
-                <Pressable
-                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.addressLine)}`)}
-                  className="flex-1 flex-row items-center justify-center gap-1 rounded-xl bg-brand-50 py-2.5"
-                >
-                  <MapPin color="#1D4ED8" size={14} />
-                  <Text className="font-bold text-xs text-brand-700">Buka Maps</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push({ pathname: '/chat/[id]', params: { id: booking.id } })}
-                  className="flex-1 flex-row items-center justify-center gap-1 rounded-xl bg-emerald-50 py-2.5"
-                >
-                  <MessageCircle color="#047857" size={14} />
-                  <Text className="font-bold text-xs text-emerald-700">Chat</Text>
-                </Pressable>
-              </View>
+              <Pressable
+                onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.addressLine)}`)}
+                className="mt-3 flex-row items-center justify-center gap-1.5 rounded-xl bg-brand-50 py-2.5"
+              >
+                <MapPin color="#1D4ED8" size={14} />
+                <Text className="font-bold text-xs text-brand-700">Buka di Google Maps</Text>
+              </Pressable>
             )}
           </View>
 
