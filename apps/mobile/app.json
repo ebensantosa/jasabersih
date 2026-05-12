@@ -7,15 +7,21 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jasabersih.app",
-      "buildNumber": "2"
+      "buildNumber": "2",
+      "icon": "./assets/icon.png"
     },
     "android": {
       "package": "com.jasabersih.app",
       "versionCode": 2,
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E40AF"
+      }
     },
     "plugins": [
       "expo-router",
@@ -23,9 +29,10 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash-logo.png",
           "backgroundColor": "#1E40AF",
           "resizeMode": "contain",
-          "imageWidth": 180
+          "imageWidth": 200
         }
       ]
     ],

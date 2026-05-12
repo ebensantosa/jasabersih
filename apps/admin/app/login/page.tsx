@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
 
 import { loginAdmin } from '../../lib/auth';
@@ -15,6 +15,21 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [brand, setBrand] = useState<{ logoUrl?: string; appName?: string }>({});
+
+  // Pull brand logo + name from public /app/content (no auth) so login mirrors mobile.
+  useEffect(() => {
+    fetch(`${API_BASE}/app/content`)
+      .then((r) => r.json())
+      .then((j) => {
+        const cfg = j?.data?.config ?? j?.config ?? {};
+        setBrand({
+          logoUrl: typeof cfg['brand.logo_url'] === 'string' ? cfg['brand.logo_url'] : undefined,
+          appName: typeof cfg['brand.app_name'] === 'string' ? cfg['brand.app_name'] : undefined,
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,10 +49,14 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white">
-            <Sparkles size={24} />
-          </div>
-          <h1 className="mt-4 text-2xl font-bold text-slate-900">JasaBersih Admin</h1>
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt="logo" className="mx-auto h-16 w-16 rounded-2xl object-contain" />
+          ) : (
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white">
+              <Sparkles size={24} />
+            </div>
+          )}
+          <h1 className="mt-4 text-2xl font-bold text-slate-900">{brand.appName ?? 'JasaBersih'} Admin</h1>
           <p className="text-sm text-slate-500">Internal dashboard</p>
         </div>
 

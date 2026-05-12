@@ -53,6 +53,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null | 'loading'>('loading');
   const [cityRequestsCount, setCityRequestsCount] = useState(0);
+  const [brand, setBrand] = useState<{ logoUrl?: string; appName?: string }>({});
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/v1';
+    fetch(`${base}/app/content`).then((r) => r.json()).then((j) => {
+      const cfg = j?.data?.config ?? j?.config ?? {};
+      setBrand({
+        logoUrl: typeof cfg['brand.logo_url'] === 'string' ? cfg['brand.logo_url'] : undefined,
+        appName: typeof cfg['brand.app_name'] === 'string' ? cfg['brand.app_name'] : undefined,
+      });
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const s = getSession();
@@ -96,9 +108,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <UiProvider>
     <div className="flex min-h-screen">
       <aside className="flex w-60 flex-col border-r bg-white p-4">
-        <div className="mb-6">
-          <div className="text-lg font-bold text-slate-900">JasaBersih</div>
-          <div className="text-[11px] text-slate-500">Admin Dashboard</div>
+        <div className="mb-6 flex items-center gap-2">
+          {brand.logoUrl && (
+            <img src={brand.logoUrl} alt="logo" className="h-9 w-9 rounded-lg object-contain" />
+          )}
+          <div>
+            <div className="text-lg font-bold text-slate-900">{brand.appName ?? 'JasaBersih'}</div>
+            <div className="text-[11px] text-slate-500">Admin Dashboard</div>
+          </div>
         </div>
         <nav className="flex-1 space-y-1">
           {NAV.map((item) => {
