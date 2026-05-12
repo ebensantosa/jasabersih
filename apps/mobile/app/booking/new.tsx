@@ -25,7 +25,8 @@ import {
   type PropertyType,
 } from '../../src/data/catalog';
 import { useAddressesStore } from '../../src/stores/addresses';
-import { useApiAddons, useApiPackagesForService, useConfig } from '../../src/stores/appContent';
+import { useApiAddons, useApiPackagesForService, useAppContent, useConfig } from '../../src/stores/appContent';
+import { checkCoverage } from '../../src/lib/coverage';
 import { useServices } from '../../src/hooks/useServices';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
@@ -337,6 +338,36 @@ function NewBooking() {
   }
 
   if (!category) return null;
+
+  // Coverage gate — block booking if user location is outside service_areas radius.
+  // serviceAreas = [] (admin belum config any) treated as "covered" so we don't break onboarding.
+  const userLoc = useLocationStore.getState().current;
+  const areas = useAppContent.getState().content.serviceAreas;
+  const cov = checkCoverage(userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null, areas);
+  if (!cov.covered) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-8">
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-amber-100">
+          <AlertTriangle color="#B45309" size={40} />
+        </View>
+        <Text className="font-bold mt-4 text-center text-lg text-ink-900">Belum tersedia di area kamu</Text>
+        <Text className="font-sans mt-2 text-center text-sm text-ink-600">
+          {cov.nearestAreaName
+            ? `Area terdekat yang kami layani: ${cov.nearestAreaName} (${Math.round((cov.distanceM ?? 0) / 1000)} km dari lokasi kamu).`
+            : 'Set lokasi kamu dulu lewat tombol "Set Lokasi" di Beranda.'}
+        </Text>
+        <Pressable
+          onPress={() => router.replace({ pathname: '/city-request', params: { city: userLoc?.shortLabel ?? '' } })}
+          className="mt-6 rounded-2xl bg-brand-600 px-6 py-3"
+        >
+          <Text className="font-bold text-white">Request Kota Saya</Text>
+        </Pressable>
+        <Pressable onPress={() => router.back()} className="mt-3">
+          <Text className="font-semibold text-brand-600">Kembali</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <>

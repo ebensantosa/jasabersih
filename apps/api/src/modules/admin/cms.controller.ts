@@ -394,4 +394,32 @@ export class AdminCmsController {
     await this.audit.log({ adminId: admin.id, action: 'voucher.update', resourceType: 'voucher', resourceId: id, changes: body, ipAddress: req.ip ?? null });
     return { ok: true };
   }
+
+  // ============ CITY REQUESTS (expansion demand) ============
+  // Aggregated by city + total count + sample contacts.
+  @Get('city-requests')
+  @Roles('super_admin', 'ops')
+  async listCityRequests() {
+    return this.prisma.$queryRaw`
+      SELECT lower(trim(city)) AS city,
+             COUNT(*)::int AS "requestCount",
+             MAX(created_at) AS "lastRequestAt",
+             ARRAY_AGG(DISTINCT province) FILTER (WHERE province IS NOT NULL) AS provinces,
+             json_agg(json_build_object(
+               'id', id, 'contactName', contact_name, 'contactPhone', contact_phone,
+               'notes', notes, 'createdAt', created_at
+             ) ORDER BY created_at DESC) AS samples
+        FROM city_requests
+       GROUP BY lower(trim(city))
+       ORDER BY "requestCount" DESC, "lastRequestAt" DESC
+       LIMIT 100
+    `;
+  }
+
+  @Delete('city-requests/:id')
+  @Roles('super_admin', 'ops')
+  async deleteCityRequest(@Param('id') id: string) {
+    await this.prisma.$executeRaw`DELETE FROM city_requests WHERE id = ${id}::uuid`;
+    return { ok: true };
+  }
 }

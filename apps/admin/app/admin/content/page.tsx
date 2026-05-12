@@ -6,12 +6,13 @@ import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Sparkle
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-type Tab = 'banners' | 'pages' | 'announcements' | 'areas' | 'services' | 'packages' | 'addons';
+type Tab = 'banners' | 'pages' | 'announcements' | 'areas' | 'cityRequests' | 'services' | 'packages' | 'addons';
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'banners', label: 'Banner', icon: ImageIcon },
   { key: 'pages', label: 'Halaman Statis', icon: FileText },
   { key: 'announcements', label: 'Pengumuman', icon: Megaphone },
   { key: 'areas', label: 'Area Layanan', icon: MapPin },
+  { key: 'cityRequests', label: 'Request Kota', icon: MapPin },
   { key: 'services', label: 'Layanan (Icon)', icon: Sparkles },
   { key: 'packages', label: 'Paket Harga', icon: Package },
   { key: 'addons', label: 'Add-Ons', icon: Plus },
@@ -35,6 +36,7 @@ export default function CmsPage() {
         {tab === 'pages' && <PagesTab />}
         {tab === 'announcements' && <AnnouncementsTab />}
         {tab === 'areas' && <AreasTab />}
+        {tab === 'cityRequests' && <CityRequestsTab />}
         {tab === 'services' && <ServicesTab />}
         {tab === 'packages' && <PackagesTab />}
         {tab === 'addons' && <AddonsTab />}
@@ -839,5 +841,81 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Tampil di Home' : 'Sembunyikan dari Home'} />
       </div>
     </Modal>
+  );
+}
+
+// ============ CITY REQUESTS ============
+function CityRequestsTab() {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [list, setList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try { setList(await api.admin.listCityRequests()); }
+    catch (e: any) { toast.error(e?.message); }
+    setLoading(false);
+  }
+  useEffect(() => { void load(); }, []);
+
+  async function delEntry(id: string, city: string) {
+    const ok = await confirm({ title: 'Hapus request', message: `Hapus 1 entry untuk "${city}"?`, variant: 'danger' });
+    if (!ok) return;
+    try { await api.admin.deleteCityRequest(id); toast.success('Dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold">Request Kota Baru ({list.length} kota)</h2>
+      <p className="mt-1 text-xs text-slate-500">Customer di kota yang belum dilayani submit lewat mobile app. Diurutkan berdasarkan jumlah request terbanyak.</p>
+      {loading ? (
+        <div className="mt-8 text-center text-sm text-slate-500">Memuat…</div>
+      ) : list.length === 0 ? (
+        <div className="mt-8 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
+          Belum ada request kota baru. Customer di luar coverage akan mengisi form dari mobile.
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {list.map((r: any) => (
+            <div key={r.city} className="rounded-md border bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-base font-bold capitalize text-slate-900">{r.city}</div>
+                  <div className="text-xs text-slate-500">
+                    {r.requestCount} request · terakhir {new Date(r.lastRequestAt).toLocaleDateString('id-ID')}
+                    {r.provinces?.length > 0 && ` · ${r.provinces.join(', ')}`}
+                  </div>
+                </div>
+                <Badge>{r.requestCount}×</Badge>
+              </div>
+              {r.samples?.length > 0 && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900">Lihat detail kontak ({r.samples.length})</summary>
+                  <table className="mt-2 w-full text-xs">
+                    <thead className="bg-slate-50 text-left text-[10px] uppercase text-slate-500">
+                      <tr><th className="px-2 py-1">Tanggal</th><th className="px-2 py-1">Nama</th><th className="px-2 py-1">HP</th><th className="px-2 py-1">Catatan</th><th className="px-2 py-1"></th></tr>
+                    </thead>
+                    <tbody>
+                      {r.samples.map((s: any) => (
+                        <tr key={s.id} className="border-t">
+                          <td className="px-2 py-1">{new Date(s.createdAt).toLocaleString('id-ID')}</td>
+                          <td className="px-2 py-1">{s.contactName ?? '—'}</td>
+                          <td className="px-2 py-1">{s.contactPhone ?? '—'}</td>
+                          <td className="px-2 py-1">{s.notes ?? '—'}</td>
+                          <td className="px-2 py-1">
+                            <button onClick={() => delEntry(s.id, r.city)} className="text-red-600 hover:underline">Hapus</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

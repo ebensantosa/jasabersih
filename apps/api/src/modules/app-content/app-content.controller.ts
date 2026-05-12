@@ -77,6 +77,23 @@ export class AppContentController {
     };
   }
 
+  // Customer di kota yang belum dilayani submit request → admin lihat & prioritize.
+  @Post('city-requests')
+  async submitCityRequest(@Body() body: {
+    city: string; province?: string; contactName?: string; contactPhone?: string;
+    notes?: string; lat?: number; lng?: number;
+  }) {
+    if (!body?.city || body.city.trim().length < 2) {
+      return { ok: false, error: 'Nama kota wajib (min 2 karakter)' };
+    }
+    await this.prisma.$executeRaw`
+      INSERT INTO city_requests (city, province, contact_name, contact_phone, notes, lat, lng)
+      VALUES (${body.city.trim()}, ${body.province ?? null}, ${body.contactName ?? null},
+              ${body.contactPhone ?? null}, ${body.notes ?? null}, ${body.lat ?? null}, ${body.lng ?? null})
+    `;
+    return { ok: true };
+  }
+
   // Get a published static page by slug (public)
   @Get('pages/:slug')
   async page(@Query('slug') _: string, @Req() req: Request) {
