@@ -118,9 +118,12 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return this.server?.sockets?.adapter?.rooms?.get(ROOM_AVAILABLE)?.size ?? 0;
   }
 
-  // Called by services (PaymentsController, BookingsController) saat status → searching
+  // Called by services (PaymentsController, BookingsController) saat status → searching.
+  // Dual delivery: socket.io ke cleaner yang lagi online (realtime UI update) +
+  // push notif ke SEMUA approved cleaner yang lagi available (Gojek-style — bunyi
+  // di lockscreen meski app closed).
   async broadcastIncomingJob(bookingId: string): Promise<void> {
-    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null }[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt", b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
@@ -129,7 +132,41 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
        WHERE b.id = ${bookingId}::uuid AND b.status = 'searching' AND b.cleaner_id IS NULL LIMIT 1
     `;
     if (!rows[0]) return;
-    this.server.to(ROOM_AVAILABLE).emit('incoming-job', rows[0]);
-    this.log.log(`broadcast incoming-job ${bookingId} to ${this.server.sockets.adapter.rooms.get(ROOM_AVAILABLE)?.size ?? 0} cleaners`);
+    const job = rows[0];
+
+    // Realtime socket broadcast — cleaner yang Job Board terbuka langsung lihat
+    this.server.to(ROOM_AVAILABLE).emit('incoming-job', job);
+    const onlineCount = this.server.sockets.adapter.rooms.get(ROOM_AVAILABLE)?.size ?? 0;
+
+    // Push notif blast ke approved + available cleaners (max 50 per broadcast).
+    // Filter coverage area di /cleaner/jobs/available, jadi notif boleh blast
+    // semua approved — biar cepat response.
+    const cleaners = await this.prisma.$queryRaw<{ user_id: string }[]>`
+      SELECT cp.user_id
+        FROM cleaner_profiles cp
+        JOIN users u ON u.id = cp.user_id
+       WHERE cp.kyc_status = 'approved'
+         AND COALESCE(cp.is_available, TRUE) = TRUE
+         AND u.deleted_at IS NULL
+       LIMIT 50
+    `.catch(() => [] as { user_id: string }[]);
+
+    const payout = Number(job.cleanerPayout ?? 0);
+    const totalLabel = `Rp ${Number(job.totalAmount).toLocaleString('id-ID')}`;
+    const payoutLabel = payout > 0 ? `Bagianmu Rp ${payout.toLocaleString('id-ID')}` : '';
+    const title = `Job baru: ${job.serviceName ?? 'Layanan'}`;
+    const body = `${totalLabel}${payoutLabel ? ' · ' + payoutLabel : ''} · ${job.addressLine.split(',').slice(0, 2).join(',')}`;
+
+    await Promise.all(
+      cleaners.map((c) =>
+        this.push.send({
+          userId: c.user_id, channel: 'booking',
+          title, body,
+          data: { type: 'incoming_job', bookingId },
+        }).catch(() => {}),
+      ),
+    );
+
+    this.log.log(`broadcast incoming-job ${bookingId} → socket=${onlineCount} push=${cleaners.length}`);
   }
 }
