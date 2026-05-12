@@ -33,6 +33,7 @@ import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
+import { safeBack } from '../../src/lib/safeBack';
 
 // Operasional 07:00–21:00. Earliest slot = sekarang + 1 jam (snap ke ops window).
 const OPS_START_HOUR = 7;
@@ -259,7 +260,7 @@ function NewBooking() {
       setStep(step - 1);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } else {
-      router.back();
+      safeBack(router);
     }
   }
 
@@ -362,7 +363,7 @@ function NewBooking() {
         >
           <Text className="font-bold text-white">Request Kota Saya</Text>
         </Pressable>
-        <Pressable onPress={() => router.back()} className="mt-3">
+        <Pressable onPress={() => safeBack(router)} className="mt-3">
           <Text className="font-semibold text-brand-600">Kembali</Text>
         </Pressable>
       </View>

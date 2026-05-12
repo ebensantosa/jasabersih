@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Calendar, DollarSign, MapPin } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { safeBack } from '../../src/lib/safeBack';
 
 const HERO = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=70';
 
@@ -27,7 +28,7 @@ export default function CleanerOnboarding() {
         <SafeAreaView edges={['top']} className="absolute left-0 right-0 top-0">
           <View className="flex-row items-center px-3 py-2">
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => safeBack(router)}
               className="h-10 w-10 items-center justify-center rounded-full bg-white/20"
             >
               <ArrowLeft color="white" size={22} />

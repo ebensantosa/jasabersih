@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function ForgotPassword() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-white" edges={['top']}>
         <View className="flex-row items-center px-3 py-2">
-          <Pressable onPress={() => (step === 2 ? setStep(1) : router.back())} className="h-10 w-10 items-center justify-center">
+          <Pressable onPress={() => (step === 2 ? setStep(1) : safeBack(router))} className="h-10 w-10 items-center justify-center">
             <ArrowLeft color="#0F172A" size={22} />
           </Pressable>
           <Text className="font-bold flex-1 text-base text-ink-900">Lupa Password</Text>

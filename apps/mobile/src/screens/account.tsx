@@ -24,6 +24,7 @@ import { storage } from '../lib/storage';
 import { currentVersion, evaluateUpdate, fetchUpdateInfo } from '../lib/versionCheck';
 import { useAddressesStore } from '../stores/addresses';
 import { toast } from '../stores/ui';
+import { safeBack } from '../lib/safeBack';
 
 export function AccountLayout({ title, children }: { title: string; children: React.ReactNode }) {
   const router = useRouter();
@@ -32,7 +33,7 @@ export function AccountLayout({ title, children }: { title: string; children: Re
       <SafeAreaView edges={['top']} className="bg-brand-700">
         <View className="flex-row items-center px-3 py-2">
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => safeBack(router)}
             className="h-10 w-10 items-center justify-center"
           >
             <ArrowLeft color="white" size={22} />

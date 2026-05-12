@@ -35,6 +35,7 @@ import {
   useBookingsStore,
 } from '../../src/stores/bookings';
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 const FREE_CANCEL_WINDOW_SEC = 10;
 const PENALTY_PCT = 0.25;
@@ -159,7 +160,7 @@ function BookingDetail() {
         ) : (
           <>
             <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
-            <Pressable onPress={() => router.back()} className="mt-4">
+            <Pressable onPress={() => safeBack(router)} className="mt-4">
               <Text className="font-semibold text-brand-600">Kembali</Text>
             </Pressable>
           </>
@@ -304,7 +305,7 @@ function BookingDetail() {
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-brand-700">
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack(router, isCleaner ? '/(tabs)/jobs' : '/(tabs)/bookings')} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
             <Text className="font-bold ml-1 text-base text-white">{isCleaner ? 'Detail Job' : 'Detail Pesanan'}</Text>

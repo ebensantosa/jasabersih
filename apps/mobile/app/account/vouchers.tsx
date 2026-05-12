@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../src/lib/api';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
+import { safeBack } from '../../src/lib/safeBack';
 
 type Available = {
   id: string;
@@ -61,7 +62,7 @@ function VouchersScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
         <View className="flex-row items-center gap-2 border-b border-ink-100 bg-white px-3 py-2">
-          <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+          <Pressable onPress={() => safeBack(router)} className="h-10 w-10 items-center justify-center">
             <ArrowLeft color="#0F172A" size={22} />
           </Pressable>
           <Text className="font-bold flex-1 text-base text-ink-900">Voucher Saya</Text>

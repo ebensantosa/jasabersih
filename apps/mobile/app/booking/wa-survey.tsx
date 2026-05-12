@@ -12,6 +12,7 @@ import { useAuthStore } from '../../src/stores/auth';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 export default function WaSurvey() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function WaSurvey() {
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-brand-700">
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack(router)} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
             <View className="ml-1 flex-1">

@@ -16,6 +16,7 @@ import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
+import { safeBack } from '../../src/lib/safeBack';
 
 type Errors = { name?: string | null; email?: string | null; phone?: string | null; password?: string | null };
 type Touched = { name?: boolean; email?: boolean; phone?: boolean; password?: boolean };
@@ -109,7 +110,7 @@ export default function Register() {
       <LinearGradient colors={theme.gradient} style={{ height: 240 }}>
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack(router)} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
           </View>

@@ -32,6 +32,7 @@ function decodeJwtSub(token: string | undefined): string | null {
   } catch { return null; }
 }
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 const QUICK_REPLIES = ['Sudah sampai?', 'Pakai pintu samping', 'Terima kasih', 'Tolong hati-hati'];
 const EMOJIS = ['👍', '🙏', '❤️', '😀', '😅', '😊', '😢', '🤝', '✅', '👌', '🏠', '🚪', '⏰', '📍', '🙋', '🚿'];
@@ -110,10 +111,7 @@ function Chat() {
         <SafeAreaView edges={['top']} className="bg-white">
           <View className="flex-row items-center gap-2 border-b border-ink-100 px-3 py-2">
             <Pressable
-              onPress={() => {
-                if (router.canGoBack()) router.back();
-                else router.replace('/(tabs)/chats');
-              }}
+              onPress={() => safeBack(router, '/(tabs)/chats')}
               className="h-10 w-10 items-center justify-center"
             >
               <ArrowLeft color="#0F172A" size={22} />

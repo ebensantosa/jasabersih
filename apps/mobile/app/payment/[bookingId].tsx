@@ -13,6 +13,7 @@ import { api } from '../../src/lib/api';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { toast } from '../../src/stores/ui';
 import { formatRupiah } from '../../src/data/catalog';
+import { safeBack } from '../../src/lib/safeBack';
 
 type DirectResult = {
   paymentId: string;
@@ -96,7 +97,7 @@ function PaymentScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
         <View className="flex-row items-center gap-2 border-b border-ink-100 bg-white px-3 py-2">
-          <Pressable onPress={() => (direct ? setDirect(null) : router.back())} className="h-10 w-10 items-center justify-center">
+          <Pressable onPress={() => (direct ? setDirect(null) : safeBack(router))} className="h-10 w-10 items-center justify-center">
             <ArrowLeft color="#0F172A" size={22} />
           </Pressable>
           <View className="flex-1">
