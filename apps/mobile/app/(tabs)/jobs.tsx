@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
+import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { calculateCleanerEarning, calculateCleanerShare } from '../../src/stores/cleanerWallet';
@@ -142,7 +143,7 @@ function JobsScreen() {
                        j.status === 'in_progress' || j.status === 'started' ? 'Sedang dikerjakan' : j.status}
                     </Text>
                     <Text className="font-sans mt-0.5 text-[10px] text-ink-500">
-                      {new Date(j.scheduledAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {formatScheduleWithTz(j.scheduledAt, (j as any).addressLine)}
                     </Text>
                   </View>
                   <View className="items-end">
@@ -192,7 +193,7 @@ function JobsScreen() {
                   <View className="mt-2 flex-row items-center gap-1">
                     <Calendar color="#94A3B8" size={11} />
                     <Text className="font-sans text-[11px] text-ink-500">
-                      {new Date(b.scheduledAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {formatScheduleWithTz(b.scheduledAt, (b as any).addressLine)}
                     </Text>
                   </View>
                   <View className="mt-0.5 flex-row items-start gap-1">

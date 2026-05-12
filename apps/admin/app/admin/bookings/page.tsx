@@ -5,6 +5,7 @@ import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, W
 import { Modal } from '../../../components/ui';
 
 import { ApiOffline, api } from '../../../lib/api';
+import { formatDateTimeWithTz } from '../../../lib/datetime';
 import { useConfirm, usePrompt, useToast } from '../../../components/ui';
 import {
   STATUS_BADGE,
@@ -300,7 +301,7 @@ export default function Bookings() {
                       <div className="text-[11px] text-slate-500">{o.customerPhone}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{o.service ?? o.pricingMode}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{o.scheduledAt}</td>
+                    <td className="px-4 py-3 text-xs text-slate-600">{formatDateTimeWithTz(o.scheduledAt, (o as any).address)}</td>
                     <td className="px-4 py-3">
                       {o.cleanerName ?? <span className="text-amber-700">—</span>}
                     </td>
@@ -425,7 +426,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
               <div><b>Cleaner:</b><br/>{(data.booking as any)?.cleaner_name ?? '—'}</div>
               <div><b>Status:</b> {(data.booking as any)?.status}</div>
               <div><b>Total:</b> Rp {Number((data.booking as any)?.total_amount ?? 0).toLocaleString('id-ID')}</div>
-              <div><b>Jadwal:</b> {new Date((data.booking as any)?.scheduled_at).toLocaleString('id-ID')}</div>
+              <div><b>Jadwal:</b> {formatDateTimeWithTz((data.booking as any)?.scheduled_at, (data.booking as any)?.address_line)}</div>
               <div><b>Bayar:</b> {(data.booking as any)?.paid_at ? new Date((data.booking as any).paid_at).toLocaleString('id-ID') : '—'}</div>
             </div>
             <div className="mt-2 text-xs"><b>Alamat:</b> {(data.booking as any)?.address_line}</div>

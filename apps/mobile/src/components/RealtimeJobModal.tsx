@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 
 import { useJobsRealtime } from '../hooks/useJobsRealtime';
+import { formatScheduleWithTz } from '../lib/datetime';
 import { toast } from '../stores/ui';
 
 const COUNTDOWN_SEC = 30;
@@ -56,7 +57,7 @@ export function RealtimeJobModal() {
 
           <View className="mt-4 space-y-2">
             <Row icon={<MapPin color="#475569" size={16} />} text={incoming.addressLine} />
-            <Row icon={<Calendar color="#475569" size={16} />} text={new Date(incoming.scheduledAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} />
+            <Row icon={<Calendar color="#475569" size={16} />} text={formatScheduleWithTz(incoming.scheduledAt, (incoming as any).addressLine)} />
             <Row icon={<Wallet color="#047857" size={16} />} text={`Total Rp ${total.toLocaleString('id-ID')} · Bagian kamu Rp ${payout.toLocaleString('id-ID')}`} bold />
           </View>
 

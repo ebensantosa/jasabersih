@@ -24,6 +24,7 @@ import { BookingTimeline } from '../../src/components/BookingTimeline';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { RatingFormModal } from '../../src/components/RatingFormModal';
 import { api } from '../../src/lib/api';
+import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useT } from '../../src/lib/i18n';
 import { formatRupiah } from '../../src/data/catalog';
 import { useModeStore } from '../../src/stores/mode';
@@ -397,7 +398,7 @@ function BookingDetail() {
               Detail
             </Text>
             <View className="gap-3">
-              <Detail icon={Calendar} label="Jadwal" value={booking.scheduledAt} />
+              <Detail icon={Calendar} label="Jadwal" value={formatScheduleWithTz(booking.scheduledAt, booking.addressLine)} />
               <Detail icon={MapPin} label="Alamat" value={booking.addressLine} />
               {booking.pricingMode === 'hourly' && booking.hours && (
                 <Detail icon={Clock} label="Durasi" value={`${booking.hours} jam`} />
