@@ -251,7 +251,7 @@ export class AdminBookingsController {
          WHERE id = ${id}::uuid
       `,
       this.prisma.$executeRaw`
-        INSERT INTO payments (booking_id, amount, status, paid_at, method, reference)
+        INSERT INTO payments (booking_id, amount, status, paid_at, payment_method, tripay_reference)
         VALUES (${id}::uuid, ${booking.total_amount}::bigint, 'paid', NOW(), ${method}, ${reference})
       `,
     ]);
