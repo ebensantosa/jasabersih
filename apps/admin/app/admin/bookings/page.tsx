@@ -13,8 +13,9 @@ import {
   formatRupiah,
 } from '../../../lib/mock';
 
-const FILTERS: { key: OrderStatus | 'all'; label: string }[] = [
+const FILTERS: { key: OrderStatus | 'all' | 'needs_manual'; label: string }[] = [
   { key: 'all', label: 'Semua' },
+  { key: 'needs_manual', label: '⚠️ Butuh Assign Manual' },
   { key: 'searching', label: 'Cari Cleaner' },
   { key: 'matched', label: 'Sudah Match' },
   { key: 'in_progress', label: 'Dikerjakan' },
@@ -123,7 +124,7 @@ export default function Bookings() {
     setError(null);
     try {
       const data = (await api.admin.listBookings({
-        status: filter === 'all' ? undefined : filter,
+        status: filter === 'all' || filter === 'needs_manual' ? undefined : filter,
         from: from || undefined,
         to: to || undefined,
       })) as Order[];
@@ -136,8 +137,11 @@ export default function Bookings() {
     }
   }
 
+  const needsManualIds = new Set(needsAttention.map((b) => b.id));
   const filtered = (orders ?? []).filter((o) => {
-    if (filter !== 'all' && o.status !== filter) return false;
+    if (filter === 'needs_manual') {
+      if (!needsManualIds.has(o.id)) return false;
+    } else if (filter !== 'all' && o.status !== filter) return false;
     if (
       q &&
       !`${o.id} ${o.customerName} ${o.service} ${o.city}`.toLowerCase().includes(q.toLowerCase())
@@ -281,7 +285,7 @@ export default function Bookings() {
                 const s = STATUS_BADGE[o.status];
                 const canAssign = o.status === 'searching' || !o.cleanerName;
                 return (
-                  <tr key={o.id} className="hover:bg-slate-50">
+                  <tr key={o.id} className={`hover:bg-slate-50 ${needsManualIds.has(o.id) ? 'border-l-4 border-amber-400 bg-amber-50/30' : ''}`}>
                     <td className="px-3 py-3">
                       <input
                         type="checkbox"

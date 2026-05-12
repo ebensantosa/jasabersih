@@ -170,7 +170,7 @@ function NewBooking() {
   const scrollRef = useRef<ScrollView>(null);
 
   const dirtMultiplier = DIRT_LEVELS.find((d) => d.level === dirtLevel)?.multiplier ?? 1;
-  const photoPenalty = dirtLevel >= 4 && photoCount < 3 ? 0.25 : 0;
+  const photoPenalty = 0;
   const rawPackagePrice = pkg?.price ?? 0;
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
   const deepSurcharge = cleanMode === 'deep' ? basePrice - rawPackagePrice : 0;
@@ -270,7 +270,7 @@ function NewBooking() {
       return;
     }
     setAddressError(null);
-    if (dirtLevel >= 4 && photoCount < 3) {
+    if (dirtLevel >= 4 && photoCount < 1) {
       Alert.alert(
         'Foto wajib di skala 4–5',
         'Min 3 foto disarankan agar cleaner siap dengan alat & estimasi waktu yang tepat. Lanjut tanpa foto?',
@@ -520,6 +520,20 @@ function NewBooking() {
                     Tap +/- untuk naik/turun 10 m². Min 10 m², max 500 m².
                   </Text>
                 </View>
+                {areaM2 >= 200 && (
+                  <Pressable
+                    onPress={() => router.push('/booking/wa-survey')}
+                    className="mt-3 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3"
+                  >
+                    <AlertTriangle color="#047857" size={16} />
+                    <View className="flex-1">
+                      <Text className="font-bold text-xs text-emerald-900">Luas {'>'} 200 m² — perlu konsultasi</Text>
+                      <Text className="font-sans mt-0.5 text-[10px] text-emerald-800">
+                        Tap untuk chat WA tim CS biar dapet quote sesuai luas + kondisi.
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
               </Section>
             </>
           )}
