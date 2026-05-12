@@ -49,9 +49,13 @@ export class AdminController {
 
   @Get('cleaners')
   async listCleaners(@Query('status') status?: string) {
-    const where = status
-      ? `WHERE u.is_freelancer = TRUE AND cp.kyc_status = '${status.replace(/'/g, '')}'`
-      : `WHERE u.is_freelancer = TRUE`;
+    // status=active → KYC-approved & user aktif (siap di-assign). Selain itu treat as kyc_status literal.
+    const where =
+      status === 'active'
+        ? `WHERE u.is_freelancer = TRUE AND u.status = 'active' AND COALESCE(u.deleted_at::text, '') = '' AND cp.kyc_status = 'approved'`
+        : status
+          ? `WHERE u.is_freelancer = TRUE AND cp.kyc_status = '${status.replace(/'/g, '')}'`
+          : `WHERE u.is_freelancer = TRUE`;
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         u.id, u.name, u.phone, u.created_at AS "joinedAt",

@@ -159,7 +159,10 @@ function BookingDetail() {
         ) : (
           <>
             <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
-            <Pressable onPress={() => router.back()} className="mt-4">
+            <Pressable onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace(isCleaner ? '/(tabs)/jobs' : '/(tabs)/bookings');
+            }} className="mt-4">
               <Text className="font-semibold text-brand-600">Kembali</Text>
             </Pressable>
           </>
@@ -304,7 +307,10 @@ function BookingDetail() {
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-brand-700">
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace(isCleaner ? '/(tabs)/jobs' : '/(tabs)/bookings');
+            }} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
             <Text className="font-bold ml-1 text-base text-white">{isCleaner ? 'Detail Job' : 'Detail Pesanan'}</Text>
@@ -347,6 +353,13 @@ function BookingDetail() {
               </Text>
             </View>
           </View>
+
+          {/* Foto Pekerjaan — cleaner: taruh di atas biar gak kelewat upload before/after */}
+          {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
+            <View className="mx-4 mt-3">
+              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
+            </View>
+          )}
 
           {/* Live searching indicator + countdown — customer only */}
           {!isCleaner && booking.status === 'searching' && !searchTimeout && (
@@ -556,7 +569,7 @@ function BookingDetail() {
             </View>
           )}
 
-          {!booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
+          {!isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
               <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
             </View>
