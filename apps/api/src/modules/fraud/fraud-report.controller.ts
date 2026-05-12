@@ -114,7 +114,7 @@ export class FraudReportController {
 
       // Push notif customer with voucher code
       void this.push.send({
-        userId: r.reporter_id, channel: 'reward',
+        userId: r.reporter_id, channel: 'wallet',
         title: `Voucher Rp ${amount.toLocaleString('id-ID')} untukmu! 🎉`,
         body: `Terima kasih sudah lapor. Pakai kode ${voucherCode} di order berikutnya.`,
         data: { type: 'fraud_report_approved', voucherCode },
