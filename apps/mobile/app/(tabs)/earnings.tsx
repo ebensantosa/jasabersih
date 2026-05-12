@@ -181,7 +181,6 @@ function EarningsScreen() {
             <Text className="font-bold text-sm text-ink-900">Tips Naikin Pendapatan</Text>
           </View>
           <View className="mt-3 gap-2">
-            <Tip text="Aktifkan mode 'Bawa Alat' untuk komisi 50–60%" />
             <Tip text="Jaga rating ≥ 4.5 untuk dapat job premium duluan" />
             <Tip text="Tambah area layanan di kota tetangga = lebih banyak job" />
             <Tip text="Selesaikan job tepat waktu — bonus loyalitas" />
