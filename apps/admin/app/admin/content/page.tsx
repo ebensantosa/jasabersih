@@ -833,7 +833,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
       }
     >
       <div className="space-y-3">
-        <Input label="Code" required value={form.code} onChange={(v) => setForm({ ...form, code: v })} error={errors.code} placeholder="kamar, dapur, kantor, dll" disabled={isEdit} helpText="Lowercase, tanpa spasi. Tidak bisa diubah setelah dibuat." />
+        <Input label="Code" required value={form.code} onChange={(v) => isEdit ? null : setForm({ ...form, code: v })} error={errors.code} placeholder="kamar, dapur, kantor, dll" helpText={isEdit ? 'Tidak bisa diubah setelah dibuat.' : 'Lowercase, tanpa spasi.'} />
         <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih Kamar" />
         <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Cleaning kamar tidur" />
         <ImageUpload value={form.iconUrl} onChange={(url) => setForm({ ...form, iconUrl: url })} folder="services" />
