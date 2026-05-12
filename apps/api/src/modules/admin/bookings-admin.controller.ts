@@ -76,8 +76,8 @@ export class AdminBookingsController {
     }));
 
     const charges = await this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT id, charge_type AS "chargeType", amount, description, created_at AS "createdAt"
-        FROM additional_charges WHERE booking_id = ${id}::uuid ORDER BY created_at ASC
+      SELECT id, reason, amount, status, requested_at AS "requestedAt", resolved_at AS "resolvedAt"
+        FROM additional_charges WHERE booking_id = ${id}::uuid ORDER BY requested_at ASC
     `;
 
     const payments = await this.prisma.$queryRaw<Record<string, unknown>[]>`
