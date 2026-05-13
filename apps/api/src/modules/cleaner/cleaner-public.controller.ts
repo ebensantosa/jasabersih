@@ -48,7 +48,7 @@ export class CleanerPublicController {
       SELECT r.rating, r.review, r.created_at AS "createdAt",
              u.name AS "raterName"
         FROM ratings r LEFT JOIN users u ON u.id = r.rater_id
-       WHERE r.ratee_id = ${id}::uuid AND r.review IS NOT NULL
+       WHERE r.ratee_id = ${id}::uuid
        ORDER BY r.created_at DESC LIMIT 20
     `;
 

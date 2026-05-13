@@ -111,7 +111,7 @@ export class RatingsController {
              u.name AS "raterName"
         FROM ratings r
         LEFT JOIN users u ON u.id = r.rater_id
-       WHERE r.ratee_id = ${userId}::uuid AND r.review IS NOT NULL
+       WHERE r.ratee_id = ${userId}::uuid
        ORDER BY r.created_at DESC LIMIT 50
     `;
     // Sensor nama: "Ebentera Santosa" → "Ebentera S."

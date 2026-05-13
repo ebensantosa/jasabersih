@@ -83,22 +83,6 @@ export function RatingFormModal({
               />
             </View>
 
-            <View>
-              <Text className="font-semibold mb-2 text-xs text-ink-700">Beri Tip (opsional)</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {TIP_OPTIONS.map((amt) => (
-                  <Pressable
-                    key={amt}
-                    onPress={() => setTipAmount(amt)}
-                    className={`rounded-full border px-4 py-2 ${tipAmount === amt ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                  >
-                    <Text className={`font-semibold text-xs ${tipAmount === amt ? 'text-brand-700' : 'text-ink-700'}`}>
-                      {amt === 0 ? 'Tanpa tip' : `Rp ${amt.toLocaleString('id-ID')}`}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
           </ScrollView>
 
           <View className="flex-row gap-2 border-t border-ink-100 p-4">
