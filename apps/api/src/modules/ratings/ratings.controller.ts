@@ -93,7 +93,7 @@ export class RatingsController {
   // Public: list ratings received by a cleaner
   @Get('cleaner/:userId')
   async forCleaner(@Param('userId') userId: string) {
-    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+    const rows = await this.prisma.$queryRaw<{ id: string; rating: number; review: string | null; createdAt: Date; raterName: string | null }[]>`
       SELECT r.id, r.rating, r.review, r.created_at AS "createdAt",
              u.name AS "raterName"
         FROM ratings r
@@ -101,5 +101,20 @@ export class RatingsController {
        WHERE r.ratee_id = ${userId}::uuid AND r.review IS NOT NULL
        ORDER BY r.created_at DESC LIMIT 50
     `;
+    // Sensor nama: "Ebentera Santosa" → "Ebentera S."
+    return rows.map((r) => ({
+      ...r,
+      raterName: r.raterName ? maskName(r.raterName) : null,
+    }));
   }
+}
+
+function maskName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 1) {
+    const w = parts[0]!;
+    return w.length <= 2 ? w : w[0]! + '*'.repeat(Math.max(1, w.length - 2)) + w.slice(-1);
+  }
+  // Keep first name, initial of last
+  return `${parts[0]} ${parts[parts.length - 1]![0]!}.`;
 }

@@ -40,6 +40,7 @@ function CleanerProfileScreen() {
   const [languagesText, setLanguagesText] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [reviews, setReviews] = useState<{ id: string; rating: number; review: string; createdAt: string; raterName: string | null }[]>([]);
 
   async function uploadPhoto() {
     try {
@@ -87,6 +88,11 @@ function CleanerProfileScreen() {
         const me = await api.get('/auth/me');
         const u = me.data?.data ?? me.data;
         setPhotoUrl(u?.photoUrl ?? u?.photo_url ?? null);
+        // Fetch reviews
+        if (u?.id) {
+          const rr = await api.get(`/ratings/cleaner/${u.id}`);
+          setReviews((rr.data?.data ?? rr.data ?? []) as any[]);
+        }
       } catch {}
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal load profil');
@@ -173,6 +179,36 @@ function CleanerProfileScreen() {
                 <Stat icon={<BadgeCheck size={14} color="#1D4ED8" />} label="Job Selesai" value={String(profile?.totalJobsDone ?? 0)} sub="all-time" />
                 <Stat icon={<Wrench size={14} color="#475569" />} label="Tier" value={(profile?.tier ?? 'pending').toUpperCase()} sub="" />
               </View>
+            </View>
+
+            <View className="rounded-2xl bg-white p-4">
+              <Text className="font-bold mb-2 text-sm text-ink-900">Review dari Customer</Text>
+              {reviews.length === 0 ? (
+                <Text className="font-sans text-[12px] text-ink-500">Belum ada review. Selesaikan job dulu — customer akan kasih rating.</Text>
+              ) : (
+                reviews.map((rv, i) => (
+                  <View key={rv.id} className={`py-3 ${i > 0 ? 'border-t border-ink-100' : ''}`}>
+                    <View className="flex-row items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={12}
+                          color={s <= rv.rating ? '#FACC15' : '#E2E8F0'}
+                          fill={s <= rv.rating ? '#FACC15' : '#E2E8F0'}
+                          strokeWidth={1}
+                        />
+                      ))}
+                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName ?? 'Anonim'}</Text>
+                      <Text className="font-sans ml-1 text-[10px] text-ink-400">
+                        · {new Date(rv.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </Text>
+                    </View>
+                    {rv.review && (
+                      <Text className="font-sans mt-1 text-[12px] text-ink-700">{rv.review}</Text>
+                    )}
+                  </View>
+                ))
+              )}
             </View>
 
             {profile?.kycStatus !== 'approved' && (
