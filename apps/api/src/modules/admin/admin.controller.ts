@@ -58,7 +58,7 @@ export class AdminController {
           : `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL`;
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
-        u.id, u.name, u.phone, u.created_at AS "joinedAt",
+        u.id, u.name, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         cp.kyc_status AS status,
         cp.tier,
         cp.brings_tools AS "bringsTools",
@@ -359,7 +359,7 @@ export class AdminController {
   async listUsers() {
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
-        u.id, u.name, u.email, u.phone, u.created_at AS "joinedAt",
+        u.id, u.name, u.email, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         u.is_customer AS "isCustomer",
         u.is_freelancer AS "isFreelancer",
         (SELECT COUNT(*) FROM bookings WHERE customer_id = u.id) AS "totalOrders"

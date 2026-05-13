@@ -13,6 +13,7 @@ type Row = {
   name?: string;
   email?: string | null;
   phone?: string;
+  photoUrl?: string | null;
   status?: string | null;
   joinedAt?: string;
   totalOrders?: number;
@@ -140,7 +141,18 @@ export default function UsersPage() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-t hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium">{r.name ?? '—'}</td>
+                    <td className="px-4 py-2 font-medium">
+                      <div className="flex items-center gap-2">
+                        {r.photoUrl ? (
+                          <img src={r.photoUrl} alt={r.name ?? ''} className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500">
+                            {(r.name ?? r.phone ?? '?')[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <span>{r.name ?? '—'}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-2 text-xs"><div>{r.email ?? '—'}</div><div className="text-slate-500">{r.phone}</div></td>
                     {tab === 'customer' ? (
                       <>
