@@ -50,6 +50,20 @@ export class RatingsController {
       throw new BadRequestException('Booking ini sudah pernah di-rate.');
     }
 
+    // Customer submit rating = implicit "terima & konfirmasi" → release escrow
+    // (kalau rating ≥ 4 = puas, auto-release. Rating 1-3 berarti customer kurang puas,
+    // biarkan tetap di escrow sampai 24h atau sampai dispute resolved.)
+    if (body.rating >= 4) {
+      await this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries
+           SET status = 'CLEARED', cleared_at = NOW()
+         WHERE reference_type = 'booking'
+           AND reference_id = ${body.bookingId}::uuid
+           AND status = 'PENDING'
+           AND account_type = 'earnings'
+      `;
+    }
+
     // Recompute cleaner_profiles aggregate (atomic)
     await this.prisma.$executeRaw`
       UPDATE cleaner_profiles cp

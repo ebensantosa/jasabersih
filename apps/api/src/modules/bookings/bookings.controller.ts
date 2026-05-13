@@ -206,6 +206,27 @@ export class BookingsController {
     return { ok: true };
   }
 
+  // Customer konfirmasi terima — skip cooling-off 24h, langsung release escrow ke cleaner
+  @Post(':id/confirm')
+  async confirm(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRawUnsafe<{ status: string; customer_id: string }[]>(
+      `SELECT status, customer_id FROM bookings WHERE id = $1::uuid LIMIT 1`, id,
+    );
+    if (rows.length === 0) throw new BadRequestException('Booking tidak ditemukan');
+    if (rows[0]!.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu');
+    if (rows[0]!.status !== 'completed') throw new BadRequestException('Booking harus berstatus completed dulu');
+
+    // Release semua earnings escrow untuk booking ini
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE wallet_ledger_entries
+          SET status = 'CLEARED', cleared_at = NOW()
+        WHERE reference_type = 'booking' AND reference_id = $1::uuid
+          AND status = 'PENDING' AND account_type = 'earnings'`,
+      id,
+    );
+    return { ok: true };
+  }
+
   @Post(':id/cancel')
   async cancel(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     const rows = await this.prisma.$queryRawUnsafe<{ status: string; paid_at: Date | null }[]>(

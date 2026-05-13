@@ -41,7 +41,7 @@ export class AutoCompleteService {
         ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 ? [
           this.prisma.$executeRaw`
             INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-            VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'CLEARED', NOW(), 'Pembayaran auto-complete (in_progress timeout)')
+            VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'PENDING', NULL, 'Earning auto-complete — escrow 24 jam')
             ON CONFLICT DO NOTHING
           `,
         ] : []),

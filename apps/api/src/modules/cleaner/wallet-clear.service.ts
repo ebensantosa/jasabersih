@@ -15,14 +15,22 @@ export class WalletClearService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  // Run setiap 15 menit (lebih responsif dibanding HOUR) — escrow release ASAP.
+  @Cron('*/15 * * * *')
   async clearMature(): Promise<void> {
+    // Skip entries yang booking-nya punya dispute aktif (open/in_progress/escalated)
+    // — admin harus resolve dulu sebelum cleaner dapat uang.
     const result = await this.prisma.$executeRaw`
-      UPDATE wallet_ledger_entries
+      UPDATE wallet_ledger_entries w
          SET status = 'CLEARED', cleared_at = NOW()
-       WHERE status = 'PENDING'
-         AND created_at < NOW() - (${COOLING_HOURS}::int * INTERVAL '1 hour')
+       WHERE w.status = 'PENDING'
+         AND w.created_at < NOW() - (${COOLING_HOURS}::int * INTERVAL '1 hour')
+         AND NOT EXISTS (
+           SELECT 1 FROM disputes d
+            WHERE d.booking_id = w.reference_id
+              AND d.status IN ('open', 'in_progress', 'escalated')
+         )
     `;
-    if (Number(result) > 0) this.log.log(`Cleared ${result} matured wallet entries (${COOLING_HOURS}h cooling-off)`);
+    if (Number(result) > 0) this.log.log(`Cleared ${result} matured wallet entries (${COOLING_HOURS}h cooling-off, no active dispute)`);
   }
 }

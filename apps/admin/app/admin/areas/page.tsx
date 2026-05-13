@@ -5,6 +5,7 @@ import { Inbox, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Badge, Button, Input, Modal, Switch, Textarea, useConfirm, useToast } from '../../../components/ui';
+import { MapPicker } from '../../../components/MapPicker';
 
 type SubTab = 'areas' | 'requests';
 
@@ -142,9 +143,19 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
         {!isEdit && <>
           <Input label="Nama Area" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Yogyakarta Kota" />
           <Input label="Kota" required value={form.city} onChange={(v) => setForm({ ...form, city: v })} placeholder="Yogyakarta" />
-          <div className="grid grid-cols-2 gap-2">
-            <Input label="Latitude" value={form.lat} onChange={(v) => setForm({ ...form, lat: v })} placeholder="-7.7956" />
-            <Input label="Longitude" value={form.lng} onChange={(v) => setForm({ ...form, lng: v })} placeholder="110.3695" />
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Titik Pusat (Centroid)</label>
+            <div className="mt-1">
+              <MapPicker
+                lat={Number(form.lat) || -7.7956}
+                lng={Number(form.lng) || 110.3695}
+                onChange={(lat, lng) => setForm((f) => ({ ...f, lat: String(lat.toFixed(6)), lng: String(lng.toFixed(6)) }))}
+              />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Input label="Latitude" value={form.lat} onChange={(v) => setForm({ ...form, lat: v })} placeholder="-7.7956" />
+              <Input label="Longitude" value={form.lng} onChange={(v) => setForm({ ...form, lng: v })} placeholder="110.3695" />
+            </div>
           </div>
         </>}
         <Input label="Radius (meter)" type="number" value={form.radiusM} onChange={(v) => setForm({ ...form, radiusM: v })} helpText="15000 = radius 15 km" />

@@ -26,16 +26,19 @@ export class CleanerWalletController {
   // GET /v1/cleaner/wallet — saldo + ledger 20 entry terakhir
   @Get('wallet')
   async wallet(@CurrentUser() user: AuthenticatedUser) {
-    const balanceRows = await this.prisma.$queryRaw<{ earnings: number | null; withdrawn: number | null }[]>`
+    const balanceRows = await this.prisma.$queryRaw<{ earnings_cleared: number | null; earnings_pending: number | null; withdrawn: number | null }[]>`
       SELECT
-        COALESCE(SUM(CASE WHEN account_type = 'earnings' THEN amount ELSE 0 END), 0) AS earnings,
+        COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS earnings_cleared,
+        COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'PENDING' THEN amount ELSE 0 END), 0) AS earnings_pending,
         COALESCE(SUM(CASE WHEN account_type = 'withdrawal' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS withdrawn
       FROM wallet_ledger_entries
       WHERE user_id = ${user.id}::uuid
     `;
-    const earnings = Number(balanceRows[0]?.earnings ?? 0);
+    const earningsCleared = Number(balanceRows[0]?.earnings_cleared ?? 0);
+    const earningsPending = Number(balanceRows[0]?.earnings_pending ?? 0);
     const withdrawn = Number(balanceRows[0]?.withdrawn ?? 0);
-    const balance = earnings - withdrawn;
+    const balance = earningsCleared - withdrawn; // saldo cair-able
+    const earnings = earningsCleared + earningsPending; // total all-time (untuk back-compat)
 
     const ledger = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, account_type AS "accountType", amount,
@@ -58,6 +61,7 @@ export class CleanerWalletController {
     return {
       balance,
       earnings,
+      earningsPending, // escrow 24h yang belum cair
       withdrawn,
       pendingWithdrawalAmount: Number(pendingRows[0]?.amount ?? 0),
       pendingWithdrawalCount: Number(pendingRows[0]?.count ?? 0),

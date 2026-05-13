@@ -306,7 +306,7 @@ export class CleanerJobsController {
         await this.prisma.$executeRaw`
           INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
           VALUES (${user.id}::uuid, 'earnings', ${booking.cleaner_payout}::bigint, 'booking', ${id}::uuid,
-                  'CLEARED', NOW(), 'Pembayaran job completed')
+                  'PENDING', NULL, 'Earning job — escrow 24 jam (auto-cair kalau gak ada komplain)')
           ON CONFLICT DO NOTHING
         `;
         await this.prisma.$executeRaw`

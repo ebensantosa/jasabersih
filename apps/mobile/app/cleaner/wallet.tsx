@@ -8,6 +8,7 @@ import {
   TrendingUp,
   XCircle,
 } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +24,18 @@ function CleanerWallet() {
   const entries = useCleanerWalletStore((s) => s.entries);
   const balance = useCleanerWalletStore((s) => s.balance());
   const pending = useCleanerWalletStore((s) => s.pendingTotal());
+
+  const [escrowPending, setEscrowPending] = useState(0);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { api } = await import('../../src/lib/api');
+        const r = await api.get('/cleaner/wallet');
+        const d = r.data?.data ?? r.data;
+        setEscrowPending(Number(d?.earningsPending ?? 0));
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const totalEarning = entries
     .filter((e) => e.type === 'earning')
@@ -54,6 +67,11 @@ function CleanerWallet() {
             <View className="px-5 pb-3 pt-2">
               <Text className="font-medium text-xs text-white/70">Saldo Bisa Ditarik</Text>
               <Text className="font-bold mt-1 text-3xl text-white">{formatRupiah(balance)}</Text>
+              {escrowPending > 0 && (
+                <Text className="font-medium mt-1 text-[11px] text-amber-200">
+                  Escrow {formatRupiah(escrowPending)} — cair otomatis 24 jam setelah job selesai
+                </Text>
+              )}
               {pending > 0 && (
                 <Text className="font-medium mt-1 text-[11px] text-amber-200">
                   â³ {formatRupiah(pending)} dalam proses penarikan
