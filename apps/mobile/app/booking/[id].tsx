@@ -15,7 +15,18 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+
+function confirmCancel(title: string, message: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) onConfirm();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Tidak' },
+    { text: 'Ya, batalkan', style: 'destructive', onPress: onConfirm },
+  ]);
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -195,14 +206,10 @@ function BookingDetail() {
     if (!booking) return;
     // Belum bayar → cancel langsung tanpa penalty
     if (booking.status === 'pending_payment' || !booking.paidAt) {
-      Alert.alert('Batalkan Pesanan?', 'Belum dibayar — gratis batal.', [
-        { text: 'Tidak' },
-        {
-          text: 'Ya, batalkan',
-          style: 'destructive',
-          onPress: () => cancel(booking.id, booking.totalPrice),
-        },
-      ]);
+      confirmCancel('Batalkan Pesanan?', 'Belum dibayar — gratis batal.', () => {
+        cancel(booking.id, booking.totalPrice);
+        toast.success('Pesanan dibatalkan');
+      });
       return;
     }
 
@@ -262,11 +269,8 @@ function BookingDetail() {
         ? `Per Jam${booking.hourlyTierName ? ` · ${booking.hourlyTierName}` : ''}${booking.hours ? ` × ${booking.hours}j` : ''}`
         : 'Konsultasi WhatsApp';
 
-  // Full-screen searching mode: hide chrome, only show searching view + 5s cancel window
+  // Full-screen searching mode: pesanan sudah dibayar — tidak ada cancel
   if (!isCleaner && booking.status === 'searching' && !searchTimeout) {
-    const SEARCH_CANCEL_WINDOW_SEC = 5;
-    const canStillCancel = elapsedSec <= SEARCH_CANCEL_WINDOW_SEC;
-    const cancelLeft = Math.max(0, SEARCH_CANCEL_WINDOW_SEC - elapsedSec);
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -276,15 +280,6 @@ function BookingDetail() {
               <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
             </View>
             <View className="gap-2 px-4 pb-4">
-              <Pressable
-                disabled={!canStillCancel}
-                onPress={onCancel}
-                className={`items-center rounded-2xl border py-3 ${canStillCancel ? 'border-red-300 bg-white' : 'border-ink-200 bg-ink-100'}`}
-              >
-                <Text className={`font-bold text-sm ${canStillCancel ? 'text-red-600' : 'text-ink-400'}`}>
-                  {canStillCancel ? `Batalkan (${cancelLeft}s)` : 'Tidak bisa dibatalkan — sedang dicari'}
-                </Text>
-              </Pressable>
               <Pressable
                 onPress={() => router.replace('/')}
                 className="items-center rounded-2xl bg-brand-600 py-3"
@@ -382,21 +377,15 @@ function BookingDetail() {
                 atau kurang cleaner di area kamu. Yuk lanjut konsultasi via WhatsApp — CS akan
                 bantu cariin cleaner.
               </Text>
-              <View className="mt-3 flex-row gap-2">
-                <Pressable
-                  onPress={() => booking && cancel(booking.id)}
-                  className="flex-1 items-center rounded-xl border border-ink-300 bg-white py-2.5"
-                >
-                  <Text className="font-semibold text-xs text-ink-700">Batalkan Order</Text>
-                </Pressable>
+              <View className="mt-3">
                 <Pressable
                   onPress={() => router.push('/booking/wa-survey')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-success py-2.5"
+                  className="flex-row items-center justify-center gap-1.5 rounded-xl bg-success py-2.5"
                 >
                   <View className="h-4 w-4 items-center justify-center rounded-full bg-white">
                     <WaIcon size={11} />
                   </View>
-                  <Text className="font-bold text-xs text-white">Chat ke WA</Text>
+                  <Text className="font-bold text-xs text-white">Chat ke WA untuk bantuan</Text>
                 </Pressable>
               </View>
             </View>
@@ -609,15 +598,6 @@ function BookingDetail() {
                 </View>
               ) : (
                 <View className="flex-row gap-2 p-4">
-                  <Pressable
-                    onPress={onCancel}
-                    className="flex-row items-center justify-center gap-1.5 rounded-2xl border border-danger px-4 py-3.5"
-                  >
-                    <XCircle color="#DC2626" size={16} strokeWidth={2.2} />
-                    <Text className="font-semibold text-sm text-danger">
-                      {inFreeCancelWindow ? t('bd.free_cancel_left', { sec: freeCancelLeft }) : t('bd.cancel_btn')}
-                    </Text>
-                  </Pressable>
                   {booking.status === 'matched' ||
                   booking.status === 'on_the_way' ||
                   booking.status === 'in_progress' ? (
