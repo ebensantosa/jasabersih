@@ -55,12 +55,19 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Cleaner masuk pool available untuk terima broadcast job
   @SubscribeMessage('go-online')
-  async goOnline(@ConnectedSocket() client: AuthedSocket): Promise<{ ok: boolean }> {
+  async goOnline(@ConnectedSocket() client: AuthedSocket): Promise<{ ok: boolean; error?: string; code?: string }> {
     // Verify cleaner approved
     const rows = await this.prisma.$queryRaw<{ kyc_status: string | null }[]>`
       SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${client.data.userId}::uuid LIMIT 1
     `;
-    if (rows[0]?.kyc_status !== 'approved') return { ok: false };
+    if (rows[0]?.kyc_status !== 'approved') return { ok: false, error: 'KYC belum approved', code: 'KYC_NOT_APPROVED' };
+    // Gate: butuh foto profil
+    const photoRow = await this.prisma.$queryRaw<{ photo_url: string | null }[]>`
+      SELECT photo_url FROM users WHERE id = ${client.data.userId}::uuid LIMIT 1
+    `;
+    if (!photoRow[0]?.photo_url) {
+      return { ok: false, error: 'Upload foto profil dulu sebelum bisa online', code: 'NEED_PROFILE_PHOTO' };
+    }
     await client.join(ROOM_AVAILABLE);
     await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = TRUE WHERE user_id = ${client.data.userId}::uuid`;
     return { ok: true };
