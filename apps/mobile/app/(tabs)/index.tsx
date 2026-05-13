@@ -10,6 +10,7 @@ import {
   MapPin,
   Plus,
   Search,
+  SlidersHorizontal,
   Sparkles,
   Tag,
   Wallet,
@@ -225,6 +226,7 @@ export default function Home() {
             )}
           </View>
         </View>
+
 
         {BUNDLE_SERVICES.length > 0 && (
           <View className="mx-4 mt-3 rounded-2xl bg-white pb-3 pt-4" style={{ elevation: 2 }}>

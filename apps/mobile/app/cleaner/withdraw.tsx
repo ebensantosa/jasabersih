@@ -10,6 +10,7 @@ import { MIN_WITHDRAW, useCleanerWalletStore } from '../../src/stores/cleanerWal
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
+import { safeBack } from '../../src/lib/safeBack';
 
 const METHODS = [
   { code: 'bca', label: 'BCA', kind: 'bank' },
@@ -70,7 +71,7 @@ function Withdraw() {
         // Mirror to local store untuk UI cepat (akan ke-overwrite saat sync next)
         addWithdrawal(amount, { method: method.label, account, name: accountName });
         toast.success('Permintaan tarik dana terkirim. Admin akan review.');
-        router.back();
+        safeBack();
       })
       .catch((err: any) => {
         const msg = err?.response?.data?.error?.message ?? err?.message ?? 'Gagal request penarikan';
@@ -85,7 +86,7 @@ function Withdraw() {
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-brand-700">
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
             <View className="ml-1 flex-1">

@@ -14,6 +14,7 @@ import { useCleanerStore } from '../../src/stores/cleaner';
 import { useModeStore } from '../../src/stores/mode';
 import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 export default function Login() {
   const router = useRouter();
@@ -91,7 +92,7 @@ export default function Login() {
       <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 220 }}>
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
           </View>

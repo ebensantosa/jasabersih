@@ -10,6 +10,7 @@ import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
 import { useAuthStore } from '../../src/stores/auth';
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 export default function ServiceDetail() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function ServiceDetail() {
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
             <Text className="font-bold flex-1 text-base text-ink-900">Konsultasi via WhatsApp</Text>
@@ -133,7 +134,7 @@ export default function ServiceDetail() {
             <SafeAreaView edges={['top']} className="absolute left-0 right-0 top-0">
               <View className="flex-row items-center justify-between px-4 py-2">
                 <Pressable
-                  onPress={() => router.back()}
+                  onPress={() => safeBack()}
                   className="h-10 w-10 items-center justify-center rounded-full bg-white"
                   style={{ elevation: 4 }}
                 >

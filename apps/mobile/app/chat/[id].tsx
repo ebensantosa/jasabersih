@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Phone, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
+import { ArrowLeft, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -31,6 +31,7 @@ function decodeJwtSub(token: string | undefined): string | null {
   } catch { return null; }
 }
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 const QUICK_REPLIES = ['Sudah sampai?', 'Pakai pintu samping', 'Terima kasih', 'Tolong hati-hati'];
 
@@ -44,21 +45,53 @@ function Chat() {
   const [text, setText] = useState('');
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
+  const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
-  // Fetch cleaner rating untuk header (kalau cleaner sudah di-assign)
+  // Fetch cleaner rating + presence untuk header (kalau cleaner sudah di-assign)
   useEffect(() => {
     const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
     if (!cleanerId) return;
+    let alive = true;
     import('../../src/lib/api').then(({ api }) => {
       api.get(`/ratings/cleaner/${cleanerId}`).then((r) => {
         const list: any[] = r.data?.data ?? [];
         if (list.length === 0) return;
         const sum = list.reduce((s, x) => s + Number(x.rating ?? 0), 0);
-        setCleanerStats({ ratingAvg: sum / list.length, ratingCount: list.length });
+        if (alive) setCleanerStats({ ratingAvg: sum / list.length, ratingCount: list.length });
       }).catch(() => {});
+
+      const fetchPresence = () => {
+        api.get(`/users/${cleanerId}/presence`).then((r) => {
+          const d = r.data?.data ?? r.data;
+          if (alive) setPeerPresence({ isOnline: !!d?.isOnline, lastSeenAt: d?.lastSeenAt ?? null });
+        }).catch(() => {});
+      };
+      fetchPresence();
+      const t = setInterval(fetchPresence, 30_000);
+      return () => { alive = false; clearInterval(t); };
     });
+    return () => { alive = false; };
   }, [booking]);
+
+  function presenceLabel(): string {
+    if (otherTyping) return 'sedang mengetik…';
+    if (!peerPresence) return 'tap untuk lihat profil';
+    if (peerPresence.isOnline) return 'Online';
+    if (!peerPresence.lastSeenAt) return 'tap untuk lihat profil';
+    const t = new Date(peerPresence.lastSeenAt);
+    const diffMin = (Date.now() - t.getTime()) / 60_000;
+    if (diffMin < 60) return `Aktif ${Math.max(1, Math.floor(diffMin))} menit lalu`;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = new Date(t); day.setHours(0, 0, 0, 0);
+    const dayDiff = (today.getTime() - day.getTime()) / 86400000;
+    const hh = String(t.getHours()).padStart(2, '0');
+    const mm = String(t.getMinutes()).padStart(2, '0');
+    if (dayDiff === 0) return `Aktif jam ${hh}:${mm}`;
+    if (dayDiff === 1) return `Aktif kemarin ${hh}:${mm}`;
+    const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    return `Aktif ${t.getDate()} ${months[t.getMonth()]}`;
+  }
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -105,7 +138,7 @@ function Chat() {
       <KeyboardAvoidingView className="flex-1 bg-ink-50" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <SafeAreaView edges={['top']} className="bg-white">
           <View className="flex-row items-center gap-2 border-b border-ink-100 px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
@@ -128,17 +161,11 @@ function Chat() {
                   </View>
                 )}
               </View>
-              <Text className={`font-medium text-[11px] ${status === 'connected' ? 'text-success' : 'text-ink-400'}`}>
-                {status === 'connected' ? (otherTyping ? 'sedang mengetik…' : 'Online · tap untuk lihat profil') :
-                 status === 'connecting' ? 'Menyambung…' :
-                 status === 'error' ? 'Koneksi error' : 'Offline'}
+              <Text className={`font-medium text-[11px] ${peerPresence?.isOnline ? 'text-success' : 'text-ink-500'}`}>
+                {status === 'connecting' ? 'Menyambung…' :
+                 status === 'error' ? 'Koneksi error' :
+                 presenceLabel()}
               </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => toast.warning('Demi keamanan & garansi, komunikasi hanya via in-app chat')}
-              className="h-10 w-10 items-center justify-center rounded-full bg-brand-50"
-            >
-              <Phone color="#1D4ED8" size={18} strokeWidth={2.2} />
             </Pressable>
           </View>
         </SafeAreaView>

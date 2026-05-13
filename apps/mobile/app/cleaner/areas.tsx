@@ -10,6 +10,7 @@ import { useCleanerStore } from '../../src/stores/cleaner';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
+import { safeBack } from '../../src/lib/safeBack';
 
 function CleanerAreas() {
   const router = useRouter();
@@ -36,7 +37,7 @@ function CleanerAreas() {
       // Sync to backend so /cleaner/jobs/available filters by these.
       await api.patch('/cleaner/profile', { serviceAreas: areas });
       toast.success(`${areas.length} area tersimpan`);
-      router.back();
+      safeBack();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal simpan ke server');
     }
@@ -48,7 +49,7 @@ function CleanerAreas() {
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-white">
           <View className="flex-row items-center border-b border-ink-100 px-3 py-2">
-            <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
             <View className="ml-1 flex-1">

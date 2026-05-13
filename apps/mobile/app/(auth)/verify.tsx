@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/stores/auth';
 import { toast } from '../../src/stores/ui';
+import { safeBack } from '../../src/lib/safeBack';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 60;
@@ -94,7 +95,7 @@ export default function Verify() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="flex-row items-center px-3 py-2">
-        <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+        <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
           <ArrowLeft color="#0F172A" size={22} />
         </Pressable>
       </View>

@@ -10,6 +10,11 @@ export type AuthenticatedUser = { id: string; phone: string };
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+  // In-memory throttle: hanya update last_seen kalau lebih lama dari 30s
+  // (hindari hot row pada user yang spam request).
+  private readonly lastSeenCache = new Map<string, number>();
+  private readonly LAST_SEEN_THROTTLE_MS = 30_000;
+
   constructor(
     config: ConfigService,
     private readonly prisma: PrismaService,
@@ -19,6 +24,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow('JWT_ACCESS_SECRET'),
     });
+  }
+
+  private touchLastSeen(userId: string) {
+    const now = Date.now();
+    const last = this.lastSeenCache.get(userId) ?? 0;
+    if (now - last < this.LAST_SEEN_THROTTLE_MS) return;
+    this.lastSeenCache.set(userId, now);
+    void this.prisma.$executeRawUnsafe(
+      `UPDATE users SET last_seen_at = NOW() WHERE id = $1::uuid`,
+      userId,
+    ).catch(() => {});
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
@@ -61,6 +77,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
       }
     }
+    this.touchLastSeen(payload.sub);
     return { id: payload.sub, phone: payload.phone };
   }
 }

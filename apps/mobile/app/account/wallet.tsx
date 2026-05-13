@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
 import { withAuth } from '../../src/components/AuthGate';
+import { safeBack } from '../../src/lib/safeBack';
 
 type LedgerEntry = {
   id: string;
@@ -60,7 +61,7 @@ function WalletScreen() {
       <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
         <View className="flex-row items-center gap-3 border-b border-ink-200 bg-white px-4 py-3">
           <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
+            onPress={() => safeBack('/(tabs)/profile')}
             className="h-10 w-10 items-center justify-center -ml-2"
           >
             <ArrowLeft size={22} color="#0F172A" />

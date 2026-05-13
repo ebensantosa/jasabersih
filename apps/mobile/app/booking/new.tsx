@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, Minus, Plus } from 'lucide-react-native';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,6 +33,7 @@ import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
+import { safeBack } from '../../src/lib/safeBack';
 
 // Operasional 07:00–21:00. Earliest slot = sekarang + 1 jam (snap ke ops window).
 const OPS_START_HOUR = 7;
@@ -113,6 +114,17 @@ function NewBooking() {
   const initialPackage =
     PACKAGES.find((p) => p.id === packageId) ?? categoryPackages[0] ?? PACKAGES[0];
 
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useCredit, setUseCredit] = useState(false);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { api } = await import('../../src/lib/api');
+        const r = await api.get('/customer/wallet');
+        setWalletBalance(Number((r.data?.data ?? r.data)?.balance ?? 0));
+      } catch { /* ignore */ }
+    })();
+  }, []);
   const [step, setStep] = useState(1);
 
   const [pickedPackageId, setPickedPackageId] = useState<string>(initialPackage?.id ?? '');
@@ -259,7 +271,7 @@ function NewBooking() {
       setStep(step - 1);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } else {
-      router.back();
+      safeBack();
     }
   }
 
@@ -334,6 +346,10 @@ function NewBooking() {
       return;
     }
     toast.success('Pesanan dibuat — silakan bayar untuk mulai cari cleaner');
+    try {
+      const { storage } = await import('../../src/lib/storage');
+      storage.set(`useCredit:${booking.id}`, useCredit ? '1' : '0');
+    } catch {}
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
 
@@ -362,7 +378,7 @@ function NewBooking() {
         >
           <Text className="font-bold text-white">Request Kota Saya</Text>
         </Pressable>
-        <Pressable onPress={() => router.back()} className="mt-3">
+        <Pressable onPress={() => safeBack()} className="mt-3">
           <Text className="font-semibold text-brand-600">Kembali</Text>
         </Pressable>
       </View>
@@ -552,18 +568,12 @@ function NewBooking() {
                   </Text>
                 </View>
                 {areaM2 >= 200 && (
-                  <Pressable
-                    onPress={() => router.push('/booking/wa-survey')}
-                    className="mt-3 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3"
-                  >
+                  <View className="mt-3 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
                     <AlertTriangle color="#047857" size={16} />
-                    <View className="flex-1">
-                      <Text className="font-bold text-xs text-emerald-900">Luas {'>'} 200 m² — perlu konsultasi</Text>
-                      <Text className="font-sans mt-0.5 text-[10px] text-emerald-800">
-                        Tap untuk chat WA tim CS biar dapet quote sesuai luas + kondisi.
-                      </Text>
-                    </View>
-                  </Pressable>
+                    <Text className="flex-1 font-bold text-xs text-emerald-900">
+                      Luas {'>'} 200 m² — perlu konsultasi. Pakai tombol "Chat WA" di bawah.
+                    </Text>
+                  </View>
                 )}
               </Section>
             </>
@@ -983,6 +993,40 @@ function NewBooking() {
                     <Row label="Total" value={formatRupiah(total)} bold />
                   </View>
                 </View>
+                {walletBalance > 0 && (() => {
+                  const creditUsed = useCredit ? Math.min(walletBalance, total) : 0;
+                  const afterCredit = total - creditUsed;
+                  return (
+                    <View className="mt-3">
+                      <Pressable
+                        onPress={() => setUseCredit(!useCredit)}
+                        className={`flex-row items-center gap-3 rounded-xl border p-3 ${useCredit ? 'border-emerald-400 bg-emerald-50' : 'border-ink-200 bg-white'}`}
+                      >
+                        <View className={`h-5 w-5 items-center justify-center rounded-md border-2 ${useCredit ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'}`}>
+                          {useCredit && <Text className="font-bold text-white text-[10px]">✓</Text>}
+                        </View>
+                        <View className="flex-1">
+                          <Text className="font-bold text-xs text-ink-900">Pakai Saldo ({formatRupiah(walletBalance)})</Text>
+                          <Text className="text-[10px] text-ink-500 mt-0.5">
+                            {useCredit ? `Potong saldo ${formatRupiah(creditUsed)}, sisanya ${formatRupiah(afterCredit)} bayar via bank/QRIS` : 'Tap untuk pakai saldo sebagai potongan'}
+                          </Text>
+                        </View>
+                      </Pressable>
+                      {useCredit && (
+                        <View className="mt-2 rounded-xl bg-ink-50 px-3 py-2">
+                          <View className="flex-row justify-between">
+                            <Text className="text-[11px] text-ink-600">Potongan saldo</Text>
+                            <Text className="text-[11px] font-semibold text-emerald-600">−{formatRupiah(creditUsed)}</Text>
+                          </View>
+                          <View className="flex-row justify-between border-t border-ink-200 pt-1 mt-1">
+                            <Text className="text-[11px] font-bold text-ink-900">Bayar via bank/QRIS</Text>
+                            <Text className="text-sm font-bold text-brand-700">{formatRupiah(afterCredit)}</Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
               </View>
             </>
           )}
@@ -1015,11 +1059,25 @@ function NewBooking() {
                   {step === 1 ? 'Batal' : 'Kembali'}
                 </Text>
               </Pressable>
-              <Pressable onPress={next} className="h-12 flex-1 items-center justify-center rounded-2xl bg-brand-600">
-                <Text className="font-bold text-sm text-white" numberOfLines={1}>
-                  {step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
-                </Text>
-              </Pressable>
+              {areaM2 >= 200 && step === 1 ? (
+                <Pressable
+                  onPress={() => router.push('/booking/wa-survey')}
+                  className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-success"
+                >
+                  <View className="h-5 w-5 items-center justify-center rounded-full bg-white">
+                    <Text className="text-[10px] font-bold text-success">W</Text>
+                  </View>
+                  <Text className="font-bold text-sm text-white" numberOfLines={1}>
+                    Chat WA untuk Quote
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable onPress={next} className="h-12 flex-1 items-center justify-center rounded-2xl bg-brand-600">
+                  <Text className="font-bold text-sm text-white" numberOfLines={1}>
+                    {step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </SafeAreaView>
         </View>

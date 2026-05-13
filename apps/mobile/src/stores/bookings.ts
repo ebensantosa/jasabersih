@@ -73,6 +73,7 @@ export type Booking = {
   // Anti-fraud snapshot
   formSnapshot?: FormSnapshot;
   // Cleaner (assigned later)
+  cleanerId?: string;
   cleanerName?: string;
   messages: ChatMessage[];
 };
@@ -142,7 +143,7 @@ export const useBookingsStore = create<State>((set, get) => ({
       const serverMapped: Booking[] = items.map((s) => {
         const existing = local.find((b) => b.id === s.id);
         const total = Number(s.total ?? 0);
-        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerName: s.cleanerName ?? existing.cleanerName, scheduledAt: s.scheduledAt ?? existing.scheduledAt, categoryImage: s.serviceIcon ?? existing.categoryImage }
+        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId, cleanerName: s.cleanerName ?? existing.cleanerName, scheduledAt: s.scheduledAt ?? existing.scheduledAt, categoryImage: s.serviceIcon ?? existing.categoryImage }
           : {
               id: s.id,
               pricingMode: (s.pricingMode ?? 'package') as PricingMode,
@@ -154,6 +155,7 @@ export const useBookingsStore = create<State>((set, get) => ({
               status: mapServerStatus(s.status),
               createdAt: s.createdAt ? new Date(s.createdAt).getTime() : Date.now(),
               addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
+              cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? undefined,
               cleanerName: s.cleanerName ?? undefined,
               messages: [],
             } as Booking;
@@ -201,6 +203,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         status: mapServerStatus(s.status),
         createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now(),
         addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
+        cleanerId: s.cleaner_id ?? s.cleanerId ?? undefined,
         cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
         paidAt: s.paid_at ? new Date(s.paid_at).getTime() : undefined,
         formSnapshot: s.form_snapshot ?? s.formSnapshot ?? {},

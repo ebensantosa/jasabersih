@@ -39,7 +39,7 @@ export class BookingsController {
       `SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.total_amount AS total,
               b.scheduled_at AS "scheduledAt", b.address_line AS address, b.created_at AS "createdAt",
               s.name AS "serviceName", s.icon_url AS "serviceIcon",
-              pp.name AS "packageName", cl.name AS "cleanerName"
+              pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId"
        FROM bookings b
        LEFT JOIN services s ON s.id = b.service_id
        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
