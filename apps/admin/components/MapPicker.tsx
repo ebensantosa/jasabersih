@@ -44,6 +44,7 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
   const markerRef = useRef<any>(null);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<{ lat: number; lng: number; name: string }[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,7 +52,13 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
       const L = await loadLeaflet();
       if (cancelled || !ref.current) return;
       if (mapRef.current) return;
-      const map = L.map(ref.current).setView([lat, lng], 13);
+      const map = L.map(ref.current, {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        touchZoom: true,
+        dragging: true,
+      }).setView([lat, lng], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap',
@@ -67,6 +74,9 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
       });
       mapRef.current = map;
       markerRef.current = marker;
+      // Invalidate size setelah modal beneran kelihatan (kadang Leaflet ngitung size 0 saat first paint)
+      setTimeout(() => { try { map.invalidateSize(); } catch {} }, 200);
+      setTimeout(() => { try { map.invalidateSize(); } catch {} }, 600);
     })();
     return () => {
       cancelled = true;
@@ -88,14 +98,17 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
   async function doSearch() {
     if (!search.trim()) return;
     setSearching(true);
+    setResults([]);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(search + ', Indonesia')}&limit=1`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(search + ', Indonesia')}&countrycodes=id&limit=5&addressdetails=1`;
       const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
       const data = await r.json();
-      if (data && data[0]) {
-        const nlat = Number(data[0].lat);
-        const nlng = Number(data[0].lon);
-        onChange(nlat, nlng);
+      if (Array.isArray(data)) {
+        setResults(data.map((d: any) => ({
+          lat: Number(d.lat),
+          lng: Number(d.lon),
+          name: d.display_name as string,
+        })));
       }
     } catch { /* ignore */ }
     setSearching(false);
@@ -103,25 +116,46 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), doSearch())}
-          placeholder="Cari alamat / landmark (mis. Tugu Yogyakarta)"
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="button"
-          onClick={doSearch}
-          disabled={searching || !search.trim()}
-          className="rounded-md bg-blue-600 px-3 text-xs font-semibold text-white disabled:opacity-50"
-        >
-          {searching ? 'Cari...' : 'Cari'}
-        </button>
+      <div className="relative">
+        <div className="flex gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), doSearch())}
+            placeholder="Cari alamat / landmark (mis. Tugu Yogyakarta)"
+            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={doSearch}
+            disabled={searching || !search.trim()}
+            className="rounded-md bg-blue-600 px-3 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {searching ? 'Cari...' : 'Cari'}
+          </button>
+        </div>
+        {results.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-[1001] mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+            {results.map((r, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  onChange(r.lat, r.lng);
+                  setResults([]);
+                  setSearch('');
+                }}
+                className="block w-full border-b border-slate-100 px-3 py-2 text-left text-xs hover:bg-slate-50 last:border-b-0"
+              >
+                <div className="line-clamp-2 text-slate-900">{r.name}</div>
+                <div className="text-[10px] text-slate-400">{r.lat.toFixed(4)}, {r.lng.toFixed(4)}</div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div ref={ref} style={{ height, width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid #E2E8F0' }} />
-      <p className="text-[11px] text-slate-500">Klik di peta atau drag marker untuk pin titik centroid.</p>
+      <p className="text-[11px] text-slate-500">Scroll mouse untuk zoom · klik peta atau drag marker untuk pin centroid.</p>
     </div>
   );
 }

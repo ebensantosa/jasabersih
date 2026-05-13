@@ -233,10 +233,16 @@ export function Help() {
           CS kami online 08:00–22:00 setiap hari.
         </Text>
         <Pressable
-          onPress={() => toast.info('CS akan menghubungi melalui chat in-app')}
-          className="mt-3 self-start rounded-xl bg-brand-600 px-4 py-2.5"
+          onPress={async () => {
+            const { Linking } = await import('react-native');
+            // CS WA — TODO: ambil dari app_config supaya admin bisa ubah
+            const waNumber = '6281252525926';
+            const text = encodeURIComponent('Halo CS JasaBersih, saya butuh bantuan.');
+            Linking.openURL(`https://wa.me/${waNumber}?text=${text}`).catch(() => {});
+          }}
+          className="mt-3 self-start rounded-xl bg-emerald-600 px-4 py-2.5"
         >
-          <Text className="font-semibold text-xs text-white">Chat dengan CS</Text>
+          <Text className="font-semibold text-xs text-white">Chat CS via WhatsApp</Text>
         </Pressable>
       </View>
       <View className="rounded-2xl bg-white">
@@ -275,9 +281,6 @@ export function SettingsView() {
 
   return (
     <>
-      <View className="rounded-2xl bg-white p-1">
-        <ToggleRow icon={Moon} label="Mode Gelap" value={dark} onChange={setDark} last />
-      </View>
       <View className="rounded-2xl bg-white">
         <Row icon={SettingsIcon} label="Bahasa" valueLabel="Indonesia" />
         <Row
@@ -285,8 +288,8 @@ export function SettingsView() {
           label={checking ? 'Mengecek update…' : 'Cek Versi Terbaru'}
           valueLabel={`v${currentVersion()}`}
           onPress={checkUpdate}
+          last
         />
-        <Row icon={SettingsIcon} label="Tentang Aplikasi" last />
       </View>
     </>
   );

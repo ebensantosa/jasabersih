@@ -33,10 +33,10 @@ export function CleanerLockOverlay() {
 
   useEffect(() => { void fetchStatus(); }, [fetchStatus]);
 
-  // Refresh tiap 20s — auto unlock kalau admin approve di server
+  // Refresh tiap 60s — auto unlock kalau admin approve di server
   useEffect(() => {
     if (!tokens || mode !== 'freelancer') return;
-    const t = setInterval(fetchStatus, 20_000);
+    const t = setInterval(fetchStatus, 60_000);
     return () => clearInterval(t);
   }, [tokens, mode, fetchStatus]);
 

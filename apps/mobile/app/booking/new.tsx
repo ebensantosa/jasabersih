@@ -173,23 +173,29 @@ function NewBooking() {
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
   );
 
-  // Hitung travel fee dari koordinat customer ke service area terdekat
+  // Hitung travel fee — debounce 800ms + cache per koordinat (hindari spam API)
   useEffect(() => {
     const lat = selectedAddress?.lat ?? savedLocation?.lat;
     const lng = selectedAddress?.lng ?? savedLocation?.lng;
     if (!lat || !lng) { setTravelQuote(null); return; }
-    void (async () => {
+    const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    // skip kalau quote terakhir untuk koordinat yg sama
+    if ((travelQuote as any)?._key === key) return;
+    const t = setTimeout(async () => {
       try {
         const { api } = await import('../../src/lib/api');
         const r = await api.post('/bookings/travel-quote', { lat, lng });
-        setTravelQuote(r.data?.data ?? r.data);
+        const q = r.data?.data ?? r.data;
+        setTravelQuote({ ...q, _key: key });
         setTravelErr(null);
       } catch (e: any) {
         const err = e?.response?.data?.error;
         setTravelErr(err?.message ?? 'Gagal hitung biaya transport');
         setTravelQuote(null);
       }
-    })();
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAddress?.id, savedLocation?.lat, savedLocation?.lng]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     selectedAddress

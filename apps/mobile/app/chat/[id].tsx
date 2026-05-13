@@ -69,7 +69,8 @@ function Chat() {
         }).catch(() => {});
       };
       fetchPresence();
-      const t = setInterval(fetchPresence, 30_000);
+      // Naikin ke 60s untuk hemat API call
+      const t = setInterval(fetchPresence, 60_000);
       return () => { alive = false; clearInterval(t); };
     });
     return () => { alive = false; };
