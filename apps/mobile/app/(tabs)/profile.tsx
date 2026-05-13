@@ -136,6 +136,7 @@ function ProfileScreen() {
           <Section
             title="Mitra Cleaner"
             items={[
+              { icon: User, label: 'Profil Cleaner & Foto', onPress: () => router.push('/cleaner/profile') },
               { icon: CreditCard, label: 'Wallet & Penarikan', onPress: () => router.push('/cleaner/wallet') },
               { icon: MapPin, label: 'Area Layananku', onPress: () => router.push('/cleaner/areas') },
               { icon: Briefcase, label: 'Status KYC & Verifikasi', onPress: () => router.push('/cleaner/kyc') },
