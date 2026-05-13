@@ -128,6 +128,8 @@ export function createClient(opts: ClientOptions) {
         ),
       adjustUserWallet: (userId: string, type: 'credit' | 'debit', amount: number, reason: string) =>
         request<{ ok: true }>('POST', `/admin/users/${userId}/wallet-adjust`, { type, amount, reason }),
+      rejectCleanerPhoto: (userId: string, reason: string) =>
+        request<{ ok: true }>('POST', `/admin/cleaners/${userId}/reject-photo`, { reason }),
       forceCompleteBooking: (bookingId: string, reason: string) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-complete`, { reason }),
       forceMarkPaid: (bookingId: string, reason: string, method?: string, reference?: string) =>

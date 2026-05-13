@@ -42,21 +42,27 @@ function CleanerProfileScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   async function uploadPhoto() {
-    const { launchImageLibraryAsync, MediaTypeOptions } = await import('expo-image-picker');
-    const r = await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
-    if (r.canceled || !r.assets?.[0]) return;
-    const asset = r.assets[0];
-    setUploadingPhoto(true);
     try {
-      const ext = asset.uri.split('.').pop()?.toLowerCase();
-      const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const { launchImageLibraryAsync, MediaTypeOptions } = await import('expo-image-picker');
+      const r = await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 1, allowsEditing: true, aspect: [1, 1] });
+      if (r.canceled || !r.assets?.[0]) return;
+      const asset = r.assets[0];
+      setUploadingPhoto(true);
+      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
+      const c = await compressImage(asset.uri);
+      if (c.oversize) {
+        toast.error(`Foto tetap > 5MB setelah kompresi (${formatBytes(c.size)}). Pilih foto lain.`);
+        return;
+      }
+      const contentType = 'image/jpeg';
       const presign = await api.post('/cleaner/profile/photo-upload-url', { contentType });
       const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
-      const blob = await (await fetch(asset.uri)).blob();
-      await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
+      const blob = await (await fetch(c.uri)).blob();
+      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
+      if (!up.ok) throw new Error('Upload ke storage gagal');
       await api.patch('/cleaner/profile', { photoUrl: publicUrl });
       setPhotoUrl(publicUrl);
-      toast.success('Foto profil tersimpan');
+      toast.success(`Foto tersimpan (${formatBytes(c.size)})`);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal upload foto');
     } finally {

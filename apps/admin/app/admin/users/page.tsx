@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Briefcase, Eye, Loader2, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
 
 import { api } from '../../../lib/api';
-import { Modal, Input, Switch, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
+import { Modal, Input, Switch, Textarea, Button, Badge, useConfirm, usePrompt, useToast } from '../../../components/ui';
 
 type Tab = 'customer' | 'cleaner';
 
@@ -36,6 +36,25 @@ export default function UsersPage() {
   const [walletUser, setWalletUser] = useState<Row | null>(null);
   const [adding, setAdding] = useState(false);
   const confirm = useConfirm();
+  const prompt = usePrompt();
+
+  async function rejectPhoto(r: Row) {
+    const reason = await prompt({
+      title: `Tolak foto profil ${r.name}?`,
+      message: 'Alasan tolak (akan terlihat di audit). Foto cleaner akan dihapus & dia otomatis offline.',
+      placeholder: 'Mis. bukan foto wajah / pakai filter / tidak jelas',
+      multiline: true,
+      minLength: 5,
+      variant: 'danger',
+      confirmLabel: 'Tolak Foto',
+    });
+    if (!reason) return;
+    try {
+      await api.admin.rejectCleanerPhoto(r.id, reason);
+      toast.success('Foto ditolak — cleaner dipaksa offline & upload ulang');
+      void load();
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal tolak foto'); }
+  }
 
   async function deleteRow(r: Row) {
     const label = tab === 'customer' ? 'Customer' : 'Cleaner';
@@ -185,6 +204,9 @@ export default function UsersPage() {
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>
                         <Button size="sm" variant="secondary" icon={<Wallet size={12} />} onClick={() => setWalletUser(r)}>Saldo</Button>
+                        {tab === 'cleaner' && r.photoUrl && (
+                          <Button size="sm" variant="ghost" icon={<ShieldOff size={12} />} onClick={() => rejectPhoto(r)}>Tolak Foto</Button>
+                        )}
                         <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => deleteRow(r)}>Hapus</Button>
                       </div>
                     </td>

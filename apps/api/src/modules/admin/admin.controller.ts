@@ -355,6 +355,33 @@ export class AdminController {
     return { ok: true };
   }
 
+  // Admin tolak foto profil cleaner — clear photo_url, set is_available=false, notif cleaner
+  @Post('cleaners/:id/reject-photo')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async rejectPhoto(
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body?.reason || body.reason.length < 5) throw new BadRequestException('Alasan min 5 karakter');
+    const rows = await this.prisma.$queryRaw<{ id: string; name: string | null; is_freelancer: boolean; photo_url: string | null }[]>`
+      SELECT id, name, is_freelancer, photo_url FROM users WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (rows.length === 0) throw new BadRequestException('Cleaner tidak ditemukan');
+    if (!rows[0]!.is_freelancer) throw new BadRequestException('User ini bukan cleaner');
+    if (!rows[0]!.photo_url) throw new BadRequestException('Cleaner belum punya foto');
+
+    await this.prisma.$executeRaw`UPDATE users SET photo_url = NULL WHERE id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = FALSE WHERE user_id = ${id}::uuid`;
+    await this.audit.log({
+      adminId: admin.id, action: 'cleaner.photo.reject', resourceType: 'user', resourceId: id,
+      changes: { reason: body.reason }, ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
   @Get('users')
   async listUsers() {
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
