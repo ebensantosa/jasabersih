@@ -101,7 +101,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async flipCreateDirect(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { bookingId: string; senderBank: string; senderBankType: 'virtual_account' | 'qris' | 'wallet_account' },
+    @Body() body: { bookingId: string; senderBank: string; senderBankType: 'virtual_account' | 'qris' | 'wallet_account'; useCredit?: boolean },
   ) {
     if (!body?.bookingId || !body?.senderBank || !body?.senderBankType) {
       throw new BadRequestException('bookingId, senderBank, senderBankType wajib.');
@@ -120,7 +120,30 @@ export class PaymentsController {
     `;
     const u = userRows[0]!;
     const merchantRef = `JBSIH-${b.id.slice(0, 8)}-${Date.now().toString(36)}`;
-    const amount = Number(b.total_amount);
+    const total = Number(b.total_amount);
+
+    // Pakai saldo (partial): kurangi tagihan PG sebesar min(balance, total)
+    let creditUsed = 0;
+    if (body.useCredit) {
+      const balRow = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
+        `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup','earnings') AND status='CLEARED' THEN amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
+           FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
+        user.id,
+      );
+      const balance = Number(balRow[0]?.b ?? 0);
+      creditUsed = Math.min(balance, total);
+      if (creditUsed > 0 && creditUsed < total) {
+        // partial: deduct saldo sekarang
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+           VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
+          user.id, creditUsed, b.id, `Potongan saldo untuk booking ${b.id.slice(0, 8)}`,
+        );
+      }
+    }
+    const amount = total - creditUsed;
+    if (amount <= 0) throw new BadRequestException('Total bayar 0 — gunakan endpoint /bookings/:id/pay dengan useCredit untuk pelunasan pakai saldo penuh.');
     const methodLabel = `flip_${body.senderBankType}_${body.senderBank}`;
 
     const inserted = await this.prisma.$queryRaw<{ id: string }[]>`

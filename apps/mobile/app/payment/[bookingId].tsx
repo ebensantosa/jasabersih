@@ -79,11 +79,13 @@ function PaymentScreen() {
     }
   }
 
+  const [useCredit, setUseCredit] = useState(false);
+
   async function pickMethod(senderBank: string, senderBankType: DirectResult['senderBankType']) {
     if (!bookingId) return;
     setCreating(true);
     try {
-      const res = await api.post('/payments/flip/create-direct', { bookingId, senderBank, senderBankType });
+      const res = await api.post('/payments/flip/create-direct', { bookingId, senderBank, senderBankType, useCredit });
       const data: DirectResult = res.data?.data ?? res.data;
       setDirect(data);
       // Poll status
@@ -141,6 +143,8 @@ function PaymentScreen() {
             walletBalance={walletBalance}
             total={booking?.totalPrice ?? 0}
             onPaySaldo={payWithSaldo}
+            useCredit={useCredit}
+            setUseCredit={setUseCredit}
           />
         )}
       </SafeAreaView>
@@ -154,36 +158,78 @@ function MethodPicker({
   walletBalance,
   total,
   onPaySaldo,
+  useCredit,
+  setUseCredit,
 }: {
   disabled: boolean;
   onPick: (bank: string, type: DirectResult['senderBankType']) => void;
   walletBalance: number;
   total: number;
   onPaySaldo: () => void;
+  useCredit: boolean;
+  setUseCredit: (v: boolean) => void;
 }) {
-  const canPaySaldo = walletBalance >= total && total > 0;
+  const fullSaldo = walletBalance >= total && total > 0;
+  const partialSaldo = walletBalance > 0 && walletBalance < total;
+  const creditUsed = useCredit ? Math.min(walletBalance, total) : 0;
+  const remaining = total - creditUsed;
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       {walletBalance > 0 && (
         <View>
           <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Saldo Saya</Text>
-          <Pressable
-            disabled={disabled || !canPaySaldo}
-            onPress={onPaySaldo}
-            className={`flex-row items-center gap-3 rounded-2xl p-4 ${canPaySaldo ? 'bg-emerald-50 border border-emerald-300' : 'bg-ink-100 border border-ink-200'}`}
-          >
-            <View className="h-12 w-14 items-center justify-center rounded-xl bg-emerald-600">
-              <WalletIcon color="white" size={20} />
+          {fullSaldo ? (
+            <Pressable
+              disabled={disabled}
+              onPress={onPaySaldo}
+              className="flex-row items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4"
+            >
+              <View className="h-12 w-14 items-center justify-center rounded-xl bg-emerald-600">
+                <WalletIcon color="white" size={20} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-sm text-emerald-900">Bayar dengan Saldo</Text>
+                <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
+                  Saldo: {formatRupiah(walletBalance)} — bayar penuh dari saldo
+                </Text>
+              </View>
+            </Pressable>
+          ) : (
+            <Pressable
+              disabled={disabled}
+              onPress={() => setUseCredit(!useCredit)}
+              className={`flex-row items-center gap-3 rounded-2xl border p-4 ${useCredit ? 'border-emerald-400 bg-emerald-50' : 'border-ink-200 bg-white'}`}
+            >
+              <View className={`h-12 w-14 items-center justify-center rounded-xl ${useCredit ? 'bg-emerald-600' : 'bg-ink-200'}`}>
+                <WalletIcon color={useCredit ? 'white' : '#64748B'} size={20} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-sm text-ink-900">Pakai Saldo (Rp {walletBalance.toLocaleString('id-ID')})</Text>
+                <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
+                  {useCredit ? `Potongan: ${formatRupiah(creditUsed)} · Sisa bayar via metode bawah: ${formatRupiah(remaining)}` : 'Tap untuk pakai saldo, sisanya bayar via bank/QRIS'}
+                </Text>
+              </View>
+              <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${useCredit ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300'}`}>
+                {useCredit && <Text className="font-bold text-white text-[10px]">✓</Text>}
+              </View>
+            </Pressable>
+          )}
+          {(fullSaldo || partialSaldo) && useCredit && (
+            <View className="mt-2 rounded-xl bg-ink-100 px-3 py-2">
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-ink-600">Total</Text>
+                <Text className="text-xs text-ink-700">{formatRupiah(total)}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-ink-600">Potong saldo</Text>
+                <Text className="text-xs text-emerald-600">−{formatRupiah(creditUsed)}</Text>
+              </View>
+              <View className="mt-1 flex-row justify-between border-t border-ink-200 pt-1">
+                <Text className="text-xs font-bold text-ink-900">Bayar via bank/QRIS</Text>
+                <Text className="text-sm font-bold text-ink-900">{formatRupiah(remaining)}</Text>
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className={`font-bold text-sm ${canPaySaldo ? 'text-emerald-900' : 'text-ink-500'}`}>
-                {canPaySaldo ? 'Bayar dengan Saldo' : 'Saldo tidak cukup'}
-              </Text>
-              <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                Saldo: {formatRupiah(walletBalance)}{canPaySaldo ? ' — bayar penuh dari saldo' : ` (kurang ${formatRupiah(total - walletBalance)})`}
-              </Text>
-            </View>
-          </Pressable>
+          )}
         </View>
       )}
 
