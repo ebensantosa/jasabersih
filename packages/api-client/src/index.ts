@@ -122,6 +122,12 @@ export function createClient(opts: ClientOptions) {
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-cancel`, { reason, refundAmount }),
       refundCreditToCustomer: (bookingId: string, amount: number, reason: string) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/refund-credit`, { amount, reason }),
+      getUserWallet: (userId: string) =>
+        request<{ balance: number; ledger: { id: string; accountType: string; amount: number; referenceType: string; referenceId: string | null; status: string; description: string | null; createdAt: string; clearedAt: string | null }[] }>(
+          'GET', `/admin/users/${userId}/wallet`,
+        ),
+      adjustUserWallet: (userId: string, type: 'credit' | 'debit', amount: number, reason: string) =>
+        request<{ ok: true }>('POST', `/admin/users/${userId}/wallet-adjust`, { type, amount, reason }),
       forceCompleteBooking: (bookingId: string, reason: string) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-complete`, { reason }),
       forceMarkPaid: (bookingId: string, reason: string, method?: string, reference?: string) =>

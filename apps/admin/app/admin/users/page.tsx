@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Eye, Loader2, Plus, Search, ShieldOff, Trash2, User, UserX } from 'lucide-react';
+import { Briefcase, Eye, Loader2, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Modal, Input, Switch, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
@@ -32,6 +32,7 @@ export default function UsersPage() {
   const [q, setQ] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewing, setViewing] = useState<Row | null>(null);
+  const [walletUser, setWalletUser] = useState<Row | null>(null);
   const [adding, setAdding] = useState(false);
   const confirm = useConfirm();
 
@@ -171,6 +172,7 @@ export default function UsersPage() {
                     <td className="px-4 py-2 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>
+                        <Button size="sm" variant="secondary" icon={<Wallet size={12} />} onClick={() => setWalletUser(r)}>Saldo</Button>
                         <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => deleteRow(r)}>Hapus</Button>
                       </div>
                     </td>
@@ -183,6 +185,7 @@ export default function UsersPage() {
       </div>
 
       {viewing && <UserDetailModal row={viewing} onClose={() => setViewing(null)} onChanged={() => { setViewing(null); void load(); }} />}
+      {walletUser && <WalletModal user={walletUser} onClose={() => setWalletUser(null)} />}
       {adding && (
         <AddUserModal
           role={tab}
@@ -433,6 +436,94 @@ function ReasonModal({ title, placeholder, durationField, variant = 'primary', o
         <Textarea label="Alasan" required rows={3} value={reason} onChange={setReason} placeholder={placeholder} helpText="Min 5 karakter." />
         {durationField && <Input label="Durasi (hari)" type="number" value={String(days)} onChange={(v) => setDays(Number(v))} helpText="Default 7 hari." />}
       </div>
+    </Modal>
+  );
+}
+
+function WalletModal({ user, onClose }: { user: Row; onClose: () => void }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof api.admin.getUserWallet>> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [type, setType] = useState<'credit' | 'debit'>('credit');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  async function load() {
+    setLoading(true);
+    try { setData(await api.admin.getUserWallet(user.id)); } catch (e: any) { toast.error(e?.message ?? 'Gagal load'); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { void load(); }, [user.id]);
+
+  async function submit() {
+    const amt = parseInt(amount.replace(/[^\d]/g, ''), 10);
+    if (!amt || amt <= 0) { toast.error('Nominal harus > 0'); return; }
+    if (reason.length < 5) { toast.error('Alasan min 5 karakter'); return; }
+    setBusy(true);
+    try {
+      await api.admin.adjustUserWallet(user.id, type, amt, reason);
+      toast.success(`${type === 'credit' ? 'Tambah' : 'Kurangi'} saldo Rp ${amt.toLocaleString('id-ID')} berhasil`);
+      setAmount(''); setReason('');
+      await load();
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Modal title={`Saldo · ${user.name ?? user.phone}`} open={true} onClose={onClose} size="lg">
+      {loading ? (
+        <div className="flex items-center justify-center py-8 text-slate-500"><Loader2 className="animate-spin" /></div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-emerald-600 p-5 text-white">
+            <div className="text-xs uppercase tracking-wider text-white/80">Saldo</div>
+            <div className="mt-1 text-3xl font-bold">Rp {Number(data?.balance ?? 0).toLocaleString('id-ID')}</div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4">
+            <div className="mb-2 text-sm font-bold text-slate-900">Adjust Saldo Manual</div>
+            <div className="flex gap-2">
+              <button onClick={() => setType('credit')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${type === 'credit' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>+ Tambah Saldo</button>
+              <button onClick={() => setType('debit')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${type === 'debit' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200'}`}>− Kurangi Saldo</button>
+            </div>
+            <div className="mt-3 space-y-2">
+              <Input label="Nominal (Rp)" type="text" value={amount} onChange={setAmount} placeholder="mis. 50000" />
+              <Textarea label="Alasan" required rows={2} value={reason} onChange={setReason} placeholder="Min 5 karakter" />
+              <Button variant="primary" onClick={submit} disabled={busy}>{busy ? 'Memproses...' : 'Submit'}</Button>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 text-sm font-bold text-slate-900">Riwayat ({data?.ledger?.length ?? 0})</div>
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200">
+              {(data?.ledger ?? []).length === 0 ? (
+                <div className="py-6 text-center text-sm text-slate-500">Belum ada transaksi</div>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-slate-50 text-left text-[10px] uppercase text-slate-500">
+                    <tr><th className="px-3 py-2">Tipe</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">Keterangan</th></tr>
+                  </thead>
+                  <tbody>
+                    {(data?.ledger ?? []).map((e: any) => {
+                      const isOut = ['credit_use', 'withdrawal', 'admin_debit'].includes(e.accountType);
+                      return (
+                        <tr key={e.id} className="border-t">
+                          <td className="px-3 py-2 font-mono text-[10px]">{e.accountType}</td>
+                          <td className={`px-3 py-2 font-bold ${isOut ? 'text-red-600' : 'text-emerald-600'}`}>{isOut ? '−' : '+'} Rp {Number(e.amount).toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-2">{e.status}</td>
+                          <td className="px-3 py-2 text-slate-500">{new Date(e.createdAt).toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-2 text-slate-600">{e.description ?? '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -59,7 +59,12 @@ function WalletScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
         <View className="flex-row items-center gap-3 border-b border-ink-200 bg-white px-4 py-3">
-          <ArrowLeft size={22} onPress={() => router.back()} />
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
+            className="h-10 w-10 items-center justify-center -ml-2"
+          >
+            <ArrowLeft size={22} color="#0F172A" />
+          </Pressable>
           <Text className="font-bold text-base text-ink-900">Saldo Saya</Text>
         </View>
         {loading ? (

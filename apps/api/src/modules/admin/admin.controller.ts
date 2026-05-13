@@ -303,6 +303,58 @@ export class AdminController {
     return { ok: true };
   }
 
+  // GET wallet detail untuk user tertentu (customer atau cleaner)
+  @Get('users/:id/wallet')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops', 'support')
+  async userWallet(@Param('id') id: string) {
+    const balRow = await this.prisma.$queryRaw<{ credit_in: number | null; credit_out: number | null }[]>`
+      SELECT
+        COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup','earnings') AND status='CLEARED' THEN amount ELSE 0 END),0) AS credit_in,
+        COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS credit_out
+      FROM wallet_ledger_entries WHERE user_id = ${id}::uuid
+    `;
+    const balance = Number(balRow[0]?.credit_in ?? 0) - Number(balRow[0]?.credit_out ?? 0);
+    const ledger = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, account_type AS "accountType", amount, reference_type AS "referenceType",
+             reference_id AS "referenceId", status, description,
+             created_at AS "createdAt", cleared_at AS "clearedAt"
+        FROM wallet_ledger_entries
+       WHERE user_id = ${id}::uuid
+       ORDER BY created_at DESC LIMIT 50
+    `;
+    return { balance, ledger };
+  }
+
+  // POST adjust saldo manual (admin top-up atau admin debit)
+  @Post('users/:id/wallet-adjust')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async walletAdjust(
+    @Param('id') id: string,
+    @Body() body: { amount: number; type: 'credit' | 'debit'; reason: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body?.amount || body.amount <= 0) throw new BadRequestException('Nominal harus > 0');
+    if (!body?.reason || body.reason.length < 5) throw new BadRequestException('Alasan min 5 karakter');
+    if (body.type !== 'credit' && body.type !== 'debit') throw new BadRequestException('Type harus credit/debit');
+
+    const userExists = await this.prisma.$queryRaw<{ id: string }[]>`SELECT id FROM users WHERE id = ${id}::uuid LIMIT 1`;
+    if (userExists.length === 0) throw new BadRequestException('User tidak ditemukan');
+
+    const accountType = body.type === 'credit' ? 'refund_credit' : 'admin_debit';
+    await this.prisma.$executeRaw`
+      INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+      VALUES (${id}::uuid, ${accountType}, ${body.amount}, 'admin_adjust', NULL, 'CLEARED', NOW(), ${'Admin ' + body.type + ': ' + body.reason})
+    `;
+    await this.audit.log({
+      adminId: admin.id, action: 'wallet.adjust', resourceType: 'user', resourceId: id,
+      changes: { type: body.type, amount: body.amount, reason: body.reason }, ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
   @Get('users')
   async listUsers() {
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
