@@ -7,7 +7,7 @@ import { api } from '../lib/api';
 import { toast } from '../stores/ui';
 
 const TYPES: { code: string; label: string }[] = [
-  { code: 'quality', label: 'Kualitas pekerjaan' },
+  { code: 'quality', label: 'Kualitas pekerjaan kurang' },
   { code: 'no_show', label: 'Tidak datang / hilang' },
   { code: 'theft', label: 'Pencurian / kehilangan barang' },
   { code: 'payment', label: 'Masalah pembayaran' },
@@ -20,6 +20,7 @@ export function DisputeFormModal({
   open,
   onClose,
   onSubmitted,
+  initialType,
 }: {
   bookingId: string;
   open: boolean;

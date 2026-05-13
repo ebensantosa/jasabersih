@@ -111,7 +111,7 @@ export class AdminDisputesController {
   async resolve(
     @Param('id') id: string,
     @Body() body: {
-      action: 'refund_customer' | 'debit_cleaner' | 'warn_both' | 'dismiss' | 'suspend_subject';
+      action: 'refund_customer' | 'debit_cleaner' | 'warn_both' | 'dismiss' | 'suspend_subject' | 'warranty_redo_approved';
       payoutAmount?: number;     // refund/debit amount in Rupiah
       resolution: string;         // explanation
       suspendDays?: number;       // for suspend_subject
@@ -144,6 +144,28 @@ export class AdminDisputesController {
              resolved_at = NOW()
        WHERE id = ${id}::uuid
     `;
+
+    // Garansi disetujui — booking di-reopen ke status 'searching' biar cleaner balik (atau admin assign manual)
+    if (body.action === 'warranty_redo_approved' && dispute.booking_id) {
+      await this.prisma.$executeRaw`
+        UPDATE bookings
+           SET status = 'searching',
+               cleaner_id = NULL,
+               matched_at = NULL,
+               admin_notes = COALESCE(admin_notes, '') || E'\n[garansi] ' || ${body.resolution}
+         WHERE id = ${dispute.booking_id}::uuid
+      `;
+      // Reverse earning cleaner (kalau sudah CLEARED, balikin saldo platform via reversal entry)
+      await this.prisma.$executeRawUnsafe(
+        `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+         SELECT user_id, 'earnings_reversal', -amount, reference_type, reference_id, 'CLEARED', NOW(), 'Reversal — garansi bersihkan ulang approved'
+           FROM wallet_ledger_entries
+          WHERE reference_type = 'booking' AND reference_id = $1::uuid
+            AND account_type = 'earnings' AND amount > 0
+          LIMIT 1`,
+        dispute.booking_id,
+      );
+    }
 
     // Credit refund ke wallet customer (raised_by) saat action = refund_customer
     if (body.action === 'refund_customer' && body.payoutAmount && body.payoutAmount > 0) {

@@ -191,6 +191,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
               <Select
                 label="Action" required value={form.action}
                 options={[
+                  { value: 'warranty_redo_approved', label: '🛡️ Approve Garansi — Cleaner balik bersihkan ulang (gratis)' },
                   { value: 'refund_customer', label: 'Refund Customer' },
                   { value: 'debit_cleaner', label: 'Debit Cleaner (potong saldo)' },
                   { value: 'suspend_subject', label: 'Suspend Subject' },
