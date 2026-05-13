@@ -116,6 +116,8 @@ function NewBooking() {
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [useCredit, setUseCredit] = useState(false);
+  const [travelQuote, setTravelQuote] = useState<{ enabled: boolean; distanceKm: number; travelFee: number; freeKm: number; perKmIdr: number; nearestAreaName: string | null } | null>(null);
+  const [travelErr, setTravelErr] = useState<string | null>(null);
   useEffect(() => {
     void (async () => {
       try {
@@ -170,6 +172,25 @@ function NewBooking() {
   const [address, setAddress] = useState(
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
   );
+
+  // Hitung travel fee dari koordinat customer ke service area terdekat
+  useEffect(() => {
+    const lat = selectedAddress?.lat ?? savedLocation?.lat;
+    const lng = selectedAddress?.lng ?? savedLocation?.lng;
+    if (!lat || !lng) { setTravelQuote(null); return; }
+    void (async () => {
+      try {
+        const { api } = await import('../../src/lib/api');
+        const r = await api.post('/bookings/travel-quote', { lat, lng });
+        setTravelQuote(r.data?.data ?? r.data);
+        setTravelErr(null);
+      } catch (e: any) {
+        const err = e?.response?.data?.error;
+        setTravelErr(err?.message ?? 'Gagal hitung biaya transport');
+        setTravelQuote(null);
+      }
+    })();
+  }, [selectedAddress?.id, savedLocation?.lat, savedLocation?.lng]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     selectedAddress
       ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
@@ -989,8 +1010,17 @@ function NewBooking() {
                 <View className="mt-3 border-t border-ink-100 pt-3">
                   <Row label="Subtotal" value={formatRupiah(subtotal)} />
                   {voucher && <Row label={`Voucher (${voucher.code})`} value={`-${formatRupiah(voucher.discount)}`} />}
+                  {travelQuote && travelQuote.enabled && (
+                    <Row
+                      label={`Transport (${travelQuote.distanceKm.toFixed(1)} km${travelQuote.distanceKm <= travelQuote.freeKm ? ' · gratis' : ''})`}
+                      value={travelQuote.travelFee > 0 ? formatRupiah(travelQuote.travelFee) : 'Gratis'}
+                    />
+                  )}
+                  {travelErr && (
+                    <Text className="font-medium mt-1 text-[10px] text-amber-700">{travelErr}</Text>
+                  )}
                   <View className="mt-2 border-t border-ink-100 pt-2">
-                    <Row label="Total" value={formatRupiah(total)} bold />
+                    <Row label="Total" value={formatRupiah(total + (travelQuote?.travelFee ?? 0))} bold />
                   </View>
                 </View>
                 {walletBalance > 0 && (() => {
@@ -1040,7 +1070,7 @@ function NewBooking() {
                   <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
                     {step === TOTAL_STEPS ? 'Total Bayar' : 'Estimasi Total'}
                   </Text>
-                  <Text className="font-extrabold mt-0.5 text-lg text-brand-700">{formatRupiah(total)}</Text>
+                  <Text className="font-extrabold mt-0.5 text-lg text-brand-700">{formatRupiah(total + (travelQuote?.travelFee ?? 0))}</Text>
                 </View>
                 {step !== TOTAL_STEPS && (
                   <Text className="font-medium max-w-[40%] text-right text-[9px] text-ink-400">

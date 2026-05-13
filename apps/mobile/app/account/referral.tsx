@@ -291,4 +291,4 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 
-export default withAuth(ReferralScreen, 'customer');
+export default withAuth(ReferralScreen);

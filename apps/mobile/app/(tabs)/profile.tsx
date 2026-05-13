@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useT } from '../../src/lib/i18n';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
+import { useCleanerKycStore } from '../../src/stores/cleanerKyc';
 import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
@@ -50,6 +51,7 @@ function ProfileScreen() {
   const logout = useAuthStore((s) => s.logout);
   const mode = useModeStore((s) => s.mode);
   const setMode = useModeStore((s) => s.setMode);
+  const kycStatus = useCleanerKycStore((s) => s.status);
   const profile = useUserStore((s) => s.profile);
   const clearUser = useUserStore((s) => s.clear);
   const t = useT();
@@ -154,7 +156,9 @@ function ProfileScreen() {
               { icon: User, label: 'Profil Cleaner & Foto', onPress: () => router.push('/cleaner/profile') },
               { icon: CreditCard, label: 'Wallet & Penarikan', onPress: () => router.push('/cleaner/wallet') },
               { icon: MapPin, label: 'Area Layananku', onPress: () => router.push('/cleaner/areas') },
-              { icon: Briefcase, label: 'Status KYC & Verifikasi', onPress: () => router.push('/cleaner/kyc') },
+              ...(kycStatus !== 'approved'
+                ? [{ icon: Briefcase, label: 'Status KYC & Verifikasi', onPress: () => router.push('/cleaner/kyc') }]
+                : []),
             ]}
           />
         )}
@@ -162,10 +166,14 @@ function ProfileScreen() {
         <Section
           title={t('profile.account')}
           items={[
-            { icon: MapPin, label: t('profile.addresses'), onPress: () => router.push('/account/addresses') },
+            ...(mode === 'customer'
+              ? [
+                  { icon: MapPin, label: t('profile.addresses'), onPress: () => router.push('/account/addresses') },
+                  { icon: Wallet, label: 'Saldo Saya', onPress: () => router.push('/account/wallet') },
+                  { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
+                ]
+              : []),
             { icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') },
-            { icon: Wallet, label: 'Saldo Saya', onPress: () => router.push('/account/wallet') },
-            { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}
         />

@@ -8,6 +8,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { JobsGateway } from '../jobs/jobs.gateway';
+import { TravelFeeService } from './travel-fee.service';
 
 const CreateBookingSchema = z.object({
   pricingMode: z.enum(['package', 'hourly', 'wa_survey']),
@@ -31,7 +32,20 @@ type CreateBookingDto = z.infer<typeof CreateBookingSchema>;
 @UseGuards(JwtAuthGuard)
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly prisma: PrismaService, private readonly jobs: JobsGateway) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jobs: JobsGateway,
+    private readonly travelFee: TravelFeeService,
+  ) {}
+
+  // Preview travel fee untuk lokasi tertentu (dipakai mobile saat checkout)
+  @Post('travel-quote')
+  async travelQuote(@Body() body: { lat: number; lng: number }) {
+    if (typeof body?.lat !== 'number' || typeof body?.lng !== 'number') {
+      throw new BadRequestException('lat & lng wajib');
+    }
+    return this.travelFee.quote(body.lat, body.lng);
+  }
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser) {
@@ -104,17 +118,32 @@ export class BookingsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateBookingSchema)) body: CreateBookingDto,
   ) {
+    // Hitung travel fee — kalau out-of-range, throw BadRequest (mobile arahkan ke WA)
+    const lat = body.lat ?? -7.7956;
+    const lng = body.lng ?? 110.3695;
+    let travelFee = 0;
+    let travelDistanceKm: number | null = null;
+    try {
+      const q = await this.travelFee.quote(lat, lng);
+      travelFee = q.travelFee;
+      travelDistanceKm = q.distanceKm;
+    } catch (e: any) {
+      // Re-throw — caller wajib lihat error code (OUT_OF_RANGE / NO_SERVICE_AREA)
+      throw e;
+    }
+    const totalWithTravel = Number(body.totalAmount) + travelFee;
+
     const row = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
       `INSERT INTO bookings (
         customer_id, service_id, pricing_mode, package_id, hourly_tier_id, hours_booked,
         status, form_snapshot, scheduled_at, address_line, location, customer_notes,
-        base_amount, total_amount
+        base_amount, total_amount, travel_fee, travel_distance_km
       )
       VALUES (
         $1::uuid, $2::uuid, $3, $4::uuid, $5::uuid, $6,
         'pending_payment', $7::jsonb, $8::timestamptz, $9,
         ST_SetSRID(ST_MakePoint($10, $11), 4326)::geography,
-        $12, $13, $14
+        $12, $13, $14, $15, $16
       )
       RETURNING id`,
       user.id,
@@ -126,13 +155,15 @@ export class BookingsController {
       JSON.stringify(body.formSnapshot),
       body.scheduledAt,
       body.addressLine,
-      body.lng ?? 110.3695,
-      body.lat ?? -7.7956,
+      lng,
+      lat,
       body.customerNotes ?? null,
       body.baseAmount,
-      body.totalAmount,
+      totalWithTravel,
+      travelFee,
+      travelDistanceKm,
     );
-    return { id: row[0]?.id };
+    return { id: row[0]?.id, travelFee, travelDistanceKm, totalAmount: totalWithTravel };
   }
 
   @Post(':id/pay')

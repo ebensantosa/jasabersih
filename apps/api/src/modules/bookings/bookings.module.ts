@@ -9,6 +9,7 @@ import { BookingReminderService } from './booking-reminder.service';
 import { PaymentTimeoutService } from './payment-timeout.service';
 import { RatingReminderService } from './rating-reminder.service';
 import { SearchTimeoutService } from './search-timeout.service';
+import { TravelFeeService } from './travel-fee.service';
 
 @Module({
   imports: [AuthModule, NotificationsModule],
@@ -19,6 +20,8 @@ import { SearchTimeoutService } from './search-timeout.service';
     AutoCompleteService,
     BookingReminderService,
     RatingReminderService,
+    TravelFeeService,
   ],
+  exports: [TravelFeeService],
 })
 export class BookingsModule {}
