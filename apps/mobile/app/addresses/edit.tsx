@@ -175,7 +175,7 @@ function EditAddress() {
                 <MapPin color="#1D4ED8" size={20} strokeWidth={2.2} />
               </View>
               <View className="flex-1">
-                <Text className="font-semibold text-xs text-brand-700">ðŸ“ Pin tersimpan</Text>
+                <Text className="font-semibold text-xs text-brand-700">📍 Pin tersimpan</Text>
                 <Text className="font-medium mt-0.5 text-sm text-ink-800" numberOfLines={2}>
                   {addressLine}
                 </Text>

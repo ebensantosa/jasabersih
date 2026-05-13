@@ -229,7 +229,10 @@ export class AdminCmsController {
 
   @Patch('service-areas/:id')
   @Roles('super_admin', 'ops')
-  async updateArea(@Param('id') id: string, @Body() body: { isActive?: boolean; surgeMultiplier?: number; radiusM?: number; notes?: string; lat?: number; lng?: number }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+  async updateArea(@Param('id') id: string, @Body() body: { name?: string; isActive?: boolean; surgeMultiplier?: number; radiusM?: number; notes?: string; lat?: number; lng?: number }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+    if (body.name !== undefined) {
+      await this.prisma.$executeRaw`UPDATE service_areas SET name = ${body.name}, city = ${body.name} WHERE id = ${id}::uuid`;
+    }
     if (body.isActive !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET is_active = ${body.isActive} WHERE id = ${id}::uuid`;
     if (body.surgeMultiplier !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET surge_multiplier = ${body.surgeMultiplier} WHERE id = ${id}::uuid`;
     if (body.radiusM !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET radius_m = ${body.radiusM}::int WHERE id = ${id}::uuid`;

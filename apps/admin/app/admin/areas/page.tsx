@@ -128,8 +128,20 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
   async function save() {
     setBusy(true);
     try {
-      if (isEdit) await api.admin.updateServiceArea(area.id, { isActive: form.isActive, surgeMultiplier: Number(form.surgeMultiplier), radiusM: Number(form.radiusM), notes: form.notes, lat: Number(form.lat), lng: Number(form.lng) });
-      else await api.admin.createServiceArea({ ...form, lat: Number(form.lat), lng: Number(form.lng), radiusM: Number(form.radiusM), surgeMultiplier: Number(form.surgeMultiplier) });
+      if (isEdit) {
+        await api.admin.updateServiceArea(area.id, {
+          name: form.name,
+          isActive: form.isActive,
+          surgeMultiplier: Number(form.surgeMultiplier),
+          radiusM: Number(form.radiusM),
+          notes: form.notes,
+          lat: Number(form.lat),
+          lng: Number(form.lng),
+        });
+      } else {
+        // City auto = nama area
+        await api.admin.createServiceArea({ ...form, city: form.name, lat: Number(form.lat), lng: Number(form.lng), radiusM: Number(form.radiusM), surgeMultiplier: Number(form.surgeMultiplier) });
+      }
       toast.success(isEdit ? 'Di-update.' : 'Dibuat.');
       onSaved();
     } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
@@ -140,12 +152,7 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
       <div className="flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Batal</Button><Button variant="primary" onClick={save} loading={busy}>Simpan</Button></div>
     }>
       <div className="space-y-3">
-        {!isEdit && (
-          <>
-            <Input label="Nama Area" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Yogyakarta Kota" />
-            <Input label="Kota" required value={form.city} onChange={(v) => setForm({ ...form, city: v })} placeholder="Yogyakarta" />
-          </>
-        )}
+        <Input label="Nama Kota / Area" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Yogyakarta" />
         <div>
           <label className="text-xs font-semibold text-slate-700">Titik Pusat (Centroid)</label>
           <div className="mt-1">

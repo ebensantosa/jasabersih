@@ -187,6 +187,10 @@ export function LocationPicker({
     onClose();
   }
 
+  // Web: kalau Modal tetap di DOM saat visible=false, dia bisa intercept focus &
+  // bikin field di belakang gak bisa di-tap. Unmount total saat closed.
+  if (!visible && Platform.OS === 'web') return null;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <SafeAreaView edges={['top']} className="bg-brand-700">
