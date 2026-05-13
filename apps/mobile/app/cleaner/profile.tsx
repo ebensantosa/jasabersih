@@ -169,76 +169,6 @@ function CleanerProfileScreen() {
               </View>
             </View>
 
-            {/* Availability toggle */}
-            <View className="flex-row items-center justify-between rounded-2xl bg-white p-4">
-              <View className="flex-1">
-                <Text className="font-bold text-sm text-ink-900">Aktif Terima Order</Text>
-                <Text className="font-sans mt-0.5 text-[11px] text-ink-500">Matikan kalau lagi off / tidak available</Text>
-              </View>
-              <Switch
-                value={isAvailable}
-                onValueChange={setIsAvailable}
-                trackColor={{ false: '#E2E8F0', true: '#1D4ED8' }}
-                thumbColor="white"
-              />
-            </View>
-
-            {/* Tools status — read-only, admin-controlled (anti-fraud) */}
-            <View className="rounded-2xl bg-white p-4">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1">
-                  <Text className="font-bold text-sm text-ink-900">Status Peralatan</Text>
-                  <Text className="font-sans mt-0.5 text-[11px] text-ink-500">
-                    {bringsTools ? 'Bawa alat sendiri (komisi lebih tinggi)' : 'Pakai alat dari kantor'}
-                  </Text>
-                </View>
-                <View className={`rounded-full px-3 py-1 ${bringsTools ? 'bg-emerald-100' : 'bg-ink-100'}`}>
-                  <Text className={`font-bold text-[10px] uppercase tracking-wider ${bringsTools ? 'text-emerald-800' : 'text-ink-600'}`}>
-                    {bringsTools ? 'Bawa Alat' : 'Pakai Alat Kantor'}
-                  </Text>
-                </View>
-              </View>
-              <Text className="font-sans mt-2 text-[10px] leading-4 text-ink-400">
-                Status diatur admin setelah verifikasi peralatan. Hubungi CS untuk perubahan.
-              </Text>
-            </View>
-
-            <View className="rounded-2xl bg-white p-4">
-              <Text className="font-semibold mb-2 text-xs text-ink-700">Bio</Text>
-              <TextInput
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Cerita pengalaman & spesialisasi kamu…"
-                placeholderTextColor="#94A3B8"
-                multiline
-                style={{ minHeight: 80, textAlignVertical: 'top' }}
-                className="font-sans rounded-xl border border-ink-200 bg-ink-50 p-3 text-sm text-ink-900"
-              />
-            </View>
-
-            <View className="rounded-2xl bg-white p-4">
-              <Text className="font-semibold mb-2 text-xs text-ink-700">Area Layanan</Text>
-              <TextInput
-                value={areasText}
-                onChangeText={setAreasText}
-                placeholder="Jakarta Selatan, Kemang, Tebet"
-                placeholderTextColor="#94A3B8"
-                className="font-sans rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-900"
-              />
-              <Text className="font-sans mt-1 text-[10px] text-ink-500">Pisahkan dengan koma</Text>
-            </View>
-
-            <View className="rounded-2xl bg-white p-4">
-              <Text className="font-semibold mb-2 text-xs text-ink-700">Bahasa</Text>
-              <TextInput
-                value={languagesText}
-                onChangeText={setLanguagesText}
-                placeholder="Indonesia, English, Java"
-                placeholderTextColor="#94A3B8"
-                className="font-sans rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-900"
-              />
-            </View>
-
             {profile?.kycStatus !== 'approved' && (
               <Pressable
                 onPress={() => router.push('/cleaner/kyc')}
@@ -248,14 +178,6 @@ function CleanerProfileScreen() {
                 <Text className="font-sans mt-1 text-[11px] text-amber-900">Wajib agar bisa menerima order & menarik saldo.</Text>
               </Pressable>
             )}
-
-            <Pressable
-              onPress={save}
-              disabled={saving}
-              className={`mt-2 items-center justify-center rounded-2xl py-3.5 ${saving ? 'bg-brand-400' : 'bg-brand-600'}`}
-            >
-              {saving ? <ActivityIndicator color="white" /> : <Text className="font-bold text-sm text-white">Simpan Perubahan</Text>}
-            </Pressable>
           </ScrollView>
         )}
       </SafeAreaView>

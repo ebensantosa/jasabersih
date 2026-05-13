@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -70,22 +71,36 @@ function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {tokens ? (
-          <View className="rounded-2xl bg-white p-4 shadow-sm" style={{ elevation: 4 }}>
+          <Pressable
+            onPress={() => router.push(mode === 'freelancer' ? '/cleaner/profile' : '/account/edit-profile' as any)}
+            className="rounded-2xl bg-white p-4 shadow-sm"
+            style={{ elevation: 4 }}
+          >
             <View className="flex-row items-center gap-3">
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
-                <User color="#1D4ED8" size={26} strokeWidth={2} />
-              </View>
+              {(profile as any)?.photoUrl ? (
+                <Image
+                  source={{ uri: (profile as any).photoUrl }}
+                  style={{ width: 56, height: 56, borderRadius: 28 }}
+                  contentFit="cover"
+                />
+              ) : (
+                <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+                  <User color="#1D4ED8" size={26} strokeWidth={2} />
+                </View>
+              )}
               <View className="flex-1">
                 <Text className="font-bold text-base text-ink-900">{profile?.name ?? profile?.phone ?? 'Pengguna'}</Text>
                 <Text className="font-sans text-xs text-ink-500">{profile?.email ?? profile?.phone ?? '-'}</Text>
                 <View className="mt-1 flex-row items-center gap-1">
                   <Star color="#F59E0B" fill="#F59E0B" size={12} />
-                  <Text className="font-medium text-[11px] text-ink-600">Member · {memberYear}</Text>
+                  <Text className="font-medium text-[11px] text-ink-600">
+                    {mode === 'freelancer' ? 'Tap untuk edit profil & foto' : `Member · ${memberYear}`}
+                  </Text>
                 </View>
               </View>
               <ChevronRight color="#94A3B8" size={18} />
             </View>
-          </View>
+          </Pressable>
         ) : (
           <Pressable
             onPress={() => router.push('/(auth)/login')}
@@ -167,7 +182,13 @@ function ProfileScreen() {
 
         {tokens && (
           <Pressable
-            onPress={() => { clearUser(); logout(); }}
+            onPress={() => {
+              clearUser();
+              logout();
+              // Reset mode ke customer biar gak nyangkut di cleaner UI
+              try { useModeStore.getState().setMode('customer'); } catch {}
+              router.replace('/(auth)/login');
+            }}
             className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl bg-white p-4"
           >
             <LogOut color="#DC2626" size={18} strokeWidth={2.2} />
