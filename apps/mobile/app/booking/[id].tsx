@@ -15,18 +15,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-
-function confirmCancel(title: string, message: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) onConfirm();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Tidak' },
-    { text: 'Ya, batalkan', style: 'destructive', onPress: onConfirm },
-  ]);
-}
+import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -90,6 +79,7 @@ function BookingDetail() {
   }, [id, booking, fetchOne]);
   const mode = useModeStore((s) => s.mode);
   const isCleaner = mode === 'freelancer';
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDispute, setShowDispute] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
@@ -206,10 +196,7 @@ function BookingDetail() {
     if (!booking) return;
     // Belum bayar → cancel langsung tanpa penalty
     if (booking.status === 'pending_payment' || !booking.paidAt) {
-      confirmCancel('Batalkan Pesanan?', 'Belum dibayar — gratis batal.', () => {
-        cancel(booking.id, booking.totalPrice);
-        toast.success('Pesanan dibatalkan');
-      });
+      setShowCancelConfirm(true);
       return;
     }
 
@@ -697,6 +684,35 @@ function BookingDetail() {
           </View>
         )}
       </View>
+
+      <Modal visible={showCancelConfirm} transparent animationType="fade" onRequestClose={() => setShowCancelConfirm(false)}>
+        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+          <View className="w-full max-w-sm rounded-2xl bg-white p-5">
+            <Text className="font-bold text-base text-ink-900">Batalkan Pesanan?</Text>
+            <Text className="mt-2 text-sm text-ink-600">Belum dibayar — gratis batal.</Text>
+            <View className="mt-5 flex-row gap-2">
+              <Pressable
+                onPress={() => setShowCancelConfirm(false)}
+                className="flex-1 items-center rounded-xl border border-ink-300 bg-white py-3"
+              >
+                <Text className="font-semibold text-sm text-ink-700">Tidak</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setShowCancelConfirm(false);
+                  if (booking) {
+                    cancel(booking.id, booking.totalPrice);
+                    toast.success('Pesanan dibatalkan');
+                  }
+                }}
+                className="flex-1 items-center rounded-xl bg-danger py-3"
+              >
+                <Text className="font-bold text-sm text-white">Ya, batalkan</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {canDispute && (
         <DisputeFormModal
