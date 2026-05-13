@@ -17,6 +17,7 @@ import {
   Star,
   Tag,
   User,
+  Wallet,
 } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -147,6 +148,7 @@ function ProfileScreen() {
           items={[
             { icon: MapPin, label: t('profile.addresses'), onPress: () => router.push('/account/addresses') },
             { icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') },
+            { icon: Wallet, label: 'Saldo Saya', onPress: () => router.push('/account/wallet') },
             { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}

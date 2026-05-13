@@ -88,6 +88,35 @@ export class AdminBookingsController {
     return { booking, photos: photosWithUrl, charges, payments };
   }
 
+  // Issue refund as non-cashable credit to customer's wallet.
+  @Post(':id/refund-credit')
+  @Roles('super_admin', 'ops')
+  async refundCredit(
+    @Param('id') id: string,
+    @Body() body: { amount: number; reason: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body.amount || body.amount <= 0) throw new BadRequestException('Nominal refund harus > 0');
+    if (!body.reason || body.reason.length < 5) throw new BadRequestException('Alasan min 5 karakter');
+    const bk = await this.prisma.$queryRaw<{ customer_id: string; total_amount: number }[]>`
+      SELECT customer_id, total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (bk.length === 0) throw new NotFoundException('Booking tidak ditemukan');
+    if (!bk[0]!.customer_id) throw new BadRequestException('Booking tidak ada customer');
+    if (body.amount > Number(bk[0]!.total_amount)) throw new BadRequestException('Refund tidak boleh > total booking');
+
+    await this.prisma.$executeRaw`
+      INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+      VALUES (${bk[0]!.customer_id}::uuid, 'refund_credit', ${body.amount}, 'booking', ${id}::uuid, 'CLEARED', NOW(), ${body.reason})
+    `;
+    await this.audit.log({
+      adminId: admin.id, action: 'booking.refund_credit', resourceType: 'booking', resourceId: id,
+      changes: { amount: body.amount, reason: body.reason }, ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
   @Post(':id/force-cancel')
   @Roles('super_admin', 'ops')
   async forceCancel(

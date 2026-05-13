@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Building2, CheckCircle2, Copy, QrCode, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Building2, CheckCircle2, Copy, QrCode, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,9 +50,34 @@ function PaymentScreen() {
   const [creating, setCreating] = useState(false);
   const [direct, setDirect] = useState<DirectResult | null>(null);
   const [paid, setPaid] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await api.get('/customer/wallet');
+        setWalletBalance(Number((r.data?.data ?? r.data)?.balance ?? 0));
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  async function payWithSaldo() {
+    if (!bookingId || !booking) return;
+    setCreating(true);
+    try {
+      await api.post(`/bookings/${bookingId}/pay`, { useCredit: true });
+      setPaid(true);
+      void syncBookings();
+      setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal bayar dengan saldo');
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function pickMethod(senderBank: string, senderBankType: DirectResult['senderBankType']) {
     if (!bookingId) return;
@@ -110,16 +135,58 @@ function PaymentScreen() {
         ) : direct ? (
           <PaymentInstructions data={direct} onCopy={copyVa} />
         ) : (
-          <MethodPicker disabled={creating} onPick={pickMethod} />
+          <MethodPicker
+            disabled={creating}
+            onPick={pickMethod}
+            walletBalance={walletBalance}
+            total={booking?.totalPrice ?? 0}
+            onPaySaldo={payWithSaldo}
+          />
         )}
       </SafeAreaView>
     </>
   );
 }
 
-function MethodPicker({ disabled, onPick }: { disabled: boolean; onPick: (bank: string, type: DirectResult['senderBankType']) => void }) {
+function MethodPicker({
+  disabled,
+  onPick,
+  walletBalance,
+  total,
+  onPaySaldo,
+}: {
+  disabled: boolean;
+  onPick: (bank: string, type: DirectResult['senderBankType']) => void;
+  walletBalance: number;
+  total: number;
+  onPaySaldo: () => void;
+}) {
+  const canPaySaldo = walletBalance >= total && total > 0;
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      {walletBalance > 0 && (
+        <View>
+          <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Saldo Saya</Text>
+          <Pressable
+            disabled={disabled || !canPaySaldo}
+            onPress={onPaySaldo}
+            className={`flex-row items-center gap-3 rounded-2xl p-4 ${canPaySaldo ? 'bg-emerald-50 border border-emerald-300' : 'bg-ink-100 border border-ink-200'}`}
+          >
+            <View className="h-12 w-14 items-center justify-center rounded-xl bg-emerald-600">
+              <WalletIcon color="white" size={20} />
+            </View>
+            <View className="flex-1">
+              <Text className={`font-bold text-sm ${canPaySaldo ? 'text-emerald-900' : 'text-ink-500'}`}>
+                {canPaySaldo ? 'Bayar dengan Saldo' : 'Saldo tidak cukup'}
+              </Text>
+              <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
+                Saldo: {formatRupiah(walletBalance)}{canPaySaldo ? ' — bayar penuh dari saldo' : ` (kurang ${formatRupiah(total - walletBalance)})`}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+      )}
+
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS</Text>
         <Pressable

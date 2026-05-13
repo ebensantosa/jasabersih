@@ -57,6 +57,43 @@ export default function Bookings() {
     });
   }
 
+  async function refundToCredit(id: string, totalAmount: number) {
+    const amountStr = await prompt({
+      title: 'Refund ke Saldo Customer',
+      message: `Nominal refund (max ${totalAmount.toLocaleString('id-ID')}):`,
+      placeholder: 'mis. 50000',
+      variant: 'primary',
+      confirmLabel: 'Lanjut',
+    });
+    if (!amountStr) return;
+    const amount = parseInt(String(amountStr).replace(/[^\d]/g, ''), 10);
+    if (!amount || amount <= 0 || amount > totalAmount) {
+      toast.error('Nominal tidak valid');
+      return;
+    }
+    const reason = await prompt({
+      title: `Refund Rp ${amount.toLocaleString('id-ID')}`,
+      message: 'Alasan refund (akan tercatat di audit & ledger):',
+      placeholder: 'Min 5 karakter',
+      multiline: true,
+      minLength: 5,
+      variant: 'primary',
+      confirmLabel: 'Refund',
+    });
+    if (!reason) return;
+    setBusy(true);
+    try {
+      await api.admin.refundCreditToCustomer(id, amount, reason);
+      setOpenMenu(null);
+      toast.success(`Refund Rp ${amount.toLocaleString('id-ID')} masuk ke saldo customer`);
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function rowAction(id: string, action: 'cancel' | 'complete' | 'mark_paid' | 'delete') {
     const labels = { cancel: 'batalkan', complete: 'tandai selesai', mark_paid: 'tandai lunas', delete: 'hapus' };
     const reason = await prompt({
@@ -375,6 +412,9 @@ export default function Bookings() {
                                     <XCircle size={12} className="text-amber-600" /> Batalkan
                                   </button>
                                 )}
+                                <button onClick={() => refundToCredit(o.id, Number(o.total ?? 0))} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50">
+                                  <Wallet size={12} className="text-emerald-600" /> Refund ke Saldo
+                                </button>
                                 <button onClick={() => rowAction(o.id, 'delete')} className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50">
                                   <Trash2 size={12} /> Hapus Permanen
                                 </button>

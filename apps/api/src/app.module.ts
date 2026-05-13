@@ -13,6 +13,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { AppContentModule } from './modules/app-content/app-content.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { CleanerModule } from './modules/cleaner/cleaner.module';
+import { CustomerWalletModule } from './modules/customer-wallet/customer-wallet.module';
 import { DisputesModule } from './modules/disputes/disputes.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -37,6 +38,7 @@ import { FraudReportModule } from './modules/fraud/fraud-report.module';
     AppContentModule,
     AddressesModule,
     CleanerModule,
+    CustomerWalletModule,
     DisputesModule,
     VouchersModule,
     NotificationsModule,

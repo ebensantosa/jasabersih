@@ -135,12 +135,40 @@ export class BookingsController {
   }
 
   @Post(':id/pay')
-  async pay(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+  async pay(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body?: { useCredit?: boolean },
+  ) {
+    const bk = await this.prisma.$queryRawUnsafe<{ total_amount: number; status: string }[]>(
+      `SELECT total_amount, status FROM bookings WHERE id = $1::uuid AND customer_id = $2::uuid LIMIT 1`,
+      id, user.id,
+    );
+    if (!bk[0]) throw new BadRequestException('Booking tidak ditemukan');
+    if (bk[0].status !== 'pending_payment') throw new BadRequestException('Booking tidak dalam status pending_payment');
+
+    if (body?.useCredit) {
+      const bal = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
+        `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
+           FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
+        user.id,
+      );
+      const balance = Number(bal[0]?.b ?? 0);
+      const use = Math.min(balance, Number(bk[0].total_amount));
+      if (use > 0) {
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+           VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
+          user.id, use, id, `Pakai saldo untuk booking ${id.slice(0, 8)}`,
+        );
+      }
+    }
+
     await this.prisma.$executeRawUnsafe(
       `UPDATE bookings SET status = 'searching', paid_at = NOW()
        WHERE id = $1::uuid AND customer_id = $2::uuid AND status = 'pending_payment'`,
-      id,
-      user.id,
+      id, user.id,
     );
     void this.jobs.broadcastIncomingJob(id).catch(() => {});
     return { ok: true };

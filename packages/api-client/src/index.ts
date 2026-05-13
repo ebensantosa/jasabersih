@@ -120,6 +120,8 @@ export function createClient(opts: ClientOptions) {
         ),
       forceCancelBooking: (bookingId: string, reason: string, refundAmount?: number) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-cancel`, { reason, refundAmount }),
+      refundCreditToCustomer: (bookingId: string, amount: number, reason: string) =>
+        request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/refund-credit`, { amount, reason }),
       forceCompleteBooking: (bookingId: string, reason: string) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-complete`, { reason }),
       forceMarkPaid: (bookingId: string, reason: string, method?: string, reference?: string) =>
