@@ -145,6 +145,20 @@ export class AdminDisputesController {
        WHERE id = ${id}::uuid
     `;
 
+    // Credit refund ke wallet customer (raised_by) saat action = refund_customer
+    if (body.action === 'refund_customer' && body.payoutAmount && body.payoutAmount > 0) {
+      const r = await this.prisma.$queryRaw<{ raised_by: string | null }[]>`
+        SELECT raised_by FROM disputes WHERE id = ${id}::uuid LIMIT 1
+      `;
+      const customerId = r[0]?.raised_by;
+      if (customerId) {
+        await this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${customerId}::uuid, 'refund_credit', ${body.payoutAmount}, 'dispute', ${id}::uuid, 'CLEARED', NOW(), ${'Refund dispute: ' + body.resolution.slice(0, 200)})
+        `;
+      }
+    }
+
     // Side effects per action
     if (body.action === 'suspend_subject' && dispute.subject_user_id) {
       const days = body.suspendDays ?? 14;
