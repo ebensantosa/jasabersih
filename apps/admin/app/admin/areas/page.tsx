@@ -128,7 +128,7 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
   async function save() {
     setBusy(true);
     try {
-      if (isEdit) await api.admin.updateServiceArea(area.id, { isActive: form.isActive, surgeMultiplier: Number(form.surgeMultiplier), radiusM: Number(form.radiusM), notes: form.notes });
+      if (isEdit) await api.admin.updateServiceArea(area.id, { isActive: form.isActive, surgeMultiplier: Number(form.surgeMultiplier), radiusM: Number(form.radiusM), notes: form.notes, lat: Number(form.lat), lng: Number(form.lng) });
       else await api.admin.createServiceArea({ ...form, lat: Number(form.lat), lng: Number(form.lng), radiusM: Number(form.radiusM), surgeMultiplier: Number(form.surgeMultiplier) });
       toast.success(isEdit ? 'Di-update.' : 'Dibuat.');
       onSaved();
@@ -140,24 +140,26 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
       <div className="flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Batal</Button><Button variant="primary" onClick={save} loading={busy}>Simpan</Button></div>
     }>
       <div className="space-y-3">
-        {!isEdit && <>
-          <Input label="Nama Area" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Yogyakarta Kota" />
-          <Input label="Kota" required value={form.city} onChange={(v) => setForm({ ...form, city: v })} placeholder="Yogyakarta" />
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Titik Pusat (Centroid)</label>
-            <div className="mt-1">
-              <MapPicker
-                lat={Number(form.lat) || -7.7956}
-                lng={Number(form.lng) || 110.3695}
-                onChange={(lat, lng) => setForm((f) => ({ ...f, lat: String(lat.toFixed(6)), lng: String(lng.toFixed(6)) }))}
-              />
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <Input label="Latitude" value={form.lat} onChange={(v) => setForm({ ...form, lat: v })} placeholder="-7.7956" />
-              <Input label="Longitude" value={form.lng} onChange={(v) => setForm({ ...form, lng: v })} placeholder="110.3695" />
-            </div>
+        {!isEdit && (
+          <>
+            <Input label="Nama Area" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Yogyakarta Kota" />
+            <Input label="Kota" required value={form.city} onChange={(v) => setForm({ ...form, city: v })} placeholder="Yogyakarta" />
+          </>
+        )}
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Titik Pusat (Centroid)</label>
+          <div className="mt-1">
+            <MapPicker
+              lat={Number(form.lat) || -7.7956}
+              lng={Number(form.lng) || 110.3695}
+              onChange={(lat, lng) => setForm((f) => ({ ...f, lat: String(lat.toFixed(6)), lng: String(lng.toFixed(6)) }))}
+            />
           </div>
-        </>}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Input label="Latitude" value={form.lat} onChange={(v) => setForm({ ...form, lat: v })} placeholder="-7.7956" />
+            <Input label="Longitude" value={form.lng} onChange={(v) => setForm({ ...form, lng: v })} placeholder="110.3695" />
+          </div>
+        </div>
         <Input label="Radius (meter)" type="number" value={form.radiusM} onChange={(v) => setForm({ ...form, radiusM: v })} helpText="15000 = radius 15 km" />
         <Input label="Surge Multiplier" value={form.surgeMultiplier} onChange={(v) => setForm({ ...form, surgeMultiplier: v })} helpText="1.0 = normal, 1.2 = +20%" />
         <Textarea label="Notes" rows={2} value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />

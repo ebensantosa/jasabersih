@@ -229,11 +229,17 @@ export class AdminCmsController {
 
   @Patch('service-areas/:id')
   @Roles('super_admin', 'ops')
-  async updateArea(@Param('id') id: string, @Body() body: { isActive?: boolean; surgeMultiplier?: number; radiusM?: number; notes?: string }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+  async updateArea(@Param('id') id: string, @Body() body: { isActive?: boolean; surgeMultiplier?: number; radiusM?: number; notes?: string; lat?: number; lng?: number }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
     if (body.isActive !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET is_active = ${body.isActive} WHERE id = ${id}::uuid`;
     if (body.surgeMultiplier !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET surge_multiplier = ${body.surgeMultiplier} WHERE id = ${id}::uuid`;
     if (body.radiusM !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET radius_m = ${body.radiusM}::int WHERE id = ${id}::uuid`;
     if (body.notes !== undefined) await this.prisma.$executeRaw`UPDATE service_areas SET notes = ${body.notes} WHERE id = ${id}::uuid`;
+    if (typeof body.lat === 'number' && typeof body.lng === 'number') {
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE service_areas SET centroid = ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography WHERE id = $3::uuid`,
+        body.lng, body.lat, id,
+      );
+    }
     await this.audit.log({ adminId: admin.id, action: 'service_area.update', resourceType: 'service_area', resourceId: id, changes: body, ipAddress: req.ip ?? null });
     return { ok: true };
   }

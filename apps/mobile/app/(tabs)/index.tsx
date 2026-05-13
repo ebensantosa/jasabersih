@@ -360,7 +360,7 @@ export default function Home() {
               n={1}
               icon={Search}
               title="Pilih Layanan"
-              desc="Pilih jenis bersih + cara pesan (per ruangan / per jam / WA)"
+              desc="Pilih jenis bersih + cara pesan (per ruangan / WA)"
             />
             <Connector />
             <Step
