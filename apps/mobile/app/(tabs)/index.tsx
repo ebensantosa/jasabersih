@@ -15,7 +15,7 @@ import {
   Tag,
   Wallet,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,12 +27,19 @@ import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
 import { useT } from '../../src/lib/i18n';
 import { useAddressesStore } from '../../src/stores/addresses';
+import { useModeStore } from '../../src/stores/mode';
 import { shortenAddress } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
 
 export default function Home() {
   const router = useRouter();
+  const mode = useModeStore((s) => s.mode);
+
+  // Cleaner mode → redirect ke Job Board (customer home gak relevan)
+  useEffect(() => {
+    if (mode === 'freelancer') router.replace('/(tabs)/jobs');
+  }, [mode]);
   const addresses = useAddressesStore((s) => s.list);
   const setDefault = useAddressesStore((s) => s.setDefault);
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
