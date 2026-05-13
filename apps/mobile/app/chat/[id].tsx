@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, ClipboardList, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -141,9 +142,17 @@ function Chat() {
             <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
-              <Text className="font-bold text-sm text-brand-700">{(booking?.cleanerName ?? 'C')[0]}</Text>
-            </View>
+            {booking?.cleanerPhotoUrl ? (
+              <Image
+                source={{ uri: booking.cleanerPhotoUrl }}
+                style={{ width: 40, height: 40, borderRadius: 20 }}
+                contentFit="cover"
+              />
+            ) : (
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+                <Text className="font-bold text-sm text-brand-700">{(booking?.cleanerName ?? 'C')[0]}</Text>
+              </View>
+            )}
             <Pressable
               className="flex-1"
               onPress={() => {
@@ -169,6 +178,32 @@ function Chat() {
             </Pressable>
           </View>
         </SafeAreaView>
+
+        {/* Order context — link ke booking */}
+        {booking && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/booking/[id]', params: { id: booking.id } })}
+            className="flex-row items-center gap-2.5 border-b border-ink-100 bg-white px-3 py-2.5"
+          >
+            <View className="h-9 w-9 items-center justify-center rounded-lg bg-brand-50">
+              <ClipboardList color="#1D4ED8" size={18} strokeWidth={2.2} />
+            </View>
+            <View className="flex-1">
+              <View className="flex-row items-center gap-1.5">
+                <Text className="font-semibold text-[12px] text-ink-900" numberOfLines={1}>
+                  {booking.packageName ?? booking.categoryName ?? 'Pesanan'}
+                </Text>
+                <View className="rounded bg-ink-100 px-1.5 py-0.5">
+                  <Text className="font-mono text-[9px] text-ink-600">#{booking.id.slice(0, 8)}</Text>
+                </View>
+              </View>
+              <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
+                {new Date(booking.scheduledAt).toLocaleString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · Rp {Number(booking.totalPrice ?? 0).toLocaleString('id-ID')}
+              </Text>
+            </View>
+            <ChevronRight color="#94A3B8" size={16} strokeWidth={2.4} />
+          </Pressable>
+        )}
 
         {/* Safety banner + Report button */}
         <View className="flex-row items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">

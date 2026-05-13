@@ -39,7 +39,8 @@ export class BookingsController {
       `SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.total_amount AS total,
               b.scheduled_at AS "scheduledAt", b.address_line AS address, b.created_at AS "createdAt",
               s.name AS "serviceName", s.icon_url AS "serviceIcon",
-              pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId"
+              pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId",
+              cl.photo_url AS "cleanerPhotoUrl"
        FROM bookings b
        LEFT JOIN services s ON s.id = b.service_id
        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
@@ -63,7 +64,7 @@ export class BookingsController {
               ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
               s.name AS service_name, s.icon_url AS service_icon,
               cu.name AS customer_name, cu.phone AS customer_phone,
-              cl.name AS cleaner_name, cl.phone AS cleaner_phone
+              cl.name AS cleaner_name, cl.phone AS cleaner_phone, cl.photo_url AS cleaner_photo_url
          FROM bookings b
          LEFT JOIN services s ON s.id = b.service_id
          LEFT JOIN users cu ON cu.id = b.customer_id

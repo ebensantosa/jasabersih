@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
@@ -63,7 +63,18 @@ export class CleanerProfileController {
       // text[] requires array literal — use raw param
       await this.prisma.$executeRawUnsafe(`UPDATE cleaner_profiles SET languages = $1::text[], updated_at = NOW() WHERE user_id = $2::uuid`, body.languages, user.id);
     }
-    if (body.isAvailable !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = ${body.isAvailable}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+    if (body.isAvailable !== undefined) {
+      // Guard: gak boleh online tanpa foto profil (wajah cleaner wajib utk trust customer)
+      if (body.isAvailable === true) {
+        const photoRow = await this.prisma.$queryRaw<{ photo_url: string | null }[]>`
+          SELECT photo_url FROM users WHERE id = ${user.id}::uuid LIMIT 1
+        `;
+        if (!photoRow[0]?.photo_url) {
+          throw new BadRequestException('Upload foto profil dulu sebelum bisa online. Foto wajah membantu customer percaya.');
+        }
+      }
+      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = ${body.isAvailable}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+    }
 
     return { ok: true };
   }
