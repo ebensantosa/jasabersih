@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
@@ -7,15 +7,14 @@ import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { StorageService } from '../storage/storage.service';
 
 const UpdateProfileSchema = z.object({
   bio: z.string().max(1000).optional(),
-  // bringsTools INTENTIONALLY not allowed — admin-only via /admin/cleaners.
-  // Self-toggle = fraud risk (cleaner claim bawa alat untuk komisi lebih tinggi
-  // tanpa benar-benar bawa). Admin verifikasi peralatan dulu.
   serviceAreas: z.array(z.string()).optional(),
   languages: z.array(z.string()).optional(),
   isAvailable: z.boolean().optional(),
+  photoUrl: z.string().url().optional(),
 });
 type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>;
 
@@ -24,7 +23,23 @@ type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>;
 @UseGuards(JwtAuthGuard)
 @Controller('cleaner/profile')
 export class CleanerProfileController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
+
+  // Presigned PUT URL untuk upload foto profil ke public bucket.
+  @Post('photo-upload-url')
+  async photoUploadUrl(@CurrentUser() user: AuthenticatedUser, @Body() body: { contentType: string }) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(body?.contentType)) {
+      throw new BadRequestException(`contentType harus salah satu: ${allowed.join(', ')}`);
+    }
+    const r = await this.storage.createUploadUrl({
+      bucket: 'public',
+      keyPrefix: `profile-photos/${user.id}`,
+      contentType: body.contentType,
+      expiresInSec: 300,
+    });
+    return { ...r, publicUrl: this.storage.getPublicUrl(r.key) };
+  }
 
   @Get()
   async get(@CurrentUser() user: AuthenticatedUser) {
@@ -63,14 +78,18 @@ export class CleanerProfileController {
       // text[] requires array literal — use raw param
       await this.prisma.$executeRawUnsafe(`UPDATE cleaner_profiles SET languages = $1::text[], updated_at = NOW() WHERE user_id = $2::uuid`, body.languages, user.id);
     }
+    if (body.photoUrl !== undefined) {
+      await this.prisma.$executeRaw`UPDATE users SET photo_url = ${body.photoUrl} WHERE id = ${user.id}::uuid`;
+    }
     if (body.isAvailable !== undefined) {
       // Guard: gak boleh online tanpa foto profil (wajah cleaner wajib utk trust customer)
       if (body.isAvailable === true) {
-        const photoRow = await this.prisma.$queryRaw<{ photo_url: string | null }[]>`
-          SELECT photo_url FROM users WHERE id = ${user.id}::uuid LIMIT 1
-        `;
-        if (!photoRow[0]?.photo_url) {
-          throw new BadRequestException('Upload foto profil dulu sebelum bisa online. Foto wajah membantu customer percaya.');
+        const effective = body.photoUrl !== undefined ? body.photoUrl : (await this.prisma.$queryRaw<{ photo_url: string | null }[]>`SELECT photo_url FROM users WHERE id = ${user.id}::uuid LIMIT 1`)[0]?.photo_url;
+        if (!effective) {
+          throw new BadRequestException({
+            code: 'NEED_PROFILE_PHOTO',
+            message: 'Upload foto profil dulu sebelum bisa online. Foto wajah membantu customer percaya.',
+          });
         }
       }
       await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = ${body.isAvailable}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;

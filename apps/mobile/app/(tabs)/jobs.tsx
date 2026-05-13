@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck, Briefcase, Calendar, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -44,8 +44,18 @@ function JobsScreen() {
   const [available, setAvailable] = useState<AvailableJob[]>([]);
   const [active, setActive] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const bringsTools = useCleanerStore((s) => s.bringsTools);
+
+  // Sync initial online state dari server
+  useEffect(() => {
+    api.get('/cleaner/profile').then((r) => {
+      const d = r.data?.data ?? r.data;
+      setOnline(!!d?.isAvailable);
+    }).catch(() => {});
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -63,13 +73,47 @@ function JobsScreen() {
 
   useFocusEffect(useCallback(() => { void load(); }, []));
 
-  function toggleOnline() {
-    setOnline((v) => {
-      const next = !v;
-      api.patch('/cleaner/profile', { isAvailable: next }).catch(() => {});
+  async function toggleOnline() {
+    const next = !online;
+    try {
+      await api.patch('/cleaner/profile', { isAvailable: next });
+      setOnline(next);
       toast.success(next ? 'Status: Online — siap terima job' : 'Status: Offline');
-      return next;
-    });
+    } catch (e: any) {
+      const code = e?.response?.data?.error?.code ?? e?.response?.data?.code;
+      if (code === 'NEED_PROFILE_PHOTO') {
+        setShowPhotoModal(true);
+        return;
+      }
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal ubah status');
+    }
+  }
+
+  async function uploadProfilePhoto() {
+    const { launchImageLibraryAsync, MediaTypeOptions } = await import('expo-image-picker');
+    const r = await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (r.canceled || !r.assets?.[0]) return;
+    const asset = r.assets[0];
+    setUploadingPhoto(true);
+    try {
+      const ext = asset.uri.split('.').pop()?.toLowerCase();
+      const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const presign = await api.post('/cleaner/profile/photo-upload-url', { contentType });
+      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
+      const blob = await (await fetch(asset.uri)).blob();
+      await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
+      await api.patch('/cleaner/profile', { photoUrl: publicUrl });
+      toast.success('Foto profil tersimpan');
+      setShowPhotoModal(false);
+      // langsung aktifkan online setelah foto ke-upload
+      await api.patch('/cleaner/profile', { isAvailable: true });
+      setOnline(true);
+      toast.success('Status: Online — siap terima job');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal upload foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
   }
 
   async function accept(id: string) {
@@ -227,6 +271,35 @@ function JobsScreen() {
           </View>
         )}
       </ScrollView>
+
+      <Modal visible={showPhotoModal} transparent animationType="fade" onRequestClose={() => setShowPhotoModal(false)}>
+        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+          <View className="w-full max-w-sm rounded-2xl bg-white p-5">
+            <View className="items-center">
+              <Text className="text-4xl">📸</Text>
+              <Text className="font-extrabold mt-2 text-base text-ink-900 text-center">Upload Foto Profil Dulu</Text>
+              <Text className="font-medium mt-1.5 text-center text-[12px] text-ink-600">
+                Customer perlu lihat wajah cleaner-nya buat trust. Pakai foto asli (selfie wajah jelas, tanpa filter).
+              </Text>
+            </View>
+            <View className="mt-5 flex-row gap-2">
+              <Pressable
+                onPress={() => setShowPhotoModal(false)}
+                className="flex-1 items-center rounded-xl border border-ink-300 py-3"
+              >
+                <Text className="font-semibold text-sm text-ink-700">Nanti</Text>
+              </Pressable>
+              <Pressable
+                onPress={uploadProfilePhoto}
+                disabled={uploadingPhoto}
+                className="flex-1 items-center rounded-xl bg-brand-600 py-3"
+              >
+                <Text className="font-bold text-sm text-white">{uploadingPhoto ? 'Mengupload...' : 'Upload Foto'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
