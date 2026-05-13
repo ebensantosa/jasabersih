@@ -101,17 +101,19 @@ export function BannerCarousel() {
                 <Text className="font-bold text-[11px] text-brand-700">{b.cta} →</Text>
               </View>
             </View>
-            <View className="absolute bottom-2 right-3 flex-row items-center gap-1 rounded-full bg-black/30 px-2 py-1">
-              {banners.map((_, i) => (
-                <View
-                  key={i}
-                  className={`h-1 rounded-full ${i === active ? 'w-3 bg-white' : 'w-1 bg-white/50'}`}
-                />
-              ))}
-            </View>
           </Pressable>
         ))}
       </ScrollView>
+      {banners.length > 1 && (
+        <View className="mt-2 flex-row items-center justify-center gap-1.5">
+          {banners.map((_, i) => (
+            <View
+              key={i}
+              className={`h-1.5 rounded-full ${i === active ? 'w-5 bg-brand-600' : 'w-1.5 bg-ink-300'}`}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }

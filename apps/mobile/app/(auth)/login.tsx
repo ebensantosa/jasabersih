@@ -89,14 +89,14 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-white">
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 220 }}>
+      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 260 }}>
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
             <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="white" size={22} />
             </Pressable>
           </View>
-          <View className="px-6 pt-2">
+          <View className="px-6 pt-2 pb-6">
             <BrandLogo size={56} showName />
             <Text className="font-bold mt-4 text-3xl text-white">{t('login.welcome_emoji')}</Text>
             <Text className="font-sans mt-1 text-sm text-white/85">{t('login.subtitle')}</Text>
