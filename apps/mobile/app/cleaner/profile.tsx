@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, BadgeCheck, Star, Wrench } from 'lucide-react-native';
+import { ArrowLeft, BadgeCheck, Camera, Star, Wrench } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +38,31 @@ function CleanerProfileScreen() {
   const [isAvailable, setIsAvailable] = useState(false);
   const [areasText, setAreasText] = useState('');
   const [languagesText, setLanguagesText] = useState('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  async function uploadPhoto() {
+    const { launchImageLibraryAsync, MediaTypeOptions } = await import('expo-image-picker');
+    const r = await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (r.canceled || !r.assets?.[0]) return;
+    const asset = r.assets[0];
+    setUploadingPhoto(true);
+    try {
+      const ext = asset.uri.split('.').pop()?.toLowerCase();
+      const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const presign = await api.post('/cleaner/profile/photo-upload-url', { contentType });
+      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
+      const blob = await (await fetch(asset.uri)).blob();
+      await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
+      await api.patch('/cleaner/profile', { photoUrl: publicUrl });
+      setPhotoUrl(publicUrl);
+      toast.success('Foto profil tersimpan');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal upload foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -50,6 +76,12 @@ function CleanerProfileScreen() {
       const areas = Array.isArray(p.serviceAreas) ? p.serviceAreas : (p.serviceAreas?.areas ?? []);
       setAreasText((areas as string[]).join(', '));
       setLanguagesText((p.languages ?? []).join(', '));
+      // fetch /auth/me untuk dapat photo_url (cleaner_profiles gak punya kolom ini)
+      try {
+        const me = await api.get('/auth/me');
+        const u = me.data?.data ?? me.data;
+        setPhotoUrl(u?.photoUrl ?? u?.photo_url ?? null);
+      } catch {}
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal load profil');
     } finally {
@@ -92,6 +124,35 @@ function CleanerProfileScreen() {
           <View className="flex-1 items-center justify-center"><ActivityIndicator color="#1D4ED8" /></View>
         ) : (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+            {/* Foto Profil */}
+            <View className="rounded-2xl bg-white p-4">
+              <Text className="font-bold mb-3 text-sm text-ink-900">Foto Profil</Text>
+              <View className="flex-row items-center gap-3">
+                {photoUrl ? (
+                  <Image source={{ uri: photoUrl }} style={{ width: 72, height: 72, borderRadius: 36 }} contentFit="cover" />
+                ) : (
+                  <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-ink-100">
+                    <Camera color="#94A3B8" size={28} />
+                  </View>
+                )}
+                <View className="flex-1">
+                  <Text className="font-semibold text-sm text-ink-900">
+                    {photoUrl ? 'Foto sudah ada' : 'Wajib upload foto wajah'}
+                  </Text>
+                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500">
+                    Foto asli (selfie wajah jelas, tanpa filter) wajib agar bisa online & dapat job.
+                  </Text>
+                  <Pressable
+                    onPress={uploadPhoto}
+                    disabled={uploadingPhoto}
+                    className="mt-2 self-start rounded-lg bg-brand-600 px-3 py-1.5"
+                  >
+                    <Text className="font-bold text-[11px] text-white">{uploadingPhoto ? 'Mengupload...' : photoUrl ? 'Ganti Foto' : 'Upload Foto'}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
             {/* Stats card */}
             <View className="rounded-2xl bg-white p-4">
               <View className="flex-row items-center gap-2">
