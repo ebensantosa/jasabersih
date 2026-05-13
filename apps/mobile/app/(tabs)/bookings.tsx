@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { CalendarCheck, ChevronRight, LogIn } from 'lucide-react-native';
-import { useCallback } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
@@ -29,23 +29,13 @@ export default function Bookings() {
       ? allList.filter((b) => b.cleanerName === cleanerName)
       : allList;
 
+  useEffect(() => {
+    if (!tokens) router.replace('/(auth)/login');
+  }, [tokens]);
   if (!tokens) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white px-8" edges={['top']}>
-        <View className="h-20 w-20 items-center justify-center rounded-full bg-brand-50">
-          <CalendarCheck color="#2563EB" size={36} strokeWidth={2} />
-        </View>
-        <Text className="font-bold mt-4 text-lg text-ink-900">Belum ada pesanan</Text>
-        <Text className="font-sans mt-1 text-center text-sm text-ink-500">
-          Login dulu untuk lihat riwayat & pesanan aktifmu
-        </Text>
-        <Pressable
-          onPress={() => router.push('/(auth)/login')}
-          className="mt-6 flex-row items-center gap-2 rounded-2xl bg-brand-600 px-6 py-3.5"
-        >
-          <LogIn color="white" size={16} strokeWidth={2.4} />
-          <Text className="font-semibold text-sm text-white">Login / Daftar</Text>
-        </Pressable>
+      <SafeAreaView className="flex-1 items-center justify-center bg-white" edges={['top']}>
+        <ActivityIndicator color="#1D4ED8" />
       </SafeAreaView>
     );
   }

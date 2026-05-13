@@ -1,7 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Lock, ShieldAlert } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { ShieldAlert } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserMode } from '@jasabersih/shared-types';
@@ -24,36 +25,15 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
 
-  // Anonymous → must login
+  // Anonymous → langsung ke login, gak perlu intermediate page
+  useEffect(() => {
+    if (!tokens) router.replace('/(auth)/login');
+  }, [tokens]);
+
   if (!tokens) {
     return (
-      <View className="flex-1 bg-white">
-        <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 180 }}>
-          <SafeAreaView edges={['top']} />
-        </LinearGradient>
-        <View className="flex-1 items-center px-6 -mt-16">
-          <View className="h-24 w-24 items-center justify-center rounded-full bg-white shadow-md" style={{ elevation: 6 }}>
-            <Lock color="#1D4ED8" size={36} strokeWidth={2.2} />
-          </View>
-          <Text className="font-extrabold mt-5 text-center text-xl text-ink-900">{title ?? 'Login Dulu Yuk'}</Text>
-          <Text className="font-sans mt-2 text-center text-sm text-ink-600">
-            {message ?? 'Halaman ini cuma bisa diakses setelah kamu login. Gratis & cuma butuh nomor HP.'}
-          </Text>
-          <Pressable
-            onPress={() => router.replace('/(auth)/login')}
-            className="mt-6 w-full rounded-2xl bg-brand-600 py-4"
-          >
-            <Text className="font-bold text-center text-sm text-white">Masuk Sekarang</Text>
-          </Pressable>
-          <Pressable onPress={() => router.replace('/(auth)/register')} className="mt-3">
-            <Text className="font-sans text-center text-sm text-ink-500">
-              Belum punya akun? <Text className="font-semibold text-brand-600">Daftar</Text>
-            </Text>
-          </Pressable>
-          <Pressable onPress={() => router.replace('/(tabs)')} className="mt-6">
-            <Text className="font-medium text-center text-xs text-ink-400">← Kembali ke beranda</Text>
-          </Pressable>
-        </View>
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator color="#1D4ED8" />
       </View>
     );
   }

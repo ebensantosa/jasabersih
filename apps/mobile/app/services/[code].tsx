@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Clock, Heart, Wallet } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Clock, Wallet } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -139,13 +139,6 @@ export default function ServiceDetail() {
                   style={{ elevation: 4 }}
                 >
                   <ArrowLeft color="#0F172A" size={20} strokeWidth={2.4} />
-                </Pressable>
-                <Pressable
-                  onPress={() => toast.comingSoon()}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-white"
-                  style={{ elevation: 4 }}
-                >
-                  <Heart color="#0F172A" size={18} strokeWidth={2.2} />
                 </Pressable>
               </View>
             </SafeAreaView>

@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,6 +30,10 @@ function ChatsScreen() {
   const bookings = useBookingsStore((s) => s.list);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
+
+  useEffect(() => {
+    if (!tokens) router.replace('/(auth)/login');
+  }, [tokens]);
 
   const fetchChats = useCallback(async () => {
     if (!tokens) return;

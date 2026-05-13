@@ -35,15 +35,11 @@ export function SplashOverlay({ visible }: { visible: boolean }) {
         end={{ x: 1, y: 1 }}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}
       >
-        {logoUrl ? (
-          <Image source={{ uri: logoUrl }} style={{ width: 120, height: 120 }} contentFit="contain" />
-        ) : (
-          <View style={{ width: 120, height: 120, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 48, fontWeight: '800', color: 'white' }}>
-              {appName.slice(0, 2).toUpperCase()}
-            </Text>
-          </View>
-        )}
+        <Image
+          source={logoUrl ? { uri: logoUrl } : require('../../assets/icon.png')}
+          style={{ width: 160, height: 160, borderRadius: 32 }}
+          contentFit="contain"
+        />
         <Text style={{ marginTop: 24, fontSize: 28, fontWeight: '800', color: 'white', letterSpacing: -0.5 }}>
           {appName}
         </Text>
