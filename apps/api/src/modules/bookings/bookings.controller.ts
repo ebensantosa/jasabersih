@@ -148,6 +148,18 @@ export class BookingsController {
 
   @Post(':id/cancel')
   async cancel(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRawUnsafe<{ status: string; paid_at: Date | null }[]>(
+      `SELECT status, paid_at FROM bookings WHERE id = $1::uuid AND customer_id = $2::uuid LIMIT 1`,
+      id,
+      user.id,
+    );
+    if (rows.length === 0) throw new BadRequestException('Pesanan tidak ditemukan');
+    const { status, paid_at } = rows[0]!;
+    if (status === 'canceled') throw new BadRequestException('Pesanan sudah dibatalkan');
+    if (status === 'completed') throw new BadRequestException('Pesanan sudah selesai, tidak bisa dibatalkan');
+    if (paid_at || status !== 'pending_payment') {
+      throw new BadRequestException('Pesanan yang sudah dibayar tidak bisa dibatalkan. Hubungi customer service jika ada masalah.');
+    }
     await this.prisma.$executeRawUnsafe(
       `UPDATE bookings SET status = 'canceled', canceled_at = NOW()
        WHERE id = $1::uuid AND customer_id = $2::uuid`,
