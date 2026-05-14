@@ -249,7 +249,13 @@ export const useBookingsStore = create<State>((set, get) => ({
         addressLine: b.addressLine,
         baseAmount: Math.round(b.basePrice),
         totalAmount: Math.round(b.totalPrice),
-        formSnapshot: { ...(b.formSnapshot ?? {}), localPackageCode: safePackageId ? undefined : b.packageId, packageName: b.packageName },
+        formSnapshot: {
+          ...(b.formSnapshot ?? {}),
+          localPackageCode: safePackageId ? undefined : b.packageId,
+          packageName: b.packageName ?? null,
+          categoryName: b.categoryName ?? null,
+          categoryCode: b.categoryCode ?? null,
+        },
         customerNotes: undefined,
       };
       try {

@@ -25,7 +25,14 @@ export class AdminChatController {
         b.scheduled_at AS "scheduledAt", b.created_at AS "createdAt",
         cu.id AS "customerId", cu.name AS "customerName", cu.phone AS "customerPhone",
         cl.id AS "cleanerId", cl.name AS "cleanerName", cl.phone AS "cleanerPhone",
-        COALESCE(pp.name, s.name, sp.name, b.pricing_mode) AS "serviceName",
+        COALESCE(
+          pp.name,
+          b.form_snapshot->>'packageName',
+          b.form_snapshot->>'categoryName',
+          s.name,
+          sp.name,
+          b.pricing_mode
+        ) AS "serviceName",
         (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id) AS "totalMessages",
         (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND status = 'blocked') AS "blockedCount",
         (SELECT MAX(created_at) FROM chat_messages WHERE booking_id = b.id) AS "lastMessageAt"
