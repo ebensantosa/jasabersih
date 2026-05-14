@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
@@ -16,7 +17,7 @@ import { toast } from '../../src/stores/ui';
 type ChatRow = {
   bookingId: string;
   partnerName: string;
-  partnerPhone?: string | null;
+  partnerPhotoUrl?: string | null;
   status: string;
   lastMessage?: string | null;
   lastTimestamp?: string | null;
@@ -39,35 +40,15 @@ function ChatsScreen() {
     if (!tokens) return;
     setLoading(true);
     try {
-      // Bookings yang udah ada partner (matched/in_progress/completed) = bisa chat
-      const candidates = bookings.filter((b) =>
-        ['matched', 'on_the_way', 'in_progress', 'completed'].includes(b.status as string),
-      );
-      const rows: ChatRow[] = [];
-      for (const b of candidates) {
-        try {
-          const res = await api.get(`/chat/booking/${b.id}`);
-          const msgs: Array<{ content: string; createdAt: string; status?: string }> = res.data?.data ?? [];
-          const last = msgs[msgs.length - 1];
-          rows.push({
-            bookingId: b.id,
-            partnerName: (b as any).cleanerName ?? (b as any).customerName ?? 'Cleaner',
-            status: b.status as string,
-            lastMessage: last?.content ?? null,
-            lastTimestamp: last?.createdAt ?? null,
-            packageName: b.packageName ?? null,
-          });
-        } catch { /* skip */ }
-      }
-      // Sort: unread first, then by last activity
-      rows.sort((a, b) => (b.lastTimestamp ?? '').localeCompare(a.lastTimestamp ?? ''));
-      setChats(rows);
+      const res = await api.get('/chat/conversations');
+      const data = (res.data?.data ?? res.data ?? []) as ChatRow[];
+      setChats(data);
     } catch (e: any) {
-      toast.error(e?.message ?? 'Gagal load chat');
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal load chat');
     } finally {
       setLoading(false);
     }
-  }, [bookings, tokens]);
+  }, [tokens]);
 
   useFocusEffect(useCallback(() => { void fetchChats(); }, [fetchChats]));
 
@@ -121,12 +102,20 @@ function ChatsScreen() {
                 className="flex-row items-center gap-3 rounded-2xl bg-white p-3"
                 style={{ elevation: 1 }}
               >
-                <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-100">
-                  <MessageCircle color="#1D4ED8" size={22} strokeWidth={2.2} />
-                </View>
+                {c.partnerPhotoUrl ? (
+                  <Image
+                    source={{ uri: c.partnerPhotoUrl }}
+                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-100">
+                    <Text className="font-bold text-base text-brand-700">{(c.partnerName?.[0] ?? '?').toUpperCase()}</Text>
+                  </View>
+                )}
                 <View className="flex-1">
                   <View className="flex-row items-center justify-between">
-                    <Text className="font-bold text-sm text-ink-900" numberOfLines={1}>{c.partnerName}</Text>
+                    <Text className="font-bold text-sm text-ink-900" numberOfLines={1}>{c.partnerName ?? 'Unknown'}</Text>
                     {c.lastTimestamp && (
                       <Text className="font-sans text-[10px] text-ink-400">
                         {timeAgo(c.lastTimestamp)}
@@ -138,9 +127,16 @@ function ChatsScreen() {
                       {c.packageName}
                     </Text>
                   )}
-                  <Text className="font-sans mt-0.5 text-[12px] text-ink-500" numberOfLines={1}>
-                    {c.lastMessage ?? 'Mulai percakapan…'}
-                  </Text>
+                  <View className="mt-0.5 flex-row items-center gap-1.5">
+                    <Text className="font-sans flex-1 text-[12px] text-ink-500" numberOfLines={1}>
+                      {c.lastMessage ?? 'Mulai percakapan…'}
+                    </Text>
+                    {c.unread != null && c.unread > 0 && (
+                      <View className="min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5">
+                        <Text className="font-bold text-[10px] text-white">{c.unread > 9 ? '9+' : c.unread}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </Pressable>
             ))}

@@ -25,7 +25,7 @@ export class AdminChatController {
         b.scheduled_at AS "scheduledAt", b.created_at AS "createdAt",
         cu.id AS "customerId", cu.name AS "customerName", cu.phone AS "customerPhone",
         cl.id AS "cleanerId", cl.name AS "cleanerName", cl.phone AS "cleanerPhone",
-        s.name AS "serviceName",
+        COALESCE(pp.name, s.name, sp.name, b.pricing_mode) AS "serviceName",
         (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id) AS "totalMessages",
         (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND status = 'blocked') AS "blockedCount",
         (SELECT MAX(created_at) FROM chat_messages WHERE booking_id = b.id) AS "lastMessageAt"
@@ -33,6 +33,8 @@ export class AdminChatController {
       LEFT JOIN users cu ON cu.id = b.customer_id
       LEFT JOIN users cl ON cl.id = b.cleaner_id
       LEFT JOIN services s ON s.id = b.service_id
+      LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+      LEFT JOIN services sp ON sp.id = pp.service_id
       WHERE EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id)
         AND (${search}::text IS NULL OR cu.name ILIKE ${search} OR cu.phone ILIKE ${search} OR cl.name ILIKE ${search} OR cl.phone ILIKE ${search})
         AND (${!onlyBlocked} OR EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id AND cm.status = 'blocked'))

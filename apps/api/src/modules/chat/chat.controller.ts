@@ -13,6 +13,35 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 export class ChatController {
   constructor(private readonly prisma: PrismaService) {}
 
+  // List conversation per user — auto-pick partner (cleaner kalau user customer, customer kalau user cleaner)
+  // Skip booking yang status 'completed' lebih dari 24 jam (chat sudah ke-prune)
+  @Get('conversations')
+  async conversations(@Req() req: Request & { user: AuthenticatedUser }) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT
+        b.id AS "bookingId",
+        b.status,
+        pp.name AS "packageName",
+        CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.id ELSE cu.id END AS "partnerId",
+        CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.name ELSE cu.name END AS "partnerName",
+        CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.photo_url ELSE cu.photo_url END AS "partnerPhotoUrl",
+        (SELECT content FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastMessage",
+        (SELECT created_at FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastTimestamp",
+        (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND recipient_id = ${req.user.id}::uuid AND status = 'sent' AND read_at IS NULL) AS "unread"
+      FROM bookings b
+      LEFT JOIN users cu ON cu.id = b.customer_id
+      LEFT JOIN users cl ON cl.id = b.cleaner_id
+      LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+      WHERE (b.customer_id = ${req.user.id}::uuid OR b.cleaner_id = ${req.user.id}::uuid)
+        AND b.cleaner_id IS NOT NULL
+        AND b.status IN ('matched', 'on_the_way', 'in_progress', 'completed')
+        AND (b.completed_at IS NULL OR b.completed_at > NOW() - INTERVAL '24 hours')
+        AND EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id)
+      ORDER BY "lastTimestamp" DESC NULLS LAST
+      LIMIT 50
+    `;
+  }
+
   // Hitung total pesan unread (status='sent', belum read, ditujukan ke user ini)
   @Get('unread-count')
   async unreadCount(@Req() req: Request & { user: AuthenticatedUser }) {
