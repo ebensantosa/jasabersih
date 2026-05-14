@@ -128,6 +128,12 @@ export class AdminBookingsController {
     if (!body?.reason || body.reason.trim().length < 5) {
       throw new BadRequestException('Alasan wajib (min 5 karakter).');
     }
+    // Ambil party info (customer + cleaner) sebelum update
+    const partyRows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null }[]>`
+      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const parties = partyRows[0];
+
     await this.prisma.$executeRaw`
       UPDATE bookings
          SET status = 'cancelled',
@@ -144,6 +150,24 @@ export class AdminBookingsController {
       changes: { reason: body.reason, refundAmount: body.refundAmount ?? null },
       ipAddress: req.ip ?? null,
     });
+
+    // Notif kedua belah pihak
+    if (parties?.customer_id) {
+      void this.push.send({
+        userId: parties.customer_id, channel: 'booking',
+        title: 'Pesanan dibatalkan admin',
+        body: `Alasan: ${body.reason}`,
+        data: { type: 'booking_canceled_admin', bookingId: id, reason: body.reason },
+      }).catch(() => {});
+    }
+    if (parties?.cleaner_id) {
+      void this.push.send({
+        userId: parties.cleaner_id, channel: 'booking',
+        title: 'Job dibatalkan admin',
+        body: `Alasan: ${body.reason}`,
+        data: { type: 'job_canceled_admin', bookingId: id, reason: body.reason },
+      }).catch(() => {});
+    }
     return { ok: true };
   }
 
