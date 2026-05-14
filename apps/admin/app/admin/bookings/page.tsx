@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
 import { Modal } from '../../../components/ui';
 
@@ -588,9 +588,20 @@ function AssignModal({
   onClose: () => void;
   onAssigned: () => void;
 }) {
-  const [cleaners, setCleaners] = useState<{ id: string; name: string; rating?: number }[]>([]);
+  const [cleaners, setCleaners] = useState<{ id: string; name: string; phone?: string; rating?: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const isReassign = !!currentCleanerName;
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return cleaners;
+    return cleaners.filter((c) =>
+      c.name.toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q) ||
+      (c.phone ?? '').toLowerCase().includes(q),
+    );
+  }, [cleaners, search]);
 
   useEffect(() => {
     void (async () => {
@@ -598,6 +609,7 @@ function AssignModal({
         const data = (await api.admin.listCleaners({ status: 'active' })) as {
           id: string;
           name: string;
+          phone?: string;
           rating?: number;
         }[];
         setCleaners(data);
@@ -651,7 +663,22 @@ function AssignModal({
             Cleaner sekarang: <b>{currentCleanerName}</b> — pilih pengganti.
           </p>
         )}
-        <div className="mt-4 space-y-2">
+        <div className="mt-3">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama, ID, atau no HP cleaner..."
+              className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm"
+              autoFocus
+            />
+          </div>
+          <div className="mt-1 text-[10px] text-slate-500">
+            {loading ? 'Memuat...' : `${filtered.length} dari ${cleaners.length} cleaner`}
+          </div>
+        </div>
+        <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
           {loading && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <Loader2 size={14} className="animate-spin" /> Loading cleaner…
@@ -660,16 +687,23 @@ function AssignModal({
           {!loading && cleaners.length === 0 && (
             <p className="text-sm text-slate-500">Tidak ada cleaner aktif tersedia.</p>
           )}
-          {cleaners.map((c) => (
+          {!loading && cleaners.length > 0 && filtered.length === 0 && (
+            <p className="text-sm text-slate-500">Tidak ada cleaner yang cocok dengan pencarian.</p>
+          )}
+          {filtered.map((c) => (
             <button
               key={c.id}
               onClick={() => pick(c.id)}
-              className="w-full rounded-lg border border-slate-200 p-3 text-left hover:border-primary"
+              className="w-full rounded-lg border border-slate-200 p-3 text-left hover:border-primary hover:bg-slate-50"
             >
-              <div className="font-semibold">{c.name}</div>
-              {c.rating != null && (
-                <div className="text-[11px] text-slate-500">⭐ {Number(c.rating).toFixed(1)}</div>
-              )}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-semibold">{c.name}</span>
+                <span className="font-mono text-[10px] text-slate-400">#{c.id.slice(0, 8)}</span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
+                {c.rating != null && <span>⭐ {Number(c.rating).toFixed(1)}</span>}
+                {c.phone && <span>· {c.phone}</span>}
+              </div>
             </button>
           ))}
         </div>

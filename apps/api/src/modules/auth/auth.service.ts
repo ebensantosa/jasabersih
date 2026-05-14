@@ -7,6 +7,7 @@ import {
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../../common/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 import {
   isLikelyEmail,
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly otp: OtpService,
     private readonly tokens: TokenService,
+    private readonly storage: StorageService,
   ) {}
 
   async register(input: RegisterRequest): Promise<{ phone: string; expiresInSeconds: number; emailSent?: boolean; devOtp?: string }> {
@@ -192,6 +194,38 @@ export class AuthService {
       memberSince: user.createdAt,
       verified: !!user.phoneVerifiedAt,
     };
+  }
+
+  async updateProfile(userId: string, body: { name?: string; email?: string; photoUrl?: string }) {
+    const data: any = {};
+    if (body.name !== undefined) {
+      const n = body.name.trim();
+      if (n.length < 2) throw new BadRequestException({ code: 'INVALID_NAME', message: 'Nama min 2 karakter' });
+      data.name = n;
+    }
+    if (body.email !== undefined) {
+      const e = body.email.trim().toLowerCase();
+      if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+        throw new BadRequestException({ code: 'INVALID_EMAIL', message: 'Format email tidak valid' });
+      }
+      data.email = e || null;
+    }
+    if (body.photoUrl !== undefined) {
+      data.photoUrl = body.photoUrl || null;
+    }
+    if (Object.keys(data).length === 0) return this.getProfile(userId);
+    await this.prisma.user.update({ where: { id: userId }, data });
+    return this.getProfile(userId);
+  }
+
+  async createPhotoUploadUrl(userId: string, contentType: string) {
+    const r = await this.storage.createUploadUrl({
+      bucket: 'public',
+      keyPrefix: `profile-photos/${userId}`,
+      contentType,
+      expiresInSec: 300,
+    });
+    return { ...r, publicUrl: this.storage.getPublicUrl(r.key) };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {

@@ -52,15 +52,21 @@ export function Addresses() {
   const setDefault = useAddressesStore((s) => s.setDefault);
   const remove = useAddressesStore((s) => s.remove);
 
+  const MAX_ADDRESSES = 5;
+  const atLimit = list.length >= MAX_ADDRESSES;
   return (
     <>
       <Pressable
-        onPress={() => router.push('/addresses/edit')}
-        className="flex-row items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50 py-4"
+        onPress={() => atLimit ? toast.warning(`Maksimal ${MAX_ADDRESSES} alamat. Hapus salah satu dulu untuk tambah.`) : router.push('/addresses/edit')}
+        disabled={atLimit}
+        className={`flex-row items-center justify-center gap-2 rounded-2xl border-2 border-dashed py-4 ${atLimit ? 'border-ink-200 bg-ink-100' : 'border-brand-300 bg-brand-50'}`}
       >
-        <Plus color="#1D4ED8" size={18} strokeWidth={2.4} />
-        <Text className="font-semibold text-sm text-brand-700">Tambah Alamat Baru</Text>
+        <Plus color={atLimit ? '#94A3B8' : '#1D4ED8'} size={18} strokeWidth={2.4} />
+        <Text className={`font-semibold text-sm ${atLimit ? 'text-ink-400' : 'text-brand-700'}`}>
+          {atLimit ? `Maksimal ${MAX_ADDRESSES} alamat tercapai` : 'Tambah Alamat Baru'}
+        </Text>
       </Pressable>
+      <Text className="text-center text-[10px] text-ink-400">{list.length}/{MAX_ADDRESSES} alamat tersimpan</Text>
       {list.length === 0 ? (
         <View className="items-center rounded-2xl bg-white p-8">
           <View className="h-14 w-14 items-center justify-center rounded-full bg-ink-100">

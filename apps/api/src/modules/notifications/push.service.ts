@@ -29,10 +29,34 @@ export class PushService {
       .map((t) => t.fcm_token!)
       .filter((t) => t.startsWith('ExponentPushToken['));
 
+    // Dedup: kalau notif identik (user + type + bookingId in data) sudah ada di 1 jam terakhir, skip
+    const bookingId = (payload.data as any)?.bookingId;
+    const notifType = (payload.data as any)?.type ?? payload.channel ?? 'system';
+    if (bookingId) {
+      const dup = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM notifications
+         WHERE user_id = ${payload.userId}::uuid
+           AND data->>'type' = ${notifType}
+           AND data->>'bookingId' = ${bookingId}
+           AND created_at > NOW() - INTERVAL '1 hour'
+      `;
+      if ((dup[0]?.c ?? 0) > 0) {
+        return { sent: 0, failed: 0, deduped: true } as any;
+      }
+    }
+
+    // Auto-append short ID ke title biar customer/cleaner bisa bedain notif per-order.
+    // Skip kalau title udah include "#xxxx" (sudah di-format di caller).
+    let finalTitle = payload.title;
+    const shortId = bookingId ? String(bookingId).slice(0, 8) : null;
+    if (shortId && !finalTitle.includes('#')) {
+      finalTitle = `${finalTitle} · #${shortId}`;
+    }
+
     // Persist in-app notification regardless of token availability
     await this.prisma.$executeRaw`
       INSERT INTO notifications (user_id, type, title, body, data)
-      VALUES (${payload.userId}::uuid, ${payload.channel ?? 'system'}, ${payload.title}, ${payload.body},
+      VALUES (${payload.userId}::uuid, ${payload.channel ?? 'system'}, ${finalTitle}, ${payload.body},
               ${JSON.stringify(payload.data ?? {})}::jsonb)
     `;
 
@@ -40,7 +64,7 @@ export class PushService {
 
     const messages = validTokens.map((to) => ({
       to,
-      title: payload.title,
+      title: finalTitle,
       body: payload.body,
       data: payload.data ?? {},
       sound: 'default' as const,

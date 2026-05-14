@@ -141,6 +141,7 @@ function NewBooking() {
   const [floor, setFloor] = useState<string>('1');
   const [hasLift, setHasLift] = useState(false);
   const [bedrooms, setBedrooms] = useState(1);
+  const [workers, setWorkers] = useState(1);
   const [bathrooms, setBathrooms] = useState(1);
   const [facilities, setFacilities] = useState<Set<string>>(new Set(['Dapur', 'Ruang Tamu']));
   const [areaM2, setAreaM2] = useState(60);
@@ -514,6 +515,18 @@ function NewBooking() {
                   <Label className="mb-0">Kamar Mandi</Label>
                   <Stepper value={bathrooms} onChange={setBathrooms} min={0} max={10} />
                 </View>
+                <View className="mt-3 flex-row items-center justify-between">
+                  <Label className="mb-0">Jumlah Petugas</Label>
+                  <Stepper value={workers} onChange={setWorkers} min={1} max={10} />
+                </View>
+                {workers > 1 && (
+                  <View className="mt-2 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+                    <Text className="text-base">💬</Text>
+                    <Text className="flex-1 font-bold text-xs text-emerald-900">
+                      {workers} petugas — perlu konsultasi. Pakai tombol "Chat WA" di bawah.
+                    </Text>
+                  </View>
+                )}
                 <Label className="mt-4">Fasilitas Lain</Label>
                 <View className="flex-row flex-wrap gap-2">
                   {ROOM_FACILITIES.map((f) => {
@@ -1095,7 +1108,7 @@ function NewBooking() {
                   {step === 1 ? 'Batal' : 'Kembali'}
                 </Text>
               </Pressable>
-              {areaM2 >= 200 && step === 1 ? (
+              {(areaM2 >= 200 || workers > 1) && step === 1 ? (
                 <Pressable
                   onPress={() => router.push('/booking/wa-survey')}
                   className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-success"

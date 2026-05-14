@@ -60,7 +60,18 @@ export class AddressesController {
     return this.prisma.$transaction(async (tx) => {
       // Hitung berapa alamat existing — kalau 0, paksa jadi default
       const countRows = await tx.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM addresses WHERE user_id = ${user.id}::uuid AND deleted_at IS NULL`;
-      const isDefault = body.isDefault || (countRows[0]?.c ?? 0) === 0;
+      const count = countRows[0]?.c ?? 0;
+      // Enforce max alamat (config: feature.max_addresses, default 5)
+      const maxRow = await tx.$queryRaw<{ value: any }[]>`SELECT value FROM app_config WHERE key = 'feature.max_addresses' LIMIT 1`;
+      const max = Number(typeof maxRow[0]?.value === 'string' ? maxRow[0]!.value.replace(/"/g, '') : maxRow[0]?.value ?? 5) || 5;
+      if (count >= max) {
+        throw new BadRequestException({
+          code: 'MAX_ADDRESSES_REACHED',
+          message: `Maksimal ${max} alamat tersimpan. Hapus alamat lama untuk tambah baru.`,
+          details: { max, current: count },
+        });
+      }
+      const isDefault = body.isDefault || count === 0;
 
       // Kalau set default, unset existing
       if (isDefault) {

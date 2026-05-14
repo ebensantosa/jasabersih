@@ -45,8 +45,8 @@ export class PaymentTimeoutService {
       void this.push.send({
         userId: b.customer_id,
         channel: 'booking',
-        title: 'Pesanan dibatalkan',
-        body: 'Pesananmu otomatis dibatalkan karena belum dibayar dalam 24 jam. Silakan buat pesanan baru.',
+        title: `Pesanan #${b.id.slice(0, 8)} dibatalkan`,
+        body: `Pesanan #${b.id.slice(0, 8)} otomatis dibatalkan karena belum dibayar dalam 24 jam. Silakan buat pesanan baru.`,
         data: { type: 'payment_timeout_cancel', bookingId: b.id },
       }).catch(() => {});
     }

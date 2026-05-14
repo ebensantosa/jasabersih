@@ -43,6 +43,14 @@ function Chat() {
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
+
+  // Mark-read saat buka chat — clear badge
+  useEffect(() => {
+    if (!id) return;
+    import('../../src/lib/api').then(({ api }) => {
+      api.post(`/chat/booking/${id}/read`).catch(() => {});
+    });
+  }, [id]);
   const [text, setText] = useState('');
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);

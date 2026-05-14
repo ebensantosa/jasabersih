@@ -1,14 +1,32 @@
 import { Tabs } from 'expo-router';
 import { Briefcase, ClipboardList, Home, MessageCircle, Search, TrendingUp, User } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
 import { useT } from '../../src/lib/i18n';
 import { useModeStore } from '../../src/stores/mode';
+import { useAuthStore } from '../../src/stores/auth';
+import { api } from '../../src/lib/api';
 
 export default function TabsLayout() {
   const mode = useModeStore((s) => s.mode);
   const isFreelancer = mode === 'freelancer';
   const t = useT();
+  const tokens = useAuthStore((s) => s.tokens);
+  const [chatUnread, setChatUnread] = useState(0);
+
+  // Poll unread count tiap 30s
+  useEffect(() => {
+    if (!tokens) { setChatUnread(0); return; }
+    const fetchUnread = () => {
+      api.get('/chat/unread-count').then((r) => {
+        setChatUnread(Number((r.data?.data ?? r.data)?.count ?? 0));
+      }).catch(() => {});
+    };
+    fetchUnread();
+    const t = setInterval(fetchUnread, 30_000);
+    return () => clearInterval(t);
+  }, [tokens]);
 
   return (
     <Tabs
@@ -69,7 +87,7 @@ export default function TabsLayout() {
         options={{
           href: '/(tabs)/chats',
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={MessageCircle} label="Pesan" focused={focused} />
+            <TabItem icon={MessageCircle} label="Pesan" focused={focused} badge={chatUnread} />
           ),
         }}
       />
@@ -96,6 +114,7 @@ function TabItem({
   icon: Icon,
   label,
   focused,
+  badge,
 }: {
   icon: React.ComponentType<{
     color?: string;
@@ -104,6 +123,7 @@ function TabItem({
   }>;
   label: string;
   focused: boolean;
+  badge?: number;
 }) {
   const color = focused ? '#1D4ED8' : '#94A3B8';
   return (
@@ -123,9 +143,30 @@ function TabItem({
           justifyContent: 'center',
           backgroundColor: focused ? '#DBEAFE' : 'transparent',
           marginBottom: 3,
+          position: 'relative',
         }}
       >
         <Icon color={color} size={focused ? 22 : 20} strokeWidth={focused ? 2.4 : 2} />
+        {badge && badge > 0 ? (
+          <View
+            style={{
+              position: 'absolute',
+              right: 4,
+              top: 0,
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              backgroundColor: '#DC2626',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text style={{ fontSize: 9, fontWeight: '700', color: 'white' }}>
+              {badge > 9 ? '9+' : badge}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <Text
         style={{

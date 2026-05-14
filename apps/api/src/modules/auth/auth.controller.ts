@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Ip, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, HttpStatus, Inject, Ip, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -97,6 +97,32 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   async me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.getProfile(user.id);
+  }
+
+  // PATCH /v1/auth/me — update nama / email / foto profil customer
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { name?: string; email?: string; photoUrl?: string },
+  ) {
+    return this.auth.updateProfile(user.id, body);
+  }
+
+  // POST /v1/auth/me/photo-upload-url — presigned PUT untuk upload foto profil
+  @Post('me/photo-upload-url')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async myPhotoUploadUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { contentType: string },
+  ) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(body?.contentType)) {
+      throw new BadRequestException(`contentType harus: ${allowed.join(', ')}`);
+    }
+    return this.auth.createPhotoUploadUrl(user.id, body.contentType);
   }
 
   @Post('change-password')

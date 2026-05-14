@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, Briefcase, Calendar, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
+import { BadgeCheck, Bell, Briefcase, Calendar, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { calculateCleanerEarning, calculateCleanerShare } from '../../src/stores/cleanerWallet';
 import { useCleanerStore } from '../../src/stores/cleaner';
+import { useNotifications } from '../../src/stores/notifications';
 import { toast } from '../../src/stores/ui';
 
 type AvailableJob = {
@@ -142,10 +143,13 @@ function JobsScreen() {
               <Text className="font-bold text-xl text-ink-900">Job Board</Text>
               <Text className="font-sans mt-0.5 text-xs text-ink-500">{available.length} job tersedia</Text>
             </View>
-            <Pressable onPress={() => router.push('/cleaner/areas')} className="flex-row items-center gap-1 rounded-full bg-brand-50 px-3 py-2">
-              <Settings color="#1D4ED8" size={14} strokeWidth={2.4} />
-              <Text className="font-semibold text-xs text-brand-700">Area</Text>
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              <NotifBell />
+              <Pressable onPress={() => router.push('/cleaner/areas')} className="flex-row items-center gap-1 rounded-full bg-brand-50 px-3 py-2">
+                <Settings color="#1D4ED8" size={14} strokeWidth={2.4} />
+                <Text className="font-semibold text-xs text-brand-700">Area</Text>
+              </Pressable>
+            </View>
           </View>
 
           <Pressable
@@ -309,3 +313,22 @@ function JobsScreen() {
   );
 }
 
+
+function NotifBell() {
+  const router = useRouter();
+  const { unreadCount, fetch } = useNotifications();
+  useEffect(() => { void fetch(); }, []);
+  return (
+    <Pressable
+      onPress={() => router.push('/notifications')}
+      className="relative h-9 w-9 items-center justify-center rounded-full bg-brand-50"
+    >
+      <Bell color="#1D4ED8" size={16} strokeWidth={2.4} />
+      {unreadCount > 0 && (
+        <View className="absolute -right-0.5 -top-0.5 h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1">
+          <Text className="font-bold text-[9px] text-white">{unreadCount > 9 ? '9+' : unreadCount}</Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}

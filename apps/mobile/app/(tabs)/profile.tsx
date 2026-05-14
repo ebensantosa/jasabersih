@@ -79,7 +79,7 @@ function ProfileScreen() {
             style={{ elevation: 4 }}
           >
             <View className="flex-row items-center gap-3">
-              {(profile as any)?.photoUrl ? (
+              {mode === 'freelancer' && (profile as any)?.photoUrl ? (
                 <Image
                   source={{ uri: (profile as any).photoUrl }}
                   style={{ width: 56, height: 56, borderRadius: 28 }}
