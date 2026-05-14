@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
+import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useAuthStore } from '../../src/stores/auth';
 import { STATUS_COLOR, STATUS_LABEL, useBookingsStore } from '../../src/stores/bookings';
 import { useCleanerStore } from '../../src/stores/cleaner';
@@ -91,7 +92,7 @@ export default function Bookings() {
                     <ChevronRight color="#CBD5E1" size={16} />
                   </View>
                   <Text className="font-sans mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>
-                    {b.scheduledAt} · {b.addressLine}
+                    {formatScheduleWithTz(b.scheduledAt, b.addressLine)} · {b.addressLine}
                   </Text>
                   <View className="mt-1.5 flex-row items-center justify-between">
                     <View

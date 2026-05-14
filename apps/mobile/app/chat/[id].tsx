@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight, ClipboardList, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
@@ -207,7 +208,7 @@ function Chat() {
                 </View>
               </View>
               <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
-                {new Date(booking.scheduledAt).toLocaleString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · Rp {Number(booking.totalPrice ?? 0).toLocaleString('id-ID')}
+                {formatScheduleWithTz(booking.scheduledAt, booking.addressLine)} · Rp {Number(booking.totalPrice ?? 0).toLocaleString('id-ID')}
               </Text>
             </View>
             <ChevronRight color="#94A3B8" size={16} strokeWidth={2.4} />
