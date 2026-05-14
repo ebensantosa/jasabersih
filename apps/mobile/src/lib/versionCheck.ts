@@ -36,32 +36,18 @@ export function compareVersion(a: string, b: string): number {
   return 0;
 }
 
-/** Fetch info update dari backend. Untuk DEV: bisa di-override via env atau mock */
+/** Fetch info update dari backend (PUBLIC endpoint, no auth needed) */
 export async function fetchUpdateInfo(): Promise<UpdateInfo | null> {
   try {
-    // TODO Sprint 2: ganti dengan endpoint real
-    // const baseUrl = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3000/v1';
-    // const res = await fetch(`${baseUrl}/app/version-check?platform=${Platform.OS}&version=${currentVersion()}`);
-    // const json = await res.json();
-    // return json.data as UpdateInfo;
-
-    // DEV mock: ubah angka di sini untuk simulasi update tersedia
-    const mock: UpdateInfo = {
-      latestVersion: '1.1.0',
-      minVersion: '0.5.0',
-      releaseNotes: [
-        'Pin alamat di Google Maps lebih akurat',
-        'Wizard 3-step untuk booking lebih simple',
-        'Mode Cleaner dengan Job Board real-time',
-        'Bug fixes & performance',
-      ],
-      storeUrl:
-        Platform.OS === 'ios'
-          ? 'https://apps.apple.com/id/app/jasabersih/id000000'
-          : 'https://play.google.com/store/apps/details?id=com.jasabersih.app',
-      required: false,
-    };
-    return mock;
+    const baseUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl ?? 'https://api.jasabersih.com/v1';
+    const res = await fetch(
+      `${baseUrl}/app/version-check?platform=${Platform.OS}&version=${currentVersion()}`,
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = (json?.data ?? json) as UpdateInfo;
+    if (!data?.latestVersion) return null;
+    return data;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[versionCheck] fetch failed', e);

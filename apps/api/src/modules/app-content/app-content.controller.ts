@@ -11,6 +11,29 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 export class AppContentController {
   constructor(private readonly prisma: PrismaService) {}
 
+  // PUBLIC — version check untuk update prompt mobile
+  @Get('version-check')
+  async versionCheck(@Query('platform') platform?: string, @Query('version') _currentVersion?: string) {
+    const rows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
+      SELECT key, value FROM app_config
+       WHERE key IN ('app.latest_version', 'app.min_version', 'app.release_notes', 'app.play_store_url', 'app.app_store_url', 'app.force_update')
+    `;
+    const m = new Map(rows.map((r) => [r.key, r.value]));
+    const unwrap = (v: any, fallback = '') => {
+      if (v == null) return fallback;
+      if (typeof v === 'string') return v.replace(/^"|"$/g, '');
+      return v;
+    };
+    const isIOS = platform === 'ios';
+    return {
+      latestVersion: unwrap(m.get('app.latest_version'), '1.1.0'),
+      minVersion: unwrap(m.get('app.min_version'), '1.0.0'),
+      releaseNotes: (m.get('app.release_notes') ?? []) as string[],
+      storeUrl: unwrap(m.get(isIOS ? 'app.app_store_url' : 'app.play_store_url'), ''),
+      required: Boolean(m.get('app.force_update') === 'true' || m.get('app.force_update') === true),
+    };
+  }
+
   // PUBLIC — boot endpoint, no auth required.
   // Returns: config (key→value), banners, services, addons, packages,
   // active announcement (latest), commission tiers.
