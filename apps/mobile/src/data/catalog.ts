@@ -37,16 +37,15 @@ export type ServiceCategory = {
 };
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
-  { code: 'kamar', name: 'Bersih Kamar', description: 'Kamar tidur standar', icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 120_000, popular: true },
-  { code: 'dapur', name: 'Bersih Dapur', description: 'Area dapur', icon: ChefHat, iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
-  { code: 'kamar_mandi', name: 'Toilet', description: 'Kamar mandi', icon: Bath, iconColor: '#0E7490', iconBg: '#CFFAFE', imageUrl: UNS('photo-1552321554-5fefe8c9ef14'), startingPrice: 90_000 },
+  { code: 'kamar', name: 'Kamar Tidur', description: 'Kamar tidur standar', icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 120_000, popular: true },
+  { code: 'kamar_km_dalam', name: 'Kamar + KM Dalam', description: 'Kamar tidur + kamar mandi dalam', icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 160_000, popular: true },
+  { code: 'kamar_mandi', name: 'Toilet', description: 'Kamar mandi / toilet', icon: Bath, iconColor: '#0E7490', iconBg: '#CFFAFE', imageUrl: UNS('photo-1552321554-5fefe8c9ef14'), startingPrice: 90_000 },
   { code: 'ruang_tamu', name: 'Ruang Tamu', description: 'Ruang tamu & keluarga', icon: Sofa, iconColor: '#7C3AED', iconBg: '#EDE9FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
-  { code: 'full_house', name: 'Full House', description: 'Bersih seluruh rumah', icon: Home, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1564013799919-ab600027ffc6'), startingPrice: 350_000, popular: true },
-  { code: 'kos', name: 'Pindah Kos', description: 'Serah terima kamar', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
-  { code: 'kantor', name: 'Kantor', description: 'Cleaning office', icon: Building2, iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 250_000 },
-  { code: 'pasca_renovasi', name: 'Pasca Renovasi', description: 'Sisa material & debu', icon: Hammer, iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1503387762-592deb58ef4e'), startingPrice: 0 },
-  { code: 'pekarangan', name: 'Pekarangan', description: 'Sapu daun & rapikan luar', icon: Trees, iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
-  { code: 'garasi', name: 'Garasi/Teras', description: 'Bersih garasi & teras', icon: Car, iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
+  { code: 'vacuum_lantai', name: 'Vacuum Lantai', description: 'Vacuum lantai full ruangan', icon: Sparkles, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1581578731548-c64695cc6952'), startingPrice: 120_000 },
+  { code: 'dapur', name: 'Bersih Dapur', description: 'Area dapur + cuci piring', icon: ChefHat, iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
+  { code: 'pekarangan', name: 'Pekarangan', description: 'Halaman rumah', icon: Trees, iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
+  { code: 'garasi', name: 'Garasi/Teras', description: 'Garasi & teras', icon: Car, iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
+  { code: 'pindah_kos', name: 'Pindah Kos', description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
 ];
 
 // ============ PAKET FIXED COST (sesuai 06-pricing-modes.md) ============

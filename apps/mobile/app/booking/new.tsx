@@ -210,7 +210,19 @@ function NewBooking() {
 
   const scrollRef = useRef<ScrollView>(null);
 
-  const dirtMultiplier = DIRT_LEVELS.find((d) => d.level === dirtLevel)?.multiplier ?? 1;
+  // Admin-configurable multipliers (default fallback ke catalog hardcoded)
+  const dirtMultipliersCfg = useConfig('pricing.dirt_multipliers' as any, null) as any;
+  const floorSurchargesCfg = useConfig('pricing.floor_surcharges_idr' as any, null) as any;
+  const furnitureMultipliersCfg = useConfig('pricing.furniture_multipliers' as any, null) as any;
+
+  const dirtMultiplier = (() => {
+    if (dirtMultipliersCfg && typeof dirtMultipliersCfg === 'object') {
+      const v = Number(dirtMultipliersCfg[String(dirtLevel)] ?? dirtMultipliersCfg[dirtLevel]);
+      if (Number.isFinite(v) && v > 0) return v;
+    }
+    return DIRT_LEVELS.find((d) => d.level === dirtLevel)?.multiplier ?? 1;
+  })();
+
   const photoPenalty = 0;
   const rawPackagePrice = pkg?.price ?? 0;
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
@@ -222,12 +234,28 @@ function NewBooking() {
   const sizePctExtra = areaSteps * 0.05;
   const sizeSurcharge = Math.round(basePrice * sizePctExtra);
 
-  // Lantai: floor 1 baseline; floor 2 +10%; floor 3 +20%; >3 +30%. Tanpa lift = +5% extra (capek angkut alat).
+  // Lantai: pakai admin-configurable surcharges. Default: 1=0, 2=50k, 3=100k, >3=200k.
+  const floorSurchargeFlat = (() => {
+    if (floorSurchargesCfg && typeof floorSurchargesCfg === 'object') {
+      const v = Number(floorSurchargesCfg[floor] ?? 0);
+      if (Number.isFinite(v) && v >= 0) return v;
+    }
+    return floor === '1' ? 0 : floor === '2' ? 50000 : floor === '3' ? 100000 : 200000;
+  })();
   const floorN = floor === '>3' ? 4 : Math.max(1, parseInt(floor, 10) || 1);
-  const floorPct = floorN === 1 ? 0 : floorN === 2 ? 0.10 : floorN === 3 ? 0.20 : 0.30;
+  const floorPct = 0; // sekarang surcharge flat, bukan persen
+  // Furniture density multiplier
+  const furnitureMultiplier = (() => {
+    if (furnitureMultipliersCfg && typeof furnitureMultipliersCfg === 'object') {
+      const v = Number(furnitureMultipliersCfg[furniture] ?? 1);
+      if (Number.isFinite(v) && v > 0) return v;
+    }
+    return furniture === 'Padat' ? 1.15 : 1;
+  })();
   const noLiftPenalty = floorN >= 3 && !hasLift ? 0.05 : 0;
-  const floorPctTotal = floorPct + noLiftPenalty;
-  const floorSurcharge = Math.round(basePrice * floorPctTotal);
+  // Floor surcharge: flat (dari admin config) + no-lift penalty (5% kalau lantai 3+ tanpa lift)
+  const floorSurcharge = floorSurchargeFlat + Math.round(basePrice * noLiftPenalty);
+  const furnitureSurcharge = Math.round(basePrice * (furnitureMultiplier - 1));
 
   // Ruangan ekstra: kamar tidur ke-2+ +10% per kamar (max 4 ekstra), kamar mandi ke-2+ +5% per (max 3 ekstra)
   const extraBedrooms = Math.min(4, Math.max(0, bedrooms - 1));
@@ -251,7 +279,7 @@ function NewBooking() {
     [selectedAddons],
   );
   // basePrice sudah include deepSurcharge (via applyCleanMode). Surcharge lain = additive di atasnya.
-  const subtotal = basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
+  const subtotal = basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherChecking, setVoucherChecking] = useState(false);
