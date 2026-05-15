@@ -128,8 +128,14 @@ export class BookingsController {
       travelFee = q.travelFee;
       travelDistanceKm = q.distanceKm;
     } catch (e: any) {
-      // Re-throw — caller wajib lihat error code (OUT_OF_RANGE / NO_SERVICE_AREA)
-      throw e;
+      // OUT_OF_RANGE → block (jarak terlalu jauh, harus WA)
+      // NO_SERVICE_AREA → grace: allow booking dengan travel_fee = 0
+      // (admin mungkin belum pin centroid, jangan blok customer)
+      const code = (e?.response?.error?.code ?? e?.response?.code) as string | undefined;
+      if (code === 'OUT_OF_RANGE') throw e;
+      // NO_SERVICE_AREA atau error lain — booking lanjut, fee 0
+      travelFee = 0;
+      travelDistanceKm = null;
     }
     const totalWithTravel = Number(body.totalAmount) + travelFee;
 

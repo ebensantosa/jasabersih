@@ -200,23 +200,26 @@ export class CleanerJobsController {
     `;
     if (Number(updated) === 0) throw new BadRequestException('Job sudah diambil cleaner lain.');
 
-    // Compute cleaner_payout from commission_tiers based on cleaner.brings_tools
-    // and total_amount. Without this, completion won't credit the wallet ledger.
-    const ctx = await this.prisma.$queryRaw<{ total: number; brings_tools: boolean | null }[]>`
-      SELECT b.total_amount AS total, cp.brings_tools
+    // Compute cleaner_payout = (base × share%) + (travel_fee × 100%)
+    // Travel fee 100% ke cleaner (bensin/transport), gak kena cut platform.
+    const ctx = await this.prisma.$queryRaw<{ base: number; travel: number; brings_tools: boolean | null }[]>`
+      SELECT COALESCE(b.base_amount, b.total_amount) AS base,
+             COALESCE(b.travel_fee, 0) AS travel,
+             cp.brings_tools
         FROM bookings b
         LEFT JOIN cleaner_profiles cp ON cp.user_id = ${user.id}::uuid
        WHERE b.id = ${id}::uuid LIMIT 1
     `;
-    const total = Number(ctx[0]?.total ?? 0);
+    const base = Number(ctx[0]?.base ?? 0);
+    const travel = Number(ctx[0]?.travel ?? 0);
     const bringsTools = !!ctx[0]?.brings_tools;
     const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
       SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
         FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
     `;
-    const tier = tiers.find((t) => total >= Number(t.range_min ?? 0) && (t.range_max == null || total <= Number(t.range_max)));
+    const tier = tiers.find((t) => base >= Number(t.range_min ?? 0) && (t.range_max == null || base <= Number(t.range_max)));
     const sharePct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
-    const payout = Math.round(total * sharePct / 100);
+    const payout = Math.round(base * sharePct / 100) + travel;
     if (payout > 0) {
       await this.prisma.$executeRaw`
         UPDATE bookings SET cleaner_payout = ${payout}::bigint WHERE id = ${id}::uuid
