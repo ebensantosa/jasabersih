@@ -347,6 +347,15 @@ export class AdminCmsController {
     return { ok: true };
   }
 
+  @Delete('addons/:id')
+  @Roles('super_admin', 'ops')
+  async deleteAddon(@Param('id') id: string, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+    // Soft check: hard-delete (cuma admin-config data, gak ada FK ke booking)
+    await this.prisma.$executeRaw`DELETE FROM add_ons WHERE id = ${id}::uuid`;
+    await this.audit.log({ adminId: admin.id, action: 'addon.delete', resourceType: 'add_on', resourceId: id, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
   // ============ VOUCHERS ============
   @Get('vouchers')
   @Roles('super_admin', 'ops', 'finance')

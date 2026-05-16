@@ -634,6 +634,7 @@ function PackageFormModal({ pkg, services, onClose, onSaved }: { pkg: any | null
 // ============ ADD-ONS ============
 function AddonsTab() {
   const toast = useToast();
+  const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
   const [editing, setEditing] = useState<any | null>(null);
 
@@ -642,6 +643,21 @@ function AddonsTab() {
 
   async function toggle(a: any) {
     try { await api.admin.updateAddon(a.id, { isActive: !a.isActive }); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
+  async function del(a: any) {
+    const ok = await confirm({
+      title: `Hapus add-on "${a.name}"?`,
+      message: 'Add-on akan dihapus permanen. Booking yang sudah pakai add-on ini tidak terpengaruh.',
+      variant: 'danger',
+      confirmLabel: 'Hapus',
+    });
+    if (!ok) return;
+    try {
+      await api.admin.deleteAddon(a.id);
+      toast.success('Add-on dihapus');
+      void load();
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal hapus'); }
   }
 
   return (
@@ -668,6 +684,7 @@ function AddonsTab() {
                 <td className="px-4 py-2"><button onClick={() => toggle(a)}>{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(a)}>Edit</Button>
+                  <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(a)}>Hapus</Button>
                 </td>
               </tr>
             ))}
