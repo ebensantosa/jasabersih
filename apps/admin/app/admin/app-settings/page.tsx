@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Settings as SettingsIcon } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'contact', 'app', 'email', 'payment'] as const;
+const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'pricing', 'contact', 'app', 'email', 'payment'] as const;
 
 const HINT: Record<string, string> = {
   'brand.app_name': 'Nama app — muncul di header & splash.',
