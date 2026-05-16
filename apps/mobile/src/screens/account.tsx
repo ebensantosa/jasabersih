@@ -23,6 +23,7 @@ import { formatRupiah } from '../data/catalog';
 import { storage } from '../lib/storage';
 import { currentVersion, evaluateUpdate, fetchUpdateInfo } from '../lib/versionCheck';
 import { useAddressesStore } from '../stores/addresses';
+import { useConfig } from '../stores/appContent';
 import { toast } from '../stores/ui';
 import { safeBack } from '../lib/safeBack';
 
@@ -231,6 +232,7 @@ export function Security() {
 
 export function Help() {
   const router = useRouter();
+  const csWaNumber = useConfig('contact.whatsapp', '6281234567890');
   return (
     <>
       <View className="rounded-2xl bg-brand-50 p-4">
@@ -241,10 +243,8 @@ export function Help() {
         <Pressable
           onPress={async () => {
             const { Linking } = await import('react-native');
-            // CS WA — TODO: ambil dari app_config supaya admin bisa ubah
-            const waNumber = '6281252525926';
             const text = encodeURIComponent('Halo CS JasaBersih, saya butuh bantuan.');
-            Linking.openURL(`https://wa.me/${waNumber}?text=${text}`).catch(() => {});
+            Linking.openURL(`https://wa.me/${csWaNumber}?text=${text}`).catch(() => {});
           }}
           className="mt-3 self-start rounded-xl bg-emerald-600 px-4 py-2.5"
         >

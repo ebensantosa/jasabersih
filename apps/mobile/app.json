@@ -34,6 +34,13 @@
           "resizeMode": "contain",
           "imageWidth": 320
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "JasaBersih perlu akses galeri untuk upload foto kondisi rumah.",
+          "cameraPermission": "JasaBersih perlu akses kamera untuk ambil foto kondisi rumah langsung."
+        }
       ]
     ],
     "experiments": { "typedRoutes": false },

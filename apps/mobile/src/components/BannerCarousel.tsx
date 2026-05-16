@@ -39,8 +39,8 @@ export function BannerCarousel() {
     if (b.linkUrl) {
       if (/^https?:\/\//.test(b.linkUrl)) Linking.openURL(b.linkUrl).catch(() => {});
       else router.push(b.linkUrl as any);
-    } else if (b.id === 'b2') router.push('/services/full_house');
-    else if (b.id === 'b3') router.push('/booking/wa-survey');
+    }
+    // No-op kalau gak ada linkUrl — banner cuma display
   }
 
   useEffect(() => {

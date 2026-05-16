@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, Minus, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Image as RNImage, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -89,13 +89,18 @@ function NewBooking() {
         note: typeof p.scope === 'object' && p.scope ? (p.scope as any).note as string | undefined : undefined,
       }));
     }
+    // FALLBACK ke catalog lokal — kalau ini dipakai berarti API belum sync atau offline.
+    if (__DEV__) console.warn('[booking/new] API packages empty — fallback to LOCAL_PACKAGES (offline?)');
     return LOCAL_PACKAGES.map((p) => ({ ...p, includes: [] as string[], note: undefined as string | undefined }));
   }, [apiPackages, category?.code]);
 
   // Merge API addons with local icons (icons stay hardcoded by code).
   const apiAddons = useApiAddons();
   const ADDONS = useMemo(() => {
-    if (apiAddons.length === 0) return LOCAL_ADDONS;
+    if (apiAddons.length === 0) {
+      if (__DEV__) console.warn('[booking/new] API addons empty — fallback to LOCAL_ADDONS');
+      return LOCAL_ADDONS;
+    }
     const localByCode = new Map(LOCAL_ADDONS.map((a) => [a.code, a]));
     return apiAddons.map((a) => {
       const local = a.code ? localByCode.get(a.code) : undefined;
@@ -147,7 +152,86 @@ function NewBooking() {
   const [areaM2, setAreaM2] = useState(60);
 
   const [dirtLevel, setDirtLevel] = useState<1 | 2 | 3 | 4 | 5>(2);
-  const [photoCount, setPhotoCount] = useState(0);
+  const [photos, setPhotos] = useState<{ uri: string; size: number }[]>([]);
+  const photoCount = photos.length;
+  const MAX_PHOTOS = 3;
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  async function pickPhoto(source: 'camera' | 'library') {
+    if (photos.length >= MAX_PHOTOS) {
+      toast.warning(`Maksimal ${MAX_PHOTOS} foto`);
+      return;
+    }
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const { launchImageLibraryAsync, launchCameraAsync, MediaTypeOptions,
+        requestCameraPermissionsAsync, requestMediaLibraryPermissionsAsync } = ImagePicker;
+
+      // Cek permission sesuai source
+      if (source === 'camera') {
+        const perm = await requestCameraPermissionsAsync();
+        if (!perm.granted) { toast.warning('Izin kamera ditolak'); return; }
+      } else {
+        const perm = await requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) { toast.warning('Izin galeri ditolak'); return; }
+      }
+
+      const opts = {
+        mediaTypes: MediaTypeOptions.Images,
+        quality: 0.9,
+        allowsEditing: false,
+        // iOS HEIC → auto-convert ke JPEG (key untuk Apple compatibility)
+        // expo-image-picker default mengembalikan JPEG di iOS, eksplisit-kan:
+      };
+      const r = source === 'camera'
+        ? await launchCameraAsync(opts)
+        : await launchImageLibraryAsync({ ...opts, allowsMultipleSelection: false });
+      if (r.canceled || !r.assets?.[0]) return;
+      const asset = r.assets[0];
+
+      // Validate format (handle iOS HEIC: mime kosong → trust extension)
+      const mime = (asset.mimeType ?? '').toLowerCase();
+      const ext = (asset.uri.split('.').pop() ?? '').toLowerCase();
+      const allowedMime = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+      const allowedExt = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+      const fmtOk = (!mime && allowedExt.includes(ext)) || allowedMime.includes(mime);
+      if (!fmtOk) {
+        toast.error('Format harus JPG / PNG / WEBP / HEIC');
+        return;
+      }
+
+      setPhotoUploading(true);
+      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
+      // compressImage pakai ImageManipulator yang otomatis konversi HEIC → JPEG
+      const c = await compressImage(asset.uri);
+      if (c.oversize) {
+        toast.error(`Foto >5MB setelah compress (${formatBytes(c.size)}). Pilih foto lain.`);
+        return;
+      }
+      setPhotos([...photos, { uri: c.uri, size: c.size }]);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal upload foto');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  function showPhotoPicker() {
+    if (Platform.OS === 'web') {
+      // Web: gak punya kamera akses bagus dari Expo, langsung galeri (file picker)
+      void pickPhoto('library');
+      return;
+    }
+    Alert.alert('Tambah Foto', 'Ambil dari:', [
+      { text: 'Kamera', onPress: () => pickPhoto('camera') },
+      { text: 'Galeri', onPress: () => pickPhoto('library') },
+      { text: 'Batal', style: 'cancel' },
+    ]);
+  }
+
+  function removePhoto(idx: number) {
+    setPhotos(photos.filter((_, i) => i !== idx));
+  }
   const [dirtChars, setDirtChars] = useState<Set<string>>(new Set(['Debu']));
   const [floorType, setFloorType] = useState<string>('Keramik');
   const [furniture, setFurniture] = useState<FurnitureDensity>('Sedang');
@@ -339,17 +423,6 @@ function NewBooking() {
       return;
     }
     setAddressError(null);
-    if (dirtLevel >= 4 && photoCount < 1) {
-      Alert.alert(
-        'Foto wajib di skala 4–5',
-        'Min 3 foto disarankan agar cleaner siap dengan alat & estimasi waktu yang tepat. Lanjut tanpa foto?',
-        [
-          { text: 'Batal', style: 'cancel' },
-          { text: 'Lanjut', onPress: doSubmit },
-        ],
-      );
-      return;
-    }
     doSubmit();
   }
 
@@ -676,39 +749,35 @@ function NewBooking() {
                 <Text className="font-sans mt-2 text-[11px] text-ink-500">
                   {DIRT_LEVELS.find((d) => d.level === dirtLevel)?.desc}
                 </Text>
-                {dirtLevel >= 4 && (
-                  <View className="mt-3 flex-row gap-2 rounded-xl bg-amber-50 p-3">
-                    <AlertTriangle color="#B45309" size={16} />
-                    <Text className="font-medium flex-1 text-[11px] text-amber-900">
-                      Min 3 foto agar cleaner siap dengan alat & estimasi waktu yang tepat.
-                    </Text>
-                  </View>
-                )}
-
-                <Label className="mt-4">Foto Kondisi</Label>
+                <Label className="mt-4">Foto Kondisi (opsional, max {MAX_PHOTOS})</Label>
                 <View className="flex-row flex-wrap gap-2">
-                  {Array.from({ length: Math.max(3, photoCount + 1) }).map((_, i) => {
-                    const filled = i < photoCount;
-                    return (
+                  {photos.map((p, i) => (
+                    <View key={i} className="relative h-20 w-20">
+                      <RNImage source={{ uri: p.uri }} style={{ width: 80, height: 80, borderRadius: 12 }} />
                       <Pressable
-                        key={i}
-                        onPress={() => setPhotoCount(filled ? photoCount - 1 : photoCount + 1)}
-                        className={`h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed ${
-                          filled ? 'border-brand-600 bg-brand-50' : 'border-ink-300 bg-ink-50'
-                        }`}
+                        onPress={() => removePhoto(i)}
+                        className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-red-600"
                       >
-                        <Camera color={filled ? '#1D4ED8' : '#94A3B8'} size={20} strokeWidth={2.2} />
-                        <Text
-                          className={`font-medium mt-1 text-[10px] ${
-                            filled ? 'text-brand-700' : 'text-ink-500'
-                          }`}
-                        >
-                          {filled ? 'Foto ' + (i + 1) : '+ Tambah'}
-                        </Text>
+                        <Text className="font-bold text-[10px] text-white">×</Text>
                       </Pressable>
-                    );
-                  })}
+                    </View>
+                  ))}
+                  {photos.length < MAX_PHOTOS && (
+                    <Pressable
+                      onPress={showPhotoPicker}
+                      disabled={photoUploading}
+                      className="h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-brand-300 bg-brand-50"
+                    >
+                      <Camera color="#1D4ED8" size={20} strokeWidth={2.2} />
+                      <Text className="font-medium mt-1 text-[10px] text-brand-700">
+                        {photoUploading ? '...' : '+ Tambah'}
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
+                <Text className="font-sans mt-2 text-[10px] text-ink-500">
+                  JPG / PNG / WEBP · auto compress {`<5MB`}
+                </Text>
 
                 <Label className="mt-4">Karakter Kotor</Label>
                 <View className="flex-row flex-wrap gap-2">
