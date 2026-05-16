@@ -546,22 +546,24 @@ function NewBooking() {
           {step === 1 && (
             <>
               {categoryPackages.length > 0 && (
-                <Section title="Pilih Paket">
+                <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
                       const active = p.id === pickedPackageId;
                       const includes: string[] = (p as any).includes ?? [];
                       const note: string | undefined = (p as any).note;
+                      const single = categoryPackages.length === 1;
                       return (
                         <Pressable
                           key={p.id}
                           onPress={() => setPickedPackageId(p.id)}
+                          disabled={single}
                           className={`rounded-xl border p-3 ${
-                            active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
+                            active || single ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
                           }`}
                         >
                           <View className="flex-row items-center justify-between">
-                            <Text className="font-semibold flex-1 text-sm text-ink-900">{p.name}</Text>
+                            <Text className="font-semibold flex-1 text-sm text-ink-900">{single ? 'Cakupan Pekerjaan' : p.name}</Text>
                             <View className="items-end">
                               <Text className="font-bold text-sm text-brand-600">{formatRupiah(applyCleanMode(p.price, cleanMode, deepMultiplier))}</Text>
                               {cleanMode === 'deep' && (
