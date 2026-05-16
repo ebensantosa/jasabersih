@@ -104,8 +104,8 @@ export function createClient(opts: ClientOptions) {
 
     // Admin endpoints (TODO Sprint 2: implement di NestJS)
     admin: {
-      listBookings: (params?: { status?: string; from?: string; to?: string }) =>
-        request<unknown[]>('GET', `/admin/bookings${qs(params as any)}`),
+      listBookings: (params?: { status?: string; from?: string; to?: string; limit?: number; offset?: number }) =>
+        request<{ items: unknown[]; total: number; limit: number; offset: number } | unknown[]>('GET', `/admin/bookings${qs(params as any)}`),
       assignCleaner: (bookingId: string, cleanerId: string) =>
         request<unknown>('PATCH', `/admin/bookings/${bookingId}/assign`, { cleanerId }),
       reassignCleaner: (bookingId: string, cleanerId: string, reason?: string) =>
@@ -117,6 +117,10 @@ export function createClient(opts: ClientOptions) {
       bookingsNeedsAttention: () =>
         request<{ id: string; addressLine: string; totalAmount: number; scheduledAt: string; createdAt: string; searchingSec: number; serviceName: string | null; customerName: string | null; customerPhone: string | null }[]>(
           'GET', `/admin/bookings/needs-attention`,
+        ),
+      inboxCounts: () =>
+        request<{ kycPending: number; disputesOpen: number; withdrawalsPending: number; bookingsNeedAssign: number; fraudReports: number; cityRequests: number; total: number }>(
+          'GET', `/admin/inbox/counts`,
         ),
       forceCancelBooking: (bookingId: string, reason: string, refundAmount?: number) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/force-cancel`, { reason, refundAmount }),

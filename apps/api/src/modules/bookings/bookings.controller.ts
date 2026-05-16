@@ -16,7 +16,7 @@ const CreateBookingSchema = z.object({
   packageId: z.string().uuid().optional(),
   hourlyTierId: z.string().uuid().optional(),
   hoursBooked: z.number().min(1).max(12).optional(),
-  scheduledAt: z.string(), // ISO datetime
+  scheduledAt: z.string(),
   addressLine: z.string().min(5),
   lat: z.number().optional(),
   lng: z.number().optional(),
@@ -24,6 +24,7 @@ const CreateBookingSchema = z.object({
   baseAmount: z.number().int().nonnegative(),
   totalAmount: z.number().int().nonnegative(),
   formSnapshot: z.record(z.unknown()).default({}),
+  voucherCode: z.string().min(1).max(50).optional(),
 });
 type CreateBookingDto = z.infer<typeof CreateBookingSchema>;
 
@@ -137,7 +138,42 @@ export class BookingsController {
       travelFee = 0;
       travelDistanceKm = null;
     }
-    const totalWithTravel = Number(body.totalAmount) + travelFee;
+    // Voucher — re-validate server-side, hitung discount, simpan ke voucher_usage
+    let voucherDiscount = 0;
+    let voucherId: string | null = null;
+    if (body.voucherCode) {
+      try {
+        const code = body.voucherCode.trim().toUpperCase();
+        const vRows = await this.prisma.$queryRaw<{ id: string; type: string; value: number; max_discount: number | null; min_order: number; valid_from: Date; valid_until: Date; total_quota: number | null; used_count: number; per_user_limit: number; is_active: boolean }[]>`
+          SELECT id, type, value, max_discount, min_order, valid_from, valid_until, total_quota, used_count, per_user_limit, is_active
+            FROM vouchers WHERE code = ${code} LIMIT 1
+        `;
+        const v = vRows[0];
+        if (v && v.is_active) {
+          const now = Date.now();
+          const validTime = new Date(v.valid_from).getTime() <= now && new Date(v.valid_until).getTime() >= now;
+          const validQuota = v.total_quota == null || Number(v.used_count) < Number(v.total_quota);
+          const validMin = Number(body.totalAmount) >= Number(v.min_order);
+          const usage = await this.prisma.$queryRaw<{ c: number }[]>`
+            SELECT COUNT(*)::int AS c FROM voucher_usage WHERE voucher_id = ${v.id}::uuid AND user_id = ${user.id}::uuid
+          `;
+          const validPerUser = Number(usage[0]?.c ?? 0) < Number(v.per_user_limit ?? 1);
+          if (validTime && validQuota && validMin && validPerUser) {
+            let d = v.type === 'percentage'
+              ? Math.floor(Number(body.totalAmount) * (Number(v.value) / 100))
+              : Number(v.value);
+            if (v.max_discount && d > Number(v.max_discount)) d = Number(v.max_discount);
+            if (d > Number(body.totalAmount)) d = Number(body.totalAmount);
+            voucherDiscount = d;
+            voucherId = v.id;
+          }
+        }
+      } catch (e) {
+        // Voucher invalid → silent ignore, booking lanjut tanpa diskon
+      }
+    }
+
+    const totalWithTravel = Number(body.totalAmount) + travelFee - voucherDiscount;
 
     const row = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
       `INSERT INTO bookings (
@@ -169,7 +205,22 @@ export class BookingsController {
       travelFee,
       travelDistanceKm,
     );
-    return { id: row[0]?.id, travelFee, travelDistanceKm, totalAmount: totalWithTravel };
+    const bookingId = row[0]?.id;
+
+    // Record voucher usage kalau voucher kepakai
+    if (voucherId && bookingId && voucherDiscount > 0) {
+      try {
+        await this.prisma.$executeRaw`
+          INSERT INTO voucher_usage (voucher_id, user_id, booking_id, discount_amount)
+          VALUES (${voucherId}::uuid, ${user.id}::uuid, ${bookingId}::uuid, ${voucherDiscount})
+        `;
+        await this.prisma.$executeRaw`
+          UPDATE vouchers SET used_count = used_count + 1 WHERE id = ${voucherId}::uuid
+        `;
+      } catch { /* race condition possible — ignore */ }
+    }
+
+    return { id: bookingId, travelFee, travelDistanceKm, voucherDiscount, totalAmount: totalWithTravel };
   }
 
   @Post(':id/pay')

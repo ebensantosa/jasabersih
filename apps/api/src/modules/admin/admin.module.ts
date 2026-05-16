@@ -14,6 +14,7 @@ import { AdminBroadcastController } from './push-broadcast.controller';
 import { AdminReferralsController } from './referrals-admin.controller';
 import { AdminAppCmsController } from './app-cms.controller';
 import { AdminBookingsController } from './bookings-admin.controller';
+import { AdminInboxController } from './admin-inbox.controller';
 import { AdminChatController } from './chat-admin.controller';
 import { AdminCmsController } from './cms.controller';
 import { AdminDisputesController } from './disputes-admin.controller';
@@ -31,6 +32,7 @@ import { SystemConfigController } from './system-config.controller';
     AdminKycController,
     AdminUsersController,
     AdminBookingsController,
+    AdminInboxController,
     AdminWithdrawalsController,
     AdminDisputesController,
     AdminFraudController,

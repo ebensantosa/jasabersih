@@ -467,6 +467,7 @@ function NewBooking() {
         photoCount,
         cleanMode,
         cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
+        voucherCode: voucher?.code,
       },
       initialStatus: 'pending_payment',
       });

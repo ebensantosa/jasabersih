@@ -23,28 +23,42 @@ export class AdminController {
   @Get('bookings')
   async listBookings(
     @Query('status') status?: string,
-    @Query('from') from?: string,    // ISO date e.g. 2026-05-01
+    @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
   ) {
-    return this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT
-        b.id, b.status, b.pricing_mode AS "pricingMode",
-        b.total_amount AS total, b.scheduled_at AS "scheduledAt",
-        b.address_line AS address, b.created_at AS "createdAt",
-        cu.name AS "customerName", cu.phone AS "customerPhone",
-        cl.name AS "cleanerName",
-        s.name AS service
-      FROM bookings b
-      LEFT JOIN users cu ON cu.id = b.customer_id
-      LEFT JOIN users cl ON cl.id = b.cleaner_id
-      LEFT JOIN services s ON s.id = b.service_id
-      WHERE 1=1
-        AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
-        AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)
-        AND (${to ?? null}::date IS NULL OR b.created_at < (${to ?? null}::date + INTERVAL '1 day'))
-      ORDER BY b.created_at DESC
-      LIMIT 200
-    `;
+    const limit = Math.min(Math.max(Number(limitStr ?? 50), 1), 200);
+    const offset = Math.max(Number(offsetStr ?? 0), 0);
+    const [rows, totalRow] = await Promise.all([
+      this.prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT
+          b.id, b.status, b.pricing_mode AS "pricingMode",
+          b.total_amount AS total, b.scheduled_at AS "scheduledAt",
+          b.address_line AS address, b.created_at AS "createdAt",
+          cu.name AS "customerName", cu.phone AS "customerPhone",
+          cl.name AS "cleanerName",
+          s.name AS service
+        FROM bookings b
+        LEFT JOIN users cu ON cu.id = b.customer_id
+        LEFT JOIN users cl ON cl.id = b.cleaner_id
+        LEFT JOIN services s ON s.id = b.service_id
+        WHERE 1=1
+          AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
+          AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)
+          AND (${to ?? null}::date IS NULL OR b.created_at < (${to ?? null}::date + INTERVAL '1 day'))
+        ORDER BY b.created_at DESC
+        LIMIT ${limit}::int OFFSET ${offset}::int
+      `,
+      this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM bookings b
+        WHERE 1=1
+          AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
+          AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)
+          AND (${to ?? null}::date IS NULL OR b.created_at < (${to ?? null}::date + INTERVAL '1 day'))
+      `,
+    ]);
+    return { items: rows, total: Number(totalRow[0]?.c ?? 0), limit, offset };
   }
 
   @Get('cleaners')

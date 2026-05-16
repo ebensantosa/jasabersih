@@ -256,6 +256,7 @@ export const useBookingsStore = create<State>((set, get) => ({
           categoryName: b.categoryName ?? null,
           categoryCode: b.categoryCode ?? null,
         },
+        voucherCode: (b.formSnapshot as any)?.voucherCode ?? undefined,
         customerNotes: undefined,
       };
       try {

@@ -30,12 +30,12 @@ import { UiProvider } from '../../components/ui';
 const NAV = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/kyc', label: 'KYC Cleaner', icon: BadgeCheck },
-  { href: '/admin/bookings', label: 'Pesanan', icon: CalendarCheck },
-  { href: '/admin/wallet', label: 'Wallet & Withdrawal', icon: Wallet },
-  { href: '/admin/disputes', label: 'Disputes', icon: ShieldAlert },
+  { href: '/admin/kyc', label: 'KYC Cleaner', icon: BadgeCheck, badge: 'kycPending' as const },
+  { href: '/admin/bookings', label: 'Pesanan', icon: CalendarCheck, badge: 'bookingsNeedAssign' as const },
+  { href: '/admin/wallet', label: 'Wallet & Withdrawal', icon: Wallet, badge: 'withdrawalsPending' as const },
+  { href: '/admin/disputes', label: 'Disputes', icon: ShieldAlert, badge: 'disputesOpen' as const },
   { href: '/admin/fraud', label: 'Fraud Signals', icon: ShieldAlert },
-  { href: '/admin/fraud-reports', label: 'Fraud Reports', icon: ShieldAlert },
+  { href: '/admin/fraud-reports', label: 'Fraud Reports', icon: ShieldAlert, badge: 'fraudReports' as const },
   { href: '/admin/vouchers', label: 'Vouchers', icon: Tag },
   { href: '/admin/referrals', label: 'Referrals', icon: Gift },
   { href: '/admin/chat', label: 'Chat Audit', icon: MessageSquare },
@@ -53,6 +53,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null | 'loading'>('loading');
   const [cityRequestsCount, setCityRequestsCount] = useState(0);
+  const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({});
   const [brand, setBrand] = useState<{ logoUrl?: string; appName?: string }>({});
 
   useEffect(() => {
@@ -88,7 +89,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     }
     void fetchCount();
     const t = setInterval(fetchCount, 60_000);
-    return () => { cancelled = true; clearInterval(t); };
+
+    // Poll inbox counts juga
+    async function fetchInbox() {
+      try {
+        const { api } = await import('../../lib/api');
+        const r = await api.admin.inboxCounts();
+        if (!cancelled) setInboxCounts(r as any);
+      } catch {/* silent */}
+    }
+    void fetchInbox();
+    const t2 = setInterval(fetchInbox, 60_000);
+    return () => { cancelled = true; clearInterval(t); clearInterval(t2); };
   }, [session]);
 
   function logout() {
@@ -120,7 +132,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <nav className="flex-1 space-y-1">
           {NAV.map((item) => {
             const Icon = item.icon;
-            const badgeCount = item.badge === 'cityRequests' ? cityRequestsCount : 0;
+            const badgeCount = item.badge === 'cityRequests'
+              ? cityRequestsCount
+              : (item.badge ? Number(inboxCounts[item.badge] ?? 0) : 0);
             return (
               <Link
                 key={item.href}

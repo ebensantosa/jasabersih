@@ -33,6 +33,7 @@ export default function Bookings() {
   const [to, setTo] = useState('');
   const [assigning, setAssigning] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[] | null>(null);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -162,12 +163,17 @@ export default function Bookings() {
     setLoading(true);
     setError(null);
     try {
-      const data = (await api.admin.listBookings({
+      const res = (await api.admin.listBookings({
         status: filter === 'all' || filter === 'needs_manual' ? undefined : filter,
         from: from || undefined,
         to: to || undefined,
-      })) as Order[];
-      setOrders(data);
+        limit: 50,
+        offset: 0,
+      })) as any;
+      // Handle both paginated { items, total } and legacy array
+      const items = Array.isArray(res) ? res : (res.items ?? []);
+      setOrders(items as Order[]);
+      setTotalOrders(Array.isArray(res) ? items.length : Number(res.total ?? items.length));
     } catch (e) {
       setError(e instanceof ApiOffline ? 'offline' : (e as Error).message);
       setOrders([]);
