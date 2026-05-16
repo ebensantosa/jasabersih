@@ -324,7 +324,14 @@ export const useBookingsStore = create<State>((set, get) => ({
     persist(next);
     set({ list: next });
     if (!id.startsWith('bk_')) {
-      api.post(`/bookings/${id}/cancel`).catch(() => {});
+      api.post(`/bookings/${id}/cancel`).catch(async (e: any) => {
+        const { toast } = await import('./ui');
+        // Rollback optimistic update kalau server tolak
+        const rolled = get().list.map((b) => b.id === id ? { ...b, status: 'pending_payment' as const, cancelRefund: undefined } : b);
+        persist(rolled);
+        set({ list: rolled });
+        toast.error(e?.response?.data?.error?.message ?? 'Gagal batalkan pesanan');
+      });
     }
   },
   appendMessage: (id, msg) => {

@@ -99,7 +99,10 @@ export const useAddressesStore = create<State>((set, get) => ({
       const updated = get().list.map((x) => x.id === tempId ? { ...x, id: serverId } : x);
       persist(updated);
       set({ list: updated });
-    }).catch(() => {});
+    }).catch(async (e: any) => {
+      const { toast } = await import('./ui');
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal simpan alamat ke server');
+    });
 
     return next;
   },
@@ -111,7 +114,10 @@ export const useAddressesStore = create<State>((set, get) => ({
     set({ list: newList });
     // Push to API kalau bukan local-only (tempId)
     if (!id.startsWith('addr_')) {
-      api.patch(`/addresses/${id}`, patch).catch(() => {});
+      api.patch(`/addresses/${id}`, patch).catch(async (e: any) => {
+        const { toast } = await import('./ui');
+        toast.error(e?.response?.data?.error?.message ?? 'Gagal update alamat');
+      });
     }
   },
   remove: (id) => {
@@ -122,7 +128,10 @@ export const useAddressesStore = create<State>((set, get) => ({
     persist(newList);
     set({ list: newList });
     if (!id.startsWith('addr_')) {
-      api.delete(`/addresses/${id}`).catch(() => {});
+      api.delete(`/addresses/${id}`).catch(async (e: any) => {
+        const { toast } = await import('./ui');
+        toast.error(e?.response?.data?.error?.message ?? 'Gagal hapus alamat di server');
+      });
     }
   },
   setDefault: (id) => {
@@ -130,7 +139,10 @@ export const useAddressesStore = create<State>((set, get) => ({
     persist(newList);
     set({ list: newList });
     if (!id.startsWith('addr_')) {
-      api.post(`/addresses/${id}/set-default`).catch(() => {});
+      api.post(`/addresses/${id}/set-default`).catch(async (e: any) => {
+        const { toast } = await import('./ui');
+        toast.error(e?.response?.data?.error?.message ?? 'Gagal set default');
+      });
     }
   },
   getDefault: () => get().list.find((a) => a.isDefault) ?? get().list[0] ?? null,
