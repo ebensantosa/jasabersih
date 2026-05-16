@@ -518,6 +518,24 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             );
           })()}
 
+          {(() => {
+            const conditionUrls: string[] = Array.isArray((data.booking as any)?.form_snapshot?.conditionPhotos)
+              ? (data.booking as any).form_snapshot.conditionPhotos
+              : [];
+            return conditionUrls.length > 0 && (
+              <div>
+                <div className="text-sm font-bold text-slate-900 mb-2">Foto Kondisi (dari Customer)</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {conditionUrls.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt={`kondisi-${i+1}`} className="aspect-square w-full rounded-lg border object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {before.length + after.length + damage.length > 0 && (
             <div>
               <div className="text-sm font-bold text-slate-900 mb-2">Foto Pengerjaan</div>

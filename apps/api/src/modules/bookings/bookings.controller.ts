@@ -8,6 +8,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { JobsGateway } from '../jobs/jobs.gateway';
+import { StorageService } from '../storage/storage.service';
 import { TravelFeeService } from './travel-fee.service';
 
 const CreateBookingSchema = z.object({
@@ -37,9 +38,29 @@ export class BookingsController {
     private readonly prisma: PrismaService,
     private readonly jobs: JobsGateway,
     private readonly travelFee: TravelFeeService,
+    private readonly storage: StorageService,
   ) {}
 
   // Preview travel fee untuk lokasi tertentu (dipakai mobile saat checkout)
+  // Presigned PUT untuk customer upload foto kondisi pre-job
+  @Post('condition-photo-upload-url')
+  async conditionPhotoUploadUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { contentType: string },
+  ) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(body?.contentType)) {
+      throw new BadRequestException(`contentType harus: ${allowed.join(', ')}`);
+    }
+    const r = await this.storage.createUploadUrl({
+      bucket: 'public',
+      keyPrefix: `booking-conditions/${user.id}`,
+      contentType: body.contentType,
+      expiresInSec: 300,
+    });
+    return { ...r, publicUrl: this.storage.getPublicUrl(r.key) };
+  }
+
   @Post('travel-quote')
   async travelQuote(@Body() body: { lat: number; lng: number }) {
     if (typeof body?.lat !== 'number' || typeof body?.lng !== 'number') {

@@ -488,6 +488,21 @@ function BookingDetail() {
                   <Snap label="Catatan" value={booking.formSnapshot.notes} />
                 )}
               </View>
+              {Array.isArray((booking.formSnapshot as any).conditionPhotos) && (booking.formSnapshot as any).conditionPhotos.length > 0 && (
+                <View className="mt-3">
+                  <Text className="font-semibold text-xs uppercase tracking-wider text-ink-500 mb-2">Foto Kondisi</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {((booking.formSnapshot as any).conditionPhotos as string[]).map((url, i) => (
+                      <Image
+                        key={i}
+                        source={{ uri: url }}
+                        style={{ width: 80, height: 80, borderRadius: 12 }}
+                        contentFit="cover"
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 

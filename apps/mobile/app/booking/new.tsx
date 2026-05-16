@@ -152,7 +152,7 @@ function NewBooking() {
   const [areaM2, setAreaM2] = useState(60);
 
   const [dirtLevel, setDirtLevel] = useState<1 | 2 | 3 | 4 | 5>(2);
-  const [photos, setPhotos] = useState<{ uri: string; size: number }[]>([]);
+  const [photos, setPhotos] = useState<{ uri: string; size: number; url?: string }[]>([]);
   const photoCount = photos.length;
   const MAX_PHOTOS = 3;
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -202,15 +202,21 @@ function NewBooking() {
 
       setPhotoUploading(true);
       const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
-      // compressImage pakai ImageManipulator yang otomatis konversi HEIC → JPEG
       const c = await compressImage(asset.uri);
       if (c.oversize) {
         toast.error(`Foto >5MB setelah compress (${formatBytes(c.size)}). Pilih foto lain.`);
         return;
       }
-      setPhotos([...photos, { uri: c.uri, size: c.size }]);
+      // Upload ke R2 (public)
+      const { api } = await import('../../src/lib/api');
+      const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });
+      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
+      const blob = await (await fetch(c.uri)).blob();
+      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      if (!up.ok) throw new Error('Upload ke storage gagal');
+      setPhotos([...photos, { uri: c.uri, size: c.size, url: publicUrl }]);
     } catch (e: any) {
-      toast.error(e?.message ?? 'Gagal upload foto');
+      toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal upload foto');
     } finally {
       setPhotoUploading(false);
     }
@@ -468,6 +474,7 @@ function NewBooking() {
         cleanMode,
         cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
         voucherCode: voucher?.code,
+        conditionPhotos: photos.map((p) => p.url).filter(Boolean),
       },
       initialStatus: 'pending_payment',
       });

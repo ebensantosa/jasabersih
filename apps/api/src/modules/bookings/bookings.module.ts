@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { StorageModule } from '../storage/storage.module';
 
 import { BookingsController } from './bookings.controller';
 import { AutoCompleteService } from './auto-complete.service';
@@ -12,7 +13,7 @@ import { SearchTimeoutService } from './search-timeout.service';
 import { TravelFeeService } from './travel-fee.service';
 
 @Module({
-  imports: [AuthModule, NotificationsModule],
+  imports: [AuthModule, NotificationsModule, StorageModule],
   controllers: [BookingsController],
   providers: [
     SearchTimeoutService,
