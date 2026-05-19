@@ -111,7 +111,13 @@ export class BookingsController {
       user.id,
     );
     if (!rows[0]) throw new BadRequestException('Booking tidak ditemukan');
-    return rows[0];
+    const row = rows[0] as Record<string, unknown>;
+    // Hide customer phone dari cleaner — komunikasi pakai in-app chat.
+    // Customer tetap bisa lihat nomor sendiri & nomor cleaner.
+    if (row.customer_id !== user.id) {
+      row.customer_phone = null;
+    }
+    return row;
   }
 
   // Live searching stats — dipakai customer screen untuk render Gojek-style UI

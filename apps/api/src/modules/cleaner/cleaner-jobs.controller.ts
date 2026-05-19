@@ -159,7 +159,7 @@ export class CleanerJobsController {
              b.cleaner_payout AS "cleanerPayout",
              COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
              pp.name AS "packageName",
-             u.name AS "customerName", u.phone AS "customerPhone"
+             u.name AS "customerName"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
