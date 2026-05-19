@@ -68,12 +68,13 @@ export class RatingsController {
          AND account_type = 'earnings'
     `;
 
-    // Recompute cleaner_profiles aggregate (atomic)
+    // Incremental aggregate — O(1) bukan O(N).
+    // new_avg = (old_avg * old_count + new_rating) / (old_count + 1)
     await this.prisma.$executeRaw`
-      UPDATE cleaner_profiles cp
-         SET rating_avg = (SELECT ROUND(AVG(rating)::numeric, 2) FROM ratings WHERE ratee_id = ${b.cleaner_id}::uuid),
-             rating_count = (SELECT COUNT(*)::int FROM ratings WHERE ratee_id = ${b.cleaner_id}::uuid)
-       WHERE cp.user_id = ${b.cleaner_id}::uuid
+      UPDATE cleaner_profiles
+         SET rating_avg = ROUND(((COALESCE(rating_avg, 0) * COALESCE(rating_count, 0) + ${body.rating}::numeric) / (COALESCE(rating_count, 0) + 1))::numeric, 2),
+             rating_count = COALESCE(rating_count, 0) + 1
+       WHERE user_id = ${b.cleaner_id}::uuid
     `;
 
     // Tip → credit cleaner ledger if > 0

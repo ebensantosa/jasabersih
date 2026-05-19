@@ -122,6 +122,30 @@ Buka https://dashboard.jasabersih.com — login admin, cek bookings tampil.
 - **R2 credentials** harus sama, kalau gak foto-foto lama gak bisa diakses.
 - **Database URL** di `api.env` harus match dengan password yang kamu set di Step 4.
 
+## Postgres tuning (production)
+
+Edit `/etc/postgresql/16/main/postgresql.conf` di VPS production. Untuk VPS 2-4 GB RAM:
+
+```ini
+shared_buffers = 512MB           # 25% RAM, cache hot data
+effective_cache_size = 1500MB    # 50-75% RAM, planner hint
+work_mem = 16MB                  # per sort/hash op
+maintenance_work_mem = 128MB     # VACUUM, CREATE INDEX
+max_connections = 100            # default cukup
+random_page_cost = 1.1           # SSD-friendly (default 4.0 untuk HDD)
+checkpoint_completion_target = 0.9
+wal_buffers = 16MB
+```
+
+Restart: `systemctl restart postgresql`
+
+**Prisma connection pool**: tambah `?connection_limit=20&pool_timeout=20` di akhir `DATABASE_URL` di `apps/api/.env`. Default Prisma terlalu kecil di multi-core VPS.
+
+Contoh:
+```
+DATABASE_URL="postgresql://jasabersih:PASS@localhost:5432/jasabersih?connection_limit=20&pool_timeout=20"
+```
+
 ## Rolling redeploy (bukan disaster, cuma push update)
 
 Cukup di VPS production:
