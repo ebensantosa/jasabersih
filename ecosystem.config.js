@@ -1,0 +1,31 @@
+module.exports = {
+  apps: [
+    {
+      name: 'jasabersih-api',
+      cwd: '/var/www/jasabersih/apps/api',
+      script: 'dist/src/main.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: { NODE_ENV: 'production', PORT: '5000' },
+      max_memory_restart: '512M',
+      error_file: '/var/log/pm2/jasabersih-api.err.log',
+      out_file: '/var/log/pm2/jasabersih-api.out.log',
+      merge_logs: true,
+      time: true,
+    },
+    {
+      name: 'jasabersih-admin',
+      cwd: '/var/www/jasabersih/apps/admin',
+      script: 'node_modules/next/dist/bin/next',
+      args: 'start -p 3000',
+      instances: 1,
+      exec_mode: 'fork',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '512M',
+      error_file: '/var/log/pm2/jasabersih-admin.err.log',
+      out_file: '/var/log/pm2/jasabersih-admin.out.log',
+      merge_logs: true,
+      time: true,
+    },
+  ],
+};
