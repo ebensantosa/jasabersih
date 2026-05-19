@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, NotFoundException, Param, P
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
+import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { PrismaService } from '../../common/prisma.service';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -24,7 +25,11 @@ type CreateDisputeDto = z.infer<typeof CreateDisputeSchema>;
 @UseGuards(JwtAuthGuard)
 @Controller('disputes')
 export class DisputesController {
-  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+    private readonly abuse: AbuseLimitsService,
+  ) {}
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser) {
@@ -66,6 +71,20 @@ export class DisputesController {
 
     // Subject = the OTHER party
     const subjectUserId = b.customer_id === user.id ? b.cleaner_id : b.customer_id;
+
+    // Anti-abuse: max dispute open dari customer ini ke cleaner yang sama.
+    const limits = await this.abuse.get();
+    if (limits.maxOpenDisputesSameCleaner > 0 && subjectUserId) {
+      const cnt = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM disputes
+         WHERE raised_by = ${user.id}::uuid
+           AND subject_user_id = ${subjectUserId}::uuid
+           AND status IN ('open', 'in_progress', 'escalated')
+      `;
+      if (Number(cnt[0]?.c ?? 0) >= limits.maxOpenDisputesSameCleaner) {
+        throw new BadRequestException('Kamu sudah punya dispute open dengan cleaner ini. Tunggu admin review dulu.');
+      }
+    }
 
     const evidence = body.evidenceKeys.map((key) => ({ key, type: 'image' as const, addedBy: user.id, addedAt: new Date().toISOString() }));
 

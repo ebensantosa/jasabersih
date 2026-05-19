@@ -12,6 +12,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 
+import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 
@@ -63,6 +64,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly abuse: AbuseLimitsService,
   ) {}
 
   // Authenticate on connect via JWT token in handshake.auth.token
@@ -135,6 +137,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { ok: false, error: 'not a participant' };
     }
     const recipientId = client.data.userId === b.customer_id ? b.cleaner_id : b.customer_id;
+
+    // Rate limit: max N pesan/menit per user per booking (admin-configurable).
+    const limits = await this.abuse.get();
+    if (limits.chatMsgPerMin > 0) {
+      const cnt = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM chat_messages
+         WHERE booking_id = ${body.bookingId}::uuid
+           AND sender_id = ${client.data.userId}::uuid
+           AND created_at > NOW() - INTERVAL '1 minute'
+      `;
+      if (Number(cnt[0]?.c ?? 0) >= limits.chatMsgPerMin) {
+        return { ok: false, blocked: true, blockReason: 'rate_limit', userMessage: `Terlalu banyak pesan. Tunggu sebentar (max ${limits.chatMsgPerMin}/menit).` };
+      }
+    }
 
     const block = detectBlockReason(body.content);
     const status = block ? 'blocked' : 'sent';

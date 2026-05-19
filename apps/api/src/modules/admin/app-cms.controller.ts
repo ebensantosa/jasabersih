@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
+import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
@@ -19,6 +20,7 @@ export class AdminAppCmsController {
     private readonly audit: AdminAuditService,
     private readonly email: EmailService,
     private readonly storage: StorageService,
+    private readonly abuse: AbuseLimitsService,
   ) {}
 
   @Post('storage/configure-cors')
@@ -64,6 +66,7 @@ export class AdminAppCmsController {
     // Invalidate email config cache when email keys change
     if (key.startsWith('email.')) this.email.invalidateCache();
     if (key.startsWith('app.')) ReferralRedirectController.invalidateCache();
+    if (key.startsWith('abuse.')) this.abuse.invalidate();
     return { ok: true };
   }
 

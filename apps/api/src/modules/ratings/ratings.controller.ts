@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
+import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { PrismaService } from '../../common/prisma.service';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -20,7 +21,11 @@ type RateDto = z.infer<typeof RateSchema>;
 @ApiTags('ratings')
 @Controller('ratings')
 export class RatingsController {
-  constructor(private readonly prisma: PrismaService, private readonly push: PushService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+    private readonly abuse: AbuseLimitsService,
+  ) {}
 
   // Submit rating untuk booking yang completed. Customer rates cleaner.
   @Post()
@@ -88,6 +93,50 @@ export class RatingsController {
       data: { type: 'rating_received', bookingId: body.bookingId },
     }).catch(() => {});
 
+    return { ok: true };
+  }
+
+  // PATCH /ratings/booking/:id — edit rating dalam window (default 24 jam).
+  @Patch('booking/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async edit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') bookingId: string,
+    @Body() body: { rating?: number; review?: string },
+  ) {
+    const limits = await this.abuse.get();
+    if (limits.ratingEditWindowHours <= 0) {
+      throw new BadRequestException('Edit rating tidak diizinkan.');
+    }
+    if (body.rating != null && (!Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5)) {
+      throw new BadRequestException('Rating harus 1-5.');
+    }
+    if (body.review != null && body.review.length > 2000) {
+      throw new BadRequestException('Review max 2000 karakter.');
+    }
+    const rows = await this.prisma.$queryRaw<{ id: string; ratee_id: string; created_at: Date }[]>`
+      SELECT id, ratee_id, created_at FROM ratings
+       WHERE booking_id = ${bookingId}::uuid AND rater_id = ${user.id}::uuid LIMIT 1
+    `;
+    const r = rows[0];
+    if (!r) throw new NotFoundException('Rating tidak ditemukan.');
+    const ageHours = (Date.now() - new Date(r.created_at).getTime()) / 3600_000;
+    if (ageHours > limits.ratingEditWindowHours) {
+      throw new BadRequestException(`Window edit ${limits.ratingEditWindowHours} jam sudah lewat.`);
+    }
+    await this.prisma.$executeRaw`
+      UPDATE ratings SET
+        rating = COALESCE(${body.rating ?? null}::int, rating),
+        review = COALESCE(${body.review ?? null}::text, review)
+      WHERE id = ${r.id}::uuid
+    `;
+    // Recompute aggregate
+    await this.prisma.$executeRaw`
+      UPDATE cleaner_profiles cp
+         SET rating_avg = (SELECT ROUND(AVG(rating)::numeric, 2) FROM ratings WHERE ratee_id = ${r.ratee_id}::uuid)
+       WHERE cp.user_id = ${r.ratee_id}::uuid
+    `;
     return { ok: true };
   }
 

@@ -7,6 +7,7 @@ import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 import { StorageService } from '../storage/storage.service';
@@ -41,6 +42,7 @@ export class BookingsController {
     private readonly travelFee: TravelFeeService,
     private readonly storage: StorageService,
     private readonly push: PushService,
+    private readonly abuse: AbuseLimitsService,
   ) {}
 
   // Preview travel fee untuk lokasi tertentu (dipakai mobile saat checkout)
@@ -149,6 +151,18 @@ export class BookingsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateBookingSchema)) body: CreateBookingDto,
   ) {
+    // Anti-abuse: max booking aktif simultan per customer.
+    const limits = await this.abuse.get();
+    if (limits.maxActiveBookings > 0) {
+      const cnt = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM bookings
+         WHERE customer_id = ${user.id}::uuid
+           AND status IN ('pending_payment', 'searching', 'matched', 'on_the_way', 'cleaner_otw', 'in_progress', 'started')
+      `;
+      if (Number(cnt[0]?.c ?? 0) >= limits.maxActiveBookings) {
+        throw new BadRequestException(`Kamu punya ${limits.maxActiveBookings} pesanan aktif. Selesaikan dulu sebelum buat baru.`);
+      }
+    }
     // Hitung travel fee — kalau out-of-range, throw BadRequest (mobile arahkan ke WA)
     const lat = body.lat ?? -7.7956;
     const lng = body.lng ?? 110.3695;
@@ -188,7 +202,21 @@ export class BookingsController {
             SELECT COUNT(*)::int AS c FROM voucher_usage WHERE voucher_id = ${v.id}::uuid AND user_id = ${user.id}::uuid
           `;
           const validPerUser = Number(usage[0]?.c ?? 0) < Number(v.per_user_limit ?? 1);
-          if (validTime && validQuota && validMin && validPerUser) {
+
+          // Phone-level check: cegah multi-akun pakai voucher yang sama.
+          const phoneRow = await this.prisma.$queryRaw<{ phone: string | null }[]>`
+            SELECT phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
+          `;
+          const phone = phoneRow[0]?.phone ?? null;
+          const phoneCnt = phone
+            ? await this.prisma.$queryRaw<{ c: number }[]>`
+                SELECT COUNT(*)::int AS c FROM voucher_usage_log
+                 WHERE phone = ${phone} AND voucher_code = ${code}
+              `
+            : null;
+          const phoneLimit = Math.max(Number(v.per_user_limit ?? 1), limits.voucherMaxUsesPerPhone);
+          const validPerPhone = !phoneCnt || Number(phoneCnt[0]?.c ?? 0) < phoneLimit;
+          if (validTime && validQuota && validMin && validPerUser && validPerPhone) {
             let d = v.type === 'percentage'
               ? Math.floor(Number(body.totalAmount) * (Number(v.value) / 100))
               : Number(v.value);
@@ -247,6 +275,16 @@ export class BookingsController {
         await this.prisma.$executeRaw`
           UPDATE vouchers SET used_count = used_count + 1 WHERE id = ${voucherId}::uuid
         `;
+        // Log phone-level (anti multi-akun abuse).
+        const phoneRow = await this.prisma.$queryRaw<{ phone: string | null }[]>`
+          SELECT phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
+        `;
+        if (phoneRow[0]?.phone) {
+          await this.prisma.$executeRaw`
+            INSERT INTO voucher_usage_log (voucher_code, user_id, phone, booking_id)
+            VALUES (${body.voucherCode!.trim().toUpperCase()}, ${user.id}::uuid, ${phoneRow[0].phone}, ${bookingId}::uuid)
+          `;
+        }
       } catch { /* race condition possible — ignore */ }
     }
 
