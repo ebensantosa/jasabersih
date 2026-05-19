@@ -772,12 +772,22 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     paymentStatus: 'unpaid' as 'unpaid' | 'paid',
     adminNote: '',
   });
-  const [cleaners, setCleaners] = useState<{ id: string; name: string }[]>([]);
+  const [cleanerMatches, setCleanerMatches] = useState<{ id: string; name: string; phone?: string }[]>([]);
+  const [cleanerSearch, setCleanerSearch] = useState('');
+  const [showCleanerList, setShowCleanerList] = useState(false);
+  const [selectedCleanerName, setSelectedCleanerName] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Debounced server-side search (scale-ready untuk ribuan cleaner)
   useEffect(() => {
-    api.admin.listCleaners({ status: 'active' }).then((r) => setCleaners(r as any)).catch(() => {});
-  }, []);
+    const t = setTimeout(async () => {
+      try {
+        const r = await api.admin.listCleaners({ status: 'active', q: cleanerSearch.trim() || undefined, limit: 20 });
+        setCleanerMatches(r as any);
+      } catch {}
+    }, 250);
+    return () => clearTimeout(t);
+  }, [cleanerSearch]);
 
   async function submit() {
     if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount) {
@@ -820,12 +830,55 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
           <Input label="Total Bayar (Rp)" required value={form.totalAmount} onChange={(v) => setForm({ ...form, totalAmount: v.replace(/[^\d]/g, '') })} placeholder="150000" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="relative">
             <label className="block text-xs font-semibold text-slate-700">Cleaner (opsional, assign manual)</label>
-            <select value={form.cleanerId} onChange={(e) => setForm({ ...form, cleanerId: e.target.value })} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-              <option value="">— Cari otomatis (broadcast) —</option>
-              {cleaners.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <input
+              type="text"
+              value={selectedCleanerName || cleanerSearch}
+              onChange={(e) => {
+                setCleanerSearch(e.target.value);
+                setSelectedCleanerName('');
+                setForm({ ...form, cleanerId: '' });
+                setShowCleanerList(true);
+              }}
+              onFocus={() => setShowCleanerList(true)}
+              onBlur={() => setTimeout(() => setShowCleanerList(false), 150)}
+              placeholder="Cari nama/HP, atau biarkan kosong utk broadcast"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            {form.cleanerId && (
+              <button
+                type="button"
+                onClick={() => { setForm({ ...form, cleanerId: '' }); setSelectedCleanerName(''); setCleanerSearch(''); }}
+                className="absolute right-2 top-7 text-xs text-slate-400 hover:text-red-600"
+              >×</button>
+            )}
+            {showCleanerList && cleanerMatches.length > 0 && (
+              <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                {cleanerMatches.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setForm({ ...form, cleanerId: c.id });
+                      setSelectedCleanerName(c.name);
+                      setCleanerSearch('');
+                      setShowCleanerList(false);
+                    }}
+                    className="block w-full border-b border-slate-100 px-3 py-2 text-left text-xs hover:bg-slate-50 last:border-b-0"
+                  >
+                    <div className="font-semibold text-slate-900">{c.name}</div>
+                    {c.phone && <div className="text-[10px] text-slate-500">{c.phone}</div>}
+                  </button>
+                ))}
+                {cleanerMatches.length === 20 && (
+                  <div className="border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-center text-[10px] text-slate-500">
+                    Max 20 hasil — ketik lebih spesifik kalau gak ketemu
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-700">Status Bayar</label>

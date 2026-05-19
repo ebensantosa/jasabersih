@@ -62,14 +62,21 @@ export class AdminController {
   }
 
   @Get('cleaners')
-  async listCleaners(@Query('status') status?: string) {
+  async listCleaners(
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+    @Query('limit') limitStr?: string,
+  ) {
     // status=active → KYC-approved & user aktif (siap di-assign). Selain itu treat as kyc_status literal.
+    const safeQ = (q ?? '').trim().replace(/'/g, '').slice(0, 50);
+    const limit = Math.min(Math.max(Number(limitStr ?? 100) || 100, 1), 500);
+    const searchClause = safeQ ? ` AND (u.name ILIKE '%${safeQ}%' OR u.phone ILIKE '%${safeQ}%')` : '';
     const where =
       status === 'active'
-        ? `WHERE u.is_freelancer = TRUE AND u.status = 'active' AND u.deleted_at IS NULL AND cp.kyc_status = 'approved'`
+        ? `WHERE u.is_freelancer = TRUE AND u.status = 'active' AND u.deleted_at IS NULL AND cp.kyc_status = 'approved'${searchClause}`
         : status
-          ? `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL AND cp.kyc_status = '${status.replace(/'/g, '')}'`
-          : `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL`;
+          ? `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL AND cp.kyc_status = '${status.replace(/'/g, '')}'${searchClause}`
+          : `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL${searchClause}`;
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         u.id, u.name, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
@@ -83,7 +90,7 @@ export class AdminController {
       LEFT JOIN cleaner_profiles cp ON cp.user_id = u.id
       ${where}
       ORDER BY u.created_at DESC
-      LIMIT 100
+      LIMIT ${limit}
     `);
     return rows;
   }
