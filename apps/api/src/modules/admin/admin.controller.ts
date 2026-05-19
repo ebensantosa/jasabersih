@@ -21,6 +21,8 @@ export class AdminController {
   ) {}
 
   @Get('bookings')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
   async listBookings(
     @Query('status') status?: string,
     @Query('from') from?: string,
@@ -62,22 +64,23 @@ export class AdminController {
   }
 
   @Get('cleaners')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
   async listCleaners(
     @Query('status') status?: string,
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
   ) {
-    // status=active → KYC-approved & user aktif (siap di-assign). Selain itu treat as kyc_status literal.
-    const safeQ = (q ?? '').trim().replace(/'/g, '').slice(0, 50);
+    // Whitelist status terhadap nilai enum yang valid (mencegah SQL injection via status).
+    const VALID_STATUS = new Set(['active', 'pending', 'approved', 'rejected', 'suspended']);
+    const safeStatus = status && VALID_STATUS.has(status) ? status : null;
+    // Query string: dipakai sebagai parameter LIKE (bukan template), aman.
+    const safeQ = (q ?? '').trim().slice(0, 50);
     const limit = Math.min(Math.max(Number(limitStr ?? 100) || 100, 1), 500);
-    const searchClause = safeQ ? ` AND (u.name ILIKE '%${safeQ}%' OR u.phone ILIKE '%${safeQ}%')` : '';
-    const where =
-      status === 'active'
-        ? `WHERE u.is_freelancer = TRUE AND u.status = 'active' AND u.deleted_at IS NULL AND cp.kyc_status = 'approved'${searchClause}`
-        : status
-          ? `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL AND cp.kyc_status = '${status.replace(/'/g, '')}'${searchClause}`
-          : `WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL${searchClause}`;
-    const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    const likeParam = safeQ ? `%${safeQ}%` : null;
+    // Pakai $queryRawUnsafe dengan positional parameters ($1, $2, ...) — driver Postgres handle escaping.
+    const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+      `
       SELECT
         u.id, u.name, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         cp.kyc_status AS status,
@@ -88,10 +91,20 @@ export class AdminController {
         cp.service_areas AS "serviceAreas"
       FROM users u
       LEFT JOIN cleaner_profiles cp ON cp.user_id = u.id
-      ${where}
+      WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL
+        AND (
+          $1::text IS NULL
+          OR ($1 = 'active' AND u.status = 'active' AND cp.kyc_status = 'approved')
+          OR ($1 <> 'active' AND cp.kyc_status = $1)
+        )
+        AND ($2::text IS NULL OR u.name ILIKE $2 OR u.phone ILIKE $2)
       ORDER BY u.created_at DESC
-      LIMIT ${limit}
-    `);
+      LIMIT $3::int
+    `,
+      safeStatus,
+      likeParam,
+      limit,
+    );
     return rows;
   }
 
@@ -210,7 +223,8 @@ export class AdminController {
     if (dup.length > 0) throw new BadRequestException('Nomor HP atau email sudah terdaftar');
 
     const passwordHash = await bcrypt.hash(body.password, 12);
-    const kycStatus = body.autoApprove ? 'approved' : 'pending';
+    // autoApprove dibatasi hanya super_admin — ops/support harus lewat workflow KYC normal.
+    const kycStatus = body.autoApprove && admin.role === 'super_admin' ? 'approved' : 'pending';
     const tier = body.tier || 'standard';
 
     const userRows = await this.prisma.$queryRaw<{ id: string }[]>`
@@ -404,6 +418,8 @@ export class AdminController {
   }
 
   @Get('users')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
   async listUsers() {
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
@@ -420,11 +436,19 @@ export class AdminController {
   }
 
   @Patch('bookings/:id/assign')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
   async assignCleaner(
     @Param('id') id: string,
     @Body() body: { cleanerId: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
   ): Promise<{ ok: true }> {
     if (!body.cleanerId) throw new BadRequestException('cleanerId wajib');
+    await this.audit.log({
+      adminId: admin.id, action: 'booking.assign', resourceType: 'booking', resourceId: id,
+      changes: { cleanerId: body.cleanerId }, ipAddress: req.ip ?? null,
+    });
     await this.prisma.$executeRawUnsafe(
       `UPDATE bookings SET cleaner_id = $1::uuid, status = 'matched', matched_at = NOW() WHERE id = $2::uuid`,
       body.cleanerId,

@@ -40,7 +40,7 @@ export class AuthController {
   }
 
   @Post('verify-otp')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verifikasi OTP & set password → terima JWT pair' })
   async verifyOtp(
@@ -54,7 +54,7 @@ export class AuthController {
   }
 
   @Post('admin-login')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Admin login dengan email + password' })
   adminLogin(
@@ -66,7 +66,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login dengan nomor HP + password' })
   login(

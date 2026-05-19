@@ -25,10 +25,16 @@ async function bootstrap() {
   // Default JSON parser untuk semua route lain
   app.use(json({ limit: '5mb' }));
 
-  const corsOrigins = (process.env.CORS_ORIGINS ?? 'https://dashboard.jasabersih.com,http://localhost:3001,http://localhost:8081')
+  // Di production: HANYA origin HTTPS dari env. Di dev: fallback include localhost.
+  const isProd = process.env.NODE_ENV === 'production';
+  const defaultOrigins = isProd
+    ? 'https://dashboard.jasabersih.com'
+    : 'https://dashboard.jasabersih.com,http://localhost:3001,http://localhost:8081';
+  const corsOrigins = (process.env.CORS_ORIGINS ?? defaultOrigins)
     .split(',')
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((o) => !isProd || o.startsWith('https://'));
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
