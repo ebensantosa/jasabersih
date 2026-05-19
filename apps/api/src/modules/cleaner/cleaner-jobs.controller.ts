@@ -316,6 +316,11 @@ export class CleanerJobsController {
           UPDATE cleaner_profiles SET total_jobs_done = total_jobs_done + 1 WHERE user_id = ${user.id}::uuid
         `;
       }
+      // Kalau ini complete setelah re-clean, mark 'done' biar UI tau alur selesai.
+      await this.prisma.$executeRaw`
+        UPDATE bookings SET reclean_status = 'done'
+         WHERE id = ${id}::uuid AND reclean_status = 'accepted'
+      `;
       // Notify customer to rate
       if (booking?.customer_id) {
         void this.push.send({
@@ -468,5 +473,84 @@ export class CleanerJobsController {
        WHERE booking_id = ${id}::uuid
        ORDER BY created_at DESC
     `;
+  }
+
+  // POST /cleaner/jobs/:id/accept-reclean — cleaner setuju balik benerin.
+  // Booking sudah di-flip ke status='in_progress' oleh request-reclean.
+  // Tinggal mark reclean_status='accepted' + notif customer.
+  @Post(':id/accept-reclean')
+  async acceptReclean(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRaw<{ customer_id: string; reclean_status: string | null }[]>`
+      SELECT customer_id, reclean_status FROM bookings
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new ForbiddenException('Bukan job kamu.');
+    if (b.reclean_status !== 'requested') throw new BadRequestException('Tidak ada permintaan re-clean aktif.');
+
+    await this.prisma.$executeRaw`
+      UPDATE bookings SET reclean_status = 'accepted'
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+    `;
+    void this.push.send({
+      userId: b.customer_id,
+      channel: 'booking',
+      title: 'Cleaner menyetujui re-clean',
+      body: 'Cleaner akan balik untuk benerin pekerjaan. Tunggu di lokasi.',
+      data: { type: 'reclean_accepted', bookingId: id },
+    }).catch(() => {});
+    return { ok: true, recleanStatus: 'accepted' };
+  }
+
+  // POST /cleaner/jobs/:id/reject-reclean — cleaner tolak → otomatis create dispute formal.
+  // Booking di-rollback ke completed, customer dipush untuk file dispute manual atau accept.
+  @Post(':id/reject-reclean')
+  async rejectReclean(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+  ) {
+    const reason = (body?.reason ?? '').trim();
+    if (reason.length < 10) throw new BadRequestException('Alasan tolak min 10 karakter.');
+
+    const rows = await this.prisma.$queryRaw<{ customer_id: string; reclean_status: string | null; reclean_reason: string | null }[]>`
+      SELECT customer_id, reclean_status, reclean_reason FROM bookings
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new ForbiddenException('Bukan job kamu.');
+    if (b.reclean_status !== 'requested') throw new BadRequestException('Tidak ada permintaan re-clean aktif.');
+
+    await this.prisma.$executeRaw`
+      UPDATE bookings
+         SET reclean_status = 'rejected',
+             status = 'completed',
+             completed_at = NOW()
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+    `;
+
+    // Auto-create dispute formal — escrow tetap tertahan sampai admin putusin.
+    const description = `Re-clean ditolak cleaner.\nAlasan customer: ${b.reclean_reason ?? '-'}\nAlasan cleaner tolak: ${reason}`;
+    const slaDueAt = new Date(Date.now() + 24 * 3600_000).toISOString();
+    const evidence: unknown[] = [];
+    await this.prisma.$executeRaw`
+      INSERT INTO disputes (booking_id, raised_by, subject_user_id, type, description, evidence, status, priority, sla_due_at)
+      VALUES (
+        ${id}::uuid, ${b.customer_id}::uuid, ${user.id}::uuid,
+        'quality', ${description},
+        ${JSON.stringify(evidence)}::jsonb, 'open', 'high',
+        ${slaDueAt}::timestamptz
+      )
+    `;
+
+    void this.push.send({
+      userId: b.customer_id,
+      channel: 'booking',
+      title: 'Cleaner menolak re-clean',
+      body: 'Permintaan re-clean ditolak. Tim admin akan review dan hubungi kamu.',
+      data: { type: 'reclean_rejected', bookingId: id },
+    }).catch(() => {});
+
+    return { ok: true, recleanStatus: 'rejected', disputeCreated: true };
   }
 }

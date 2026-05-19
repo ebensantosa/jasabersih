@@ -8,6 +8,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { JobsGateway } from '../jobs/jobs.gateway';
+import { PushService } from '../notifications/push.service';
 import { StorageService } from '../storage/storage.service';
 import { TravelFeeService } from './travel-fee.service';
 
@@ -39,6 +40,7 @@ export class BookingsController {
     private readonly jobs: JobsGateway,
     private readonly travelFee: TravelFeeService,
     private readonly storage: StorageService,
+    private readonly push: PushService,
   ) {}
 
   // Preview travel fee untuk lokasi tertentu (dipakai mobile saat checkout)
@@ -97,6 +99,8 @@ export class BookingsController {
               b.customer_id, b.cleaner_id, b.service_id, b.package_id,
               b.cleaner_payout, b.matched_at, b.paid_at, b.canceled_at,
               b.completed_at, b.created_at,
+              b.reclean_count AS "recleanCount", b.reclean_status AS "recleanStatus",
+              b.reclean_requested_at AS "recleanRequestedAt", b.reclean_reason AS "recleanReason",
               ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
               s.name AS service_name, s.icon_url AS service_icon,
               cu.name AS customer_name, cu.phone AS customer_phone,
@@ -427,5 +431,67 @@ export class BookingsController {
       user.id,
     );
     return { ok: true };
+  }
+
+  // POST /bookings/:id/request-reclean — customer minta cleaner balik benerin.
+  // Hanya boleh dalam 24 jam setelah completed, max 1x per booking, dan belum ada dispute aktif.
+  // Side effect: hapus PENDING wallet entry cleaner (escrow reset), notif cleaner.
+  @Post(':id/request-reclean')
+  async requestReclean(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+  ) {
+    const reason = (body?.reason ?? '').trim();
+    if (reason.length < 10) throw new BadRequestException('Alasan min 10 karakter.');
+
+    const rows = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string | null; status: string; completed_at: Date | null; reclean_count: number }[]>`
+      SELECT customer_id, cleaner_id, status, completed_at, reclean_count
+        FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new BadRequestException('Booking tidak ditemukan.');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu.');
+    if (b.status !== 'completed') throw new BadRequestException('Hanya bisa minta re-clean setelah cleaner tandai selesai.');
+    if (!b.cleaner_id) throw new BadRequestException('Cleaner belum di-assign.');
+    if (b.reclean_count >= 1) throw new BadRequestException('Re-clean sudah pernah diminta. Silakan ajukan dispute.');
+    if (!b.completed_at || Date.now() - new Date(b.completed_at).getTime() > 24 * 3600_000) {
+      throw new BadRequestException('Lewat 24 jam dari selesai. Silakan ajukan dispute.');
+    }
+
+    const disputeRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM disputes WHERE booking_id = ${id}::uuid AND status IN ('open', 'in_progress', 'escalated') LIMIT 1
+    `;
+    if (disputeRows.length > 0) throw new BadRequestException('Ada dispute aktif untuk booking ini.');
+
+    await this.prisma.$executeRaw`
+      UPDATE bookings
+         SET reclean_count = reclean_count + 1,
+             reclean_requested_at = NOW(),
+             reclean_reason = ${reason},
+             reclean_status = 'requested',
+             status = 'in_progress',
+             completed_at = NULL
+       WHERE id = ${id}::uuid AND customer_id = ${user.id}::uuid
+    `;
+
+    // Reset escrow: hapus PENDING entry earnings cleaner. Akan dibuat ulang pas cleaner complete lagi.
+    await this.prisma.$executeRaw`
+      DELETE FROM wallet_ledger_entries
+       WHERE reference_id = ${id}::uuid
+         AND status = 'PENDING'
+         AND account_type = 'earnings'
+         AND user_id = ${b.cleaner_id}::uuid
+    `;
+
+    void this.push.send({
+      userId: b.cleaner_id,
+      channel: 'booking',
+      title: 'Customer minta re-clean',
+      body: `Customer minta kamu balik benerin. Alasan: ${reason.slice(0, 80)}${reason.length > 80 ? '…' : ''}`,
+      data: { type: 'reclean_requested', bookingId: id },
+    }).catch(() => {});
+
+    return { ok: true, recleanStatus: 'requested' };
   }
 }
