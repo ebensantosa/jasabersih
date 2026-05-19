@@ -112,11 +112,10 @@ export class BookingsController {
     );
     if (!rows[0]) throw new BadRequestException('Booking tidak ditemukan');
     const row = rows[0] as Record<string, unknown>;
-    // Hide customer phone dari cleaner — komunikasi pakai in-app chat.
-    // Customer tetap bisa lihat nomor sendiri & nomor cleaner.
-    if (row.customer_id !== user.id) {
-      row.customer_phone = null;
-    }
+    // Privacy: customer & cleaner gak boleh lihat nomor HP satu sama lain.
+    // Semua komunikasi lewat in-app chat (Gojek-style). Admin tetap lihat keduanya.
+    if (row.customer_id !== user.id) row.customer_phone = null;
+    if (row.cleaner_id !== user.id) row.cleaner_phone = null;
     return row;
   }
 
