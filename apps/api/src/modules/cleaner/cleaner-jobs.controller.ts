@@ -344,4 +344,129 @@ export class CleanerJobsController {
     }
     return { ok: true };
   }
+
+  // ============ UPCHARGE: cleaner minta charge tambahan ============
+
+  // Presigned upload URL untuk foto bukti kondisi (optional, recommended)
+  @Post(':id/upcharge-photo-upload-url')
+  async upchargePhotoUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { contentType: string },
+  ) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(body?.contentType)) {
+      throw new BadRequestException(`contentType harus: ${allowed.join(', ')}`);
+    }
+    const owns = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
+    const r = await this.storage.createUploadUrl({
+      bucket: 'public',
+      keyPrefix: `upcharges/${id}`,
+      contentType: body.contentType,
+      expiresInSec: 300,
+    });
+    return { ...r, publicUrl: this.storage.getPublicUrl(r.key) };
+  }
+
+  // Helper: hitung share cleaner untuk nominal tertentu, pakai tier sesuai total booking
+  private async computeCleanerShare(bookingTotal: number, cleanerUserId: string, amount: number): Promise<{ cleanerShare: number; platformFee: number; pct: number }> {
+    const prof = await this.prisma.$queryRaw<{ brings_tools: boolean }[]>`
+      SELECT brings_tools FROM cleaner_profiles WHERE user_id = ${cleanerUserId}::uuid LIMIT 1
+    `;
+    const bringsTools = !!prof[0]?.brings_tools;
+    const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+      SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
+        FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+    `;
+    const tier = tiers.find((t) => bookingTotal >= Number(t.range_min ?? 0) && (t.range_max == null || bookingTotal <= Number(t.range_max)));
+    const pct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+    const cleanerShare = Math.round(amount * pct / 100);
+    const platformFee = amount - cleanerShare;
+    return { cleanerShare, platformFee, pct };
+  }
+
+  // Preview commission split untuk nominal upcharge (dipakai mobile sebelum submit)
+  @Post(':id/upcharge-preview')
+  async previewUpcharge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { amount: number },
+  ) {
+    const amount = Math.floor(Number(body?.amount ?? 0));
+    if (!amount || amount <= 0) throw new BadRequestException('Nominal harus > 0');
+    const rows = await this.prisma.$queryRaw<{ total_amount: number; base_amount: number }[]>`
+      SELECT total_amount, base_amount FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (!rows[0]) throw new ForbiddenException('Bukan job kamu.');
+    return this.computeCleanerShare(Number(rows[0].total_amount), user.id, amount);
+  }
+
+  // Cleaner submit upcharge request
+  @Post(':id/upcharge')
+  async submitUpcharge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { amount: number; reason: string; photoUrl?: string },
+  ) {
+    const amount = Math.floor(Number(body?.amount ?? 0));
+    if (!amount || amount <= 0) throw new BadRequestException('Nominal harus > 0');
+    if (!body?.reason || body.reason.trim().length < 10) {
+      throw new BadRequestException('Alasan min 10 karakter');
+    }
+    const rows = await this.prisma.$queryRaw<{ id: string; status: string; customer_id: string; total_amount: number; base_amount: number }[]>`
+      SELECT id, status, customer_id, total_amount, base_amount
+        FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new ForbiddenException('Bukan job kamu.');
+    if (!['on_the_way', 'in_progress'].includes(b.status)) {
+      throw new BadRequestException('Hanya bisa minta charge tambahan saat OTW/sedang dikerjakan.');
+    }
+    // Max 50% dari base
+    const maxAllowed = Math.floor(Number(b.base_amount) * 0.5);
+    if (amount > maxAllowed) {
+      throw new BadRequestException(`Maksimal Rp ${maxAllowed.toLocaleString('id-ID')} (50% dari base)`);
+    }
+    // Anti-spam: 1× pending sekaligus per booking
+    const pending = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM booking_upcharges
+       WHERE booking_id = ${id}::uuid AND status = 'pending'
+    `;
+    if (Number(pending[0]?.c ?? 0) > 0) {
+      throw new BadRequestException('Sudah ada permintaan charge yang menunggu approval customer.');
+    }
+    const created = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO booking_upcharges (booking_id, cleaner_id, amount, reason, photo_url, status)
+      VALUES (${id}::uuid, ${user.id}::uuid, ${amount}, ${body.reason.trim()}, ${body.photoUrl ?? null}, 'pending')
+      RETURNING id
+    `;
+    // Notif customer
+    void this.push.send({
+      userId: b.customer_id,
+      channel: 'booking',
+      title: 'Cleaner minta charge tambahan',
+      body: `Cleaner minta +Rp ${amount.toLocaleString('id-ID')}. Tap untuk lihat alasan & setujui/tolak.`,
+      data: { type: 'upcharge_requested', bookingId: id, upchargeId: created[0]?.id, amount },
+    }).catch(() => {});
+    return { id: created[0]?.id, amount, status: 'pending' };
+  }
+
+  // GET upcharges per booking (cleaner side)
+  @Get(':id/upcharges')
+  async listUpcharges(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const owns = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, amount, reason, photo_url AS "photoUrl", status,
+             created_at AS "createdAt", decided_at AS "decidedAt"
+        FROM booking_upcharges
+       WHERE booking_id = ${id}::uuid
+       ORDER BY created_at DESC
+    `;
+  }
 }

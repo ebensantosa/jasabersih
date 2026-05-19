@@ -20,6 +20,108 @@ export class AdminBookingsController {
     private readonly storage: StorageService,
   ) {}
 
+  // Admin manual create booking — biasanya untuk customer yg order via WA/telp,
+  // atau perbaikan booking yang gagal create otomatis.
+  @Post()
+  @Roles('super_admin', 'ops', 'support')
+  async createManual(
+    @Body() body: {
+      customerPhone: string;         // wajib — admin pilih/buat customer via phone
+      customerName?: string;          // optional kalau customer baru
+      pricingMode: 'package' | 'hourly' | 'wa_survey';
+      packageId?: string;
+      serviceId?: string;
+      scheduledAt: string;            // ISO datetime
+      addressLine: string;
+      lat?: number;
+      lng?: number;
+      totalAmount: number;
+      baseAmount?: number;
+      customerNotes?: string;
+      cleanerId?: string;             // optional — kalau admin sekalian assign
+      paymentStatus?: 'unpaid' | 'paid'; // default unpaid → pending_payment, paid → searching
+      adminNote?: string;
+    },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    // Validasi minimal
+    if (!body?.customerPhone || !body?.addressLine || !body?.scheduledAt || !body?.totalAmount) {
+      throw new BadRequestException('customerPhone, addressLine, scheduledAt, totalAmount wajib');
+    }
+    const digits = body.customerPhone.replace(/\D/g, '');
+    const phone = digits.startsWith('62') ? `+${digits}` : digits.startsWith('0') ? `+62${digits.slice(1)}` : `+62${digits}`;
+
+    // Cari customer existing atau bikin baru
+    let customerId: string;
+    const existing = await this.prisma.$queryRaw<{ id: string; is_customer: boolean }[]>`
+      SELECT id, is_customer FROM users WHERE phone = ${phone} LIMIT 1
+    `;
+    if (existing.length > 0) {
+      customerId = existing[0]!.id;
+      // Pastikan flag customer
+      if (!existing[0]!.is_customer) {
+        await this.prisma.$executeRaw`UPDATE users SET is_customer = TRUE WHERE id = ${customerId}::uuid`;
+      }
+    } else {
+      // Customer baru — admin yg create (skip OTP)
+      const name = body.customerName?.trim() || `Customer ${phone.slice(-4)}`;
+      const tempPass = require('crypto').randomBytes(16).toString('hex');
+      const bcrypt = require('bcrypt');
+      const passwordHash = await bcrypt.hash(tempPass, 12);
+      const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+        INSERT INTO users (phone, name, password_hash, phone_verified_at, is_customer, status)
+        VALUES (${phone}, ${name}, ${passwordHash}, NOW(), TRUE, 'active')
+        RETURNING id
+      `;
+      customerId = rows[0]!.id;
+    }
+
+    const status = body.paymentStatus === 'paid' ? 'searching' : 'pending_payment';
+    const paidAt = body.paymentStatus === 'paid' ? new Date().toISOString() : null;
+    const lng = body.lng ?? 110.3695;
+    const lat = body.lat ?? -7.7956;
+
+    const row = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
+      `INSERT INTO bookings (
+         customer_id, cleaner_id, service_id, pricing_mode, package_id,
+         status, form_snapshot, scheduled_at, address_line, location,
+         customer_notes, admin_notes,
+         base_amount, total_amount, paid_at, matched_at
+       )
+       VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4, $5::uuid,
+         $6, $7::jsonb, $8::timestamptz, $9,
+         ST_SetSRID(ST_MakePoint($10, $11), 4326)::geography,
+         $12, $13, $14, $15, $16, $17
+       ) RETURNING id`,
+      customerId,
+      body.cleanerId ?? null,
+      body.serviceId ?? null,
+      body.pricingMode,
+      body.packageId ?? null,
+      body.cleanerId ? 'matched' : status,
+      JSON.stringify({ createdByAdmin: true, categoryName: 'Manual Admin' }),
+      body.scheduledAt,
+      body.addressLine,
+      lng, lat,
+      body.customerNotes ?? null,
+      `[admin manual] ${body.adminNote ?? 'created by admin'}`,
+      body.baseAmount ?? body.totalAmount,
+      body.totalAmount,
+      paidAt,
+      body.cleanerId ? new Date().toISOString() : null,
+    );
+
+    const bookingId = row[0]?.id;
+    await this.audit.log({
+      adminId: admin.id, action: 'booking.create_manual', resourceType: 'booking', resourceId: bookingId,
+      changes: { customerPhone: phone, totalAmount: body.totalAmount, cleanerId: body.cleanerId ?? null },
+      ipAddress: req.ip ?? null,
+    });
+    return { id: bookingId, customerId, status };
+  }
+
   // Bookings yang searching > 5 menit dan belum ada cleaner ambil — kemungkinan
   // di luar coverage area. Admin perlu lihat ini untuk assign manual.
   @Get('needs-attention')

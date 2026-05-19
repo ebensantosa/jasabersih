@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
-import { Modal } from '../../../components/ui';
+import { Button, Input, Modal, Textarea } from '../../../components/ui';
 
 import { ApiOffline, api } from '../../../lib/api';
 import { formatDateTimeWithTz } from '../../../lib/datetime';
@@ -40,6 +40,7 @@ export default function Bookings() {
   const [openMenu, setOpenMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const prompt = usePrompt();
   const confirm = useConfirm();
   const toast = useToast();
@@ -197,8 +198,18 @@ export default function Bookings() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">Pesanan <span className="ml-2 align-middle text-[10px] font-mono text-slate-400">v2</span></h1>
-      <p className="text-sm text-slate-500">Manage order, assign cleaner manual, resolve sengketa</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Pesanan <span className="ml-2 align-middle text-[10px] font-mono text-slate-400">v2</span></h1>
+          <p className="text-sm text-slate-500">Manage order, assign cleaner manual, resolve sengketa</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+        >
+          + Buat Pesanan Manual
+        </button>
+      </div>
 
       {error === 'offline' && <OfflineCard onRetry={load} />}
       {error && error !== 'offline' && (
@@ -458,6 +469,12 @@ export default function Bookings() {
       )}
 
       {detail && <BookingDetailModal bookingId={detail} onClose={() => setDetail(null)} />}
+      {showCreate && (
+        <CreateBookingModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); void load(); toast.success('Pesanan dibuat'); }}
+        />
+      )}
     </div>
   );
 }
@@ -739,5 +756,88 @@ function AssignModal({
         </button>
       </div>
     </div>
+  );
+}
+
+function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    customerPhone: '',
+    customerName: '',
+    pricingMode: 'package' as 'package' | 'hourly' | 'wa_survey',
+    addressLine: '',
+    scheduledAt: '',
+    totalAmount: '',
+    cleanerId: '',
+    paymentStatus: 'unpaid' as 'unpaid' | 'paid',
+    adminNote: '',
+  });
+  const [cleaners, setCleaners] = useState<{ id: string; name: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.admin.listCleaners({ status: 'active' }).then((r) => setCleaners(r as any)).catch(() => {});
+  }, []);
+
+  async function submit() {
+    if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount) {
+      toast.error('Field wajib kosong'); return;
+    }
+    const amount = parseInt(form.totalAmount.replace(/[^\d]/g, ''), 10);
+    if (!amount || amount <= 0) { toast.error('Total amount tidak valid'); return; }
+    setSubmitting(true);
+    try {
+      await api.admin.createManualBooking({
+        customerPhone: form.customerPhone.trim(),
+        customerName: form.customerName.trim() || undefined,
+        pricingMode: form.pricingMode,
+        addressLine: form.addressLine.trim(),
+        scheduledAt: new Date(form.scheduledAt).toISOString(),
+        totalAmount: amount,
+        cleanerId: form.cleanerId || undefined,
+        paymentStatus: form.paymentStatus,
+        adminNote: form.adminNote.trim() || undefined,
+      });
+      onCreated();
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal create'); } finally { setSubmitting(false); }
+  }
+
+  return (
+    <Modal title="Buat Pesanan Manual" open={true} onClose={onClose} size="lg" footer={
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>Batal</Button>
+        <Button variant="primary" onClick={submit} loading={submitting}>Buat Pesanan</Button>
+      </div>
+    }>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="No HP Customer" required value={form.customerPhone} onChange={(v) => setForm({ ...form, customerPhone: v })} placeholder="08123456789" />
+          <Input label="Nama Customer (kalau baru)" value={form.customerName} onChange={(v) => setForm({ ...form, customerName: v })} placeholder="Optional, kalau customer baru" />
+        </div>
+        <Input label="Alamat" required value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} placeholder="Jl. Mawar No. 5, Yogyakarta" />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Tanggal & Jam" required type="datetime-local" value={form.scheduledAt} onChange={(v) => setForm({ ...form, scheduledAt: v })} />
+          <Input label="Total Bayar (Rp)" required value={form.totalAmount} onChange={(v) => setForm({ ...form, totalAmount: v.replace(/[^\d]/g, '') })} placeholder="150000" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700">Cleaner (opsional, assign manual)</label>
+            <select value={form.cleanerId} onChange={(e) => setForm({ ...form, cleanerId: e.target.value })} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+              <option value="">— Cari otomatis (broadcast) —</option>
+              {cleaners.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700">Status Bayar</label>
+            <select value={form.paymentStatus} onChange={(e) => setForm({ ...form, paymentStatus: e.target.value as any })} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+              <option value="unpaid">Belum Bayar (pending_payment)</option>
+              <option value="paid">Sudah Bayar (langsung searching/matched)</option>
+            </select>
+          </div>
+        </div>
+        <Textarea label="Catatan Admin" rows={2} value={form.adminNote} onChange={(v) => setForm({ ...form, adminNote: v })} placeholder="Mis. order via WA, customer minta cleaner perempuan, dll" />
+        <p className="text-[11px] text-slate-500">Customer baru otomatis dibuat dengan nomor HP ini. Customer existing akan auto-link.</p>
+      </div>
+    </Modal>
   );
 }

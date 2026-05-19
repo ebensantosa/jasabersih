@@ -305,6 +305,102 @@ export class BookingsController {
     return { ok: true };
   }
 
+  // ============ UPCHARGE customer-side ============
+  @Get(':id/upcharges')
+  async listUpcharges(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const owns = await this.prisma.$queryRaw<{ customer_id: string }[]>`
+      SELECT customer_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (!owns[0] || owns[0].customer_id !== user.id) throw new BadRequestException('Bukan booking kamu');
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, amount, reason, photo_url AS "photoUrl", status,
+             created_at AS "createdAt", decided_at AS "decidedAt"
+        FROM booking_upcharges
+       WHERE booking_id = ${id}::uuid
+       ORDER BY created_at DESC
+    `;
+  }
+
+  @Post(':id/upcharges/:upchargeId/approve')
+  async approveUpcharge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('upchargeId') upchargeId: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string; amount: number; status: string; cleaner_id: string; booking_customer_id: string }[]>`
+        SELECT u.id, u.amount, u.status, u.cleaner_id, b.customer_id AS booking_customer_id
+          FROM booking_upcharges u
+          JOIN bookings b ON b.id = u.booking_id
+         WHERE u.id = ${upchargeId}::uuid AND u.booking_id = ${id}::uuid
+         LIMIT 1
+      `;
+      const u = rows[0];
+      if (!u) throw new BadRequestException('Upcharge tidak ditemukan');
+      if (u.booking_customer_id !== user.id) throw new BadRequestException('Bukan booking kamu');
+      if (u.status !== 'pending') throw new BadRequestException('Upcharge sudah diputuskan');
+
+      // Hitung commission split sesuai tier (ambil current total_amount sebelum upcharge)
+      const bookingRow = await tx.$queryRaw<{ total_amount: number }[]>`
+        SELECT total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
+      `;
+      const currentTotal = Number(bookingRow[0]?.total_amount ?? 0);
+      const profRow = await tx.$queryRaw<{ brings_tools: boolean }[]>`
+        SELECT brings_tools FROM cleaner_profiles WHERE user_id = ${u.cleaner_id}::uuid LIMIT 1
+      `;
+      const bringsTools = !!profRow[0]?.brings_tools;
+      const tiersRow = await tx.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+        SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+      `;
+      const tier = tiersRow.find((t) => currentTotal >= Number(t.range_min ?? 0) && (t.range_max == null || currentTotal <= Number(t.range_max)));
+      const pct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+      const cleanerShare = Math.round(Number(u.amount) * pct / 100);
+      const platformFee = Number(u.amount) - cleanerShare;
+
+      await tx.$executeRaw`
+        UPDATE booking_upcharges
+           SET status = 'approved', decided_at = NOW(), decided_by_user_id = ${user.id}::uuid
+         WHERE id = ${upchargeId}::uuid
+      `;
+      // Tambah ke booking total + cleaner_payout (share only) + platform_fee
+      await tx.$executeRaw`
+        UPDATE bookings
+           SET total_amount = total_amount + ${Number(u.amount)},
+               cleaner_payout = COALESCE(cleaner_payout, 0) + ${cleanerShare},
+               platform_fee = COALESCE(platform_fee, 0) + ${platformFee}
+         WHERE id = ${id}::uuid
+      `;
+      // Insert earning cleaner (share saja, PENDING — escrow 24h)
+      await tx.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
+        VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${id}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${Number(u.amount).toLocaleString('id-ID')}`})
+      `;
+      return { ok: true, cleanerShare, platformFee, pct };
+    });
+  }
+
+  @Post(':id/upcharges/:upchargeId/reject')
+  async rejectUpcharge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('upchargeId') upchargeId: string,
+  ) {
+    const rows = await this.prisma.$queryRaw<{ status: string; customer_id: string }[]>`
+      SELECT u.status, b.customer_id
+        FROM booking_upcharges u JOIN bookings b ON b.id = u.booking_id
+       WHERE u.id = ${upchargeId}::uuid AND u.booking_id = ${id}::uuid LIMIT 1
+    `;
+    if (!rows[0]) throw new BadRequestException('Upcharge tidak ditemukan');
+    if (rows[0].customer_id !== user.id) throw new BadRequestException('Bukan booking kamu');
+    if (rows[0].status !== 'pending') throw new BadRequestException('Upcharge sudah diputuskan');
+    await this.prisma.$executeRaw`
+      UPDATE booking_upcharges
+         SET status = 'rejected', decided_at = NOW(), decided_by_user_id = ${user.id}::uuid
+       WHERE id = ${upchargeId}::uuid
+    `;
+    return { ok: true };
+  }
+
   @Post(':id/cancel')
   async cancel(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     const rows = await this.prisma.$queryRawUnsafe<{ status: string; paid_at: Date | null }[]>(

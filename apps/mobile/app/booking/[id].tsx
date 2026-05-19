@@ -23,6 +23,7 @@ import { BookingPhotos } from '../../src/components/BookingPhotos';
 import { BookingTimeline } from '../../src/components/BookingTimeline';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { RatingFormModal } from '../../src/components/RatingFormModal';
+import { UpchargeFormModal } from '../../src/components/UpchargeFormModal';
 import { api } from '../../src/lib/api';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useT } from '../../src/lib/i18n';
@@ -85,6 +86,37 @@ function BookingDetail() {
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
+  const [showUpchargeModal, setShowUpchargeModal] = useState(false);
+
+  async function loadUpcharges() {
+    if (!id || id.startsWith('bk_')) return;
+    try {
+      const r = await api.get(`/bookings/${id}/upcharges`);
+      setUpcharges((r.data?.data ?? r.data ?? []) as any[]);
+    } catch { /* silent */ }
+  }
+  useEffect(() => { void loadUpcharges(); }, [id]);
+
+  async function approveUpcharge(upchargeId: string) {
+    try {
+      await api.post(`/bookings/${id}/upcharges/${upchargeId}/approve`);
+      toast.success('Charge tambahan disetujui');
+      void loadUpcharges();
+      void fetchOne(id!);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal approve');
+    }
+  }
+  async function rejectUpcharge(upchargeId: string) {
+    try {
+      await api.post(`/bookings/${id}/upcharges/${upchargeId}/reject`);
+      toast.warning('Charge tambahan ditolak');
+      void loadUpcharges();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal reject');
+    }
+  }
   const t = useT();
 
   // Cleaner advance status — pakai API kalau bukan local-only booking
@@ -567,6 +599,51 @@ function BookingDetail() {
             </View>
           )}
 
+          {/* Upcharge requests */}
+          {upcharges.length > 0 && (
+            <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
+              <Text className="font-bold mb-2 text-sm text-ink-900">Charge Tambahan</Text>
+              {upcharges.map((u) => {
+                const isPending = u.status === 'pending';
+                return (
+                  <View key={u.id} className={`mb-2 rounded-xl border p-3 ${isPending ? 'border-amber-300 bg-amber-50' : u.status === 'approved' ? 'border-emerald-300 bg-emerald-50' : 'border-ink-200 bg-ink-50'}`}>
+                    <View className="flex-row items-center justify-between">
+                      <Text className="font-bold text-sm text-ink-900">+Rp {Number(u.amount).toLocaleString('id-ID')}</Text>
+                      <Text className="font-bold text-[10px] uppercase tracking-wider">
+                        {u.status === 'pending' ? '⏳ Menunggu' : u.status === 'approved' ? '✓ Disetujui' : '✕ Ditolak'}
+                      </Text>
+                    </View>
+                    <Text className="font-medium mt-1 text-[12px] text-ink-700">{u.reason}</Text>
+                    {u.photoUrl && (
+                      <Image source={{ uri: u.photoUrl }} style={{ width: 80, height: 80, borderRadius: 8, marginTop: 6 }} contentFit="cover" />
+                    )}
+                    {isPending && !isCleaner && (
+                      <View className="mt-2 flex-row gap-2">
+                        <Pressable onPress={() => approveUpcharge(u.id)} className="flex-1 items-center rounded-lg bg-emerald-600 py-2">
+                          <Text className="font-bold text-xs text-white">Setujui</Text>
+                        </Pressable>
+                        <Pressable onPress={() => rejectUpcharge(u.id)} className="flex-1 items-center rounded-lg border border-red-300 bg-white py-2">
+                          <Text className="font-bold text-xs text-red-700">Tolak</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Cleaner: tombol minta charge tambahan (saat on_the_way / in_progress) */}
+          {isCleaner && booking.cleanerName && ['on_the_way', 'in_progress'].includes(booking.status) && !upcharges.some((u) => u.status === 'pending') && (
+            <Pressable
+              onPress={() => setShowUpchargeModal(true)}
+              className="mx-4 mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 py-3"
+            >
+              <Text className="text-base">💰</Text>
+              <Text className="font-semibold text-sm text-amber-900">Minta Charge Tambahan</Text>
+            </Pressable>
+          )}
+
           {canDispute && (
             <Pressable
               onPress={() => setShowDispute(true)}
@@ -700,6 +777,14 @@ function BookingDetail() {
           </View>
         )}
       </View>
+
+      {showUpchargeModal && id && (
+        <UpchargeFormModal
+          bookingId={id}
+          onClose={() => setShowUpchargeModal(false)}
+          onSubmitted={() => { setShowUpchargeModal(false); void loadUpcharges(); }}
+        />
+      )}
 
       <Modal visible={showCancelConfirm} transparent animationType="fade" onRequestClose={() => setShowCancelConfirm(false)}>
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
