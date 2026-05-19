@@ -119,6 +119,32 @@ export class AdminBookingsController {
       changes: { customerPhone: phone, totalAmount: body.totalAmount, cleanerId: body.cleanerId ?? null },
       ipAddress: req.ip ?? null,
     });
+
+    // Notif customer kalau dia existing — biar tahu admin buatkan order
+    if (existing.length > 0 && bookingId) {
+      const needsPayment = !body.paymentStatus || body.paymentStatus === 'unpaid';
+      void this.push.send({
+        userId: customerId,
+        channel: 'booking',
+        title: needsPayment ? 'Pesanan dibuat — tunggu pembayaran' : 'Pesanan dibuat oleh admin',
+        body: needsPayment
+          ? `Admin buatkan pesanan Rp ${Number(body.totalAmount).toLocaleString('id-ID')}. Tap untuk bayar & mulai cari cleaner.`
+          : `Admin buatkan pesanan untukmu — Rp ${Number(body.totalAmount).toLocaleString('id-ID')}. Cleaner segera dicari.`,
+        data: { type: 'booking_created_by_admin', bookingId },
+      }).catch(() => {});
+    }
+
+    // Kalau cleaner di-assign, notif cleaner juga
+    if (body.cleanerId && bookingId) {
+      void this.push.send({
+        userId: body.cleanerId,
+        channel: 'booking',
+        title: 'Job baru di-assign admin',
+        body: 'Admin assign job manual untuk kamu. Tap untuk lihat detail.',
+        data: { type: 'job_assigned', bookingId },
+      }).catch(() => {});
+    }
+
     return { id: bookingId, customerId, status };
   }
 
