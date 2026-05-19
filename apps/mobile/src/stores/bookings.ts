@@ -5,6 +5,24 @@ import { storage } from '../lib/storage';
 
 const BOOKINGS_KEY = 'bookings.list';
 
+function safeIsoDate(v: any): string {
+  if (typeof v === 'string' && v) {
+    const t = Date.parse(v);
+    if (Number.isFinite(t)) return new Date(t).toISOString();
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) return new Date(v).toISOString();
+  return new Date().toISOString();
+}
+
+function safeTimestamp(v: any): number {
+  if (typeof v === 'string' && v) {
+    const t = Date.parse(v);
+    if (Number.isFinite(t)) return t;
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  return Date.now();
+}
+
 export type PricingMode = 'package' | 'hourly' | 'wa_survey';
 
 export type BookingStatus =
@@ -152,9 +170,9 @@ export const useBookingsStore = create<State>((set, get) => ({
               categoryName: s.packageName ?? s.serviceName ?? 'Layanan',
               categoryImage: s.serviceIcon ?? '',
               addressLine: s.address ?? '',
-              scheduledAt: s.scheduledAt ?? new Date().toISOString(),
+              scheduledAt: safeIsoDate(s.scheduledAt),
               status: mapServerStatus(s.status),
-              createdAt: s.createdAt ? new Date(s.createdAt).getTime() : Date.now(),
+              createdAt: safeTimestamp(s.createdAt),
               addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
               cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? undefined,
               cleanerName: s.cleanerName ?? undefined,
@@ -201,14 +219,14 @@ export const useBookingsStore = create<State>((set, get) => ({
         categoryName: s.service_name ?? s.serviceName ?? 'Layanan',
         categoryImage: s.service_icon ?? s.serviceIcon ?? '',
         addressLine: s.address_line ?? s.address ?? '',
-        scheduledAt: s.scheduled_at ?? s.scheduledAt ?? new Date().toISOString(),
+        scheduledAt: safeIsoDate(s.scheduled_at ?? s.scheduledAt),
         status: mapServerStatus(s.status),
-        createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now(),
+        createdAt: safeTimestamp(s.created_at),
         addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
         cleanerId: s.cleaner_id ?? s.cleanerId ?? undefined,
         cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
         cleanerPhotoUrl: s.cleaner_photo_url ?? s.cleanerPhotoUrl ?? undefined,
-        paidAt: s.paid_at ? new Date(s.paid_at).getTime() : undefined,
+        paidAt: s.paid_at ? (Number.isFinite(Date.parse(s.paid_at)) ? Date.parse(s.paid_at) : undefined) : undefined,
         formSnapshot: s.form_snapshot ?? s.formSnapshot ?? {},
         messages: [],
       };

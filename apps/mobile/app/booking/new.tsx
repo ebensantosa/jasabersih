@@ -277,7 +277,16 @@ function NewBooking() {
         const { api } = await import('../../src/lib/api');
         const r = await api.post('/bookings/travel-quote', { lat, lng });
         const q = r.data?.data ?? r.data;
-        setTravelQuote({ ...q, _key: key });
+        if (!q || typeof q !== 'object') { setTravelQuote(null); return; }
+        const safe = {
+          enabled: !!q.enabled,
+          distanceKm: Number.isFinite(Number(q.distanceKm)) ? Number(q.distanceKm) : 0,
+          travelFee: Number.isFinite(Number(q.travelFee)) ? Number(q.travelFee) : 0,
+          freeKm: Number.isFinite(Number(q.freeKm)) ? Number(q.freeKm) : 0,
+          perKmIdr: Number.isFinite(Number(q.perKmIdr)) ? Number(q.perKmIdr) : 0,
+          nearestAreaName: typeof q.nearestAreaName === 'string' ? q.nearestAreaName : null,
+        };
+        setTravelQuote({ ...safe, _key: key } as any);
         setTravelErr(null);
       } catch (e: any) {
         const err = e?.response?.data?.error;
