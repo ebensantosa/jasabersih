@@ -151,7 +151,7 @@ export function createClient(opts: ClientOptions) {
           'POST', `/admin/bookings/bulk-action`, { ids, action, reason },
         ),
       listCleaners: (params?: { status?: string; q?: string; limit?: number }) =>
-        request<unknown[]>('GET', `/admin/cleaners${qs(params)}`),
+        request<unknown[]>('GET', `/admin/cleaners${qs(params ? { status: params.status, q: params.q, limit: params.limit != null ? String(params.limit) : undefined } : undefined)}`),
       createCleaner: (body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean }) =>
         request<{ id: string; phone: string; name: string }>('POST', '/admin/cleaners', body),
       deleteCleaner: (id: string, reason?: string) =>

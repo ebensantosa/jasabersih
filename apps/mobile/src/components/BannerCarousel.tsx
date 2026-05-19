@@ -2,21 +2,21 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 
 import { BANNERS } from '../data/catalog';
 import { useBanners } from '../stores/appContent';
 
-const SCREEN_W = Dimensions.get('window').width;
 const SIDE_PAD = 16;
 const PEEK = 24; // peek next card (Tokopedia/Traveloka feel)
 const GAP = 10;
-const CARD_W = SCREEN_W - SIDE_PAD * 2 - PEEK;
 const CARD_H = 140;
-const SNAP = CARD_W + GAP;
 
 export function BannerCarousel() {
   const router = useRouter();
+  const { width: screenW } = useWindowDimensions();
+  const cardW = Math.max(200, screenW - SIDE_PAD * 2 - PEEK);
+  const snap = cardW + GAP;
   const apiBanners = useBanners('home_hero');
   // Fallback ke hardcoded BANNERS kalau API belum punya data (saat first boot offline).
   const banners = useMemo(() => {
@@ -48,7 +48,7 @@ export function BannerCarousel() {
     const id = setInterval(() => {
       setActive((prev) => {
         const next = (prev + 1) % banners.length;
-        scrollRef.current?.scrollTo({ x: next * SNAP, animated: true });
+        scrollRef.current?.scrollTo({ x: next * snap, animated: true });
         return next;
       });
     }, 5000);
@@ -61,12 +61,12 @@ export function BannerCarousel() {
         ref={scrollRef}
         horizontal
         decelerationRate="fast"
-        snapToInterval={SNAP}
+        snapToInterval={snap}
         snapToAlignment="start"
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: SIDE_PAD, paddingRight: SIDE_PAD + PEEK }}
         onMomentumScrollEnd={(e) => {
-          const i = Math.round(e.nativeEvent.contentOffset.x / SNAP);
+          const i = Math.round(e.nativeEvent.contentOffset.x / snap);
           setActive(Math.max(0, Math.min(banners.length - 1, i)));
         }}
       >
@@ -75,7 +75,7 @@ export function BannerCarousel() {
             key={b.id}
             onPress={() => onTap(b)}
             style={{
-              width: CARD_W,
+              width: cardW,
               height: CARD_H,
               marginRight: idx === banners.length - 1 ? 0 : GAP,
             }}
