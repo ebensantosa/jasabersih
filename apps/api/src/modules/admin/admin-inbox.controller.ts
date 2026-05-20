@@ -32,7 +32,7 @@ export class AdminInboxController {
            AND COALESCE(paid_at, created_at) < NOW() - INTERVAL '5 minutes'
       `,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM fraud_reports WHERE status = 'open'`,
-      this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM city_requests WHERE status = 'pending'`,
+      this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM city_requests WHERE created_at > NOW() - INTERVAL '30 days'`,
     ]);
     const counts = {
       kycPending: Number(kycPending[0]?.c ?? 0),
