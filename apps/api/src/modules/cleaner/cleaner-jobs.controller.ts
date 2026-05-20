@@ -62,6 +62,15 @@ export class CleanerJobsController {
       INSERT INTO booking_photos (booking_id, photo_type, uploaded_by, storage_path)
       VALUES (${id}::uuid, ${body.photoType}, ${user.id}::uuid, ${body.storagePath})
     `;
+    // Quick lookup column (untuk validasi require_after_photo / before_photo).
+    if (body.photoType === 'before' || body.photoType === 'after') {
+      const col = body.photoType === 'before' ? 'before_photo_url' : 'after_photo_url';
+      const publicUrl = this.storage.getPublicUrl(body.storagePath);
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE bookings SET ${col} = $1 WHERE id = $2::uuid`,
+        publicUrl, id,
+      );
+    }
     return { ok: true, publicUrl: this.storage.getPublicUrl(body.storagePath) };
   }
 
@@ -193,6 +202,39 @@ export class CleanerJobsController {
       if (!inArea) throw new ForbiddenException('Job ini di luar area layananmu.');
     }
 
+    // Anti double-book: cek jadwal cleaner gak overlap dengan booking lain (window ±2 jam).
+    const jobSched = await this.prisma.$queryRaw<{ scheduled_at: Date | null }[]>`
+      SELECT scheduled_at FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const schedAt = jobSched[0]?.scheduled_at;
+    if (schedAt) {
+      const conflict = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM bookings
+         WHERE cleaner_id = ${user.id}::uuid
+           AND status IN ('matched', 'on_the_way', 'cleaner_otw', 'in_progress', 'started')
+           AND scheduled_at IS NOT NULL
+           AND ABS(EXTRACT(EPOCH FROM (scheduled_at - ${schedAt}::timestamptz))) < 7200
+         LIMIT 1
+      `;
+      if (conflict.length > 0) {
+        throw new BadRequestException('Kamu sudah punya job di jam yang dekat. Selesaikan dulu sebelum ambil yang baru.');
+      }
+
+      // Cek working hours kalau ada di-set
+      const dayOfWeek = new Date(schedAt).getDay();
+      const minutesOfDay = new Date(schedAt).getHours() * 60 + new Date(schedAt).getMinutes();
+      const wh = await this.prisma.$queryRaw<{ start_minute: number; end_minute: number }[]>`
+        SELECT start_minute, end_minute FROM cleaner_working_hours
+         WHERE user_id = ${user.id}::uuid AND day_of_week = ${dayOfWeek}
+      `;
+      if (wh.length > 0) {
+        const inHours = wh.some((s) => minutesOfDay >= s.start_minute && minutesOfDay < s.end_minute);
+        if (!inHours) {
+          throw new BadRequestException('Job ini di luar jam kerjamu. Atur jam kerja di profile.');
+        }
+      }
+    }
+
     const updated = await this.prisma.$executeRaw`
       UPDATE bookings
          SET cleaner_id = ${user.id}::uuid, status = 'matched', matched_at = NOW()
@@ -280,6 +322,27 @@ export class CleanerJobsController {
           code: 'AFTER_PHOTO_REQUIRED',
           message: 'Upload minimal 1 foto kondisi SESUDAH (after) dulu sebelum tandai selesai.',
         });
+      }
+    }
+
+    // Foto AFTER wajib sebelum tandai selesai (admin-configurable via cleaner.require_after_photo).
+    if (body.to === 'completed') {
+      const cfg = await this.prisma.$queryRaw<{ value: any }[]>`
+        SELECT value FROM app_config WHERE key = 'cleaner.require_after_photo' LIMIT 1
+      `;
+      const req = (() => {
+        const v = cfg[0]?.value;
+        if (v == null) return true; // default wajib
+        const s = typeof v === 'string' ? v.replace(/"/g, '').toLowerCase() : String(v).toLowerCase();
+        return s === 'true' || s === '1';
+      })();
+      if (req) {
+        const photo = await this.prisma.$queryRaw<{ after_photo_url: string | null }[]>`
+          SELECT after_photo_url FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+        `;
+        if (!photo[0]?.after_photo_url) {
+          throw new BadRequestException('Foto AFTER wajib diupload sebelum tandai selesai.');
+        }
       }
     }
 

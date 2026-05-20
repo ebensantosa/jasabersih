@@ -449,26 +449,108 @@ export class BookingsController {
   }
 
   @Post(':id/cancel')
-  async cancel(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    const rows = await this.prisma.$queryRawUnsafe<{ status: string; paid_at: Date | null }[]>(
-      `SELECT status, paid_at FROM bookings WHERE id = $1::uuid AND customer_id = $2::uuid LIMIT 1`,
-      id,
-      user.id,
+  async cancel(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    const rows = await this.prisma.$queryRawUnsafe<{
+      status: string; paid_at: Date | null; scheduled_at: Date | null;
+      total_amount: bigint | number; voucher_id: string | null; cleaner_id: string | null;
+    }[]>(
+      `SELECT b.status, b.paid_at, b.scheduled_at, b.total_amount, b.cleaner_id,
+              (SELECT voucher_id FROM voucher_usage WHERE booking_id = b.id LIMIT 1) AS voucher_id
+         FROM bookings b WHERE b.id = $1::uuid AND b.customer_id = $2::uuid LIMIT 1`,
+      id, user.id,
     );
     if (rows.length === 0) throw new BadRequestException('Pesanan tidak ditemukan');
-    const { status, paid_at } = rows[0]!;
-    if (status === 'canceled') throw new BadRequestException('Pesanan sudah dibatalkan');
-    if (status === 'completed') throw new BadRequestException('Pesanan sudah selesai, tidak bisa dibatalkan');
-    if (paid_at || status !== 'pending_payment') {
-      throw new BadRequestException('Pesanan yang sudah dibayar tidak bisa dibatalkan. Hubungi customer service jika ada masalah.');
+    const b = rows[0]!;
+    if (b.status === 'canceled') throw new BadRequestException('Pesanan sudah dibatalkan');
+    if (b.status === 'completed') throw new BadRequestException('Pesanan sudah selesai, tidak bisa dibatalkan');
+    if (b.status === 'in_progress' || b.status === 'started') {
+      throw new BadRequestException('Pekerjaan sudah berlangsung — gunakan dispute kalau ada masalah.');
     }
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE bookings SET status = 'canceled', canceled_at = NOW()
-       WHERE id = $1::uuid AND customer_id = $2::uuid`,
-      id,
-      user.id,
-    );
-    return { ok: true };
+
+    // Read cancellation policy dari app_config
+    const cfgRows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
+      SELECT key, value FROM app_config WHERE key IN ('cancel.free_window_hours', 'cancel.late_fee_percent')
+    `;
+    const cfg = new Map(cfgRows.map((r) => [r.key, r.value]));
+    const num = (k: string, d: number) => {
+      const v = cfg.get(k);
+      if (v == null) return d;
+      const n = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
+      return Number.isFinite(n) ? n : d;
+    };
+    const freeWindowH = num('cancel.free_window_hours', 6);
+    const latePct = num('cancel.late_fee_percent', 25);
+
+    let cancellationFee = 0;
+    let refundAmount = 0;
+    const total = Number(b.total_amount);
+
+    if (b.paid_at) {
+      // Sudah bayar → hitung fee berdasarkan window
+      const hoursToSchedule = b.scheduled_at
+        ? (new Date(b.scheduled_at).getTime() - Date.now()) / 3600_000
+        : 999; // kalau gak ada jadwal, treat sebagai jauh
+      if (hoursToSchedule >= freeWindowH) {
+        cancellationFee = 0;
+        refundAmount = total;
+      } else {
+        cancellationFee = Math.floor((total * latePct) / 100);
+        refundAmount = total - cancellationFee;
+      }
+
+      // Refund ke wallet customer (kalau ada refund)
+      if (refundAmount > 0) {
+        await this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${user.id}::uuid, 'refund', ${refundAmount}::bigint, 'booking_cancel', ${id}::uuid,
+                  'CLEARED', NOW(), ${`Refund pembatalan (${hoursToSchedule >= freeWindowH ? '100%' : `${100 - latePct}%`})`})
+        `;
+      }
+
+      // Kompensasi cleaner kalau cancel telat & sudah di-assign — separuh dari fee.
+      if (cancellationFee > 0 && b.cleaner_id) {
+        const cleanerComp = Math.floor(cancellationFee / 2);
+        await this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${b.cleaner_id}::uuid, 'earnings', ${cleanerComp}::bigint, 'cancel_comp', ${id}::uuid,
+                  'CLEARED', NOW(), 'Kompensasi customer cancel telat')
+        `;
+        void this.push.send({
+          userId: b.cleaner_id, channel: 'booking',
+          title: 'Customer batalkan job',
+          body: `Job di-cancel customer. Kompensasi Rp ${cleanerComp.toLocaleString('id-ID')} masuk saldo kamu.`,
+          data: { type: 'booking_canceled', bookingId: id },
+        }).catch(() => {});
+      }
+    }
+    // Belum bayar = free cancel, gak ada refund flow.
+
+    // Rollback voucher counter & usage log (kalau ada)
+    if (b.voucher_id) {
+      await this.prisma.$executeRaw`
+        UPDATE vouchers SET used_count = GREATEST(used_count - 1, 0) WHERE id = ${b.voucher_id}::uuid
+      `;
+      await this.prisma.$executeRaw`
+        DELETE FROM voucher_usage WHERE booking_id = ${id}::uuid
+      `;
+      await this.prisma.$executeRaw`
+        DELETE FROM voucher_usage_log WHERE booking_id = ${id}::uuid
+      `;
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE bookings
+         SET status = 'canceled', canceled_at = NOW(),
+             cancellation_fee = ${cancellationFee}::bigint,
+             cancellation_reason = ${body?.reason ?? null}
+       WHERE id = ${id}::uuid AND customer_id = ${user.id}::uuid
+    `;
+
+    return { ok: true, cancellationFee, refundAmount };
   }
 
   // POST /bookings/:id/request-reclean — customer minta cleaner balik benerin.

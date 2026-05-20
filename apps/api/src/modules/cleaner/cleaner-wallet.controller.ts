@@ -107,11 +107,36 @@ export class CleanerWalletController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(RequestWithdrawalSchema)) body: RequestWithdrawalDto,
   ) {
-    // Min withdrawal dari app_config (default 50000)
-    const cfgRows = await this.prisma.$queryRaw<{ value: unknown }[]>`SELECT value FROM app_config WHERE key = 'feature.min_withdrawal' LIMIT 1`;
-    const minAmount = Number((cfgRows[0]?.value as any) ?? 50000);
+    // Policy dari app_config (semua admin-configurable).
+    const cfgRows = await this.prisma.$queryRaw<{ key: string; value: unknown }[]>`
+      SELECT key, value FROM app_config
+       WHERE key IN ('cleaner.withdraw_min_amount', 'cleaner.withdraw_max_per_day', 'feature.min_withdrawal')
+    `;
+    const cfg = new Map(cfgRows.map((r) => [r.key, r.value]));
+    const num = (k: string, d: number) => {
+      const v = cfg.get(k);
+      if (v == null) return d;
+      const n = Number(typeof v === 'string' ? (v as string).replace(/"/g, '') : v);
+      return Number.isFinite(n) ? n : d;
+    };
+    const minAmount = num('cleaner.withdraw_min_amount', num('feature.min_withdrawal', 50000));
+    const maxPerDay = num('cleaner.withdraw_max_per_day', 1);
+
     if (body.amount < minAmount) {
       throw new BadRequestException(`Minimum penarikan Rp ${minAmount.toLocaleString('id-ID')}.`);
+    }
+
+    // Max withdraw per hari (per local day, UTC+7).
+    if (maxPerDay > 0) {
+      const todayCnt = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM withdrawals
+         WHERE user_id = ${user.id}::uuid
+           AND created_at >= (NOW() AT TIME ZONE 'Asia/Jakarta')::date
+           AND status NOT IN ('rejected', 'failed', 'canceled')
+      `;
+      if (Number(todayCnt[0]?.c ?? 0) >= maxPerDay) {
+        throw new BadRequestException(`Maks ${maxPerDay}x penarikan per hari. Coba besok.`);
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {
