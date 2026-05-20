@@ -39,7 +39,17 @@ export class CustomerWalletController {
        LIMIT 20
     `;
 
-    return { balance, creditIn, creditOut, ledger };
+    return {
+      balance,
+      creditIn,
+      creditOut,
+      ledger,
+      // Penanda kompliance: ini store credit, BUKAN e-money (gak butuh izin BI).
+      type: 'store_credit',
+      label: 'Saldo Refund',
+      withdrawable: false,
+      notice: 'Saldo ini hanya untuk bayar booking berikutnya. Tidak dapat ditukar uang tunai.',
+    };
   }
 
   @Get('wallet/ledger')

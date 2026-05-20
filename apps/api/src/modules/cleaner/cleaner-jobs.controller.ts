@@ -369,21 +369,82 @@ export class CleanerJobsController {
       `;
       const booking = b[0];
       if (booking?.cleaner_payout && Number(booking.cleaner_payout) > 0) {
+        // Split payout antara lead + helpers (kalau ada).
+        const helpers = await this.prisma.$queryRaw<{ cleaner_id: string }[]>`
+          SELECT cleaner_id FROM booking_helpers
+           WHERE booking_id = ${id}::uuid AND status = 'accepted'
+        `;
+        const totalWorkers = 1 + helpers.length;
+        const perWorker = Math.floor(Number(booking.cleaner_payout) / totalWorkers);
+
+        // Lead (caller).
         await this.prisma.$executeRaw`
           INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-          VALUES (${user.id}::uuid, 'earnings', ${booking.cleaner_payout}::bigint, 'booking', ${id}::uuid,
-                  'PENDING', NULL, 'Earning job — escrow 24 jam (auto-cair kalau gak ada komplain)')
+          VALUES (${user.id}::uuid, 'earnings', ${perWorker}::bigint, 'booking', ${id}::uuid,
+                  'PENDING', NULL, ${`Earning job (lead, 1/${totalWorkers}) — escrow 24 jam`})
           ON CONFLICT DO NOTHING
         `;
         await this.prisma.$executeRaw`
           UPDATE cleaner_profiles SET total_jobs_done = total_jobs_done + 1 WHERE user_id = ${user.id}::uuid
         `;
+
+        // Helpers.
+        for (const h of helpers) {
+          await this.prisma.$executeRaw`
+            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+            VALUES (${h.cleaner_id}::uuid, 'earnings', ${perWorker}::bigint, 'booking_helper', ${id}::uuid,
+                    'PENDING', NULL, ${`Earning job (helper, 1/${totalWorkers}) — escrow 24 jam`})
+            ON CONFLICT DO NOTHING
+          `;
+          await this.prisma.$executeRaw`
+            UPDATE cleaner_profiles SET total_jobs_done = total_jobs_done + 1 WHERE user_id = ${h.cleaner_id}::uuid
+          `;
+        }
       }
       // Kalau ini complete setelah re-clean, mark 'done' biar UI tau alur selesai.
       await this.prisma.$executeRaw`
         UPDATE bookings SET reclean_status = 'done'
          WHERE id = ${id}::uuid AND reclean_status = 'accepted'
       `;
+
+      // Referral: kalau ini booking yang dipake referral, qualify referrer + payout bonus.
+      const refRows = await this.prisma.$queryRaw<{ id: string; referrer_id: string; status: string }[]>`
+        SELECT id, referrer_id, status FROM referrals WHERE first_booking_id = ${id}::uuid LIMIT 1
+      `;
+      const ref = refRows[0];
+      if (ref && ref.status === 'pending') {
+        const cfg = await this.prisma.$queryRaw<{ value: any }[]>`
+          SELECT value FROM app_config WHERE key = 'referral.referrer_bonus_idr' LIMIT 1
+        `;
+        const v = cfg[0]?.value;
+        const bonus = (() => {
+          if (v == null) return 25000;
+          const n = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
+          return Number.isFinite(n) && n > 0 ? n : 25000;
+        })();
+        await this.prisma.$executeRaw`
+          UPDATE referrals
+             SET status = 'paid', qualified_at = NOW(), paid_at = NOW(), bonus_amount = ${bonus}::bigint
+           WHERE id = ${ref.id}::uuid AND status = 'pending'
+        `;
+        await this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${ref.referrer_id}::uuid, 'refund_credit', ${bonus}::bigint, 'referral_bonus', ${ref.id}::uuid,
+                  'CLEARED', NOW(), 'Bonus referral — temanmu selesai booking pertama')
+        `;
+        await this.prisma.$executeRaw`
+          UPDATE referral_codes
+             SET total_referrals = total_referrals + 1,
+                 total_paid = total_paid + ${bonus}::bigint
+           WHERE user_id = ${ref.referrer_id}::uuid
+        `;
+        void this.push.send({
+          userId: ref.referrer_id, channel: 'wallet',
+          title: 'Bonus referral cair 🎁',
+          body: `Temanmu menyelesaikan booking pertama. Bonus Rp ${bonus.toLocaleString('id-ID')} masuk saldo.`,
+          data: { type: 'referral_payout', amount: bonus },
+        }).catch(() => {});
+      }
       // Notify customer to rate
       if (booking?.customer_id) {
         void this.push.send({
@@ -536,6 +597,223 @@ export class CleanerJobsController {
        WHERE booking_id = ${id}::uuid
        ORDER BY created_at DESC
     `;
+  }
+
+  // ===== HELPER INVITES (multi-cleaner jobs) =====
+
+  // POST /cleaner/jobs/:id/invite-helper — lead invite helper by phone.
+  // Hanya boleh kalau worker_count >= 2 dan booking sudah di-assign ke caller.
+  @Post(':id/invite-helper')
+  async inviteHelper(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { phone: string },
+  ) {
+    if (!body?.phone) throw new BadRequestException('Phone wajib.');
+    const digits = body.phone.replace(/\D/g, '');
+    const phone = digits.startsWith('62') ? `+${digits}` : digits.startsWith('0') ? `+62${digits.slice(1)}` : `+62${digits}`;
+
+    const rows = await this.prisma.$queryRaw<{ worker_count: number; status: string }[]>`
+      SELECT worker_count, status FROM bookings
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new ForbiddenException('Kamu bukan lead booking ini.');
+    if (b.worker_count < 2) throw new BadRequestException('Booking ini cuma butuh 1 worker.');
+    if (!['matched', 'on_the_way', 'cleaner_otw'].includes(b.status)) {
+      throw new BadRequestException('Tidak bisa invite di status ini.');
+    }
+
+    // Cari helper user via phone — harus cleaner active + KYC approved + bukan self.
+    const helper = await this.prisma.$queryRaw<{ id: string; name: string | null }[]>`
+      SELECT u.id, u.name FROM users u
+        JOIN cleaner_profiles cp ON cp.user_id = u.id
+       WHERE u.phone = ${phone}
+         AND u.is_freelancer = TRUE
+         AND u.status = 'active'
+         AND u.deleted_at IS NULL
+         AND cp.kyc_status = 'approved'
+         AND u.id <> ${user.id}::uuid
+       LIMIT 1
+    `;
+    if (helper.length === 0) throw new BadRequestException('Cleaner dengan nomor ini gak ditemukan / belum approved.');
+
+    // Cek slot helper masih kosong.
+    const accepted = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM booking_helpers
+       WHERE booking_id = ${id}::uuid AND status = 'accepted'
+    `;
+    if (Number(accepted[0]?.c ?? 0) >= b.worker_count - 1) {
+      throw new BadRequestException('Slot helper sudah penuh.');
+    }
+
+    await this.prisma.$executeRaw`
+      INSERT INTO booking_helpers (booking_id, cleaner_id, status, invited_by)
+      VALUES (${id}::uuid, ${helper[0]!.id}::uuid, 'invited', ${user.id}::uuid)
+      ON CONFLICT (booking_id, cleaner_id) DO UPDATE
+        SET status = 'invited', invited_at = NOW(), decided_at = NULL
+    `;
+
+    void this.push.send({
+      userId: helper[0]!.id, channel: 'booking',
+      title: 'Diundang bantu job',
+      body: 'Ada cleaner ngajak kamu bantu job. Tap untuk lihat detail & terima.',
+      data: { type: 'helper_invited', bookingId: id },
+    }).catch(() => {});
+
+    return { ok: true, helperId: helper[0]!.id, helperName: helper[0]!.name };
+  }
+
+  // GET /cleaner/helper-invites — list invites buat cleaner ini.
+  @Get('helper-invites')
+  async listHelperInvites(@CurrentUser() user: AuthenticatedUser) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT h.id, h.booking_id AS "bookingId", h.status, h.invited_at AS "invitedAt",
+             b.address_line AS "addressLine", b.scheduled_at AS "scheduledAt",
+             b.worker_count AS "workerCount",
+             u.name AS "leadName"
+        FROM booking_helpers h
+        JOIN bookings b ON b.id = h.booking_id
+        LEFT JOIN users u ON u.id = h.invited_by
+       WHERE h.cleaner_id = ${user.id}::uuid
+       ORDER BY h.invited_at DESC LIMIT 50
+    `;
+  }
+
+  // POST /cleaner/helper-invites/:inviteId/accept
+  @Post('helper-invites/:inviteId/accept')
+  async acceptHelper(@CurrentUser() user: AuthenticatedUser, @Param('inviteId') inviteId: string) {
+    const rows = await this.prisma.$queryRaw<{ booking_id: string; status: string; invited_by: string }[]>`
+      SELECT booking_id, status, invited_by FROM booking_helpers
+       WHERE id = ${inviteId}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const h = rows[0];
+    if (!h) throw new ForbiddenException('Invite tidak ditemukan.');
+    if (h.status !== 'invited') throw new BadRequestException('Invite sudah diputuskan.');
+
+    // Anti double-book check untuk helper juga.
+    const sched = await this.prisma.$queryRaw<{ scheduled_at: Date | null }[]>`
+      SELECT scheduled_at FROM bookings WHERE id = ${h.booking_id}::uuid LIMIT 1
+    `;
+    if (sched[0]?.scheduled_at) {
+      const conflict = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM bookings
+         WHERE cleaner_id = ${user.id}::uuid
+           AND status IN ('matched', 'on_the_way', 'cleaner_otw', 'in_progress', 'started')
+           AND scheduled_at IS NOT NULL
+           AND ABS(EXTRACT(EPOCH FROM (scheduled_at - ${sched[0].scheduled_at}::timestamptz))) < 7200
+         LIMIT 1
+      `;
+      if (conflict.length > 0) throw new BadRequestException('Kamu punya job lain di jam yang dekat.');
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE booking_helpers SET status = 'accepted', decided_at = NOW()
+       WHERE id = ${inviteId}::uuid AND cleaner_id = ${user.id}::uuid
+    `;
+
+    void this.push.send({
+      userId: h.invited_by, channel: 'booking',
+      title: 'Helper menerima invite',
+      body: 'Cleaner yang kamu undang menerima job.',
+      data: { type: 'helper_accepted', bookingId: h.booking_id },
+    }).catch(() => {});
+
+    return { ok: true };
+  }
+
+  // POST /cleaner/helper-invites/:inviteId/decline
+  @Post('helper-invites/:inviteId/decline')
+  async declineHelper(@CurrentUser() user: AuthenticatedUser, @Param('inviteId') inviteId: string) {
+    const rows = await this.prisma.$queryRaw<{ booking_id: string; status: string; invited_by: string }[]>`
+      SELECT booking_id, status, invited_by FROM booking_helpers
+       WHERE id = ${inviteId}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const h = rows[0];
+    if (!h) throw new ForbiddenException('Invite tidak ditemukan.');
+    if (h.status !== 'invited') throw new BadRequestException('Invite sudah diputuskan.');
+
+    await this.prisma.$executeRaw`
+      UPDATE booking_helpers SET status = 'declined', decided_at = NOW()
+       WHERE id = ${inviteId}::uuid
+    `;
+
+    void this.push.send({
+      userId: h.invited_by, channel: 'booking',
+      title: 'Helper menolak invite',
+      body: 'Cari cleaner lain untuk bantu job kamu.',
+      data: { type: 'helper_declined', bookingId: h.booking_id },
+    }).catch(() => {});
+
+    return { ok: true };
+  }
+
+  // POST /cleaner/jobs/:id/mark-no-show — cleaner sudah di lokasi tapi customer gak ada.
+  // Syarat: status='on_the_way' atau 'matched', waktu sekarang ≥ scheduled_at,
+  // dan cleaner sudah tap "arrived" (cleaner_arrived_at != null).
+  // Efek: charge customer full (no refund), close booking, escrow di-clear ke cleaner.
+  @Post(':id/mark-no-show')
+  async markNoShow(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRaw<{
+      customer_id: string; status: string; scheduled_at: Date | null;
+      cleaner_arrived_at: Date | null; total_amount: bigint | number; paid_at: Date | null;
+    }[]>`
+      SELECT customer_id, status, scheduled_at, cleaner_arrived_at, total_amount, paid_at
+        FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new ForbiddenException('Bukan job kamu.');
+    if (!['matched', 'on_the_way', 'cleaner_otw'].includes(b.status)) {
+      throw new BadRequestException('Hanya bisa mark no-show kalau status on-the-way/matched.');
+    }
+    if (!b.cleaner_arrived_at) {
+      throw new BadRequestException('Tap "Sampai di Lokasi" dulu sebelum mark no-show.');
+    }
+    if (!b.scheduled_at || Date.now() < new Date(b.scheduled_at).getTime()) {
+      throw new BadRequestException('Belum waktu jadwal. Tunggu sampai jam booking.');
+    }
+    // Grace 15 menit setelah scheduled time + arrived.
+    const minutesSinceArrived = (Date.now() - new Date(b.cleaner_arrived_at).getTime()) / 60_000;
+    if (minutesSinceArrived < 15) {
+      throw new BadRequestException('Tunggu minimal 15 menit setelah sampai lokasi sebelum mark no-show.');
+    }
+
+    const total = Number(b.total_amount);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE bookings
+           SET status = 'canceled',
+               canceled_at = NOW(),
+               no_show_at = NOW(),
+               cancellation_fee = ${total}::bigint,
+               cancellation_reason = 'no_show'
+         WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+      `;
+
+      // Cleaner dapat full payout sebagai kompensasi waktu (kalau ada paid_at, deduct platform fee).
+      if (b.paid_at && total > 0) {
+        // Pakai cleaner_payout kalau sudah ke-hitung, fallback ke 60% kalau gak ada.
+        const payoutRow = await tx.$queryRaw<{ cleaner_payout: number | null }[]>`
+          SELECT cleaner_payout FROM bookings WHERE id = ${id}::uuid LIMIT 1
+        `;
+        const payout = Number(payoutRow[0]?.cleaner_payout ?? 0) || Math.floor(total * 0.6);
+        await tx.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${user.id}::uuid, 'earnings', ${payout}::bigint, 'no_show_comp', ${id}::uuid,
+                  'CLEARED', NOW(), 'Kompensasi customer no-show (full payout)')
+        `;
+      }
+    });
+
+    void this.push.send({
+      userId: b.customer_id, channel: 'booking',
+      title: 'Pesanan ditandai no-show',
+      body: 'Cleaner sudah sampai tapi kamu gak ada di lokasi. Pesanan ditutup, biaya penuh tetap berlaku.',
+      data: { type: 'booking_no_show', bookingId: id },
+    }).catch(() => {});
+
+    return { ok: true, cancellationFee: total };
   }
 
   // POST /cleaner/jobs/:id/accept-reclean — cleaner setuju balik benerin.

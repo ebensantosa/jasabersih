@@ -231,19 +231,49 @@ export class BookingsController {
       }
     }
 
-    const totalWithTravel = Number(body.totalAmount) + travelFee - voucherDiscount;
+    // Referral discount: hanya untuk first paid booking, kalau ada referral pending milik user.
+    let referralDiscount = 0;
+    const refRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM referrals
+       WHERE referred_id = ${user.id}::uuid AND status = 'pending' LIMIT 1
+    `;
+    if (refRows.length > 0) {
+      // Hanya kalau belum ada booking completed sebelumnya.
+      const prev = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM bookings
+         WHERE customer_id = ${user.id}::uuid AND status IN ('completed', 'in_progress', 'matched', 'on_the_way')
+      `;
+      if (Number(prev[0]?.c ?? 0) === 0) {
+        const cfg = await this.prisma.$queryRaw<{ value: any }[]>`
+          SELECT value FROM app_config WHERE key = 'referral.referred_discount_idr' LIMIT 1
+        `;
+        const v = cfg[0]?.value;
+        const refDisc = (() => {
+          if (v == null) return 25000;
+          const n = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
+          return Number.isFinite(n) && n > 0 ? n : 25000;
+        })();
+        referralDiscount = Math.min(refDisc, Number(body.totalAmount) - voucherDiscount);
+      }
+    }
+
+    const totalWithTravel = Number(body.totalAmount) + travelFee - voucherDiscount - referralDiscount;
+
+    // Worker count dari form_snapshot — pre-validate (1-4, default 1).
+    const wcRaw = (body.formSnapshot as any)?.workerCount ?? (body.formSnapshot as any)?.worker_count;
+    const workerCount = Math.min(Math.max(Number(wcRaw) || 1, 1), 4);
 
     const row = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
       `INSERT INTO bookings (
         customer_id, service_id, pricing_mode, package_id, hourly_tier_id, hours_booked,
         status, form_snapshot, scheduled_at, address_line, location, customer_notes,
-        base_amount, total_amount, travel_fee, travel_distance_km
+        base_amount, total_amount, travel_fee, travel_distance_km, worker_count
       )
       VALUES (
         $1::uuid, $2::uuid, $3, $4::uuid, $5::uuid, $6,
         'pending_payment', $7::jsonb, $8::timestamptz, $9,
         ST_SetSRID(ST_MakePoint($10, $11), 4326)::geography,
-        $12, $13, $14, $15, $16
+        $12, $13, $14, $15, $16, $17
       )
       RETURNING id`,
       user.id,
@@ -262,6 +292,7 @@ export class BookingsController {
       totalWithTravel,
       travelFee,
       travelDistanceKm,
+      workerCount,
     );
     const bookingId = row[0]?.id;
 
@@ -288,7 +319,15 @@ export class BookingsController {
       } catch { /* race condition possible — ignore */ }
     }
 
-    return { id: bookingId, travelFee, travelDistanceKm, voucherDiscount, totalAmount: totalWithTravel };
+    // Tag booking dengan referral_id (kalau dipake), supaya bisa di-trace saat completion.
+    if (referralDiscount > 0 && bookingId) {
+      await this.prisma.$executeRaw`
+        UPDATE referrals SET first_booking_id = ${bookingId}::uuid
+         WHERE referred_id = ${user.id}::uuid AND status = 'pending'
+      `;
+    }
+
+    return { id: bookingId, travelFee, travelDistanceKm, voucherDiscount, referralDiscount, totalAmount: totalWithTravel };
   }
 
   @Post(':id/pay')
