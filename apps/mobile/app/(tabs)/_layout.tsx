@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Briefcase, ClipboardList, Home, MessageCircle, Search, TrendingUp, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '../../src/lib/i18n';
 import { useModeStore } from '../../src/stores/mode';
@@ -13,6 +14,7 @@ export default function TabsLayout() {
   const isFreelancer = mode === 'freelancer';
   const t = useT();
   const tokens = useAuthStore((s) => s.tokens);
+  const insets = useSafeAreaInsets();
   const [chatUnread, setChatUnread] = useState(0);
 
   // Poll unread count tiap 30s
@@ -34,9 +36,9 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          height: Platform.OS === 'web' ? 64 : 72,
+          height: (Platform.OS === 'web' ? 64 : 72) + insets.bottom,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'web' ? 8 : 12,
+          paddingBottom: (Platform.OS === 'web' ? 8 : 12) + insets.bottom,
           borderTopWidth: 1,
           borderTopColor: '#E2E8F0',
           backgroundColor: 'white',
