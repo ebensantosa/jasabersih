@@ -2,21 +2,21 @@
   "expo": {
     "name": "JasaBersih",
     "slug": "jasabersih-app",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "scheme": "jasabersih",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jasabersih.app",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "icon": "./assets/icon.png"
     },
     "android": {
       "package": "com.jasabersih.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

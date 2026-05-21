@@ -256,10 +256,10 @@ function Section({
               borderBottomColor: '#F1F5F9',
             })}
           >
-            <View className="h-9 w-9 items-center justify-center rounded-xl bg-ink-50">
+            <View style={{ height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#F8FAFC' }}>
               <it.icon color="#475569" size={18} strokeWidth={2.2} />
             </View>
-            <Text className="font-medium flex-1 text-sm text-ink-800">{it.label}</Text>
+            <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: '#1E293B' }}>{it.label}</Text>
             <ChevronRight color="#CBD5E1" size={18} />
           </Pressable>
         ))}
