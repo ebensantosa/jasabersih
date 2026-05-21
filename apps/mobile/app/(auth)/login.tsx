@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Eye, EyeOff, Mail, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, Mail, Smartphone, Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '../../src/components/BrandLogo';
@@ -17,6 +17,25 @@ import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
 
 export default function Login() {
+  // Web preview gak bisa login (production API hanya allow HTTPS origin, bukan localhost dev).
+  // Arahin user buka di HP / install app — bukan masalah real, cuma dev convenience.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B2A6F', padding: 32 }}>
+        <Smartphone color="white" size={64} />
+        <Text style={{ fontSize: 22, fontWeight: '800', color: 'white', marginTop: 16, textAlign: 'center' }}>
+          Buka di Aplikasi
+        </Text>
+        <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+          Web preview gak bisa login. Install JasaBersih dari Google Play / App Store untuk pakai full app.
+        </Text>
+      </View>
+    );
+  }
+  return <LoginContent />;
+}
+
+function LoginContent() {
   const router = useRouter();
   const t = useT();
   const setTokens = useAuthStore((s) => s.setTokens);
