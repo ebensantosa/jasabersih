@@ -236,7 +236,7 @@ export default function Home() {
 
 
         {BUNDLE_SERVICES.length > 0 && (
-          <View className="mx-4 mt-3 rounded-2xl bg-white pb-3 pt-4" style={{ elevation: 2 }}>
+          <View className="mt-5">
             <View className="mb-3 flex-row items-end justify-between px-4">
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
@@ -316,7 +316,7 @@ export default function Home() {
 
         <FeaturedCleaners />
 
-        <View className="mx-4 mt-3 rounded-2xl bg-white pb-3 pt-4" style={{ elevation: 2 }}>
+        <View className="mt-5">
           <View className="mb-3 flex-row items-center justify-between px-4">
             <Text className="font-extrabold text-base text-ink-900">{t('home.popular')}</Text>
             <Pressable onPress={() => router.push('/(tabs)/explore')} className="flex-row items-center">
