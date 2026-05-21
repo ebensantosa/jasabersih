@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { CalendarCheck, ChevronRight, LogIn } from 'lucide-react-native';
-import { useCallback, useEffect } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { CalendarCheck, ChevronRight } from 'lucide-react-native';
+import { useCallback } from 'react';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
@@ -31,21 +31,7 @@ export default function Bookings() {
       : allList;
 
   if (!tokens) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white px-8" edges={['top']}>
-        <LogIn color="#94A3B8" size={48} />
-        <Text className="font-bold mt-3 text-lg text-ink-900">Login dulu untuk lihat pesanan</Text>
-        <Text className="font-sans mt-1 text-center text-xs text-ink-500">
-          Setelah login kamu bisa pesan layanan & track status cleaner-mu di sini.
-        </Text>
-        <Pressable
-          onPress={() => router.push('/(auth)/login')}
-          className="mt-6 rounded-2xl bg-brand-600 px-8 py-3"
-        >
-          <Text className="font-bold text-white">Masuk / Daftar</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (

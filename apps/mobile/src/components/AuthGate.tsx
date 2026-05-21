@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { LogIn, ShieldAlert } from 'lucide-react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { ShieldAlert } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,29 +24,9 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
 
-  // Anonymous → tampilin UI "harus login" + tombol. Tap tombol → ke login.
-  // Tanpa auto-redirect karena di production Hermes, useEffect tampak telat → user liat blank.
+  // Anonymous → langsung redirect ke login (synchronous, no flash).
   if (!tokens) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white px-8" edges={['top']}>
-        <LogIn color="#94A3B8" size={48} />
-        <Text className="font-bold mt-3 text-lg text-ink-900">Login dulu untuk lanjut</Text>
-        <Text className="font-sans mt-1 text-center text-xs text-ink-500">
-          Fitur ini perlu akun aktif. Yuk login atau daftar sekarang — gratis.
-        </Text>
-        <Pressable
-          onPress={() => router.push('/(auth)/login')}
-          className="mt-6 w-full rounded-2xl bg-brand-600 py-4"
-        >
-          <Text className="font-bold text-center text-sm text-white">Masuk</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/(auth)/register')} className="mt-3">
-          <Text className="font-sans text-center text-sm text-ink-500">
-            Belum punya akun? <Text className="font-semibold text-brand-600">Daftar di sini</Text>
-          </Text>
-        </Pressable>
-      </SafeAreaView>
-    );
+    return <Redirect href="/(auth)/login" />;
   }
 
   // Logged in but wrong mode (customer trying cleaner page or vice versa)
