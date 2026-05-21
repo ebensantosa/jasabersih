@@ -319,24 +319,23 @@ function Row({
   return (
     <Pressable
       onPress={onPress ?? (() => toast.comingSoon())}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.6 : 1,
+      android_ripple={{ color: '#F1F5F9' }}
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderBottomWidth: last ? 0 : 1,
         borderBottomColor: '#F1F5F9',
-      })}
+      }}
     >
-      <View className="h-9 w-9 items-center justify-center rounded-xl bg-ink-50">
+      <View style={{ height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#F8FAFC', marginRight: 12 }}>
         <Icon color={danger ? '#DC2626' : '#475569'} size={18} strokeWidth={2.2} />
       </View>
-      <Text className={`font-medium flex-1 text-sm ${danger ? 'text-danger' : 'text-ink-800'}`}>
+      <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: danger ? '#DC2626' : '#1E293B' }} numberOfLines={1}>
         {label}
       </Text>
-      {valueLabel ? <Text className="font-medium text-xs text-ink-400">{valueLabel}</Text> : null}
+      {valueLabel ? <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: '#94A3B8', marginRight: 6 }}>{valueLabel}</Text> : null}
       <ChevronRight color="#CBD5E1" size={18} />
     </Pressable>
   );
