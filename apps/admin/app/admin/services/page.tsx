@@ -97,7 +97,7 @@ export default function ServicesPage() {
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-              <tr><th className="px-4 py-2">Icon</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Tampil di Home</th><th className="px-4 py-2">Sort</th><th className="px-4 py-2 text-right">Aksi</th></tr>
+              <tr><th className="px-4 py-2">Icon</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Jenis</th><th className="px-4 py-2">Home</th><th className="px-4 py-2">Sort</th><th className="px-4 py-2 text-right">Aksi</th></tr>
             </thead>
             <tbody>
               {list.map((s) => (
@@ -109,7 +109,8 @@ export default function ServicesPage() {
                   </td>
                   <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? '—'}</div></td>
                   <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
-                  <td className="px-4 py-2"><Badge>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
+                  <td className="px-4 py-2">{s.isBundle ? <Badge tone="amber">🎁 Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
+                  <td className="px-4 py-2"><Badge tone={s.showOnHome ? 'green' : 'red'}>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
                   <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
@@ -117,7 +118,7 @@ export default function ServicesPage() {
                   </td>
                 </tr>
               ))}
-              {list.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada layanan.</td></tr>}
+              {list.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada layanan.</td></tr>}
             </tbody>
           </table>
         )}
@@ -137,6 +138,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     iconUrl: service?.iconUrl ?? '',
     coverImageUrl: service?.coverImageUrl ?? '',
     showOnHome: service?.showOnHome ?? true,
+    isBundle: service?.isBundle ?? false,
     displayOrder: service?.displayOrder ?? 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -170,28 +172,61 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         </div>
       }
     >
-      <div className="space-y-3">
-        <Input label="Code" required value={form.code} onChange={(v) => isEdit ? null : setForm({ ...form, code: v })} error={errors.code} placeholder="kamar, dapur, kantor" helpText={isEdit ? 'Tidak bisa diubah setelah dibuat.' : 'Lowercase, tanpa spasi.'} />
-        <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih Kamar" />
-        <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Cleaning kamar tidur" />
-        <ImageUpload
-          label="Icon Layanan (kotak kecil di list)"
-          value={form.iconUrl}
-          onChange={(url) => setForm({ ...form, iconUrl: url })}
-          folder="services"
-          previewClass="h-24 w-24"
-          hint="JPG/PNG/WebP, max 2MB. Square 200x200px disarankan."
-        />
-        <ImageUpload
-          label="Cover Image (banner besar di halaman detail)"
-          value={form.coverImageUrl}
-          onChange={(url) => setForm({ ...form, coverImageUrl: url })}
-          folder="services/covers"
-          previewClass="h-32 w-full"
-          hint="JPG/PNG/WebP, max 2MB. Landscape 1200x600px disarankan."
-        />
-        <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan." />
-        <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Tampil di Home' : 'Sembunyikan dari Home'} />
+      <div className="space-y-5">
+        {/* === SECTION 1: Info Dasar === */}
+        <section className="space-y-3">
+          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Info Dasar
+          </div>
+          <Input label="Code" required value={form.code} onChange={(v) => isEdit ? null : setForm({ ...form, code: v })} error={errors.code} placeholder="kamar, dapur, kantor" helpText={isEdit ? 'Tidak bisa diubah setelah dibuat.' : 'Lowercase, tanpa spasi. Dipakai sebagai ID unik.'} />
+          <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} placeholder="Bersih Kamar" />
+          <Textarea label="Deskripsi" rows={2} value={form.description} onChange={(v) => setForm({ ...form, description: v })} placeholder="Cleaning kamar tidur 1 kamar 2 jam" />
+        </section>
+
+        {/* === SECTION 2: Tampilan Mobile === */}
+        <section className="space-y-3">
+          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Tampilan di Aplikasi Mobile
+          </div>
+          <div className="rounded border bg-slate-50 p-3 text-[12px] text-slate-600">
+            <strong>Layanan Reguler</strong>: tampil di grid layanan di Home (Bersih Kamar, Bersih Dapur, dll).<br/>
+            <strong>Paket Lengkap (Bundle)</strong>: tampil di section khusus "Paket Lengkap" — untuk combo all-in (Full House, Pasca Renovasi, Subscription).
+          </div>
+          <Switch
+            checked={form.isBundle}
+            onChange={(v) => setForm({ ...form, isBundle: v })}
+            label={form.isBundle ? '🎁 Paket Lengkap (Bundle) — tampil di section "Paket Lengkap"' : '🏠 Layanan Reguler — tampil di grid Home'}
+          />
+          <Switch
+            checked={form.showOnHome}
+            onChange={(v) => setForm({ ...form, showOnHome: v })}
+            label={form.showOnHome ? '✅ Tampil di Home' : '🙈 Disembunyikan dari Home'}
+          />
+          <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan (1 paling kiri/atas)." />
+        </section>
+
+        {/* === SECTION 3: Gambar === */}
+        <section className="space-y-3">
+          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Gambar
+          </div>
+          <ImageUpload
+            label="Icon Layanan (kotak kecil di list)"
+            value={form.iconUrl}
+            onChange={(url) => setForm({ ...form, iconUrl: url })}
+            folder="services"
+            previewClass="h-24 w-24"
+            hint="JPG/PNG/WebP, max 2MB. Square 200x200px disarankan."
+          />
+          <ImageUpload
+            label="Cover Image (banner besar di halaman detail / Paket Lengkap)"
+            value={form.coverImageUrl}
+            onChange={(url) => setForm({ ...form, coverImageUrl: url })}
+            folder="services/covers"
+            previewClass="h-32 w-full"
+            hint="JPG/PNG/WebP, max 2MB. Landscape 1200x600px disarankan."
+          />
+        </section>
       </div>
     </Modal>
   );

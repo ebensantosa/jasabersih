@@ -54,7 +54,8 @@ export class AppContentController {
         SELECT id, code, name, description, icon_url AS "iconUrl",
                cover_image_url AS "coverImageUrl",
                display_order AS "displayOrder",
-               show_on_home AS "showOnHome"
+               show_on_home AS "showOnHome",
+               is_bundle AS "isBundle"
           FROM services WHERE is_active = TRUE ORDER BY display_order ASC NULLS LAST, name ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`

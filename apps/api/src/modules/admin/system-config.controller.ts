@@ -71,7 +71,8 @@ export class SystemConfigController {
       SELECT id, code, name, description, icon_url AS "iconUrl",
              cover_image_url AS "coverImageUrl",
              is_active AS "isActive", display_order AS "displayOrder",
-             show_on_home AS "showOnHome"
+             show_on_home AS "showOnHome",
+             is_bundle AS "isBundle"
         FROM services ORDER BY display_order ASC NULLS LAST, name ASC
     `;
   }
@@ -125,7 +126,7 @@ export class SystemConfigController {
   @Roles('super_admin', 'ops')
   async updateService(
     @Param('id') id: string,
-    @Body() body: { name?: string; description?: string; iconUrl?: string; coverImageUrl?: string; isActive?: boolean; displayOrder?: number; showOnHome?: boolean },
+    @Body() body: { name?: string; description?: string; iconUrl?: string; coverImageUrl?: string; isActive?: boolean; displayOrder?: number; showOnHome?: boolean; isBundle?: boolean },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
@@ -136,6 +137,7 @@ export class SystemConfigController {
     if (body.isActive !== undefined) await this.prisma.$executeRaw`UPDATE services SET is_active = ${body.isActive} WHERE id = ${id}::uuid`;
     if (body.displayOrder !== undefined) await this.prisma.$executeRaw`UPDATE services SET display_order = ${body.displayOrder}::int WHERE id = ${id}::uuid`;
     if (body.showOnHome !== undefined) await this.prisma.$executeRaw`UPDATE services SET show_on_home = ${body.showOnHome}::boolean WHERE id = ${id}::uuid`;
+    if (body.isBundle !== undefined) await this.prisma.$executeRaw`UPDATE services SET is_bundle = ${body.isBundle}::boolean WHERE id = ${id}::uuid`;
     await this.audit.log({
       adminId: admin.id,
       action: 'service.update',

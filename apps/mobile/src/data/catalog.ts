@@ -34,6 +34,8 @@ export type ServiceCategory = {
   popular?: boolean;
   /** Admin-controlled flag dari CMS — kalau false, gak muncul di home grid. */
   showOnHome?: boolean;
+  /** True = tampil di section "Paket Lengkap" (combo/bundle), bukan grid Home reguler. */
+  isBundle?: boolean;
 };
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [

@@ -35,6 +35,8 @@ export function useServices(): ServiceCategory[] {
         popular: local?.popular,
         // Default true kalau API gak return field (backwards compat)
         showOnHome: api.showOnHome !== false,
+        // Admin-controlled — kalau true, masuk section Paket Lengkap di Home.
+        isBundle: (api as any).isBundle === true,
       };
       return merged;
     });

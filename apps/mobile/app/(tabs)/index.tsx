@@ -53,14 +53,14 @@ export default function Home() {
   });
   // Hide mode-toggles (general/deep cleaning) — they are picker options inside booking, not destinations
   const HIDDEN_CODES = new Set(['general_cleaning', 'deep_cleaning']);
-  const BUNDLE_CODES = new Set(['full_house', 'kantor', 'pasca_renovasi', 'subscription', 'paket_bundle']);
-  // Home grid: pakai showOnHome flag dari CMS (default TRUE) — admin bisa hide service tertentu
-  const SERVICE_CATEGORIES_ALL = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !BUNDLE_CODES.has(s.code) && s.showOnHome !== false);
+  // Grid layanan reguler di Home: NOT bundle + showOnHome.
+  const SERVICE_CATEGORIES_ALL = ALL_SERVICES.filter((s) => !HIDDEN_CODES.has(s.code) && !s.isBundle && s.showOnHome !== false);
   // Max 7 tile + 1 "Lihat semua" = 8 total (2 baris × 4 kolom)
   const HOME_TILE_LIMIT = 7;
   const SERVICE_CATEGORIES = SERVICE_CATEGORIES_ALL.slice(0, HOME_TILE_LIMIT);
   const hasMoreServices = SERVICE_CATEGORIES_ALL.length > HOME_TILE_LIMIT;
-  const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => BUNDLE_CODES.has(s.code));
+  // Section "Paket Lengkap": yang ditandai admin sebagai bundle.
+  const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => s.isBundle);
   const t = useT();
   const profile = useUserStore((s) => s.profile);
   const firstName = profile?.name?.trim().split(' ')[0] ?? null;
