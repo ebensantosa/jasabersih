@@ -33,7 +33,7 @@ export function Field({
       {hint && !error && (
         <Text className="font-sans mt-1 text-[11px] text-ink-500">{hint}</Text>
       )}
-      {error && (
+      {error && error.trim().length > 0 && (
         <View className="mt-1 flex-row items-center gap-1">
           <AlertCircle color="#DC2626" size={12} />
           <Text className="font-medium text-[11px] text-danger">{error}</Text>

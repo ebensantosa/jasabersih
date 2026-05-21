@@ -79,9 +79,22 @@ export default function Login() {
       // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
       router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : '/(tabs)');
     } catch (e) {
-      const msg = (e as Error).message;
-      setErrors({ email: ' ', password: msg });
-      toast.error(msg);
+      const raw = (e as Error).message ?? 'Login gagal';
+      // Map pesan teknis backend ke pesan ramah user.
+      let userMsg = raw;
+      const lc = raw.toLowerCase();
+      if (lc.includes('invalid') || lc.includes('wrong') || lc.includes('salah') || lc.includes('credential') || lc.includes('401') || lc.includes('not found')) {
+        userMsg = 'Email/Nomor HP atau password kamu salah. Coba cek lagi ya.';
+      } else if (lc.includes('network') || lc.includes('fetch') || lc.includes('timeout') || lc.includes('abort')) {
+        userMsg = 'Koneksi internet bermasalah. Pastikan sinyal/Wi-Fi stabil & coba lagi.';
+      } else if (lc.includes('too many') || lc.includes('rate') || lc.includes('429')) {
+        userMsg = 'Terlalu banyak percobaan. Tunggu 1 menit sebelum coba lagi.';
+      } else if (lc.includes('suspend') || lc.includes('blocked') || lc.includes('disabled')) {
+        userMsg = 'Akun kamu di-suspend. Hubungi customer service.';
+      }
+      // Cuma red border di dua field — pesan asli di toast. Hindari duplikasi text.
+      setErrors({ email: ' ', password: ' ' });
+      toast.error(userMsg);
     } finally {
       setLoading(false);
     }
