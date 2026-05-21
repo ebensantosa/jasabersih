@@ -11,9 +11,11 @@ ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS worker_count INT NOT NULL DEFAULT 1;
 
 -- Multi-cleaner job: lead cleaner di bookings.cleaner_id, helpers di sini.
+-- Catatan: bookings partitioned (PK composite id+created_at), jadi FK booking_id gak pakai REFERENCES.
+-- Integrity di-handle di app layer + index untuk lookup.
 CREATE TABLE IF NOT EXISTS booking_helpers (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  booking_id  UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  booking_id  UUID NOT NULL,
   cleaner_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   status      VARCHAR(20) NOT NULL DEFAULT 'invited', -- invited|accepted|declined|removed
   invited_by  UUID NOT NULL REFERENCES users(id),
