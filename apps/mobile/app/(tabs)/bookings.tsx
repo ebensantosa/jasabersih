@@ -30,13 +30,20 @@ export default function Bookings() {
       ? allList.filter((b) => b.cleanerName === cleanerName)
       : allList;
 
-  useEffect(() => {
-    if (!tokens) router.replace('/(auth)/login');
-  }, [tokens]);
   if (!tokens) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white" edges={['top']}>
-        <ActivityIndicator color="#1D4ED8" />
+      <SafeAreaView className="flex-1 items-center justify-center bg-white px-8" edges={['top']}>
+        <LogIn color="#94A3B8" size={48} />
+        <Text className="font-bold mt-3 text-lg text-ink-900">Login dulu untuk lihat pesanan</Text>
+        <Text className="font-sans mt-1 text-center text-xs text-ink-500">
+          Setelah login kamu bisa pesan layanan & track status cleaner-mu di sini.
+        </Text>
+        <Pressable
+          onPress={() => router.push('/(auth)/login')}
+          className="mt-6 rounded-2xl bg-brand-600 px-8 py-3"
+        >
+          <Text className="font-bold text-white">Masuk / Daftar</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }

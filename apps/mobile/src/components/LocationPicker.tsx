@@ -60,23 +60,32 @@ const HTML = (lat: number, lng: number) => `<!DOCTYPE html>
 </script>
 </body></html>`;
 
+function fetchWithTimeout(url: string, ms: number, init?: RequestInit): Promise<Response> {
+  const c = new AbortController();
+  const id = setTimeout(() => c.abort(), ms);
+  return fetch(url, { ...init, signal: c.signal }).finally(() => clearTimeout(id));
+}
+
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+      5000,
       { headers: { 'User-Agent': 'JasaBersih.com/0.1' } },
     );
     const j = await res.json();
     return (j.display_name as string) ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   } catch {
+    // Timeout / network fail → fallback ke koordinat. UI tetap unblock.
     return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   }
 }
 
 async function searchPlace(q: string): Promise<{ lat: number; lng: number; name: string }[]> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=id`,
+      6000,
       { headers: { 'User-Agent': 'JasaBersih.com/0.1' } },
     );
     const j = (await res.json()) as { lat: string; lon: string; display_name: string }[];
@@ -164,14 +173,28 @@ export function LocationPicker({
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        toast.warning('Izin lokasi ditolak');
+        toast.warning('Izin lokasi ditolak. Aktifkan di Setting → App → JasaBersih → Permissions → Location.');
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({});
+      toast.info('Mencari lokasi GPS...');
+      // High accuracy + timeout 8 detik. Kalau gagal, fallback ke last-known.
+      const pos = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+      ]).catch(async () => {
+        // Fallback: pakai last-known kalau current timeout.
+        const last = await Location.getLastKnownPositionAsync().catch(() => null);
+        if (last) return last;
+        throw new Error('Lokasi gak ke-detect. Pastikan GPS aktif & coba lagi.');
+      });
+      if (!pos?.coords) {
+        toast.error('Gagal ambil koordinat. Coba pindah ke area terbuka.');
+        return;
+      }
       setMapView(pos.coords.latitude, pos.coords.longitude);
       toast.success('Lokasi saat ini diambil');
-    } catch {
-      toast.error('Gagal ambil lokasi');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal ambil lokasi');
     }
   }
 

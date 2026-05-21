@@ -10,13 +10,20 @@ export type AuthResult = {
   user: { email: string; name: string; mode: 'customer' | 'freelancer' };
 };
 
+// AbortSignal.timeout() not in Hermes — pakai manual controller.
+function timeoutSignal(ms: number): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
 /** Login real ke backend NestJS — no mock. */
 export async function login(email: string, password: string): Promise<AuthResult> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ phone: email, password }),
-    signal: AbortSignal.timeout(10_000),
+    signal: timeoutSignal(10_000),
   });
 
   if (!res.ok) {
@@ -31,7 +38,7 @@ export async function login(email: string, password: string): Promise<AuthResult
   try {
     const me = await fetch(`${API_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
-      signal: AbortSignal.timeout(8_000),
+      signal: timeoutSignal(8_000),
     });
     if (me.ok) {
       const meJson = await me.json();
