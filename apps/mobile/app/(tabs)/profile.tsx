@@ -232,7 +232,7 @@ function Section({
       <Text className="font-semibold mb-2 ml-1 text-[11px] uppercase tracking-wider text-ink-400">
         {title}
       </Text>
-      <View className="rounded-2xl bg-white">
+      <View style={{ borderRadius: 16, backgroundColor: 'white', overflow: 'hidden' }}>
         {items?.map((it, i) => (
           <Pressable
             key={it.label}
@@ -245,21 +245,19 @@ function Section({
               }
             }}
             android_ripple={{ color: '#F1F5F9' }}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.6 : 1,
+            style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 12,
               paddingHorizontal: 16,
               paddingVertical: 14,
               borderBottomWidth: i < items.length - 1 ? 1 : 0,
               borderBottomColor: '#F1F5F9',
-            })}
+            }}
           >
-            <View style={{ height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#F8FAFC' }}>
+            <View style={{ height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#F8FAFC', marginRight: 12 }}>
               <it.icon color="#475569" size={18} strokeWidth={2.2} />
             </View>
-            <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: '#1E293B' }}>{it.label}</Text>
+            <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: '#1E293B' }} numberOfLines={1}>{it.label}</Text>
             <ChevronRight color="#CBD5E1" size={18} />
           </Pressable>
         ))}
@@ -282,21 +280,19 @@ function MenuRow({
     <Pressable
       onPress={onPress}
       android_ripple={{ color: '#F1F5F9' }}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.6 : 1,
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderBottomWidth: 1,
         borderBottomColor: '#F1F5F9',
-      })}
+      }}
     >
-      <View className="h-9 w-9 items-center justify-center rounded-xl bg-ink-50">
+      <View style={{ height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#F8FAFC', marginRight: 12 }}>
         <Icon color="#475569" size={18} strokeWidth={2.2} />
       </View>
-      <Text className="font-medium flex-1 text-sm text-ink-800">{label}</Text>
+      <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: '#1E293B' }} numberOfLines={1}>{label}</Text>
       <ChevronRight color="#CBD5E1" size={18} />
     </Pressable>
   );
