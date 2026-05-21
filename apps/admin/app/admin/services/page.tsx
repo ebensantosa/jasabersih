@@ -109,8 +109,8 @@ export default function ServicesPage() {
                   </td>
                   <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? '—'}</div></td>
                   <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
-                  <td className="px-4 py-2">{s.isBundle ? <Badge tone="amber">🎁 Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
-                  <td className="px-4 py-2"><Badge tone={s.showOnHome ? 'green' : 'red'}>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
+                  <td className="px-4 py-2">{s.isBundle ? <Badge variant="amber">🎁 Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
+                  <td className="px-4 py-2"><Badge variant={s.showOnHome ? 'green' : 'red'}>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
                   <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
