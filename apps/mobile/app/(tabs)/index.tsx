@@ -236,7 +236,7 @@ export default function Home() {
 
 
         {BUNDLE_SERVICES.length > 0 && (
-          <View className="mt-5">
+          <View className="mt-6">
             <View className="mb-3 flex-row items-end justify-between px-4">
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
@@ -310,13 +310,15 @@ export default function Home() {
           </View>
         )}
 
-        <View className="mt-4">
+        <View className="mt-6">
           <BannerCarousel />
         </View>
 
-        <FeaturedCleaners />
+        <View className="mt-6">
+          <FeaturedCleaners />
+        </View>
 
-        <View className="mt-5">
+        <View className="mt-6">
           <View className="mb-3 flex-row items-center justify-between px-4">
             <Text className="font-extrabold text-base text-ink-900">{t('home.popular')}</Text>
             <Pressable onPress={() => router.push('/(tabs)/explore')} className="flex-row items-center">
