@@ -60,36 +60,42 @@ const HTML = (lat: number, lng: number) => `<!DOCTYPE html>
 </script>
 </body></html>`;
 
-function fetchWithTimeout(url: string, ms: number, init?: RequestInit): Promise<Response> {
-  const c = new AbortController();
-  const id = setTimeout(() => c.abort(), ms);
-  return fetch(url, { ...init, signal: c.signal }).finally(() => clearTimeout(id));
+// Promise.race timeout — gak depend AbortController (Hermes occasionally flaky).
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
 }
 
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   try {
-    const res = await fetchWithTimeout(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-      5000,
-      { headers: { 'User-Agent': 'JasaBersih.com/0.1' } },
-    );
-    const j = await res.json();
-    return (j.display_name as string) ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    const inner = (async () => {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'User-Agent': 'JasaBersih.com/0.1' } },
+      );
+      const j = await res.json();
+      return (j.display_name as string) ?? fallback;
+    })();
+    return await withTimeout(inner, 5000, fallback);
   } catch {
-    // Timeout / network fail → fallback ke koordinat. UI tetap unblock.
-    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return fallback;
   }
 }
 
 async function searchPlace(q: string): Promise<{ lat: number; lng: number; name: string }[]> {
   try {
-    const res = await fetchWithTimeout(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=id`,
-      6000,
-      { headers: { 'User-Agent': 'JasaBersih.com/0.1' } },
-    );
-    const j = (await res.json()) as { lat: string; lon: string; display_name: string }[];
-    return j.map((r) => ({ lat: Number(r.lat), lng: Number(r.lon), name: r.display_name }));
+    const inner = (async () => {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=id`,
+        { headers: { 'User-Agent': 'JasaBersih.com/0.1' } },
+      );
+      const j = (await res.json()) as { lat: string; lon: string; display_name: string }[];
+      return j.map((r) => ({ lat: Number(r.lat), lng: Number(r.lon), name: r.display_name }));
+    })();
+    return await withTimeout(inner, 6000, []);
   } catch {
     return [];
   }
@@ -115,13 +121,17 @@ export function LocationPicker({
   const webRef = useRef<WebView>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reqSeqRef = useRef(0);
 
   useEffect(() => {
     if (!visible) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setResolving(true);
     debounceRef.current = setTimeout(async () => {
+      const seq = ++reqSeqRef.current;
       const a = await reverseGeocode(lat, lng);
+      // Stale callback guard: kalo ada call lebih baru, abaikan hasil ini.
+      if (seq !== reqSeqRef.current) return;
       setAddress(a);
       setResolving(false);
     }, 600);
