@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { CalendarCheck, ChevronRight } from 'lucide-react-native';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,8 +30,11 @@ export default function Bookings() {
       ? allList.filter((b) => b.cleanerName === cleanerName)
       : allList;
 
+  useEffect(() => {
+    if (!tokens) router.replace('/(auth)/login');
+  }, [tokens, router]);
   if (!tokens) {
-    return <Redirect href="/(auth)/login" />;
+    return <View style={{ flex: 1, backgroundColor: 'white' }} />;
   }
 
   return (
