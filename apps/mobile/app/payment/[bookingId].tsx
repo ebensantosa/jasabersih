@@ -481,25 +481,78 @@ function BigCountdown({ expiredAt }: { expiredAt: string }) {
 
 function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () => void }) {
   const CountdownBanner = data.expiredAt ? <BigCountdown expiredAt={data.expiredAt} /> : null;
+  const formatExpiredHeader = (ex: string | null | undefined) => {
+    if (!ex) return '';
+    try {
+      const d = ex.includes('T') ? new Date(ex) : new Date(ex.replace(' ', 'T') + ':00');
+      const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
+    } catch { return ex; }
+  };
+
   if ((data.senderBankType === 'qris' || data.senderBankType === 'wallet_account') && data.qrString) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {CountdownBanner}
-        <View className="items-center rounded-2xl bg-white p-5">
-          <Text className="font-bold text-sm text-ink-900">Scan QR untuk Bayar</Text>
-          <Text className="font-sans mt-1 text-[11px] text-ink-500">Total {formatRupiah(data.amount)}</Text>
-          <View className="mt-4 rounded-xl bg-white p-3">
-            {Platform.OS === 'web' ? (
-              <QRCodeWeb value={data.qrString} size={240} />
-            ) : (
-              <QRCode value={data.qrString} size={240} />
-            )}
-          </View>
-          <Text className="font-sans mt-4 text-center text-[11px] text-ink-500">
-            Buka app m-banking / e-wallet kamu, pilih scan QR, scan QR di atas.
+      <ScrollView contentContainerStyle={{ padding: 0, backgroundColor: '#F1F5F9' }}>
+        {/* Header dengan tanggal expired */}
+        <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Selesaikan Pembayaran Sebelum</Text>
+          <Text style={{ fontSize: 16, color: '#0F172A', fontWeight: '700', marginTop: 4 }}>
+            {formatExpiredHeader(data.expiredAt)}
           </Text>
         </View>
-        <PollingHint />
+
+        {/* QRIS card */}
+        <View style={{ backgroundColor: 'white', padding: 20, marginTop: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A' }}>QRIS</Text>
+            <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}>
+              <Image source={QRIS_LOGO} style={{ width: 36, height: 18 }} contentFit="contain" />
+            </View>
+          </View>
+          <Text style={{ fontSize: 13, color: '#475569', marginTop: 12, lineHeight: 20 }}>
+            Scan QRIS di bawah ini untuk melanjutkan pembayaran Anda.
+          </Text>
+
+          {/* QR code centered */}
+          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
+            <View style={{ padding: 12, backgroundColor: 'white', borderRadius: 8 }}>
+              {Platform.OS === 'web' ? (
+                <QRCodeWeb value={data.qrString} size={260} />
+              ) : (
+                <QRCode value={data.qrString} size={260} />
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Nominal card */}
+        <View style={{ backgroundColor: 'white', padding: 16, marginTop: 10, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, marginHorizontal: 16 }}>
+          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Nominal Pembayaran</Text>
+          <Text style={{ fontSize: 22, color: '#0F172A', fontWeight: '800', marginTop: 4 }}>
+            {formatRupiah(data.amount)}
+          </Text>
+        </View>
+
+        {/* Status info */}
+        <View style={{ marginHorizontal: 16, marginTop: 16, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
+          <Text style={{ fontSize: 14 }}>⚠️</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
+            Status pembayaran kami cek otomatis tiap beberapa detik. Halaman ini akan otomatis pindah ke pesanan saat sudah lunas.
+          </Text>
+        </View>
+
+        {CountdownBanner ? <View style={{ marginHorizontal: 16, marginTop: 12 }}>{CountdownBanner}</View> : null}
+
+        {/* Order ref footer */}
+        {data.paymentId && (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16, marginTop: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 12, color: '#64748B' }}>Kode Order</Text>
+            <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600' }} selectable>
+              {data.paymentId.slice(0, 16)}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     );
   }
