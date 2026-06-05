@@ -305,6 +305,76 @@ export class PaymentsController {
   }
 
 
+  // Flip bank-status callback. Flip POSTs same format as Accept Payment callback
+  // (form-urlencoded with `data` JSON + `token`). Status nilai: OPERATIONAL | DELAYED | DISRUPTED.
+  @Post('flip/bank-status')
+  async flipBankStatus(@Req() req: Request) {
+    const body: any = req.body ?? {};
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    this.flipLog.log(`bank-status callback from ${ip} — token=${typeof body.token === 'string' ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${typeof body.data === 'string' ? body.data.length : 0}`);
+    const token: string | undefined = typeof body.token === 'string' ? body.token : undefined;
+    if (!(await this.flip.verifyCallbackToken(token))) {
+      this.flipLog.warn(`bank-status token verification FAILED from ${ip}`);
+      throw new BadRequestException('Invalid Flip token');
+    }
+    let data: any;
+    try { data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data; }
+    catch { throw new BadRequestException('Invalid JSON in data'); }
+    if (!data) throw new BadRequestException('data missing');
+
+    // Flip docs vary — accept multiple shapes: { bank_code, status } | { code, status } | { banks: [{code,status}] }
+    const updates: Array<{ code: string; status: string }> = [];
+    if (Array.isArray(data?.banks)) {
+      for (const b of data.banks) if (b?.code || b?.bank_code) updates.push({ code: String(b.code ?? b.bank_code).toLowerCase(), status: String(b.status ?? '').toLowerCase() });
+    } else if (data?.bank_code || data?.code) {
+      updates.push({ code: String(data.bank_code ?? data.code).toLowerCase(), status: String(data.status ?? '').toLowerCase() });
+    }
+    if (updates.length === 0) { this.flipLog.warn(`bank-status: no parseable updates in payload`); return { ok: true, updated: 0 }; }
+
+    // Normalize status → "normal" | "delayed" | "down" (apa yang APK pahami)
+    const normalize = (s: string): 'normal' | 'delayed' | 'down' => {
+      const x = s.toUpperCase();
+      if (x === 'OPERATIONAL' || x === 'NORMAL' || x === 'OK') return 'normal';
+      if (x === 'DELAYED' || x === 'PENDING' || x === 'SLOW') return 'delayed';
+      return 'down'; // DISRUPTED | DOWN | OFFLINE | unknown → safe default
+    };
+
+    // Read current state, merge updates, write back.
+    const rows = await this.prisma.$queryRaw<{ value: any }[]>`SELECT value FROM app_config WHERE key = 'payment.bank_status' LIMIT 1`;
+    const current: Record<string, { status: string; updated_at: string }> = (rows[0]?.value ?? {}) as any;
+    const now = new Date().toISOString();
+    for (const u of updates) {
+      const status = normalize(u.status);
+      current[u.code] = { status, updated_at: now };
+      this.flipLog.log(`bank-status: ${u.code} = ${status} (raw=${u.status})`);
+    }
+    await this.prisma.$executeRaw`
+      INSERT INTO app_config (key, value, description, category, updated_at)
+      VALUES ('payment.bank_status', ${JSON.stringify(current)}::jsonb, 'Status bank dari Flip — auto-updated via webhook', 'payment', NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `;
+    return { ok: true, updated: updates.length };
+  }
+
+  // Public endpoint untuk APK cek status bank sebelum tampilin picker.
+  // Bank dengan status 'down' di-disable di UI; 'delayed' tetap aktif dengan warning.
+  @Get('bank-health')
+  async bankHealth() {
+    const rows = await this.prisma.$queryRaw<{ value: any }[]>`SELECT value FROM app_config WHERE key = 'payment.bank_status' LIMIT 1`;
+    const stored: Record<string, { status: string; updated_at: string }> = (rows[0]?.value ?? {}) as any;
+    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'];
+    const labels: Record<string, string> = {
+      bca: 'BCA', mandiri: 'Mandiri', bri: 'BRI', bni: 'BNI', cimb: 'CIMB Niaga', permata: 'Permata', bsi: 'BSI', danamon: 'Danamon',
+      qris: 'QRIS', gopay: 'GoPay', ovo: 'OVO', dana: 'DANA', shopeepay: 'ShopeePay', linkaja: 'LinkAja',
+    };
+    return known.map((code) => {
+      const s = stored[code];
+      const status = (s?.status as 'normal' | 'delayed' | 'down') ?? 'normal';
+      const message = status === 'down' ? `${labels[code]} sedang gangguan, mohon pilih metode lain.` : status === 'delayed' ? `${labels[code]} sedang tertunda, transaksi mungkin lambat.` : '';
+      return { code, name: labels[code], status, message, updated_at: s?.updated_at ?? null };
+    });
+  }
+
   // List active payment channels (public — for picker UI)
   @Get('channels')
   @ApiBearerAuth()
