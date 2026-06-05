@@ -22,13 +22,13 @@ export default function WalletPage() {
   }
   useEffect(() => { void load(); }, [tab]);
 
-  async function approveViaFlip(w: any) {
-    if (!confirm(`Trigger Flip auto-disburse Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${w.destinationBankCode?.toUpperCase()} ${w.destinationAccountNumber}?\n\nRekening harus sudah verified.`)) return;
+  async function approveViaAuto(w: any) {
+    if (!confirm(`Trigger auto-disburse Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${w.destinationBankCode?.toUpperCase()} ${w.destinationAccountNumber}?\n\nRekening harus sudah verified.`)) return;
     try {
       await api.admin.approveWithdrawalViaFlip(w.id);
-      toast.success('Flip lagi proses transfer. Status auto-update via callback.');
+      toast.success('Transfer sedang diproses. Status auto-update via callback.');
       void load();
-    } catch (e: any) { toast.error(e?.message ?? 'Gagal trigger Flip.'); }
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal trigger transfer otomatis.'); }
   }
 
   return (
@@ -94,7 +94,7 @@ export default function WalletPage() {
                     {tab === 'rejected' && <td className="px-4 py-3 text-xs text-red-700">{w.reviewNote ?? w.failureReason ?? '—'}</td>}
                     {tab === 'pending' && (
                       <td className="px-4 py-3 text-right space-x-1">
-                        <Button size="sm" variant="primary" onClick={() => void approveViaFlip(w)} title="Trigger Flip auto-disburse (kalau rekening verified)">⚡ Flip</Button>
+                        <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)} title="Trigger auto-disburse (kalau rekening verified)">Auto</Button>
                         <Button size="sm" variant="success" onClick={() => setApproving(w)} icon={<Check size={12} />}>Manual</Button>
                         <Button size="sm" variant="ghost" onClick={() => setRejecting(w)} icon={<X size={12} />}>Reject</Button>
                       </td>

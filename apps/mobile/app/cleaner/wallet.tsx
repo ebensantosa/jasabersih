@@ -96,7 +96,7 @@ function CleanerWallet() {
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-white">Tarik Saldo</Text>
                   <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Min {formatRupiah(MIN_WITHDRAW)} · auto-transfer via Flip
+                    Min {formatRupiah(MIN_WITHDRAW)} · auto-transfer ke rekening
                   </Text>
                 </View>
               </View>

@@ -143,7 +143,7 @@ function PaymentScreen() {
         friendly = 'Metode pembayaran ini belum aktif di sistem kami. Mohon pilih QRIS untuk pembayaran semua bank/e-wallet.';
       } else if (/VALIDATION_ERROR/i.test(friendly)) {
         friendly = 'Data pembayaran tidak valid. Coba pilih metode lain atau hubungi CS.';
-      } else if (friendly.startsWith('Flip: {')) {
+      } else if (/^Flip:|provider/i.test(friendly)) {
         // Fallback: parse JSON, ambil .message kalau ada
         try {
           const inner = JSON.parse(friendly.replace(/^Flip:\s*/, ''));
@@ -186,7 +186,7 @@ function PaymentScreen() {
                 <ActivityIndicator color="#1D4ED8" size="large" />
                 <Text style={{ marginTop: 16, fontSize: 15, fontWeight: '700', color: '#0F172A' }}>Membuat Pembayaran</Text>
                 <Text style={{ marginTop: 6, fontSize: 12, color: '#64748B', textAlign: 'center', lineHeight: 18 }}>
-                  Lagi terhubung ke Flip…{'\n'}Mohon tunggu sebentar.
+                  Mohon tunggu sebentar.
                 </Text>
               </View>
             </View>
@@ -570,14 +570,9 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
 
         {/* VA Number — highlight biru muda */}
         <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1.5, borderColor: '#BFDBFE', borderRadius: 16, padding: 18 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: '#1E3A8A', textTransform: 'uppercase' }}>
-              {data.senderBank.toUpperCase()} Virtual Account
-            </Text>
-            <View style={{ backgroundColor: '#1D4ED8', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-              <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>NATIVE</Text>
-            </View>
-          </View>
+          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: '#1E3A8A', textTransform: 'uppercase', marginBottom: 10 }}>
+            {data.senderBank.toUpperCase()} Virtual Account
+          </Text>
           <Text selectable style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: 1, marginBottom: 12, fontVariant: ['tabular-nums'] }}>
             {data.accountNumber}
           </Text>
@@ -652,9 +647,9 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           {CountdownBanner}
           <View className="items-center rounded-2xl bg-white p-6">
-            <Text className="font-bold text-base text-ink-900">Lanjutkan Pembayaran di Flip</Text>
+            <Text className="font-bold text-base text-ink-900">Lanjutkan Pembayaran</Text>
             <Text className="font-sans text-center mt-2 text-[12px] text-ink-500 leading-5">
-              Halaman pembayaran Flip akan terbuka di tab baru. Selesaikan transaksi di sana, lalu kembali ke tab ini — status pembayaran akan otomatis ter-update.
+              Halaman pembayaran akan terbuka di tab baru. Selesaikan transaksi di sana, lalu kembali ke tab ini — status pembayaran akan otomatis ter-update.
             </Text>
             <Pressable
               onPress={() => {

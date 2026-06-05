@@ -107,8 +107,8 @@ function Withdraw() {
           name: useVerified ? verifiedAccounts.find((a) => a.id === selectedBankAccountId)?.accountHolderName ?? '' : accountName,
         });
         if (res.autoDisburse) {
-          const feeNote = res.fee ? `\n\nFee Flip: Rp ${res.fee.toLocaleString('id-ID')}\nDiterima: Rp ${(res.transferAmount ?? amount - (res.fee ?? 0)).toLocaleString('id-ID')}` : '';
-          toast.success(`Dana ditransfer otomatis via Flip. Tiba dalam beberapa menit.${feeNote}`);
+          const feeNote = res.fee ? `\n\nBiaya admin: Rp ${res.fee.toLocaleString('id-ID')}\nDiterima: Rp ${(res.transferAmount ?? amount - (res.fee ?? 0)).toLocaleString('id-ID')}` : '';
+          toast.success(`Dana sedang diproses transfer otomatis. Tiba dalam beberapa menit.${feeNote}`);
         } else {
           toast.success(res.message ?? 'Permintaan tarik terkirim. Admin akan review.');
         }
@@ -142,11 +142,11 @@ function Withdraw() {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
           {/* Verified accounts (preferred) */}
           {!loadingAccounts && verifiedAccounts.length > 0 && (
-            <Section title="Rekening Tersimpan (Auto-Transfer ⚡)">
+            <Section title="Rekening Tersimpan (Auto-Transfer)">
               <View className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 mb-3 flex-row gap-2">
                 <Zap color="#059669" size={18} />
                 <Text className="flex-1 text-xs text-emerald-900 leading-5">
-                  Pilih rekening verified → dana otomatis ditransfer via Flip dalam beberapa menit. Fee Rp 2.500 (bank) / Rp 4.000 (e-wallet) dipotong.
+                  Pilih rekening verified → dana otomatis ditransfer dalam beberapa menit. Biaya admin Rp 2.500 (bank) / Rp 4.000 (e-wallet) dipotong.
                 </Text>
               </View>
               <View className="gap-2">
@@ -194,7 +194,7 @@ function Withdraw() {
               <BadgeCheck color="#D97706" size={18} />
               <View className="flex-1">
                 <Text className="text-xs text-amber-900 leading-5">
-                  💡 Tambah rekening atas nama kamu → dapat <Text className="font-bold">auto-transfer dalam menit</Text> via Flip.
+                  💡 Tambah rekening atas nama kamu → dapat <Text className="font-bold">auto-transfer dalam menit</Text>.
                 </Text>
                 <Pressable
                   onPress={() => router.push('/cleaner/bank-accounts')}

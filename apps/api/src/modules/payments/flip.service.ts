@@ -91,8 +91,8 @@ export class FlipService {
     senderBankType: 'virtual_account' | 'qris' | 'wallet_account';
   }): Promise<any> {
     const c = await this.getCreds();
-    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
-    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+    if (!c.enabled) throw new BadRequestException('Layanan pembayaran belum di-enable. Cek App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Kredensial pembayaran kosong. Cek App Settings.');
 
     // Per Flip docs: Content-Type=application/json, type=lowercase "single", direct_api step
     const payload: Record<string, any> = {
@@ -126,7 +126,7 @@ export class FlipService {
         || (Array.isArray(json?.errors) ? json.errors.map((e: any) => `${e?.attribute ?? ''}: ${stringifyMsg(e?.message) || JSON.stringify(e)}`).join('; ') : '')
         || stringifyMsg(json?.error)
         || `Flip ${res.status}`;
-      throw new BadRequestException(`Flip: ${detailMsg}`);
+      throw new BadRequestException(detailMsg);
     }
     // DEBUG: dump full Flip response in chunks + to file
     const dump = JSON.stringify(json, null, 2);
@@ -144,7 +144,7 @@ export class FlipService {
   /** Fetch bill detail. Try multiple endpoint paths Flip may use. */
   async getBillDetail(linkId: number | string): Promise<any> {
     const c = await this.getCreds();
-    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong.');
+    if (!c.secretKey) throw new BadRequestException('Kredensial pembayaran kosong.');
     // Try multiple endpoint patterns
     const paths = [
       `/pwf/bill?id=${linkId}`,
@@ -180,8 +180,8 @@ export class FlipService {
 
   async createBill(input: FlipCreateInput): Promise<FlipCreateResult> {
     const c = await this.getCreds();
-    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
-    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+    if (!c.enabled) throw new BadRequestException('Layanan pembayaran belum di-enable. Cek App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Kredensial pembayaran kosong. Cek App Settings.');
 
     // Per Flip docs: Content-Type=application/json, type=lowercase, step omitted = "checkout" (hosted picker)
     const payload: Record<string, any> = {
@@ -212,7 +212,7 @@ export class FlipService {
         || (Array.isArray(json?.errors) ? json.errors.map((e: any) => `${e?.attribute ?? ''}: ${stringifyMsg(e?.message) || JSON.stringify(e)}`).join('; ') : '')
         || stringifyMsg(json?.error)
         || `Flip ${res.status}`;
-      throw new BadRequestException(`Flip: ${detailMsg}`);
+      throw new BadRequestException(detailMsg);
     }
     return json as FlipCreateResult;
   }
@@ -221,8 +221,8 @@ export class FlipService {
   // POST /disbursement/bank-account-inquiry — verify pemilik rekening (sync return).
   async inquiryBankAccount(input: { bankCode: string; accountNumber: string }): Promise<any> {
     const c = await this.getCreds();
-    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
-    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+    if (!c.enabled) throw new BadRequestException('Layanan pembayaran belum di-enable. Cek App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Kredensial pembayaran kosong. Cek App Settings.');
     const form = new URLSearchParams();
     form.set('account_number', input.accountNumber);
     form.set('bank_code', input.bankCode.toLowerCase());
@@ -238,7 +238,7 @@ export class FlipService {
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
       this.log.error(`flip inquiry failed (status=${res.status}): ${JSON.stringify(json)}`);
-      throw new BadRequestException(json?.message ?? `Flip inquiry gagal (${res.status})`);
+      throw new BadRequestException(json?.message ?? `Verifikasi rekening gagal (${res.status})`);
     }
     return json; // contains: bank_code, account_number, account_holder, status ("SUCCESS"|...)
   }
@@ -254,8 +254,8 @@ export class FlipService {
     idempotencyKey: string;
   }): Promise<any> {
     const c = await this.getCreds();
-    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
-    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+    if (!c.enabled) throw new BadRequestException('Layanan pembayaran belum di-enable. Cek App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Kredensial pembayaran kosong. Cek App Settings.');
     const form = new URLSearchParams();
     form.set('account_number', input.accountNumber);
     form.set('bank_code', input.bankCode.toLowerCase());
@@ -274,7 +274,7 @@ export class FlipService {
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
       this.log.error(`flip disbursement failed (status=${res.status}): ${JSON.stringify(json)}`);
-      throw new BadRequestException(json?.message ?? `Flip disbursement gagal (${res.status})`);
+      throw new BadRequestException(json?.message ?? `Transfer gagal (${res.status})`);
     }
     return json; // contains: id, status ("PENDING"|"DONE"|"FAILED"|"CANCELLED"), timestamp, etc.
   }
