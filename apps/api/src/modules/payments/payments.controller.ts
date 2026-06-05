@@ -215,6 +215,12 @@ export class PaymentsController {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
     this.flipLog.log(`callback received from ${ip} — token=${typeof body.token === 'string' ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${typeof body.data === 'string' ? body.data.length : 0}`);
     const token: string | undefined = typeof body.token === 'string' ? body.token : undefined;
+    // Detect Flip's dashboard test button placeholder ("YOUR_VALIDATION_TOKEN…").
+    // Real callbacks use the actual validation_token. Test pings get 200 OK without side effects.
+    if (typeof token === 'string' && /^YOUR_VAL/i.test(token)) {
+      this.flipLog.log(`callback: dashboard test ping from ${ip} (placeholder token) — replying OK without processing`);
+      return { ok: true, test: true };
+    }
     if (!(await this.flip.verifyCallbackToken(token))) {
       this.flipLog.warn(`token verification FAILED from ${ip}`);
       throw new BadRequestException('Invalid Flip token');
@@ -321,6 +327,10 @@ export class PaymentsController {
       return { ok: true, ping: true };
     }
     const token: string | undefined = typeof body.token === 'string' ? body.token : undefined;
+    if (typeof token === 'string' && /^YOUR_VAL/i.test(token)) {
+      this.flipLog.log(`bank-status: dashboard test ping from ${ip} (placeholder token) — replying OK`);
+      return { ok: true, test: true };
+    }
     if (!(await this.flip.verifyCallbackToken(token))) {
       this.flipLog.warn(`bank-status token verification FAILED from ${ip}`);
       throw new BadRequestException('Invalid Flip token');
