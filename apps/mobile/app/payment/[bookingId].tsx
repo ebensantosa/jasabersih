@@ -154,6 +154,7 @@ function PaymentScreen() {
             <Text className="font-bold text-base text-ink-900">{paid ? 'Pembayaran Diterima' : direct ? 'Selesaikan Pembayaran' : 'Pilih Metode'}</Text>
             {booking && <Text className="font-sans text-[11px] text-ink-500">Total: {formatRupiah(booking.totalPrice)}</Text>}
           </View>
+          {direct?.expiredAt && !paid && <CountdownBadge expiredAt={direct.expiredAt} />}
         </View>
 
         {paid ? (
@@ -173,6 +174,39 @@ function PaymentScreen() {
         )}
       </SafeAreaView>
     </>
+  );
+}
+
+function CountdownBadge({ expiredAt }: { expiredAt: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  // Parse Flip's "YYYY-MM-DD HH:mm" sebagai WIB (server timezone)
+  const target = (() => {
+    if (!expiredAt) return null;
+    // ISO format kalau dari fallback createBill, native parse
+    if (expiredAt.includes('T')) return new Date(expiredAt).getTime();
+    // Flip format "2026-06-08 00:00" — treat as local server time
+    return new Date(expiredAt.replace(' ', 'T') + ':00').getTime();
+  })();
+  if (!target) return null;
+  const remainingMs = Math.max(0, target - now);
+  const totalSec = Math.floor(remainingMs / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const display = h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  const expired = remainingMs === 0;
+  const urgent = !expired && remainingMs < 5 * 60_000; // < 5 menit
+  return (
+    <View className={`rounded-lg px-2 py-1 ${expired ? 'bg-rose-100' : urgent ? 'bg-amber-100' : 'bg-blue-100'}`}>
+      <Text className={`text-[10px] font-semibold ${expired ? 'text-rose-700' : urgent ? 'text-amber-700' : 'text-blue-700'}`}>
+        {expired ? '⛔ Expired' : `⏱ ${display}`}
+      </Text>
+    </View>
   );
 }
 
@@ -372,10 +406,46 @@ function MethodPicker({
   );
 }
 
+function BigCountdown({ expiredAt }: { expiredAt: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const target = expiredAt.includes('T')
+    ? new Date(expiredAt).getTime()
+    : new Date(expiredAt.replace(' ', 'T') + ':00').getTime();
+  const remainingMs = Math.max(0, target - now);
+  const totalSec = Math.floor(remainingMs / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const expired = remainingMs === 0;
+  const urgent = !expired && remainingMs < 5 * 60_000;
+  const bg = expired ? '#FEE2E2' : urgent ? '#FEF3C7' : '#DBEAFE';
+  const fg = expired ? '#991B1B' : urgent ? '#92400E' : '#1E40AF';
+  return (
+    <View style={{ backgroundColor: bg, padding: 14, borderRadius: 14, alignItems: 'center' }}>
+      <Text style={{ color: fg, fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {expired ? 'Pembayaran Expired' : 'Selesaikan dalam'}
+      </Text>
+      <Text style={{ color: fg, fontSize: 32, fontWeight: '800', letterSpacing: 2, marginTop: 4, fontVariant: ['tabular-nums'] }}>
+        {expired ? '⛔' : h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`}
+      </Text>
+      <Text style={{ color: fg, fontSize: 11, marginTop: 4, opacity: 0.85 }}>
+        {expired ? 'Pesan ulang booking untuk lanjut bayar' : 'Setelah waktu habis, kamu perlu pesan ulang'}
+      </Text>
+    </View>
+  );
+}
+
 function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () => void }) {
+  const CountdownBanner = data.expiredAt ? <BigCountdown expiredAt={data.expiredAt} /> : null;
   if ((data.senderBankType === 'qris' || data.senderBankType === 'wallet_account') && data.qrString) {
     return (
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+        {CountdownBanner}
         <View className="items-center rounded-2xl bg-white p-5">
           <Text className="font-bold text-sm text-ink-900">Scan QR untuk Bayar</Text>
           <Text className="font-sans mt-1 text-[11px] text-ink-500">Total {formatRupiah(data.amount)}</Text>
@@ -398,6 +468,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
   if (data.senderBankType === 'virtual_account' && data.accountNumber) {
     return (
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+        {CountdownBanner}
         <View className="rounded-2xl bg-white p-5">
           <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">{data.senderBank.toUpperCase()} Virtual Account</Text>
           <View className="mt-3 flex-row items-center gap-3">
