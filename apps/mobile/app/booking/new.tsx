@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, Minus, Plus } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, MessageCircle, Minus, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image as RNImage, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -1229,9 +1229,7 @@ function NewBooking() {
                   onPress={() => router.push('/booking/wa-survey')}
                   className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-success"
                 >
-                  <View className="h-5 w-5 items-center justify-center rounded-full bg-white">
-                    <Text className="text-[10px] font-bold text-success">W</Text>
-                  </View>
+                  <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
                   <Text className="font-bold text-sm text-white" numberOfLines={1}>
                     Chat WA untuk Quote
                   </Text>
