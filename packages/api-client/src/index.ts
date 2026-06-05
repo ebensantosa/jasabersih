@@ -201,6 +201,8 @@ export function createClient(opts: ClientOptions) {
         request<any[]>('GET', `/admin/withdrawals?status=${status}`),
       approveWithdrawal: (id: string, bankTransferRef: string, note?: string) =>
         request<unknown>('POST', `/admin/withdrawals/${id}/approve`, { bankTransferRef, note }),
+      approveWithdrawalViaFlip: (id: string) =>
+        request<{ ok: boolean; status: string; flipDisbursementId: string; note: string }>('POST', `/admin/withdrawals/${id}/approve-flip`),
       rejectWithdrawal: (id: string, reason: string) =>
         request<unknown>('POST', `/admin/withdrawals/${id}/reject`, { reason }),
 
