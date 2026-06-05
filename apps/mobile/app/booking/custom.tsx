@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Bath, Bed, ChefHat, Minus, Plus, Sofa, Trees, UtensilsCrossed, Warehouse, Wind, Square, Droplets, Layers, Brush } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -88,6 +88,22 @@ function CustomBooking() {
   const dateOptions = useMemo(() => makeDateOptions(), []);
   const [dateIdx, setDateIdx] = useState(1); // default besok
   const [timeSlot, setTimeSlot] = useState('09:00');
+
+  // Auto-pilih slot jam pertama yang masih valid (kalau hari ini & slot terpilih udah lewat).
+  useEffect(() => {
+    if (dateIdx !== 0) return;
+    const earliest = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const [hh, mm] = timeSlot.split(':').map(Number);
+    const cur = new Date(); cur.setHours(hh!, mm!, 0, 0);
+    if (cur.getTime() >= earliest.getTime()) return;
+    const next = TIME_SLOTS.find((t) => {
+      const [h, m] = t.split(':').map(Number);
+      const d = new Date(); d.setHours(h!, m!, 0, 0);
+      return d.getTime() >= earliest.getTime();
+    });
+    if (next) setTimeSlot(next);
+    else setDateIdx(1); // semua slot hari ini udah lewat → besok
+  }, [dateIdx, timeSlot]);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -259,15 +275,41 @@ function CustomBooking() {
 
             <Text className="font-bold mt-4 mb-2 text-sm text-ink-900">Jam</Text>
             <View className="flex-row flex-wrap gap-2">
-              {TIME_SLOTS.map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => setTimeSlot(t)}
-                  className={`rounded-lg border px-3 py-2 ${timeSlot === t ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                >
-                  <Text className={`font-semibold text-xs ${timeSlot === t ? 'text-brand-700' : 'text-ink-700'}`}>{t}</Text>
-                </Pressable>
-              ))}
+              {TIME_SLOTS.map((t) => {
+                const isToday = dateIdx === 0;
+                let disabled = false;
+                if (isToday) {
+                  const [hh, mm] = t.split(':').map(Number);
+                  const slot = new Date();
+                  slot.setHours(hh!, mm!, 0, 0);
+                  // Butuh min lead time 2 jam dari sekarang.
+                  const earliest = new Date(Date.now() + 2 * 60 * 60 * 1000);
+                  disabled = slot.getTime() < earliest.getTime();
+                }
+                const active = timeSlot === t;
+                return (
+                  <Pressable
+                    key={t}
+                    disabled={disabled}
+                    onPress={() => setTimeSlot(t)}
+                    className={`rounded-lg border px-3 py-2 ${
+                      disabled
+                        ? 'border-ink-100 bg-ink-50'
+                        : active
+                        ? 'border-brand-600 bg-brand-50'
+                        : 'border-ink-200 bg-white'
+                    }`}
+                  >
+                    <Text
+                      className={`font-semibold text-xs ${
+                        disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'
+                      }`}
+                    >
+                      {t}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
