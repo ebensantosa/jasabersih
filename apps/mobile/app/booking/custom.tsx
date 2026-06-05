@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
+import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -81,6 +82,8 @@ function CustomBooking() {
   const allItems = [...ROOMS, ...EXTRAS];
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [address, setAddress] = useState(defaultAddress?.addressLine ?? savedLocation?.address ?? '');
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddress?.id ?? null);
+  const [useNewLocation, setUseNewLocation] = useState(addressList.length === 0);
 
   const dateOptions = useMemo(() => makeDateOptions(), []);
   const [dateIdx, setDateIdx] = useState(1); // default besok
@@ -207,7 +210,34 @@ function CustomBooking() {
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <Text className="font-bold mb-2 text-sm text-ink-900">Alamat</Text>
-            <AddressField value={address} onChange={setAddress} />
+            {addressList.length > 0 && !useNewLocation && (
+              <>
+                <AddressPickerInline
+                  selectedId={selectedAddressId}
+                  onSelect={(a) => {
+                    setSelectedAddressId(a.id);
+                    setAddress(a.addressLine);
+                  }}
+                />
+                <Pressable onPress={() => setUseNewLocation(true)} className="mt-3 self-start">
+                  <Text className="font-semibold text-xs text-brand-600">
+                    + Pakai alamat lain (sekali pakai)
+                  </Text>
+                </Pressable>
+              </>
+            )}
+            {(addressList.length === 0 || useNewLocation) && (
+              <>
+                <AddressField value={address} onChange={setAddress} />
+                {addressList.length > 0 && (
+                  <Pressable onPress={() => setUseNewLocation(false)} className="mt-3 self-start">
+                    <Text className="font-semibold text-xs text-brand-600">
+                      ←  Pakai alamat tersimpan
+                    </Text>
+                  </Pressable>
+                )}
+              </>
+            )}
           </View>
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
