@@ -10,6 +10,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: '5000',
         R2_SKIP_CORS_INIT: 'true',
+        AWS_NODEJS_SUPPRESS_VERSION_WARNING: 'true',
       },
       max_memory_restart: '512M',
       error_file: '/var/log/pm2/jasabersih-api.err.log',
