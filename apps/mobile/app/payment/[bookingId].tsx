@@ -36,14 +36,29 @@ const VA_METHODS: {
   logo: string;
 }[] = [
   { code: 'bca',     name: 'BCA Virtual Account',         bg: '#FFFFFF', fg: '#0060AF', label: 'BCA',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/240px-Bank_Central_Asia.svg.png' },
+  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#FFFFFF', fg: '#003D79', label: 'mandiri', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/240px-Bank_Mandiri_logo_2016.svg.png' },
   { code: 'bni',     name: 'BNI Virtual Account',         bg: '#FFFFFF', fg: '#F36F21', label: 'BNI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/BNI_logo.svg/240px-BNI_logo.svg.png' },
   { code: 'bri',     name: 'BRI Virtual Account',         bg: '#FFFFFF', fg: '#00529C', label: 'BRI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/BANK_BRI_logo.svg/240px-BANK_BRI_logo.svg.png' },
-  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#FFFFFF', fg: '#003D79', label: 'mandiri', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/240px-Bank_Mandiri_logo_2016.svg.png' },
   { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#FFFFFF', fg: '#7A1A1A', label: 'CIMB',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/CIMB_Niaga_logo.svg/240px-CIMB_Niaga_logo.svg.png' },
   { code: 'permata', name: 'Permata Virtual Account',     bg: '#FFFFFF', fg: '#00853F', label: 'Permata', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/PermataBank.svg/240px-PermataBank.svg.png' },
+  { code: 'bsi',     name: 'BSI Virtual Account',         bg: '#FFFFFF', fg: '#00904F', label: 'BSI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Bank_Syariah_Indonesia.svg/240px-Bank_Syariah_Indonesia.svg.png' },
+  { code: 'danamon', name: 'Danamon Virtual Account',     bg: '#FFFFFF', fg: '#FF6B00', label: 'Danamon', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Bank_Danamon_logo.svg/240px-Bank_Danamon_logo.svg.png' },
+  { code: 'btn',     name: 'BTN Virtual Account',         bg: '#FFFFFF', fg: '#005DA8', label: 'BTN',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Bank_BTN_logo.svg/240px-Bank_BTN_logo.svg.png' },
+  { code: 'mega',    name: 'Bank Mega Virtual Account',   bg: '#FFFFFF', fg: '#FFB500', label: 'Mega',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Logo_Bank_Mega.svg/240px-Logo_Bank_Mega.svg.png' },
+];
+
+// E-wallet direct (alternatif kalau gak mau scan QRIS)
+const EWALLET_METHODS: { code: string; name: string; logo: string }[] = [
+  { code: 'gopay',     name: 'GoPay',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Gopay_logo.svg/240px-Gopay_logo.svg.png' },
+  { code: 'ovo',       name: 'OVO',       logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Logo_ovo_purple.svg/240px-Logo_ovo_purple.svg.png' },
+  { code: 'dana',      name: 'DANA',      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/240px-Logo_dana_blue.svg.png' },
+  { code: 'shopeepay', name: 'ShopeePay', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/ShopeePay_logo.svg/240px-ShopeePay_logo.svg.png' },
+  { code: 'linkaja',   name: 'LinkAja',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/LinkAja.svg/240px-LinkAja.svg.png' },
 ];
 
 const QRIS_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/QRIS_logo.svg/240px-QRIS_logo.svg.png';
+
+type BankHealth = { code: string; status: 'normal' | 'delayed' | 'down'; message: string };
 
 function PaymentScreen() {
   const router = useRouter();
@@ -182,6 +197,23 @@ function MethodPicker({
   const partialSaldo = walletBalance > 0 && walletBalance < total;
   const creditUsed = useCredit ? Math.min(walletBalance, total) : 0;
   const remaining = total - creditUsed;
+
+  // Bank health — disable bank yang lagi down
+  const [bankHealth, setBankHealth] = useState<Record<string, BankHealth>>({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const { api } = await import('../../src/lib/api');
+        const r = await api.get('/payments/bank-health');
+        const list = (r.data?.data ?? r.data ?? []) as BankHealth[];
+        const map: Record<string, BankHealth> = {};
+        for (const b of list) map[b.code] = b;
+        setBankHealth(map);
+      } catch { /* ignore — default semua normal */ }
+    })();
+  }, []);
+  const getStatus = (code: string) => bankHealth[code]?.status ?? 'normal';
+  const getMessage = (code: string) => bankHealth[code]?.message ?? '';
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       {walletBalance > 0 && (
@@ -243,39 +275,90 @@ function MethodPicker({
       )}
 
       <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS</Text>
-        <Pressable
-          disabled={disabled}
-          onPress={() => onPick('qris', 'wallet_account')}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4"
-        >
-          <View className="h-12 w-14 items-center justify-center rounded-xl bg-white border border-ink-100">
-            <Image source={{ uri: QRIS_LOGO }} style={{ width: 40, height: 28 }} contentFit="contain" />
-          </View>
-          <View className="flex-1">
-            <Text className="font-bold text-sm text-ink-900">QRIS — Semua e-wallet & m-banking</Text>
-            <Text className="font-medium mt-0.5 text-[11px] text-ink-500">GoPay · OVO · Dana · ShopeePay · LinkAja · m-banking</Text>
-          </View>
-        </Pressable>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS (rekomendasi)</Text>
+        {(() => {
+          const st = getStatus('qris');
+          const down = st === 'down';
+          const delayed = st === 'delayed';
+          return (
+            <Pressable
+              disabled={disabled || down}
+              onPress={() => onPick('qris', 'wallet_account')}
+              className={`flex-row items-center gap-3 rounded-2xl p-4 ${down ? 'bg-ink-100 opacity-50' : 'bg-white'}`}
+            >
+              <View className={`h-12 w-14 items-center justify-center rounded-xl border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                <Image source={{ uri: QRIS_LOGO }} style={{ width: 40, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+              </View>
+              <View className="flex-1">
+                <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS — Semua e-wallet & m-banking</Text>
+                {down ? (
+                  <Text className="font-bold mt-0.5 text-[11px] text-rose-600">🔴 Sedang gangguan, coba lain</Text>
+                ) : delayed ? (
+                  <Text className="font-bold mt-0.5 text-[11px] text-amber-600">⚠️ Mungkin tertunda</Text>
+                ) : (
+                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500">GoPay · OVO · DANA · ShopeePay · m-banking</Text>
+                )}
+              </View>
+            </Pressable>
+          );
+        })()}
       </View>
 
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Virtual Account</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
-          {VA_METHODS.map((m, i) => (
-            <Pressable
-              key={m.code}
-              disabled={disabled}
-              onPress={() => onPick(m.code, 'virtual_account')}
-              className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''}`}
-            >
-              <View className="h-10 w-14 items-center justify-center rounded bg-white border border-ink-100">
-                <Image source={{ uri: m.logo }} style={{ width: 44, height: 28 }} contentFit="contain" />
-              </View>
-              <Text className="flex-1 font-semibold text-sm text-ink-900">{m.name}</Text>
-              <Building2 color="#94A3B8" size={16} />
-            </Pressable>
-          ))}
+          {VA_METHODS.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            const delayed = st === 'delayed';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'virtual_account')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  <Image source={{ uri: m.logo }} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔴 Sedang gangguan</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">⚠️ Mungkin tertunda</Text>}
+                </View>
+                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">E-Wallet (langsung)</Text>
+        <View className="overflow-hidden rounded-2xl bg-white">
+          {EWALLET_METHODS.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            const delayed = st === 'delayed';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'wallet_account')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  <Image source={{ uri: m.logo }} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔴 Sedang gangguan</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">⚠️ Mungkin tertunda</Text>}
+                </View>
+                <WalletIcon color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
