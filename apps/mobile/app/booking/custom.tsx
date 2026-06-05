@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
 import { useAddressesStore } from '../../src/stores/addresses';
-import { useApiAddons, useAppContent, useServices } from '../../src/stores/appContent';
+import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -55,7 +55,7 @@ function CustomBooking() {
   const savedLocation = useLocationStore((s) => s.current);
   const defaultAddress = addressList.find((a) => a.isDefault) ?? addressList[0] ?? null;
 
-  const services = useServices();
+  const services = useApiServices();
   const allPackages = useAppContent((s) => s.content.packages);
   const apiAddons = useApiAddons();
   // ROOMS = services × their package price (1 paket per service setelah seed).
