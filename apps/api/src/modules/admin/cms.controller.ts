@@ -23,7 +23,7 @@ export class AdminCmsController {
   @Post('upload-url')
   @Roles('super_admin', 'ops')
   async uploadUrl(@Body() body: { contentType: string; folder: string }) {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
     if (!allowed.includes(body?.contentType)) throw new BadRequestException(`contentType harus salah satu: ${allowed.join(', ')}`);
     const folder = body.folder?.replace(/[^a-z0-9_-]/gi, '') || 'misc';
     const r = await this.storage.createUploadUrl({
