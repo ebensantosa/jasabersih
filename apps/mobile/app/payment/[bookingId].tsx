@@ -377,7 +377,7 @@ function MethodPicker({
               <View className="flex-1">
                 <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS — Semua e-wallet & m-banking</Text>
                 {down ? (
-                  <Text className="font-bold mt-0.5 text-[11px] text-rose-600">🔴 Sedang gangguan, coba lain</Text>
+                  <Text className="font-bold mt-0.5 text-[11px] text-rose-600">🔧 {getMessage('qris') || 'Sedang pemeliharaan'}</Text>
                 ) : delayed ? (
                   <Text className="font-bold mt-0.5 text-[11px] text-amber-600">⚠️ Mungkin tertunda</Text>
                 ) : (
@@ -408,7 +408,7 @@ function MethodPicker({
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔴 Sedang gangguan</Text>}
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔧 {getMessage(m.code) || 'Belum tersedia'}</Text>}
                   {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">⚠️ Mungkin tertunda</Text>}
                 </View>
                 <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
@@ -437,7 +437,7 @@ function MethodPicker({
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔴 Sedang gangguan</Text>}
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔧 {getMessage(m.code) || 'Belum tersedia'}</Text>}
                   {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">⚠️ Mungkin tertunda</Text>}
                 </View>
                 <WalletIcon color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
