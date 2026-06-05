@@ -135,17 +135,33 @@ export class FlipService {
     return json;
   }
 
-  /** Fetch bill detail by link_id — kadang qr_code_data baru tersedia di sini, bukan di create response */
+  /** Fetch bill detail. Try multiple endpoint paths Flip may use. */
   async getBillDetail(linkId: number | string): Promise<any> {
     const c = await this.getCreds();
     if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong.');
-    const res = await fetch(`${c.baseUrl}/pwf/${linkId}/get-payment-url`, {
-      method: 'GET',
-      headers: { Authorization: this.authHeader(c.secretKey) },
-    });
-    const json: any = await res.json().catch(() => ({}));
-    this.log.log(`flip get-bill-detail (link_id=${linkId}) — response: ${JSON.stringify(json)}`);
-    return json;
+    // Try multiple endpoint patterns
+    const paths = [
+      `/pwf/bill?id=${linkId}`,
+      `/pwf/${linkId}`,
+      `/pwf/bill/${linkId}`,
+      `/pwf/payment-url?id=${linkId}`,
+    ];
+    for (const path of paths) {
+      try {
+        const res = await fetch(`${c.baseUrl}${path}`, {
+          method: 'GET',
+          headers: { Authorization: this.authHeader(c.secretKey) },
+        });
+        const json: any = await res.json().catch(() => ({}));
+        this.log.log(`flip get-bill-detail [${path}] status=${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+        if (res.ok && !json?.code && (json?.bill_payment || json?.link_id)) {
+          return json;
+        }
+      } catch (e: any) {
+        this.log.warn(`getBillDetail path ${path} failed: ${e?.message ?? e}`);
+      }
+    }
+    return null;
   }
 
   async createBill(input: FlipCreateInput): Promise<FlipCreateResult> {
