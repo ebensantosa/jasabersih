@@ -469,9 +469,19 @@ export class PaymentsController {
     const hasToken = typeof body.token === 'string' && body.token.length > 0;
     const hasData = typeof body.data === 'string' && body.data.length > 0;
     this.flipLog.log(`inquiry callback from ${ip} — token=${hasToken ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${hasData ? body.data.length : 0}`);
-    if (!hasToken && !hasData) return { ok: true, ping: true };
-    if (typeof body.token === 'string' && /^YOUR_VAL/i.test(body.token)) return { ok: true, test: true };
-    if (!(await this.flip.verifyCallbackToken(body.token))) throw new BadRequestException('Invalid Flip token');
+    if (!hasToken && !hasData) {
+      this.flipLog.log(`inquiry: empty ping from ${ip} — replying OK (reachability check)`);
+      return { ok: true, ping: true };
+    }
+    if (typeof body.token === 'string' && /^YOUR_VAL/i.test(body.token)) {
+      this.flipLog.log(`inquiry: dashboard test ping from ${ip} (placeholder token) — replying OK`);
+      return { ok: true, test: true };
+    }
+    if (!(await this.flip.verifyCallbackToken(body.token))) {
+      this.flipLog.warn(`inquiry token verification FAILED from ${ip}`);
+      throw new BadRequestException('Invalid Flip token');
+    }
+    this.flipLog.log(`inquiry verified from ${ip} — audit only (sync inquiry result already used)`);
     return { ok: true };
   }
 
