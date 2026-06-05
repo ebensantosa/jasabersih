@@ -67,6 +67,7 @@ function PaymentScreen() {
   const syncBookings = useBookingsStore((s) => s.syncFromApi);
 
   const [creating, setCreating] = useState(false);
+  const [pickingCode, setPickingCode] = useState<string | null>(null);
   const [direct, setDirect] = useState<DirectResult | null>(null);
   const [paid, setPaid] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -107,6 +108,7 @@ function PaymentScreen() {
 
   async function pickMethod(senderBank: string, senderBankType: DirectResult['senderBankType']) {
     if (!bookingId) return;
+    setPickingCode(senderBank);
     setCreating(true);
     try {
       const res = await api.post('/payments/flip/create-direct', { bookingId, senderBank, senderBankType, useCredit });
@@ -133,6 +135,7 @@ function PaymentScreen() {
       toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal create pembayaran');
     } finally {
       setCreating(false);
+      setPickingCode(null);
     }
   }
 
@@ -157,6 +160,21 @@ function PaymentScreen() {
           {direct?.expiredAt && !paid && <CountdownBadge expiredAt={direct.expiredAt} />}
         </View>
 
+        {/* Loading overlay saat create payment */}
+        {creating && (
+          <Modal transparent animationType="fade" visible>
+            <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+              <View style={{ backgroundColor: 'white', borderRadius: 20, padding: 28, alignItems: 'center', minWidth: 260, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, elevation: 8 }}>
+                <ActivityIndicator color="#1D4ED8" size="large" />
+                <Text style={{ marginTop: 16, fontSize: 15, fontWeight: '700', color: '#0F172A' }}>Membuat Pembayaran</Text>
+                <Text style={{ marginTop: 6, fontSize: 12, color: '#64748B', textAlign: 'center', lineHeight: 18 }}>
+                  Lagi terhubung ke Flip…{'\n'}Mohon tunggu sebentar.
+                </Text>
+              </View>
+            </View>
+          </Modal>
+        )}
+
         {paid ? (
           <PaidView />
         ) : direct ? (
@@ -164,6 +182,7 @@ function PaymentScreen() {
         ) : (
           <MethodPicker
             disabled={creating}
+            pickingCode={pickingCode}
             onPick={pickMethod}
             walletBalance={walletBalance}
             total={booking?.totalPrice ?? 0}
@@ -212,6 +231,7 @@ function CountdownBadge({ expiredAt }: { expiredAt: string }) {
 
 function MethodPicker({
   disabled,
+  pickingCode,
   onPick,
   walletBalance,
   total,
@@ -220,6 +240,7 @@ function MethodPicker({
   setUseCredit,
 }: {
   disabled: boolean;
+  pickingCode: string | null;
   onPick: (bank: string, type: DirectResult['senderBankType']) => void;
   walletBalance: number;
   total: number;
