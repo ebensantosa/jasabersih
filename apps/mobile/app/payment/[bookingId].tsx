@@ -570,41 +570,85 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
   }
 
   if (data.senderBankType === 'virtual_account' && data.accountNumber) {
+    const copyAmount = async () => {
+      await Clipboard.setStringAsync(String(data.amount));
+      toast.success('Nominal disalin');
+    };
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} style={{ backgroundColor: '#F1F5F9' }}>
         {CountdownBanner}
-        <View className="rounded-2xl bg-white p-5">
-          <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">{data.senderBank.toUpperCase()} Virtual Account</Text>
-          <View className="mt-3 flex-row items-center gap-3">
-            <Text className="flex-1 font-bold text-2xl text-ink-900" selectable>{data.accountNumber}</Text>
-            <Pressable onPress={onCopy} className="flex-row items-center gap-1 rounded-xl bg-brand-50 px-3 py-2">
-              <Copy color="#1D4ED8" size={14} />
-              <Text className="font-bold text-xs text-brand-700">Salin</Text>
-            </Pressable>
+
+        {/* VA Number — highlight biru muda */}
+        <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1.5, borderColor: '#BFDBFE', borderRadius: 16, padding: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: '#1E3A8A', textTransform: 'uppercase' }}>
+              {data.senderBank.toUpperCase()} Virtual Account
+            </Text>
+            <View style={{ backgroundColor: '#1D4ED8', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>NATIVE</Text>
+            </View>
           </View>
-          <View className="mt-4 border-t border-ink-100 pt-3">
-            <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Total Bayar</Text>
-            <Text className="font-bold mt-0.5 text-xl text-ink-900">{formatRupiah(data.amount)}</Text>
-          </View>
+          <Text selectable style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: 1, marginBottom: 12, fontVariant: ['tabular-nums'] }}>
+            {data.accountNumber}
+          </Text>
+          <Pressable
+            onPress={onCopy}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1D4ED8', borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Copy color="white" size={16} />
+            <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Salin Nomor VA</Text>
+          </Pressable>
         </View>
-        <View className="rounded-2xl bg-white p-4">
-          <Text className="font-bold text-sm text-ink-900">Cara Bayar</Text>
-          <View className="mt-3 gap-2">
+
+        {/* Total Bayar — highlight hijau */}
+        <View style={{ backgroundColor: '#ECFDF5', borderWidth: 1.5, borderColor: '#A7F3D0', borderRadius: 16, padding: 18 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: '#065F46', textTransform: 'uppercase', marginBottom: 6 }}>
+            Total Bayar
+          </Text>
+          <Text selectable style={{ fontSize: 26, fontWeight: '800', color: '#064E3B', fontVariant: ['tabular-nums'], marginBottom: 12 }}>
+            {formatRupiah(data.amount)}
+          </Text>
+          <Pressable
+            onPress={copyAmount}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#059669', borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Copy color="white" size={16} />
+            <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Salin Nominal</Text>
+          </Pressable>
+          <Text style={{ marginTop: 8, fontSize: 11, color: '#047857', textAlign: 'center' }}>
+            ⚠️ Pastikan nominal transfer sama persis (jangan dibulatkan)
+          </Text>
+        </View>
+
+        {/* Cara Bayar */}
+        <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 12 }}>
+            📱 Cara Bayar via m-banking {data.senderBank.toUpperCase()}
+          </Text>
+          <View style={{ gap: 10 }}>
             {[
-              'Buka app m-banking ' + data.senderBank.toUpperCase(),
+              `Buka app m-banking ${data.senderBank.toUpperCase()}`,
               'Pilih menu Transfer → Virtual Account',
-              `Masukkan nomor VA: ${data.accountNumber}`,
-              `Masukkan nominal Rp ${data.amount.toLocaleString('id-ID')}`,
+              'Masukkan nomor VA di atas',
+              'Masukkan nominal sesuai total bayar',
               'Konfirmasi dan selesaikan transaksi',
             ].map((step, i) => (
-              <View key={i} className="flex-row gap-2">
-                <Text className="font-bold text-xs text-brand-700">{i + 1}.</Text>
-                <Text className="flex-1 font-sans text-xs text-ink-700">{step}</Text>
+              <View key={i} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E40AF' }}>{i + 1}</Text>
+                </View>
+                <Text style={{ flex: 1, fontSize: 13, color: '#334155', lineHeight: 20, paddingTop: 2 }}>{step}</Text>
               </View>
             ))}
           </View>
         </View>
-        <PollingHint />
+
+        <View style={{ marginHorizontal: 4, marginTop: 4, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
+          <Text style={{ fontSize: 14 }}>🔄</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
+            Status pembayaran kami cek otomatis. Halaman ini akan pindah ke pesanan otomatis setelah pembayaran masuk.
+          </Text>
+        </View>
       </ScrollView>
     );
   }
