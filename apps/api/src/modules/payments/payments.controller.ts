@@ -311,7 +311,15 @@ export class PaymentsController {
   async flipBankStatus(@Req() req: Request) {
     const body: any = req.body ?? {};
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
-    this.flipLog.log(`bank-status callback from ${ip} — token=${typeof body.token === 'string' ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${typeof body.data === 'string' ? body.data.length : 0}`);
+    const hasToken = typeof body.token === 'string' && body.token.length > 0;
+    const hasData = typeof body.data === 'string' && body.data.length > 0;
+    this.flipLog.log(`bank-status callback from ${ip} — token=${hasToken ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${hasData ? body.data.length : 0}`);
+    // Empty ping (no token, no data) = Flip's "Simpan & Test Callback" reachability check.
+    // Reply 200 OK so dashboard verification passes.
+    if (!hasToken && !hasData) {
+      this.flipLog.log(`bank-status: empty ping from ${ip} — replying OK (reachability check)`);
+      return { ok: true, ping: true };
+    }
     const token: string | undefined = typeof body.token === 'string' ? body.token : undefined;
     if (!(await this.flip.verifyCallbackToken(token))) {
       this.flipLog.warn(`bank-status token verification FAILED from ${ip}`);
