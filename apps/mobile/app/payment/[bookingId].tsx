@@ -443,58 +443,6 @@ function MethodPicker({
           <Text className="font-medium mt-2 text-[11px] text-ink-500">Memuat metode pembayaran…</Text>
         </View>
       )}
-
-      {/* Bayar via Bank Lain / Kartu / Retail — fallback ke hosted page */}
-      <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Metode Lainnya</Text>
-        <View className="overflow-hidden rounded-2xl bg-white">
-          <Pressable
-            disabled={disabled}
-            onPress={() => onPick('bank_transfer', 'virtual_account')}
-            className="flex-row items-center gap-3 p-4"
-          >
-            <View className="h-10 w-14 items-center justify-center rounded bg-blue-50 border border-blue-100">
-              <Text style={{ fontSize: 20 }}>🏦</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-semibold text-sm text-ink-900">Bayar via Transfer Bank</Text>
-              <Text className="font-medium text-[11px] text-ink-500 mt-0.5">BCA, Mandiri, BNI, BRI & bank lainnya</Text>
-            </View>
-            <Text className="text-ink-400">›</Text>
-          </Pressable>
-          <Pressable
-            disabled={disabled}
-            onPress={() => onPick('credit_card', 'credit_card')}
-            className="flex-row items-center gap-3 p-4 border-t border-ink-100"
-          >
-            <View className="h-10 w-14 items-center justify-center rounded bg-purple-50 border border-purple-100">
-              <Text style={{ fontSize: 20 }}>💳</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-semibold text-sm text-ink-900">Kartu Kredit / Debit</Text>
-              <Text className="font-medium text-[11px] text-ink-500 mt-0.5">Visa, Mastercard, JCB</Text>
-            </View>
-            <Text className="text-ink-400">›</Text>
-          </Pressable>
-          <Pressable
-            disabled={disabled}
-            onPress={() => onPick('retail_outlet', 'retail_outlet')}
-            className="flex-row items-center gap-3 p-4 border-t border-ink-100"
-          >
-            <View className="h-10 w-14 items-center justify-center rounded bg-amber-50 border border-amber-100">
-              <Text style={{ fontSize: 20 }}>🏪</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-semibold text-sm text-ink-900">Bayar di Minimarket</Text>
-              <Text className="font-medium text-[11px] text-ink-500 mt-0.5">Indomaret, Alfamart</Text>
-            </View>
-            <Text className="text-ink-400">›</Text>
-          </Pressable>
-        </View>
-        <Text className="font-medium mt-2 text-[10px] text-ink-500 text-center">
-          Membuka halaman pembayaran eksternal — kembali setelah selesai
-        </Text>
-      </View>
     </ScrollView>
   );
 }
