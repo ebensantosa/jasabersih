@@ -96,14 +96,16 @@ export class FlipService {
     form.set('type', 'SINGLE');
     form.set('amount', String(input.amount));
     form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
-    form.set('redirect_url', input.redirectUrl ?? '');
-    // Flip v3 changed is_address_required/is_phone_number_required param format — omit (default false works fine).
-    // Note: Flip v3 dropped numeric `step` param. Direct VA/QRIS handled by sender_bank + sender_bank_type.
+    if (input.redirectUrl) form.set('redirect_url', input.redirectUrl); // omit kalau kosong (Flip v3 reject empty string)
     form.set('sender_bank', input.senderBank);
     form.set('sender_bank_type', input.senderBankType);
     if (input.customerName) form.set('sender_name', input.customerName);
-    if (input.customerEmail) form.set('sender_email', input.customerEmail);
-    if (input.customerPhone) form.set('sender_phone_number', input.customerPhone);
+    if (input.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.customerEmail) && !input.customerEmail.endsWith('@jasabersih.com')) {
+      form.set('sender_email', input.customerEmail);
+    }
+    if (input.customerPhone && /^08\d{8,12}$/.test(input.customerPhone)) {
+      form.set('sender_phone_number', input.customerPhone);
+    }
 
     const res = await fetch(`${c.baseUrl}/pwf/bill`, {
       method: 'POST',
@@ -137,8 +139,7 @@ export class FlipService {
     form.set('type', 'SINGLE');
     form.set('amount', String(input.amount));
     form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
-    form.set('redirect_url', input.redirectUrl ?? '');
-    // Flip v3 changed is_address_required/is_phone_number_required param format — omit (default false works fine).
+    if (input.redirectUrl) form.set('redirect_url', input.redirectUrl); // omit kalau kosong (Flip v3 reject empty string)
     // Note: Flip v3 dropped numeric `step` param. Omit → defaults to "checkout"
     // (customer picks payment method on Flip's hosted page) which is what we want.
     // Sender fields are optional & Flip strict-validates email/phone format.
