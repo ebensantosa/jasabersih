@@ -140,7 +140,7 @@ function PaymentScreen() {
       } else if (/401001|Authentication failed/i.test(friendly)) {
         friendly = 'Layanan pembayaran sementara bermasalah. Mohon coba beberapa menit lagi.';
       } else if (/not enabled|is not enabled/i.test(friendly)) {
-        friendly = 'Metode pembayaran ini belum aktif. Mohon pilih metode lain (QRIS direkomendasikan).';
+        friendly = 'Metode pembayaran ini belum aktif di sistem kami. Mohon pilih QRIS untuk pembayaran semua bank/e-wallet.';
       } else if (/VALIDATION_ERROR/i.test(friendly)) {
         friendly = 'Data pembayaran tidak valid. Coba pilih metode lain atau hubungi CS.';
       } else if (friendly.startsWith('Flip: {')) {
@@ -285,11 +285,9 @@ function MethodPicker({
       } catch { /* ignore — default semua normal */ }
     })();
   }, []);
-  // Hardcoded: bank yang BELUM diaktifkan di Flip account → disable di UI (cegah error 'not enabled')
-  // QRIS aktif by default, bank lain perlu CS Flip enable per-channel.
-  const NOT_ENABLED_YET = new Set(['bca','mandiri','bni','bri','cimb','permata','bsi','danamon','btn','mega','gopay','ovo','dana','shopeepay','linkaja']);
+  // Trust bank-health API (auto-updated dari Flip Status Bank webhook).
+  // Kalau ada bank yang error 'not enabled' saat customer klik, error message akan jelaskan.
   const getStatus = (code: string): 'normal' | 'delayed' | 'down' => {
-    if (NOT_ENABLED_YET.has(code)) return 'down';
     return bankHealth[code]?.status ?? 'normal';
   };
   const getMessage = (code: string) => bankHealth[code]?.message ?? '';
