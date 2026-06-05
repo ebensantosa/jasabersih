@@ -147,110 +147,48 @@ export default function Home() {
 
             <Pressable
               onPress={() => router.push('/booking/custom')}
-              className="mt-3 overflow-hidden rounded-3xl"
+              className="mt-3 overflow-hidden rounded-2xl bg-white"
               style={{
-                elevation: 12,
-                shadowColor: '#6366F1',
-                shadowOpacity: 0.35,
-                shadowRadius: 16,
-                shadowOffset: { width: 0, height: 6 },
+                elevation: 4,
+                shadowColor: '#0F172A',
+                shadowOpacity: 0.12,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 3 },
               }}
             >
-              <LinearGradient
-                colors={['#1E1B4B', '#4338CA', '#7C3AED']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ paddingVertical: 16, paddingHorizontal: 18, position: 'relative' }}
-              >
-                {/* Hero illustration (cleaning) — kanan, blur edges via opacity */}
-                <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=400&q=70' }}
-                  style={{
-                    position: 'absolute',
-                    right: -10,
-                    top: -10,
-                    bottom: -10,
-                    width: 140,
-                    opacity: 0.18,
-                  }}
-                  contentFit="cover"
-                />
-
-                {/* Glowing orbs */}
+              <View style={{ paddingVertical: 14, paddingHorizontal: 16, position: 'relative' }}>
+                {/* Subtle accent strip kiri */}
                 <View
                   style={{
                     position: 'absolute',
-                    top: -20,
-                    right: 40,
-                    width: 80,
-                    height: 80,
-                    borderRadius: 40,
-                    backgroundColor: '#A78BFA',
-                    opacity: 0.25,
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: -10,
-                    left: -10,
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    backgroundColor: '#22D3EE',
-                    opacity: 0.18,
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 4,
+                    backgroundColor: '#1D4ED8',
                   }}
                 />
 
-                {/* Decorative sparkles */}
-                <View style={{ position: 'absolute', top: 12, right: 20 }}>
-                  <Sparkles color="#FDE68A" size={12} strokeWidth={2.4} fill="#FDE68A" />
-                </View>
-                <View style={{ position: 'absolute', bottom: 14, right: 88 }}>
-                  <Sparkles color="white" size={9} strokeWidth={2.4} fill="white" />
-                </View>
-                <View style={{ position: 'absolute', top: 28, right: 64 }}>
-                  <Sparkles color="#A78BFA" size={7} strokeWidth={2.4} fill="#A78BFA" />
-                </View>
-
-                <View className="flex-row items-center gap-3" style={{ position: 'relative' }}>
-                  <View
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.18)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(255,255,255,0.25)',
-                    }}
-                    className="h-14 w-14 items-center justify-center rounded-2xl"
-                  >
-                    <Sparkles color="#FDE68A" size={26} strokeWidth={2.4} fill="#FDE68A" />
-                  </View>
+                <View className="flex-row items-center gap-3">
                   <View className="flex-1">
                     <View className="flex-row items-center gap-1.5">
-                      <View
-                        style={{ backgroundColor: '#FDE68A' }}
-                        className="rounded-full px-2 py-0.5"
-                      >
-                        <Text className="font-extrabold text-[9px] text-amber-900">✨ PREMIUM</Text>
+                      <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
+                      <View className="rounded bg-amber-100 px-1.5 py-0.5">
+                        <Text className="font-bold text-[9px] text-amber-700">PREMIUM</Text>
                       </View>
                     </View>
-                    <Text
-                      className="font-extrabold mt-1 text-base text-white"
-                      style={{ textShadowColor: 'rgba(0,0,0,0.25)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}
-                    >
-                      Bersih Full Custom
-                    </Text>
-                    <Text className="font-medium mt-0.5 text-[11px] text-white/85" numberOfLines={1}>
-                      Pilih sendiri, bayar sesuai pakai
+                    <Text className="font-medium mt-1 text-[11px] text-ink-500" numberOfLines={1}>
+                      Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
                     </Text>
                   </View>
                   <View
-                    style={{ backgroundColor: 'white' }}
+                    style={{ backgroundColor: '#1D4ED8' }}
                     className="h-9 w-9 items-center justify-center rounded-full"
                   >
-                    <ChevronRight color="#4338CA" size={20} strokeWidth={3} />
+                    <ChevronRight color="white" size={18} strokeWidth={3} />
                   </View>
                 </View>
-              </LinearGradient>
+              </View>
             </Pressable>
           </View>
         </SafeAreaView>
