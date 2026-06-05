@@ -1,16 +1,26 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Building2, CreditCard, User, Wallet } from 'lucide-react-native';
-import { useState } from 'react';
+import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, CreditCard, Plus, User, Wallet, Zap } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Field, validateMinLength } from '../../src/components/Field';
 import { formatRupiah } from '../../src/data/catalog';
+import { api } from '../../src/lib/api';
 import { MIN_WITHDRAW, useCleanerWalletStore } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 import { safeBack } from '../../src/lib/safeBack';
+
+type VerifiedAccount = {
+  id: string;
+  bankCode: string;
+  accountNumber: string;
+  accountHolderName: string;
+  isVerified: boolean;
+  isDefault: boolean;
+};
 
 const METHODS = [
   { code: 'bca', label: 'BCA', kind: 'bank' },
@@ -44,33 +54,64 @@ function Withdraw() {
     amount?: string | null;
   }>({});
 
+  // Verified bank accounts (preferred — auto-Flip transfer)
+  const [verifiedAccounts, setVerifiedAccounts] = useState<VerifiedAccount[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await api.get('/cleaner/bank-accounts');
+        const list = (r.data?.data ?? r.data ?? []) as VerifiedAccount[];
+        const verified = list.filter((a) => a.isVerified);
+        setVerifiedAccounts(verified);
+        const def = verified.find((a) => a.isDefault) ?? verified[0];
+        if (def) setSelectedBankAccountId(def.id);
+      } catch {
+        /* ignore — fallback ke inline form */
+      } finally {
+        setLoadingAccounts(false);
+      }
+    })();
+  }, []);
+
   const method = METHODS.find((m) => m.code === methodCode) ?? METHODS[0]!;
   const amount = Number(amountStr.replace(/\D/g, '')) || 0;
   const fee = method.kind === 'bank' ? 4_000 : 0;
   const receive = Math.max(0, amount - fee);
 
   function submit() {
-    const e = {
-      account: validateMinLength(account, 6, 'Nomor rekening'),
-      accountName: validateMinLength(accountName, 2, 'Nama pemilik'),
-      amount:
-        amount < MIN_WITHDRAW
-          ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}`
-          : amount > balance
-            ? 'Jumlah melebihi saldo'
-            : null,
-    };
+    const useVerified = !!selectedBankAccountId;
+    const e = useVerified
+      ? { amount: amount < MIN_WITHDRAW ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}` : amount > balance ? 'Jumlah melebihi saldo' : null }
+      : {
+          account: validateMinLength(account, 6, 'Nomor rekening'),
+          accountName: validateMinLength(accountName, 2, 'Nama pemilik'),
+          amount: amount < MIN_WITHDRAW ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}` : amount > balance ? 'Jumlah melebihi saldo' : null,
+        };
     setErrors(e);
-    if (e.account || e.accountName || e.amount) {
+    if (e.amount || (!useVerified && (e.account || e.accountName))) {
       toast.error('Lengkapi data yang masih kosong/salah');
       return;
     }
     setSubmitting(true);
-    requestWithdrawalApi(amount, { bankCode: method.label, accountNumber: account, accountName })
-      .then(() => {
-        // Mirror to local store untuk UI cepat (akan ke-overwrite saat sync next)
-        addWithdrawal(amount, { method: method.label, account, name: accountName });
-        toast.success('Permintaan tarik dana terkirim. Admin akan review.');
+    const destination = useVerified
+      ? { bankAccountId: selectedBankAccountId! }
+      : { bankCode: method.label, accountNumber: account, accountName };
+    requestWithdrawalApi(amount, destination)
+      .then((res) => {
+        addWithdrawal(amount, {
+          method: useVerified ? verifiedAccounts.find((a) => a.id === selectedBankAccountId)?.bankCode.toUpperCase() ?? 'BANK' : method.label,
+          account: useVerified ? verifiedAccounts.find((a) => a.id === selectedBankAccountId)?.accountNumber ?? '' : account,
+          name: useVerified ? verifiedAccounts.find((a) => a.id === selectedBankAccountId)?.accountHolderName ?? '' : accountName,
+        });
+        if (res.autoDisburse) {
+          const feeNote = res.fee ? `\n\nFee Flip: Rp ${res.fee.toLocaleString('id-ID')}\nDiterima: Rp ${(res.transferAmount ?? amount - (res.fee ?? 0)).toLocaleString('id-ID')}` : '';
+          toast.success(`Dana ditransfer otomatis via Flip. Tiba dalam beberapa menit.${feeNote}`);
+        } else {
+          toast.success(res.message ?? 'Permintaan tarik terkirim. Admin akan review.');
+        }
         safeBack();
       })
       .catch((err: any) => {
@@ -99,7 +140,74 @@ function Withdraw() {
         </SafeAreaView>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
-          {/* Pilih metode */}
+          {/* Verified accounts (preferred) */}
+          {!loadingAccounts && verifiedAccounts.length > 0 && (
+            <Section title="Rekening Tersimpan (Auto-Transfer ⚡)">
+              <View className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 mb-3 flex-row gap-2">
+                <Zap color="#059669" size={18} />
+                <Text className="flex-1 text-xs text-emerald-900 leading-5">
+                  Pilih rekening verified → dana otomatis ditransfer via Flip dalam beberapa menit. Fee Rp 2.500 (bank) / Rp 4.000 (e-wallet) dipotong.
+                </Text>
+              </View>
+              <View className="gap-2">
+                {verifiedAccounts.map((acc) => {
+                  const selected = selectedBankAccountId === acc.id;
+                  return (
+                    <Pressable
+                      key={acc.id}
+                      onPress={() => setSelectedBankAccountId(acc.id)}
+                      className={`flex-row items-center gap-3 p-3 rounded-xl border ${selected ? 'bg-blue-50 border-blue-500' : 'bg-white border-ink-200'}`}
+                    >
+                      <View className={`h-9 w-9 rounded-full items-center justify-center ${selected ? 'bg-blue-600' : 'bg-blue-100'}`}>
+                        <Building2 color={selected ? 'white' : '#1D4ED8'} size={18} />
+                      </View>
+                      <View className="flex-1">
+                        <View className="flex-row items-center gap-1">
+                          <Text className="text-sm font-bold text-ink-900">{acc.bankCode.toUpperCase()}</Text>
+                          {acc.isDefault && <Text className="text-[10px] text-amber-600 font-semibold">★ Default</Text>}
+                        </View>
+                        <Text className="text-xs text-ink-600">{acc.accountNumber} · {acc.accountHolderName}</Text>
+                      </View>
+                      {selected && <CheckCircle2 color="#1D4ED8" size={20} />}
+                    </Pressable>
+                  );
+                })}
+                <Pressable
+                  onPress={() => setSelectedBankAccountId(null)}
+                  className={`p-3 rounded-xl border border-dashed ${selectedBankAccountId === null ? 'bg-amber-50 border-amber-500' : 'border-ink-300'}`}
+                >
+                  <Text className="text-xs font-semibold text-center text-ink-700">+ Pakai rekening lain (transfer manual, perlu approval admin)</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/cleaner/bank-accounts')}
+                  className="mt-2 flex-row items-center justify-center gap-1 py-2"
+                >
+                  <Plus color="#1D4ED8" size={14} />
+                  <Text className="text-xs font-bold text-blue-700">Tambah / kelola rekening</Text>
+                </Pressable>
+              </View>
+            </Section>
+          )}
+
+          {!loadingAccounts && verifiedAccounts.length === 0 && (
+            <View className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-3 flex-row gap-2">
+              <BadgeCheck color="#D97706" size={18} />
+              <View className="flex-1">
+                <Text className="text-xs text-amber-900 leading-5">
+                  💡 Tambah rekening atas nama kamu → dapat <Text className="font-bold">auto-transfer dalam menit</Text> via Flip.
+                </Text>
+                <Pressable
+                  onPress={() => router.push('/cleaner/bank-accounts')}
+                  className="mt-2 self-start bg-amber-600 px-3 py-1.5 rounded-lg"
+                >
+                  <Text className="text-white font-bold text-xs">+ Tambah Rekening</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Pilih metode (legacy fallback — kalau gak pilih dari verified, akan masuk admin queue) */}
+          {selectedBankAccountId === null && (
           <Section title="Pilih Tujuan">
             <Text className="font-semibold mb-2 text-[10px] uppercase tracking-wider text-ink-500">
               Bank
@@ -168,6 +276,7 @@ function Withdraw() {
               </Field>
             </View>
           </Section>
+          )}
 
           {/* Jumlah */}
           <Section title="Jumlah Penarikan">

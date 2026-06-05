@@ -52,11 +52,13 @@ type State = {
   syncing: boolean;
   syncError: string | null;
   syncFromApi: () => Promise<void>;
-  /** Request withdrawal via API. Returns server response or throws. */
+  /** Request withdrawal via API. Returns server response or throws.
+   *  Kalau bankAccountId di-provide & rekening verified & amount ≤ threshold → auto-Flip transfer.
+   *  Otherwise (legacy inline fields atau amount > threshold) → admin manual approve. */
   requestWithdrawalApi: (
     amount: number,
-    destination: { bankCode: string; accountNumber: string; accountName: string },
-  ) => Promise<{ id: string }>;
+    destination: { bankCode?: string; accountNumber?: string; accountName?: string; bankAccountId?: string },
+  ) => Promise<{ id: string; status: string; autoDisburse: boolean; transferAmount?: number; fee?: number; message?: string }>;
   clearLocal: () => void;
 };
 
@@ -110,16 +112,23 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
     }
   },
   async requestWithdrawalApi(amount, destination) {
-    const res = await api.post('/cleaner/withdrawal', {
-      amount,
-      bankCode: destination.bankCode,
-      accountNumber: destination.accountNumber,
-      accountName: destination.accountName,
-    });
+    const body: Record<string, any> = { amount };
+    if (destination.bankAccountId) body.bankAccountId = destination.bankAccountId;
+    if (destination.bankCode) body.bankCode = destination.bankCode;
+    if (destination.accountNumber) body.accountNumber = destination.accountNumber;
+    if (destination.accountName) body.accountName = destination.accountName;
+    const res = await api.post('/cleaner/withdrawal', body);
     const data = res.data?.data ?? res.data;
     // Re-sync biar ledger entry baru muncul
     void get().syncFromApi();
-    return { id: data.id };
+    return {
+      id: data.id,
+      status: data.status ?? 'pending',
+      autoDisburse: !!data.autoDisburse,
+      transferAmount: data.transferAmount,
+      fee: data.fee,
+      message: data.message,
+    };
   },
   hydrate: () => {
     const raw = storage.getString(KEY);

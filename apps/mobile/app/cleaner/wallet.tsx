@@ -96,11 +96,26 @@ function CleanerWallet() {
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-white">Tarik Saldo</Text>
                   <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Min {formatRupiah(MIN_WITHDRAW)} · ke bank / e-wallet
+                    Min {formatRupiah(MIN_WITHDRAW)} · auto-transfer via Flip
                   </Text>
                 </View>
               </View>
             </LinearGradient>
+          </Pressable>
+
+          {/* Kelola Rekening */}
+          <Pressable
+            onPress={() => router.push('/cleaner/bank-accounts')}
+            className="mt-2 bg-white border border-ink-100 rounded-xl px-4 py-3 flex-row items-center gap-3"
+          >
+            <View className="h-9 w-9 items-center justify-center rounded-lg bg-blue-100">
+              <Text style={{ fontSize: 18 }}>🏦</Text>
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-ink-900">Kelola Rekening Bank</Text>
+              <Text className="text-[11px] text-ink-500 mt-0.5">Tambah & verify rekening untuk auto-transfer</Text>
+            </View>
+            <Text className="text-blue-600 font-bold">›</Text>
           </Pressable>
 
           {/* Stats */}
