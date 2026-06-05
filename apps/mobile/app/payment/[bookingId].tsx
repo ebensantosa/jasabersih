@@ -139,6 +139,8 @@ function PaymentScreen() {
         friendly = 'Layanan pembayaran sedang tidak aktif. Tim kami sudah diberi tahu, mohon coba lagi nanti.';
       } else if (/401001|Authentication failed/i.test(friendly)) {
         friendly = 'Layanan pembayaran sementara bermasalah. Mohon coba beberapa menit lagi.';
+      } else if (/not enabled|is not enabled/i.test(friendly)) {
+        friendly = 'Metode pembayaran ini belum aktif. Mohon pilih metode lain (QRIS direkomendasikan).';
       } else if (/VALIDATION_ERROR/i.test(friendly)) {
         friendly = 'Data pembayaran tidak valid. Coba pilih metode lain atau hubungi CS.';
       } else if (friendly.startsWith('Flip: {')) {
