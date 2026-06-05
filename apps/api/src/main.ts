@@ -1,5 +1,18 @@
 import 'reflect-metadata';
 
+// Suppress AWS SDK Node version warning (not actionable until 2027) + any other noise.
+// We still let real errors and unhandledRejection bubble up.
+const originalEmit = process.emit.bind(process) as (event: string, ...args: any[]) => boolean;
+process.emit = function (event: any, ...args: any[]) {
+  if (event === 'warning' && args[0] && typeof args[0] === 'object') {
+    const name = (args[0] as { name?: string }).name;
+    if (name === 'NodeVersionSupportWarning' || name === 'DeprecationWarning') {
+      return false;
+    }
+  }
+  return originalEmit(event, ...args);
+} as typeof process.emit;
+
 // BigInt → string saat JSON.stringify (Postgres BIGINT via $queryRaw return BigInt).
 // Frontend coerce ke Number/string sesuai konteks.
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
