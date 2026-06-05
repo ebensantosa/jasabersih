@@ -34,7 +34,12 @@ export class StorageService implements OnModuleInit {
    * ke signed URL tanpa CORS error. Idempotent — safe to call tiap startup.
    */
   async onModuleInit(): Promise<void> {
-    await this.configureCors().catch((e) => this.log.error(`CORS init failed: ${e?.message ?? e}`));
+    // Skip via env supaya gak retry tiap restart kalau CORS udah set-once via dashboard Cloudflare.
+    if (process.env.R2_SKIP_CORS_INIT === 'true' || process.env.R2_SKIP_CORS_INIT === '1') {
+      this.log.log('R2 CORS init skipped (R2_SKIP_CORS_INIT=true)');
+      return;
+    }
+    await this.configureCors().catch((e) => this.log.warn(`CORS init failed (non-fatal): ${e?.message ?? e}`));
   }
 
   /**
@@ -70,7 +75,12 @@ export class StorageService implements OnModuleInit {
         results.push({ bucket: bucketName, ok: true });
       } catch (e: any) {
         const msg = e?.name ? `${e.name}: ${e?.message ?? ''}` : String(e?.message ?? e);
-        this.log.error(`R2 CORS FAIL ${kind} (${bucketName}): ${msg}`);
+        const isPermissionIssue = e?.name === 'AccessDenied' || /access\s*denied/i.test(String(e?.message ?? ''));
+        if (isPermissionIssue) {
+          this.log.warn(`R2 CORS skip ${kind} (${bucketName}): API token tidak punya permission PutBucketCors. Set CORS sekali via Cloudflare dashboard → Bucket Settings → CORS, lalu set env R2_SKIP_CORS_INIT=true.`);
+        } else {
+          this.log.error(`R2 CORS FAIL ${kind} (${bucketName}): ${msg}`);
+        }
         results.push({ bucket: bucketName, ok: false, error: msg });
       }
     }

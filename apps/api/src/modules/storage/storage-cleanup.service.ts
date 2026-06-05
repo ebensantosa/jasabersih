@@ -52,7 +52,7 @@ export class StorageCleanupService {
         FROM kyc_documents kd
         JOIN cleaner_profiles cp ON cp.user_id = kd.user_id
        WHERE cp.kyc_status = 'rejected'
-         AND cp.kyc_reviewed_at < NOW() - (${RETENTION_DAYS}::int * INTERVAL '1 day')
+         AND cp.updated_at < NOW() - (${RETENTION_DAYS}::int * INTERVAL '1 day')
        LIMIT 500
     `;
     if (docs.length === 0) return;
