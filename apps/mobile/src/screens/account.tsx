@@ -262,38 +262,20 @@ export function Help() {
 }
 
 export function SettingsView() {
-  const [dark, setDark] = useState(false);
-  const [checking, setChecking] = useState(false);
-
-  async function checkUpdate() {
-    setChecking(true);
-    try {
-      const info = await fetchUpdateInfo();
-      if (!info) {
-        toast.error('Gagal cek update');
-        return;
-      }
-      const { hasUpdate } = evaluateUpdate(info);
-      if (hasUpdate) {
-        storage.delete('update.skipped');
-        toast.info(`Versi baru ${info.latestVersion} tersedia!`);
-      } else {
-        toast.success('Sudah versi terbaru');
-      }
-    } finally {
-      setChecking(false);
-    }
-  }
-
+  const router = useRouter();
   return (
     <>
       <View className="rounded-2xl bg-white">
-        <Row icon={SettingsIcon} label="Bahasa" valueLabel="Indonesia" />
         <Row
           icon={SettingsIcon}
-          label={checking ? 'Mengecek update…' : 'Cek Versi Terbaru'}
+          label="Bahasa"
+          valueLabel="Indonesia"
+          onPress={() => router.push('/account/language')}
+        />
+        <Row
+          icon={SettingsIcon}
+          label="Versi Aplikasi"
           valueLabel={`v${currentVersion()}`}
-          onPress={checkUpdate}
           last
         />
       </View>
@@ -316,10 +298,14 @@ function Row({
   onPress?: () => void;
   last?: boolean;
 }) {
+  const interactive = !!onPress;
+  const Container: any = interactive ? Pressable : View;
+  const containerProps = interactive
+    ? { onPress, android_ripple: { color: '#F1F5F9' } }
+    : {};
   return (
-    <Pressable
-      onPress={onPress ?? (() => toast.comingSoon())}
-      android_ripple={{ color: '#F1F5F9' }}
+    <Container
+      {...containerProps}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -335,9 +321,9 @@ function Row({
       <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: danger ? '#DC2626' : '#1E293B' }} numberOfLines={1}>
         {label}
       </Text>
-      {valueLabel ? <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: '#94A3B8', marginRight: 6 }}>{valueLabel}</Text> : null}
-      <ChevronRight color="#CBD5E1" size={18} />
-    </Pressable>
+      {valueLabel ? <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: '#94A3B8', marginRight: interactive ? 6 : 0 }}>{valueLabel}</Text> : null}
+      {interactive && <ChevronRight color="#CBD5E1" size={18} />}
+    </Container>
   );
 }
 
