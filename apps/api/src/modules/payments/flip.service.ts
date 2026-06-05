@@ -130,8 +130,16 @@ export class FlipService {
         || `Flip ${res.status}`;
       throw new BadRequestException(`Flip: ${detailMsg}`);
     }
-    // DEBUG: dump full Flip response to inspect where qr_code_data / account_number live
-    this.log.log(`flip direct-bill OK — full response: ${JSON.stringify(json)}`);
+    // DEBUG: dump full Flip response in chunks + to file
+    const dump = JSON.stringify(json, null, 2);
+    this.log.log(`flip direct-bill OK — link_id=${json?.link_id} keys=[${Object.keys(json || {}).join(',')}]`);
+    this.log.log(`flip direct-bill OK — bill_payment keys=[${Object.keys(json?.bill_payment || {}).join(',')}]`);
+    this.log.log(`flip direct-bill OK — receiver_bank_account=${JSON.stringify(json?.bill_payment?.receiver_bank_account ?? null)}`);
+    try {
+      const fs = require('node:fs');
+      fs.writeFileSync(`/tmp/flip-response-${json?.link_id ?? Date.now()}.json`, dump);
+      this.log.log(`flip direct-bill OK — full dump saved to /tmp/flip-response-${json?.link_id}.json`);
+    } catch { /* ignore */ }
     return json;
   }
 
