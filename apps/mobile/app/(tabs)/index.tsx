@@ -220,30 +220,15 @@ export default function Home() {
             </Pressable>
           </View>
         </SafeAreaView>
-        {/* U-shape curve tipis di bawah header */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: -1,
-            left: 0,
-            right: 0,
-            height: 20,
-            backgroundColor: '#F8FAFC',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-          }}
-        />
       </LinearGradient>
 
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ marginTop: -20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Service grid 4 col */}
-        <View className="mx-4 mt-2 rounded-2xl bg-white px-2 py-3">
+        <View className="mx-4 mt-3 rounded-2xl bg-white px-2 py-3">
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
               const isKonsul = s.code === 'konsultasi';
