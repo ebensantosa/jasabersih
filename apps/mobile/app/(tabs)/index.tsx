@@ -146,14 +146,20 @@ export default function Home() {
             </View>
 
             <Pressable
-              onPress={() => router.push('/(tabs)/explore')}
-              className="mt-3 flex-row items-center gap-2 rounded-2xl bg-white px-4 py-3"
-              style={{ elevation: 2 }}
+              onPress={() => router.push('/booking/custom')}
+              className="mt-3 flex-row items-center gap-3 rounded-2xl bg-white px-4 py-3"
+              style={{ elevation: 3 }}
             >
-              <Search color="#64748B" size={18} />
-              <Text className="font-medium flex-1 text-sm text-ink-500">
-                Cari layanan, mis. dapur, kamar…
-              </Text>
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
+                <Sparkles color="#1D4ED8" size={20} strokeWidth={2.2} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-extrabold text-sm text-ink-900">Bersih Full Custom</Text>
+                <Text className="font-medium text-[11px] text-ink-500" numberOfLines={1}>
+                  Pilih sendiri layanan & jumlahnya — bayar sesuai pakai
+                </Text>
+              </View>
+              <ChevronRight color="#1D4ED8" size={18} />
             </Pressable>
           </View>
         </SafeAreaView>
