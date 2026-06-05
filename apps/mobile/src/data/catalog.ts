@@ -39,15 +39,15 @@ export type ServiceCategory = {
 };
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
-  { code: 'kamar', name: 'Kamar Tidur', description: 'Kamar tidur standar', icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 120_000, popular: true },
-  { code: 'kamar_km_dalam', name: 'Kamar + KM Dalam', description: 'Kamar tidur + kamar mandi dalam', icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 160_000, popular: true },
-  { code: 'kamar_mandi', name: 'Toilet', description: 'Kamar mandi / toilet', icon: Bath, iconColor: '#0E7490', iconBg: '#CFFAFE', imageUrl: UNS('photo-1552321554-5fefe8c9ef14'), startingPrice: 90_000 },
-  { code: 'ruang_tamu', name: 'Ruang Tamu', description: 'Ruang tamu & keluarga', icon: Sofa, iconColor: '#7C3AED', iconBg: '#EDE9FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
-  { code: 'vacuum_lantai', name: 'Vacuum Lantai', description: 'Vacuum lantai full ruangan', icon: Sparkles, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1581578731548-c64695cc6952'), startingPrice: 120_000 },
-  { code: 'dapur', name: 'Bersih Dapur', description: 'Area dapur + cuci piring', icon: ChefHat, iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
-  { code: 'pekarangan', name: 'Pekarangan', description: 'Halaman rumah', icon: Trees, iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
-  { code: 'garasi', name: 'Garasi/Teras', description: 'Garasi & teras', icon: Car, iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
-  { code: 'pindah_kos', name: 'Pindah Kos', description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
+  { code: 'kamar',          name: 'Kamar Tidur',     description: 'Kamar tidur standar',          icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 120_000, popular: true },
+  { code: 'kamar_km_dalam', name: 'Kamar + Toilet',  description: 'Kamar tidur + kamar mandi',    icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 160_000, popular: true },
+  { code: 'kamar_mandi',    name: 'Toilet',          description: 'Kamar mandi / toilet',         icon: Bath,      iconColor: '#0E7490', iconBg: '#CFFAFE', imageUrl: UNS('photo-1552321554-5fefe8c9ef14'), startingPrice: 120_000 },
+  { code: 'dapur',          name: 'Dapur',           description: 'Area dapur',                   icon: ChefHat,   iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
+  { code: 'ruang_tamu',     name: 'Ruang Tamu',      description: 'Ruang tamu & keluarga',        icon: Sofa,      iconColor: '#7C3AED', iconBg: '#EDE9FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
+  { code: 'pindah_kos',     name: 'Pindah Kost',     description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
+  { code: 'vacuum_lantai',  name: 'Vacuum',          description: 'Vacuum lantai full ruangan',   icon: Sparkles,  iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1581578731548-c64695cc6952'), startingPrice: 120_000 },
+  { code: 'garasi',         name: 'Garasi/Teras',    description: 'Garasi & teras',               icon: Car,       iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
+  { code: 'pekarangan',     name: 'Pekarangan',      description: 'Halaman rumah',                icon: Trees,     iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
 ];
 
 // ============ PAKET FIXED COST (sesuai 06-pricing-modes.md) ============
@@ -60,19 +60,18 @@ export type Package = {
   scope: string;
 };
 
+// Satu paket per kategori — gak ada lagi "Pilih Paket" sub-card.
+// Harga = Regular (PDF). Deep Clean dihitung pakai multiplier dari cleanMode.
 export const PACKAGES: Package[] = [
-  { id: 'pkg_kamar_hemat', categoryCode: 'kamar', name: 'Hemat – Kamar Tidur', price: 120_000, durationMin: 90, scope: 'Kamar tidur standar' },
-  { id: 'pkg_kombo', categoryCode: 'kamar', name: 'Kombo – Kamar + KM', price: 160_000, durationMin: 120, scope: 'Kamar tidur + kamar mandi' },
-  { id: 'pkg_toilet', categoryCode: 'kamar_mandi', name: 'Toilet', price: 90_000, durationMin: 60, scope: 'Kamar mandi saja' },
-  { id: 'pkg_ruang_tamu', categoryCode: 'ruang_tamu', name: 'Ruang Tamu', price: 150_000, durationMin: 90, scope: 'Ruang tamu & keluarga' },
-  { id: 'pkg_dapur', categoryCode: 'dapur', name: 'Dapur', price: 160_000, durationMin: 120, scope: 'Area dapur lengkap' },
-  { id: 'pkg_vacuum', categoryCode: 'ruang_tamu', name: 'Vacuum Seluruh Area', price: 120_000, durationMin: 90, scope: 'Vacuum lantai/karpet seluruh ruangan' },
-  { id: 'pkg_pekarangan', categoryCode: 'kantor', name: 'Pekarangan', price: 150_000, durationMin: 120, scope: 'Area outdoor / taman depan' },
-  { id: 'pkg_garasi', categoryCode: 'kantor', name: 'Garasi/Teras', price: 130_000, durationMin: 90, scope: 'Garasi atau teras depan' },
-  { id: 'pkg_pindah_kos', categoryCode: 'kos', name: 'Pindah Kost / Kosongan', price: 200_000, durationMin: 180, scope: 'Serah terima kamar kos' },
-  { id: 'pkg_full_kecil', categoryCode: 'full_house', name: 'Full House Kecil', price: 350_000, durationMin: 240, scope: '1 kamar + 1 KM + tamu + dapur (≤60m²)' },
-  { id: 'pkg_full_sedang', categoryCode: 'full_house', name: 'Full House Sedang', price: 550_000, durationMin: 300, scope: '2 kamar + 2 KM + tamu + dapur (≤100m²)' },
-  { id: 'pkg_full_besar', categoryCode: 'full_house', name: 'Full House Besar', price: 850_000, durationMin: 420, scope: '3+ kamar + 2+ KM + lengkap (≥150m²)' },
+  { id: 'pkg_kamar',          categoryCode: 'kamar',          name: 'Kamar Tidur',    price: 120_000, durationMin: 90,  scope: 'Bersih kamar tidur standar' },
+  { id: 'pkg_kamar_km',       categoryCode: 'kamar_km_dalam', name: 'Kamar + Toilet', price: 160_000, durationMin: 120, scope: 'Kamar tidur + kamar mandi dalam' },
+  { id: 'pkg_toilet',         categoryCode: 'kamar_mandi',    name: 'Toilet',         price: 120_000, durationMin: 90,  scope: 'Kamar mandi / toilet' },
+  { id: 'pkg_dapur',          categoryCode: 'dapur',          name: 'Dapur',          price: 160_000, durationMin: 120, scope: 'Area dapur lengkap' },
+  { id: 'pkg_ruang_tamu',     categoryCode: 'ruang_tamu',     name: 'Ruang Tamu',     price: 150_000, durationMin: 90,  scope: 'Ruang tamu & keluarga' },
+  { id: 'pkg_pindah_kos',     categoryCode: 'pindah_kos',     name: 'Pindah Kost',    price: 200_000, durationMin: 180, scope: 'Serah terima kamar kos' },
+  { id: 'pkg_vacuum',         categoryCode: 'vacuum_lantai',  name: 'Vacuum',         price: 120_000, durationMin: 90,  scope: 'Vacuum lantai seluruh area' },
+  { id: 'pkg_garasi',         categoryCode: 'garasi',         name: 'Garasi/Teras',   price: 130_000, durationMin: 90,  scope: 'Garasi atau teras depan' },
+  { id: 'pkg_pekarangan',     categoryCode: 'pekarangan',     name: 'Pekarangan',     price: 150_000, durationMin: 120, scope: 'Area outdoor / taman' },
 ];
 
 // ============ HOURLY TIERS ============
@@ -91,6 +90,16 @@ export const HOURLY_TIERS: HourlyTier[] = [
 ];
 
 // ============ ADD-ONS (12 sesuai spec 05-booking-form.md) ============
+export type AddOnGroup =
+  | 'Vakum Kasur'
+  | 'Bak Mandi / Bathtub'
+  | 'Hydro Vacuum Kasur'
+  | 'Dapur & Peralatan'
+  | 'Kamar Mandi Ekstra'
+  | 'Furniture & Kaca'
+  | 'Sampah & Pembuangan'
+  | 'Decluttering';
+
 export type AddOnItem = {
   code: string;
   name: string;
@@ -98,21 +107,55 @@ export type AddOnItem = {
   durationMin: number;
   unit?: string;
   icon: LucideIcon;
+  group: AddOnGroup;
 };
 
 export const ADDONS: AddOnItem[] = [
-  { code: 'rapi_baju', name: 'Merapikan barang/lipat baju', price: 30_000, durationMin: 30, icon: Shirt },
-  { code: 'cuci_pakaian', name: 'Cuci pakaian (mesin)', price: 25_000, durationMin: 15, unit: '/5kg', icon: Wind },
-  { code: 'setrika', name: 'Setrika pakaian', price: 50_000, durationMin: 45, unit: '/10 pcs', icon: Shirt },
-  { code: 'ganti_seprai', name: 'Ganti seprai & sarung bantal', price: 20_000, durationMin: 15, icon: BedDouble },
-  { code: 'cuci_piring', name: 'Cuci piring & rapikan dapur', price: 30_000, durationMin: 30, icon: ChefHat },
-  { code: 'kulkas', name: 'Bersihin kulkas (luar+dalam)', price: 50_000, durationMin: 30, icon: Refrigerator },
-  { code: 'oven', name: 'Bersihin microwave/oven', price: 35_000, durationMin: 20, icon: ChefHat },
-  { code: 'vacuum_sofa', name: 'Vacuum sofa/kasur', price: 40_000, durationMin: 25, unit: '/item', icon: Sofa },
-  { code: 'sterilisasi', name: 'Sterilisasi area (disinfectant)', price: 60_000, durationMin: 30, icon: Sparkles },
-  { code: 'jendela', name: 'Bersihin jendela', price: 15_000, durationMin: 10, unit: '/panel', icon: Wind },
-  { code: 'sampah', name: 'Buang sampah ke TPS', price: 20_000, durationMin: 15, icon: Snowflake },
-  { code: 'mop_outdoor', name: 'Mop area outdoor', price: 30_000, durationMin: 30, icon: Wind },
+  // Vakum Kasur
+  { code: 'vakum_kasur_single', name: 'Vakum Kasur Single Bed',   price: 45_000,  durationMin: 20, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
+  { code: 'vakum_kasur_twin',   name: 'Vakum Kasur Twin Bed',     price: 60_000,  durationMin: 25, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
+  { code: 'vakum_kasur_master', name: 'Vakum Kasur Master Bed',   price: 75_000,  durationMin: 30, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
+
+  // Bak Mandi / Bathtub
+  { code: 'bathtub_general',    name: 'Bak Mandi / Bathtub (General)',    price: 30_000, durationMin: 20, unit: '/unit', icon: Bath, group: 'Bak Mandi / Bathtub' },
+  { code: 'bathtub_deep',       name: 'Bak Mandi / Bathtub (Deep Clean)', price: 50_000, durationMin: 40, unit: '/unit', icon: Bath, group: 'Bak Mandi / Bathtub' },
+
+  // Hydro Vacuum Kasur
+  { code: 'hydro_100x200',      name: 'Hydro Vacuum Kasur 100×200', price: 250_000, durationMin: 60, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_120x200',      name: 'Hydro Vacuum Kasur 120×200', price: 270_000, durationMin: 60, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_140x200',      name: 'Hydro Vacuum Kasur 140×200', price: 290_000, durationMin: 75, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_160x200',      name: 'Hydro Vacuum Kasur 160×200', price: 310_000, durationMin: 75, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_180x200',      name: 'Hydro Vacuum Kasur 180×200', price: 330_000, durationMin: 90, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_200x200',      name: 'Hydro Vacuum Kasur 200×200', price: 350_000, durationMin: 90, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_bantal',       name: 'Hydro Vacuum Bantal / Guling', price: 70_000, durationMin: 20, unit: '/pcs',     icon: Sparkles, group: 'Hydro Vacuum Kasur' },
+  { code: 'hydro_sofa',         name: 'Hydro Vacuum Sofa',          price: 80_000,  durationMin: 30, unit: '/dudukan',  icon: Sofa,     group: 'Hydro Vacuum Kasur' },
+
+  // Dapur & Peralatan
+  { code: 'cuci_piring',        name: 'Cuci Piring',                 price: 30_000, durationMin: 20, unit: '/sink (max 20 pcs)', icon: ChefHat,      group: 'Dapur & Peralatan' },
+  { code: 'cuci_alat_masak',    name: 'Cuci Peralatan Masak',        price: 40_000, durationMin: 25, unit: '/max 10 pcs',        icon: ChefHat,      group: 'Dapur & Peralatan' },
+  { code: 'kulkas',             name: 'Bersihkan Kulkas (dalam+luar)', price: 75_000, durationMin: 40, unit: '',                 icon: Refrigerator, group: 'Dapur & Peralatan' },
+  { code: 'kompor',             name: 'Bersihkan Kompor Gas (+grill)', price: 50_000, durationMin: 30, unit: '',                 icon: ChefHat,      group: 'Dapur & Peralatan' },
+  { code: 'microwave_oven',     name: 'Bersihkan Microwave / Oven',  price: 50_000, durationMin: 25, unit: '/dalam+luar',        icon: ChefHat,      group: 'Dapur & Peralatan' },
+  { code: 'hood_exhaust',       name: 'Bersihkan Hood / Exhaust Fan', price: 65_000, durationMin: 35, unit: '/unit',             icon: Wind,         group: 'Dapur & Peralatan' },
+  { code: 'dispenser',          name: 'Bersihkan Dispenser',         price: 25_000, durationMin: 15, unit: '/luar+area bawah',   icon: Refrigerator, group: 'Dapur & Peralatan' },
+
+  // Kamar Mandi Ekstra
+  { code: 'sikat_keramik',      name: 'Sikat Keramik Dinding',       price: 30_000, durationMin: 20, unit: '/m²',     icon: Bath, group: 'Kamar Mandi Ekstra' },
+  { code: 'shower_head',        name: 'Bersihkan Shower Head',       price: 25_000, durationMin: 15, unit: '/unit',   icon: Bath, group: 'Kamar Mandi Ekstra' },
+  { code: 'poles_kaca_shower',  name: 'Poles Kaca Shower / Cermin',  price: 25_000, durationMin: 15, unit: '/unit',   icon: Sparkles, group: 'Kamar Mandi Ekstra' },
+  { code: 'saluran_air',        name: 'Bersihkan Saluran Air',       price: 25_000, durationMin: 15, unit: '/lubang', icon: Wind, group: 'Kamar Mandi Ekstra' },
+
+  // Furniture & Kaca
+  { code: 'lap_kaca_jendela',   name: 'Lap Kaca Jendela',            price: 15_000, durationMin: 10, unit: '/daun',    icon: Wind,  group: 'Furniture & Kaca' },
+  { code: 'cuci_sofa_kering',   name: 'Cuci Sofa Kering',            price: 50_000, durationMin: 25, unit: '/dudukan', icon: Sofa,  group: 'Furniture & Kaca' },
+  { code: 'lemari_kayu',        name: 'Lap / Poles Lemari Kayu',     price: 40_000, durationMin: 30, unit: '/dalam+luar', icon: Home, group: 'Furniture & Kaca' },
+  { code: 'angkut_furniture',   name: 'Angkut / Pindah Furniture',   price: 30_000, durationMin: 15, unit: '/item',    icon: Hammer, group: 'Furniture & Kaca' },
+
+  // Sampah & Pembuangan
+  { code: 'sampah',             name: 'Buang Sampah / Trashbag',     price: 50_000, durationMin: 20, unit: '/1x buang', icon: Snowflake, group: 'Sampah & Pembuangan' },
+
+  // Decluttering
+  { code: 'decluttering',       name: 'Rapikan & Sortir Barang',     price: 75_000, durationMin: 60, unit: '/jam',     icon: Shirt, group: 'Decluttering' },
 ];
 
 // ============ FORM OPTIONS ============
