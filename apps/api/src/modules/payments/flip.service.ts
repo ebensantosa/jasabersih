@@ -97,8 +97,7 @@ export class FlipService {
     form.set('amount', String(input.amount));
     form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
     form.set('redirect_url', input.redirectUrl ?? '');
-    form.set('is_address_required', '0');
-    form.set('is_phone_number_required', '0');
+    // Flip v3 changed is_address_required/is_phone_number_required param format — omit (default false works fine).
     // Note: Flip v3 dropped numeric `step` param. Direct VA/QRIS handled by sender_bank + sender_bank_type.
     form.set('sender_bank', input.senderBank);
     form.set('sender_bank_type', input.senderBankType);
@@ -139,8 +138,7 @@ export class FlipService {
     form.set('amount', String(input.amount));
     form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
     form.set('redirect_url', input.redirectUrl ?? '');
-    form.set('is_address_required', '0');
-    form.set('is_phone_number_required', '0');
+    // Flip v3 changed is_address_required/is_phone_number_required param format — omit (default false works fine).
     // Note: Flip v3 dropped numeric `step` param. Omit → defaults to "checkout"
     // (customer picks payment method on Flip's hosted page) which is what we want.
     // Sender fields are optional & Flip strict-validates email/phone format.
