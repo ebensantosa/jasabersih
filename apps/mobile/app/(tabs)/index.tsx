@@ -16,7 +16,7 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
@@ -27,6 +27,7 @@ import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
 import { useT } from '../../src/lib/i18n';
 import { useAddressesStore } from '../../src/stores/addresses';
+import { useConfig } from '../../src/stores/appContent';
 import { useModeStore } from '../../src/stores/mode';
 import { shortenAddress } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -35,6 +36,19 @@ import { useUserStore } from '../../src/stores/user';
 export default function Home() {
   const router = useRouter();
   const mode = useModeStore((s) => s.mode);
+  const ctaAnimated = useConfig('home.cta_animated' as any, false as any) as unknown as boolean;
+  const pulse = useState(() => new Animated.Value(1))[0];
+  useEffect(() => {
+    if (!ctaAnimated) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.12, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1,    duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [ctaAnimated, pulse]);
 
   // Cleaner mode → redirect ke Job Board (customer home gak relevan)
   useEffect(() => {
@@ -181,12 +195,19 @@ export default function Home() {
                       Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
                     </Text>
                   </View>
-                  <View
-                    style={{ backgroundColor: '#1D4ED8' }}
-                    className="h-9 w-9 items-center justify-center rounded-full"
+                  <Animated.View
+                    style={{
+                      backgroundColor: '#1D4ED8',
+                      height: 36,
+                      width: 36,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 18,
+                      transform: ctaAnimated ? [{ scale: pulse }] : [],
+                    }}
                   >
                     <ChevronRight color="white" size={18} strokeWidth={3} />
-                  </View>
+                  </Animated.View>
                 </View>
               </View>
             </Pressable>
