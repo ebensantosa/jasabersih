@@ -185,13 +185,6 @@ export default function Home() {
                 />
 
                 <View className="flex-row items-center gap-3">
-                  {ctaImageUrl ? (
-                    <Image
-                      source={{ uri: ctaImageUrl }}
-                      style={{ width: 56, height: 56, borderRadius: 12 }}
-                      contentFit="cover"
-                    />
-                  ) : null}
                   <View className="flex-1">
                     <View className="flex-row items-center gap-1.5">
                       <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
@@ -203,19 +196,27 @@ export default function Home() {
                       Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
                     </Text>
                   </View>
-                  <Animated.View
-                    style={{
-                      backgroundColor: '#1D4ED8',
-                      height: 36,
-                      width: 36,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 18,
-                      transform: ctaAnimated ? [{ scale: pulse }] : [],
-                    }}
-                  >
-                    <ChevronRight color="white" size={18} strokeWidth={3} />
-                  </Animated.View>
+                  {ctaImageUrl ? (
+                    <Image
+                      source={{ uri: ctaImageUrl }}
+                      style={{ width: 48, height: 48 }}
+                      contentFit="contain"
+                    />
+                  ) : (
+                    <Animated.View
+                      style={{
+                        backgroundColor: '#1D4ED8',
+                        height: 36,
+                        width: 36,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 18,
+                        transform: ctaAnimated ? [{ scale: pulse }] : [],
+                      }}
+                    >
+                      <ChevronRight color="white" size={18} strokeWidth={3} />
+                    </Animated.View>
+                  )}
                 </View>
               </View>
             </Pressable>
