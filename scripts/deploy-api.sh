@@ -32,9 +32,9 @@ echo "==> [4/6] prisma generate"
 cd "$API_DIR"
 "$REPO_DIR/node_modules/.bin/prisma" generate 2>&1 | tail -5 || { echo "FAIL: prisma generate"; exit 1; }
 
-echo "==> [5/6] build via root nest CLI"
+echo "==> [5/6] build via root nest CLI (clean tsbuildinfo too)"
 cd "$API_DIR"
-rm -rf dist
+rm -rf dist tsconfig.tsbuildinfo
 "$REPO_DIR/node_modules/.bin/nest" build || { echo "FAIL: nest build"; exit 1; }
 
 if [ ! -f dist/main.js ]; then
