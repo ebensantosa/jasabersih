@@ -123,6 +123,21 @@ export default function RootLayout() {
     fetchUser,
   ]);
 
+  // Auto re-sync when access token changes (login / refresh).
+  // Prevents stale empty UI after login: addresses/bookings/wallet/user
+  // are immediately refetched once tokens are available.
+  const accessToken = useAuthStore((s) => s.tokens?.accessToken);
+  useEffect(() => {
+    if (!accessToken) return;
+    void fetchUser().then((profile) => {
+      if (!profile) return;
+      void syncAddresses();
+      void syncBookings();
+      void syncWallet();
+      void registerForPushAsync().catch(() => {});
+    });
+  }, [accessToken, fetchUser, syncAddresses, syncBookings, syncWallet]);
+
   // Notification tap → deep link
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((res) => {
