@@ -25,6 +25,8 @@ const HINT: Record<string, string> = {
   'feature.max_addresses': 'Max alamat tersimpan per user.',
   'hero.subtitle': 'Subtitle di home hero.',
   'hero.cta_label': 'CTA button label di hero.',
+  'home.cta_image_url': 'Gambar/GIF icon di card "Bersih Full Custom" di home. Recommended ukuran 112×112 atau persegi. Support GIF animated.',
+  'home.cta_animated': 'Aktifkan animasi pulse di tombol panah CTA (true/false).',
   'app.play_store_url': 'URL Google Play Store (https://play.google.com/store/apps/details?id=...). Dipakai di referral landing & banner download.',
   'app.app_store_url': 'URL Apple App Store (https://apps.apple.com/...). Dipakai di referral landing & banner download.',
   'app.deep_link_scheme': 'Deep link scheme untuk auto-open app dari share link. Contoh: jasabersih://referral (jangan ganti kecuali tahu yang dilakukan).',
@@ -171,7 +173,7 @@ function ImageUploadField({ value, onChange, folder }: { value: string; onChange
       />
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+        accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) void pickAndUpload(f); }}
         className="text-xs"
       />
