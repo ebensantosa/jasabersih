@@ -133,11 +133,16 @@ export class AdminWithdrawalsController {
       if (!ba[0]?.is_verified) throw new BadRequestException('Rekening belum terverifikasi. Verifikasi dulu atau lakukan transfer manual.');
     }
 
+    // Hitung transfer amount setelah fee (kalau cleaner yang bayar)
+    const feeRows = await this.prisma.$queryRaw<{ fee: number | null }[]>`SELECT fee FROM withdrawals WHERE id = ${id}::uuid`;
+    const fee = Number(feeRows[0]?.fee ?? 0);
+    const transferAmount = Number(w.amount) - fee; // kalau fee=0 (owner pays), transfer = full
+
     const idempKey = w.flip_idempotency_key ?? `WD-ADMIN-${id.slice(0, 8)}-${Date.now()}`;
     let result: any;
     try {
       result = await this.flip.createDisbursement({
-        amount: Number(w.amount),
+        amount: transferAmount,
         bankCode: w.destination_bank_code,
         accountNumber: w.destination_account_number,
         accountHolderName: w.destination_account_name,

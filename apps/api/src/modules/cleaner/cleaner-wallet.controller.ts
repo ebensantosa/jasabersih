@@ -32,11 +32,12 @@ export class CleanerWalletController {
     private readonly flip: FlipService,
   ) {}
 
-  private async getCfg(): Promise<{ minAmount: number; maxDaily: number; cooldownHours: number; autoApproveThreshold: number; feePayer: 'owner' | 'cleaner' }> {
+  private async getCfg(): Promise<{ minAmount: number; maxDaily: number; cooldownHours: number; autoApproveThreshold: number; feePayer: 'owner' | 'cleaner'; flipFeeVa: number; flipFeeEwallet: number }> {
     const rows = await this.prisma.$queryRaw<{ key: string; value: unknown }[]>`
       SELECT key, value FROM app_config WHERE key IN
         ('withdrawal.min_amount', 'withdrawal.max_daily', 'withdrawal.cooldown_hours',
          'withdrawal.auto_approve_threshold', 'withdrawal.fee_payer',
+         'withdrawal.flip_fee_va', 'withdrawal.flip_fee_ewallet',
          'cleaner.withdraw_min_amount', 'cleaner.withdraw_max_per_day', 'feature.min_withdrawal')
     `;
     const m = new Map(rows.map((r) => [r.key, r.value]));
@@ -51,11 +52,19 @@ export class CleanerWalletController {
     };
     return {
       minAmount: num('withdrawal.min_amount', num('cleaner.withdraw_min_amount', num('feature.min_withdrawal', 50000))),
-      maxDaily: num('withdrawal.max_daily', 2000000),
+      maxDaily: num('withdrawal.max_daily', 10000000),
       cooldownHours: num('withdrawal.cooldown_hours', 4),
-      autoApproveThreshold: num('withdrawal.auto_approve_threshold', 500000),
-      feePayer: (str('withdrawal.fee_payer', 'owner') === 'cleaner' ? 'cleaner' : 'owner'),
+      autoApproveThreshold: num('withdrawal.auto_approve_threshold', 2000000),
+      feePayer: (str('withdrawal.fee_payer', 'cleaner') === 'cleaner' ? 'cleaner' : 'owner'),
+      flipFeeVa: num('withdrawal.flip_fee_va', 2500),
+      flipFeeEwallet: num('withdrawal.flip_fee_ewallet', 4000),
     };
+  }
+
+  // Helper: fee Flip berdasarkan bank/wallet code
+  private getFlipFee(bankCode: string, cfg: { flipFeeVa: number; flipFeeEwallet: number }): number {
+    const ewallets = ['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'];
+    return ewallets.includes(bankCode.toLowerCase()) ? cfg.flipFeeEwallet : cfg.flipFeeVa;
   }
 
   // GET /v1/cleaner/wallet — saldo + ledger 20 entry terakhir
@@ -182,7 +191,7 @@ export class CleanerWalletController {
     }
 
     // KYC + saldo (di dalam tx supaya consistent)
-    const wid = await this.prisma.$transaction(async (tx) => {
+    const txResult = await this.prisma.$transaction(async (tx) => {
       const profile = await tx.$queryRaw<{ kyc_status: string | null }[]>`SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1`;
       if (profile[0]?.kyc_status !== 'approved') {
         throw new ForbiddenException('KYC belum disetujui. Selesaikan verifikasi dulu.');
@@ -230,25 +239,39 @@ export class CleanerWalletController {
         throw new BadRequestException('Info rekening tidak lengkap. Tambah/pilih rekening terverifikasi.');
       }
 
+      // Hitung fee Flip + amount yang ke cleaner
+      const flipFee = this.getFlipFee(bankCode, cfg);
+      const transferAmount = cfg.feePayer === 'cleaner' ? body.amount - flipFee : body.amount;
+      if (cfg.feePayer === 'cleaner' && transferAmount < 10000) {
+        throw new BadRequestException(`Setelah dipotong fee Flip Rp ${flipFee.toLocaleString('id-ID')}, sisa Rp ${transferAmount.toLocaleString('id-ID')} di bawah minimum transfer Flip (Rp 10.000). Tambah jumlah penarikan.`);
+      }
+
       const idempKey = `WD-${user.id.slice(0, 8)}-${Date.now()}`;
       const inserted = await tx.$queryRaw<{ id: string }[]>`
         INSERT INTO withdrawals (
-          user_id, amount, destination_type, destination_bank_code, destination_account_number,
+          user_id, amount, fee, destination_type, destination_bank_code, destination_account_number,
           destination_account_name, status, review_status, bank_account_id, flip_idempotency_key
         ) VALUES (
-          ${user.id}::uuid, ${body.amount}::bigint, 'bank', ${bankCode}, ${accountNumber},
+          ${user.id}::uuid, ${body.amount}::bigint, ${cfg.feePayer === 'cleaner' ? flipFee : 0}::bigint, 'bank', ${bankCode}, ${accountNumber},
           ${accountName}, 'pending', 'pending', ${bankAccountId}::uuid, ${idempKey}
         ) RETURNING id
       `;
       const id = inserted[0]!.id;
 
-      // Hold saldo (PENDING ledger entry)
+      // Hold saldo full body.amount (termasuk fee kalau cleaner yang bayar)
       await tx.$executeRaw`
-        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
-        VALUES (${user.id}::uuid, 'withdrawal', ${body.amount}::bigint, 'withdrawal', ${id}::uuid, 'PENDING', 'Hold for withdrawal request')
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description, metadata)
+        VALUES (
+          ${user.id}::uuid, 'withdrawal', ${body.amount}::bigint, 'withdrawal', ${id}::uuid, 'PENDING',
+          ${cfg.feePayer === 'cleaner' ? `Hold ${body.amount} (transfer ${transferAmount} + fee ${flipFee})` : 'Hold for withdrawal request'},
+          ${JSON.stringify({ feePayer: cfg.feePayer, flipFee, transferAmount })}::jsonb
+        )
       `;
-      return id;
+      return { id, transferAmount, flipFee };
     });
+    const wid = txResult.id;
+    const transferAmount = txResult.transferAmount;
+    const flipFee = txResult.flipFee;
 
     // Auto-disburse kalau eligible (di luar tx — Flip API call bisa lama)
     const eligible = !!body.bankAccountId && body.amount <= cfg.autoApproveThreshold;
@@ -261,7 +284,7 @@ export class CleanerWalletController {
           SELECT flip_idempotency_key FROM withdrawals WHERE id = ${wid}::uuid
         `;
         const result = await this.flip.createDisbursement({
-          amount: body.amount,
+          amount: transferAmount,
           bankCode: ba[0]!.bank_code,
           accountNumber: ba[0]!.account_number,
           accountHolderName: ba[0]!.account_holder_name,
@@ -277,7 +300,7 @@ export class CleanerWalletController {
                  reviewed_at = NOW()
            WHERE id = ${wid}::uuid
         `;
-        return { id: wid, amount: body.amount, status: 'processing', autoDisburse: true, flipId };
+        return { id: wid, amount: body.amount, transferAmount, fee: flipFee, status: 'processing', autoDisburse: true, flipId };
       } catch (e: any) {
         this.log.error(`Auto-disburse failed for withdrawal ${wid}: ${e?.message ?? e}`);
         // Mark as failed + reverse hold
@@ -296,7 +319,7 @@ export class CleanerWalletController {
       }
     }
 
-    return { id: wid, amount: body.amount, status: 'pending', autoDisburse: false, message: 'Penarikan menunggu approval admin (jumlah di atas threshold auto-approve).' };
+    return { id: wid, amount: body.amount, transferAmount, fee: flipFee, status: 'pending', autoDisburse: false, message: 'Penarikan menunggu approval admin (jumlah di atas threshold auto-approve).' };
   }
 
   // GET /v1/cleaner/leaderboard?month=YYYY-MM — top 5 cleaner bulan ini + posisi user
