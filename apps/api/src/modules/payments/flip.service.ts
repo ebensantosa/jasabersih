@@ -153,9 +153,17 @@ export class FlipService {
           headers: { Authorization: this.authHeader(c.secretKey) },
         });
         const json: any = await res.json().catch(() => ({}));
-        this.log.log(`flip get-bill-detail [${path}] status=${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
-        if (res.ok && !json?.code && (json?.bill_payment || json?.link_id)) {
-          return json;
+        this.log.log(`flip get-bill-detail [${path}] status=${res.status}: ${JSON.stringify(json).slice(0, 500)}`);
+        if (!res.ok || json?.code) continue;
+        // Single-bill response
+        if (json?.bill_payment || json?.qr_code_data) return json;
+        // List response: filter by link_id
+        if (Array.isArray(json?.data)) {
+          const found = json.data.find((b: any) => String(b?.link_id) === String(linkId));
+          if (found) {
+            this.log.log(`flip get-bill-detail: found match in list for link_id=${linkId}: ${JSON.stringify(found).slice(0, 500)}`);
+            return found;
+          }
         }
       } catch (e: any) {
         this.log.warn(`getBillDetail path ${path} failed: ${e?.message ?? e}`);
