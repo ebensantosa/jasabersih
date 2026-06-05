@@ -505,18 +505,37 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
     );
   }
 
-  // Fallback: QRIS without raw string OR any method without VA — embed Flip's
-  // hosted checkout in WebView (in-app, no external browser).
+  // Fallback: QRIS/method without native instructions data → hosted Flip page.
+  // - Web: iframe diblok Flip (X-Frame-Options). Buka di tab baru.
+  // - Mobile: WebView native bekerja normal.
   if (data.paymentUrl) {
+    if (Platform.OS === 'web') {
+      return (
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+          {CountdownBanner}
+          <View className="items-center rounded-2xl bg-white p-6">
+            <Text className="font-bold text-base text-ink-900">Lanjutkan Pembayaran di Flip</Text>
+            <Text className="font-sans text-center mt-2 text-[12px] text-ink-500 leading-5">
+              Halaman pembayaran Flip akan terbuka di tab baru. Selesaikan transaksi di sana, lalu kembali ke tab ini — status pembayaran akan otomatis ter-update.
+            </Text>
+            <Pressable
+              onPress={() => {
+                if (typeof window !== 'undefined') window.open(data.paymentUrl!, '_blank', 'noopener,noreferrer');
+              }}
+              className="mt-5 bg-blue-600 rounded-xl px-6 py-3 flex-row items-center gap-2"
+            >
+              <Text className="text-white font-bold text-sm">🔗 Buka Halaman Pembayaran</Text>
+            </Pressable>
+            <Text className="font-sans text-center mt-4 text-[10px] text-ink-400 break-all" selectable>
+              {data.paymentUrl}
+            </Text>
+          </View>
+          <PollingHint />
+        </ScrollView>
+      );
+    }
     return (
-      <>
-        {Platform.OS === 'web' ? (
-          // @ts-expect-error host elem
-          <iframe src={data.paymentUrl} style={{ flex: 1, border: 'none', width: '100%', height: '100%' } as any} title="Flip QRIS" />
-        ) : (
-          <WebView source={{ uri: data.paymentUrl }} startInLoadingState style={{ flex: 1 }} />
-        )}
-      </>
+      <WebView source={{ uri: data.paymentUrl }} startInLoadingState style={{ flex: 1 }} />
     );
   }
 
