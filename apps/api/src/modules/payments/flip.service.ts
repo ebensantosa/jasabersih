@@ -94,11 +94,13 @@ export class FlipService {
     const form = new URLSearchParams();
     form.set('title', input.title);
     form.set('type', 'SINGLE');
+    form.set('step', 'direct_api'); // Flip v3 docs: required untuk direct mode (skip hosted picker)
     form.set('amount', String(input.amount));
     form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
-    if (input.redirectUrl) form.set('redirect_url', input.redirectUrl); // omit kalau kosong (Flip v3 reject empty string)
+    if (input.redirectUrl) form.set('redirect_url', input.redirectUrl);
     form.set('sender_bank', input.senderBank);
     form.set('sender_bank_type', input.senderBankType);
+    if (input.refId) form.set('reference_id', input.refId);
     if (input.customerName) form.set('sender_name', input.customerName);
     if (input.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.customerEmail) && !input.customerEmail.endsWith('@jasabersih.com')) {
       form.set('sender_email', input.customerEmail);
