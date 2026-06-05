@@ -147,19 +147,49 @@ export default function Home() {
 
             <Pressable
               onPress={() => router.push('/booking/custom')}
-              className="mt-3 flex-row items-center gap-3 rounded-2xl bg-white px-4 py-3"
-              style={{ elevation: 3 }}
+              className="mt-3 overflow-hidden rounded-2xl"
+              style={{ elevation: 6, shadowColor: '#F59E0B', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}
             >
-              <View className="h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
-                <Sparkles color="#1D4ED8" size={20} strokeWidth={2.2} />
-              </View>
-              <View className="flex-1">
-                <Text className="font-extrabold text-sm text-ink-900">Bersih Full Custom</Text>
-                <Text className="font-medium text-[11px] text-ink-500" numberOfLines={1}>
-                  Pilih sendiri layanan & jumlahnya — bayar sesuai pakai
-                </Text>
-              </View>
-              <ChevronRight color="#1D4ED8" size={18} />
+              <LinearGradient
+                colors={['#FBBF24', '#F59E0B', '#EA580C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ padding: 14 }}
+              >
+                {/* Decorative sparkles */}
+                <View style={{ position: 'absolute', top: 8, right: 14, opacity: 0.4 }}>
+                  <Sparkles color="white" size={14} strokeWidth={2.4} />
+                </View>
+                <View style={{ position: 'absolute', bottom: 10, right: 60, opacity: 0.3 }}>
+                  <Sparkles color="white" size={10} strokeWidth={2.4} />
+                </View>
+
+                <View className="flex-row items-center gap-3">
+                  <View
+                    style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}
+                    className="h-12 w-12 items-center justify-center rounded-2xl"
+                  >
+                    <Sparkles color="white" size={24} strokeWidth={2.4} />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="font-extrabold text-base text-white">Bersih Full Custom</Text>
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} className="rounded-full px-2 py-0.5">
+                        <Text className="font-bold text-[9px] text-white">HEMAT</Text>
+                      </View>
+                    </View>
+                    <Text className="font-medium mt-0.5 text-[11px] text-white/90" numberOfLines={2}>
+                      Pilih layanan + add-on sendiri · bayar sesuai pakai
+                    </Text>
+                  </View>
+                  <View
+                    style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}
+                    className="h-8 w-8 items-center justify-center rounded-full"
+                  >
+                    <ChevronRight color="white" size={18} strokeWidth={3} />
+                  </View>
+                </View>
+              </LinearGradient>
             </Pressable>
           </View>
         </SafeAreaView>
