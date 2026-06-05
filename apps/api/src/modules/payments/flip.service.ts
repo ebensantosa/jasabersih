@@ -117,10 +117,11 @@ export class FlipService {
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
       this.log.error(`flip direct-bill failed (status=${res.status}): ${JSON.stringify(json)}`);
-      const detailMsg = json?.message
-        ?? (Array.isArray(json?.errors) ? json.errors.map((e: any) => `${e?.attribute ?? ''}: ${e?.message ?? JSON.stringify(e)}`).join('; ') : null)
-        ?? json?.error
-        ?? `Flip ${res.status}`;
+      const stringifyMsg = (m: any): string => typeof m === 'string' ? m : (m == null ? '' : JSON.stringify(m));
+      const detailMsg = stringifyMsg(json?.message)
+        || (Array.isArray(json?.errors) ? json.errors.map((e: any) => `${e?.attribute ?? ''}: ${stringifyMsg(e?.message) || JSON.stringify(e)}`).join('; ') : '')
+        || stringifyMsg(json?.error)
+        || `Flip ${res.status}`;
       throw new BadRequestException(`Flip: ${detailMsg}`);
     }
     return json;

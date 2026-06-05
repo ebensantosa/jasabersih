@@ -154,17 +154,35 @@ export class PaymentsController {
     const paymentId = inserted[0]!.id;
 
     try {
-      const result = await this.flip.createDirectBill({
-        title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
-        amount,
-        refId: merchantRef,
-        customerName: u.name ?? 'JasaBersih Customer',
-        customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
-        customerPhone: u.phone,
-        redirectUrl: `https://jasabersih.com/booking/${b.id}`,
-        senderBank: body.senderBank,
-        senderBankType: body.senderBankType,
-      });
+      let result: any;
+      let fellBackToCheckout = false;
+      try {
+        result = await this.flip.createDirectBill({
+          title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
+          amount,
+          refId: merchantRef,
+          customerName: u.name ?? 'JasaBersih Customer',
+          customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
+          customerPhone: u.phone,
+          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
+          senderBank: body.senderBank,
+          senderBankType: body.senderBankType,
+        });
+      } catch (directErr: any) {
+        // Fallback: kalau direct mode error (Flip API changed), pakai hosted checkout page.
+        // Customer akan pilih bank di Flip page. UX sedikit beda tapi tetap jalan.
+        this.flipLog.warn(`createDirect failed (${directErr?.message ?? 'unknown'}), falling back to hosted checkout`);
+        result = await this.flip.createBill({
+          title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
+          amount,
+          refId: merchantRef,
+          customerName: u.name ?? 'JasaBersih Customer',
+          customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
+          customerPhone: u.phone,
+          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
+        });
+        fellBackToCheckout = true;
+      }
 
       const billPayment = result?.bill_payment ?? {};
       const receiverAcc = billPayment?.receiver_bank_account ?? {};
@@ -198,6 +216,7 @@ export class PaymentsController {
         paymentUrl: checkoutUrl,
         expiredAt,
         linkId: result.link_id,
+        fellBackToCheckout,
       };
     } catch (e) {
       await this.prisma.$executeRaw`UPDATE payments SET status = 'failed' WHERE id = ${paymentId}::uuid`;
