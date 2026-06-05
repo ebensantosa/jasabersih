@@ -60,16 +60,19 @@ export class FlipService {
     const baseUrl = isProd
       ? 'https://bigflip.id/api/v3'
       : 'https://bigflip.id/big_sandbox_api/v2';
+    const secretKey = String(map.get('payment.flip_secret_key') ?? '');
     const creds: Creds = {
       baseUrl,
-      secretKey: String(map.get('payment.flip_secret_key') ?? ''),
+      secretKey,
       validationToken: String(map.get('payment.flip_validation_token') ?? ''),
       enabled: Boolean(map.get('payment.flip_enabled')),
     };
+    this.log.log(`Flip creds loaded: mode=${isProd ? 'production' : 'sandbox'} enabled=${creds.enabled} secret_first10=${secretKey.slice(0, 10)} secret_len=${secretKey.length}`);
     this.cached = creds;
     this.cachedAt = Date.now();
     return creds;
   }
+
 
   async isConfigured(): Promise<boolean> {
     const c = await this.getCreds();
