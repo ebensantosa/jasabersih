@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Logger, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
@@ -6,16 +6,20 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
+import { FlipService } from '../payments/flip.service';
 
 @ApiTags('admin-withdrawals')
 @ApiBearerAuth()
 @UseGuards(AdminJwtGuard, AdminRbacGuard)
 @Controller('admin/withdrawals')
 export class AdminWithdrawalsController {
+  private readonly log = new Logger(AdminWithdrawalsController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
     private readonly push: PushService,
+    private readonly flip: FlipService,
   ) {}
 
   private async getUserAndAmount(id: string) {
@@ -92,6 +96,79 @@ export class AdminWithdrawalsController {
       void this.push.send({ userId: w.user_id, channel: 'wallet', title: 'Penarikan disetujui', body: `Rp ${Number(w.amount).toLocaleString('id-ID')} sudah ditransfer. Ref: ${body.bankTransferRef}`, data: { type: 'withdrawal_approved', withdrawalId: id } }).catch(() => {});
     }
     return { ok: true };
+  }
+
+  // Approve via Flip — admin trigger auto-disburse, Flip yang transfer.
+  // Cocok untuk withdrawal yang masuk antrian karena di atas threshold tapi rekening udah verified.
+  @Post(':id/approve-flip')
+  @Roles('super_admin', 'finance')
+  async approveViaFlip(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const rows = await this.prisma.$queryRaw<{
+      id: string; user_id: string; amount: number; status: string; review_status: string;
+      destination_bank_code: string | null; destination_account_number: string | null;
+      destination_account_name: string | null; bank_account_id: string | null;
+      flip_disbursement_id: string | null; flip_idempotency_key: string | null;
+    }[]>`
+      SELECT id, user_id, amount, status, review_status,
+             destination_bank_code, destination_account_number, destination_account_name,
+             bank_account_id, flip_disbursement_id, flip_idempotency_key
+        FROM withdrawals WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const w = rows[0];
+    if (!w) throw new NotFoundException('Withdrawal tidak ditemukan.');
+    if (w.status !== 'pending') throw new BadRequestException(`Withdrawal status ${w.status}, tidak bisa di-approve via Flip.`);
+    if (w.flip_disbursement_id) throw new BadRequestException('Withdrawal sudah pernah dikirim ke Flip.');
+    if (!w.destination_bank_code || !w.destination_account_number || !w.destination_account_name) {
+      throw new BadRequestException('Info rekening tidak lengkap.');
+    }
+    // Kalau pakai bank_account_id, pastikan verified
+    if (w.bank_account_id) {
+      const ba = await this.prisma.$queryRaw<{ is_verified: boolean }[]>`
+        SELECT is_verified FROM cleaner_bank_accounts WHERE id = ${w.bank_account_id}::uuid LIMIT 1
+      `;
+      if (!ba[0]?.is_verified) throw new BadRequestException('Rekening belum terverifikasi. Verifikasi dulu atau lakukan transfer manual.');
+    }
+
+    const idempKey = w.flip_idempotency_key ?? `WD-ADMIN-${id.slice(0, 8)}-${Date.now()}`;
+    let result: any;
+    try {
+      result = await this.flip.createDisbursement({
+        amount: Number(w.amount),
+        bankCode: w.destination_bank_code,
+        accountNumber: w.destination_account_number,
+        accountHolderName: w.destination_account_name,
+        remark: 'JasaBersih withdrawal (admin-approved)',
+        idempotencyKey: idempKey,
+      });
+    } catch (e: any) {
+      this.log.error(`approve-flip failed for ${id}: ${e?.message ?? e}`);
+      throw new BadRequestException(`Flip disbursement gagal: ${e?.message ?? 'Coba lagi atau pakai approve manual'}`);
+    }
+
+    const flipId = String(result?.id ?? '');
+    await this.prisma.$executeRaw`
+      UPDATE withdrawals
+         SET flip_disbursement_id = ${flipId},
+             flip_idempotency_key = ${idempKey},
+             status = 'processing',
+             review_status = 'approved',
+             reviewed_by = ${admin.id}::uuid,
+             reviewed_at = NOW()
+       WHERE id = ${id}::uuid
+    `;
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'withdrawal.approve_flip',
+      resourceType: 'withdrawal',
+      resourceId: id,
+      changes: { flip_disbursement_id: flipId, amount: Number(w.amount) },
+      ipAddress: req.ip ?? null,
+    });
+    return { ok: true, status: 'processing', flipDisbursementId: flipId, note: 'Flip lagi proses transfer. Status auto-update via callback.' };
   }
 
   @Post(':id/reject')

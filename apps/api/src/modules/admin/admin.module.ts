@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard } from '../../common/admin-auth';
 import { AuthModule } from '../auth/auth.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { FraudDetectionService } from './fraud-detection.service';
 import { RetentionService } from './retention.service';
 
@@ -26,7 +27,7 @@ import { AdminWithdrawalsController } from './withdrawals-admin.controller';
 import { SystemConfigController } from './system-config.controller';
 
 @Module({
-  imports: [AuthModule, JwtModule.register({}), ScheduleModule.forRoot()],
+  imports: [AuthModule, JwtModule.register({}), ScheduleModule.forRoot(), PaymentsModule],
   controllers: [
     AdminController,
     AdminKycController,
