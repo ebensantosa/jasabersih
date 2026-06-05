@@ -162,6 +162,68 @@ export class FlipService {
     return json as FlipCreateResult;
   }
 
+  // ===== Money Transfer / Disbursement =====
+  // POST /disbursement/bank-account-inquiry — verify pemilik rekening (sync return).
+  async inquiryBankAccount(input: { bankCode: string; accountNumber: string }): Promise<any> {
+    const c = await this.getCreds();
+    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+    const form = new URLSearchParams();
+    form.set('account_number', input.accountNumber);
+    form.set('bank_code', input.bankCode.toLowerCase());
+    form.set('inquiry_key', `INQ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    const res = await fetch(`${c.baseUrl}/disbursement/bank-account-inquiry`, {
+      method: 'POST',
+      headers: {
+        Authorization: this.authHeader(c.secretKey),
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: form.toString(),
+    });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok || json?.code) {
+      this.log.error(`flip inquiry failed (status=${res.status}): ${JSON.stringify(json)}`);
+      throw new BadRequestException(json?.message ?? `Flip inquiry gagal (${res.status})`);
+    }
+    return json; // contains: bank_code, account_number, account_holder, status ("SUCCESS"|...)
+  }
+
+  // POST /disbursement — create transfer keluar.
+  // idempotencyKey wajib unik (kalau Flip nerima dua call dengan key sama, balikin transaksi pertama, gak duplicate).
+  async createDisbursement(input: {
+    amount: number;
+    bankCode: string;
+    accountNumber: string;
+    accountHolderName: string;
+    remark?: string;
+    idempotencyKey: string;
+  }): Promise<any> {
+    const c = await this.getCreds();
+    if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
+    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
+    const form = new URLSearchParams();
+    form.set('account_number', input.accountNumber);
+    form.set('bank_code', input.bankCode.toLowerCase());
+    form.set('amount', String(input.amount));
+    form.set('remark', input.remark ?? 'JasaBersih withdrawal');
+    form.set('recipient_city', '391'); // default Jakarta; Flip akan validate
+    const res = await fetch(`${c.baseUrl}/disbursement`, {
+      method: 'POST',
+      headers: {
+        Authorization: this.authHeader(c.secretKey),
+        'content-type': 'application/x-www-form-urlencoded',
+        'idempotency-key': input.idempotencyKey,
+      },
+      body: form.toString(),
+    });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok || json?.code) {
+      this.log.error(`flip disbursement failed (status=${res.status}): ${JSON.stringify(json)}`);
+      throw new BadRequestException(json?.message ?? `Flip disbursement gagal (${res.status})`);
+    }
+    return json; // contains: id, status ("PENDING"|"DONE"|"FAILED"|"CANCELLED"), timestamp, etc.
+  }
+
   // Flip callbacks: form field `token` must equal our validation_token (string equal).
   async verifyCallbackToken(token: string | undefined): Promise<boolean> {
     if (!token) return false;

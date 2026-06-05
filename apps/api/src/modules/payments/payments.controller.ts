@@ -374,6 +374,107 @@ export class PaymentsController {
     return { ok: true, updated: updates.length };
   }
 
+  // Flip Disbursement callback. Status: PENDING | DONE | CANCELLED | FAILED.
+  @Post('flip/disbursement-callback')
+  async flipDisbursementCallback(@Req() req: Request) {
+    const body: any = req.body ?? {};
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    const hasToken = typeof body.token === 'string' && body.token.length > 0;
+    const hasData = typeof body.data === 'string' && body.data.length > 0;
+    this.flipLog.log(`disbursement callback from ${ip} — token=${hasToken ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${hasData ? body.data.length : 0}`);
+    if (!hasToken && !hasData) { return { ok: true, ping: true }; }
+    if (typeof body.token === 'string' && /^YOUR_VAL/i.test(body.token)) {
+      this.flipLog.log(`disbursement: dashboard test ping — replying OK`);
+      return { ok: true, test: true };
+    }
+    if (!(await this.flip.verifyCallbackToken(body.token))) {
+      this.flipLog.warn(`disbursement token verification FAILED from ${ip}`);
+      throw new BadRequestException('Invalid Flip token');
+    }
+    let data: any;
+    try { data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data; }
+    catch { throw new BadRequestException('Invalid JSON in data'); }
+    if (!data) throw new BadRequestException('data missing');
+
+    const flipId: string | number | undefined = data.id;
+    const status: string = String(data.status ?? '').toUpperCase();
+    if (!flipId) return { ok: false, reason: 'no id' };
+
+    const rows = await this.prisma.$queryRaw<{ id: string; user_id: string; status: string; amount: number }[]>`
+      SELECT id, user_id, status, amount FROM withdrawals WHERE flip_disbursement_id = ${String(flipId)} LIMIT 1
+    `;
+    const w = rows[0];
+    if (!w) {
+      this.flipLog.warn(`disbursement callback: withdrawal not found for flip_id=${flipId} (probably test)`);
+      return { ok: false, reason: 'withdrawal not found' };
+    }
+
+    const next = status === 'DONE' ? 'completed' : status === 'CANCELLED' ? 'canceled' : status === 'FAILED' ? 'failed' : 'processing';
+    const failureReason = next === 'failed' || next === 'canceled' ? String(data.failure_reason ?? data.reason ?? `Flip status ${status}`) : null;
+
+    await this.prisma.$executeRaw`
+      UPDATE withdrawals
+         SET status = ${next},
+             callback_payload = ${JSON.stringify(data)}::jsonb,
+             failure_reason = ${failureReason},
+             processed_at = CASE WHEN ${next} = 'completed' THEN NOW() ELSE processed_at END
+       WHERE id = ${w.id}::uuid
+    `;
+
+    // Kalau gagal/cancel, reverse holding ledger entry agar saldo cleaner balik.
+    if (next === 'failed' || next === 'canceled') {
+      await this.prisma.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
+        VALUES (${w.user_id}::uuid, 'withdrawal', ${-w.amount}::bigint, 'withdrawal_reverse', ${w.id}::uuid, 'CLEARED', 'Reverse: withdrawal ' || ${next})
+      `;
+      // Tutup hold yang PENDING
+      await this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries SET status = 'CLEARED', cleared_at = NOW()
+         WHERE reference_type = 'withdrawal' AND reference_id = ${w.id}::uuid AND status = 'PENDING'
+      `;
+      if (w.user_id) {
+        void this.push.send({
+          userId: w.user_id, channel: 'wallet',
+          title: 'Penarikan gagal',
+          body: `Rp ${Number(w.amount).toLocaleString('id-ID')} dikembalikan ke saldo. Alasan: ${failureReason ?? 'Coba lagi'}.`,
+          data: { type: 'withdrawal_failed', withdrawalId: w.id },
+        }).catch(() => {});
+      }
+    }
+
+    if (next === 'completed') {
+      // Clear hold sebagai final settled
+      await this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries SET status = 'CLEARED', cleared_at = NOW()
+         WHERE reference_type = 'withdrawal' AND reference_id = ${w.id}::uuid AND status = 'PENDING'
+      `;
+      if (w.user_id) {
+        void this.push.send({
+          userId: w.user_id, channel: 'wallet',
+          title: 'Penarikan berhasil',
+          body: `Rp ${Number(w.amount).toLocaleString('id-ID')} sudah ditransfer ke rekening kamu.`,
+          data: { type: 'withdrawal_completed', withdrawalId: w.id },
+        }).catch(() => {});
+      }
+    }
+
+    return { ok: true, status: next };
+  }
+
+  // Flip Bank-Account Inquiry callback. Optional — kita pakai sync inquiry, jadi callback ini cuma audit.
+  @Post('flip/inquiry-callback')
+  async flipInquiryCallback(@Req() req: Request) {
+    const body: any = req.body ?? {};
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    const hasToken = typeof body.token === 'string' && body.token.length > 0;
+    const hasData = typeof body.data === 'string' && body.data.length > 0;
+    this.flipLog.log(`inquiry callback from ${ip} — token=${hasToken ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${hasData ? body.data.length : 0}`);
+    if (!hasToken && !hasData) return { ok: true, ping: true };
+    if (typeof body.token === 'string' && /^YOUR_VAL/i.test(body.token)) return { ok: true, test: true };
+    if (!(await this.flip.verifyCallbackToken(body.token))) throw new BadRequestException('Invalid Flip token');
+    return { ok: true };
+  }
+
   // Public endpoint untuk APK cek status bank sebelum tampilin picker.
   // Bank dengan status 'down' di-disable di UI; 'delayed' tetap aktif dengan warning.
   @Get('bank-health')

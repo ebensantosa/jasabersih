@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { StorageModule } from '../storage/storage.module';
+import { CleanerBankAccountsController } from './cleaner-bank-accounts.controller';
 import { CleanerJobsController } from './cleaner-jobs.controller';
 import { CleanerKycController } from './cleaner-kyc.controller';
 import { CleanerProfileController } from './cleaner-profile.controller';
@@ -12,8 +14,8 @@ import { CleanerScheduleController } from './cleaner-schedule.controller';
 import { WalletClearService } from './wallet-clear.service';
 
 @Module({
-  imports: [AuthModule, StorageModule, NotificationsModule],
-  controllers: [CleanerKycController, CleanerWalletController, CleanerProfileController, CleanerPublicController, CleanerJobsController, CleanerScheduleController],
+  imports: [AuthModule, StorageModule, NotificationsModule, PaymentsModule],
+  controllers: [CleanerKycController, CleanerWalletController, CleanerProfileController, CleanerPublicController, CleanerJobsController, CleanerScheduleController, CleanerBankAccountsController],
   providers: [WalletClearService, CleanerInactivityService],
 })
 export class CleanerModule {}
