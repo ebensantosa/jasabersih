@@ -132,7 +132,23 @@ function PaymentScreen() {
         } catch {}
       }, 4000);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal create pembayaran');
+      const raw = e?.response?.data?.error?.message ?? e?.message ?? 'Gagal create pembayaran';
+      // Convert raw Flip error to user-friendly Indonesian message
+      let friendly = String(raw);
+      if (/IP is not whitelisted/i.test(friendly)) {
+        friendly = 'Layanan pembayaran sedang tidak aktif. Tim kami sudah diberi tahu, mohon coba lagi nanti.';
+      } else if (/401001|Authentication failed/i.test(friendly)) {
+        friendly = 'Layanan pembayaran sementara bermasalah. Mohon coba beberapa menit lagi.';
+      } else if (/VALIDATION_ERROR/i.test(friendly)) {
+        friendly = 'Data pembayaran tidak valid. Coba pilih metode lain atau hubungi CS.';
+      } else if (friendly.startsWith('Flip: {')) {
+        // Fallback: parse JSON, ambil .message kalau ada
+        try {
+          const inner = JSON.parse(friendly.replace(/^Flip:\s*/, ''));
+          friendly = inner?.message ?? inner?.error?.message ?? 'Pembayaran sementara bermasalah. Coba lagi nanti.';
+        } catch { friendly = 'Pembayaran sementara bermasalah. Coba lagi nanti.'; }
+      }
+      toast.error(friendly);
     } finally {
       setCreating(false);
       setPickingCode(null);
