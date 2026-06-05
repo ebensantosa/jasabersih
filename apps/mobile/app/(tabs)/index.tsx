@@ -240,11 +240,11 @@ export default function Home() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ marginTop: -20 }}
+        style={{ marginTop: -40 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Service grid 4 col */}
-        <View className="mx-4 mt-3 rounded-2xl bg-white px-2 py-3">
+        <View className="mx-4 rounded-2xl bg-white px-2 py-3">
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
               const isKonsul = s.code === 'konsultasi';
