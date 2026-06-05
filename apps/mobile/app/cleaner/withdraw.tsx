@@ -208,6 +208,7 @@ function Withdraw() {
 
           {/* Pilih metode (legacy fallback — kalau gak pilih dari verified, akan masuk admin queue) */}
           {selectedBankAccountId === null && (
+          <>
           <Section title="Pilih Tujuan">
             <Text className="font-semibold mb-2 text-[10px] uppercase tracking-wider text-ink-500">
               Bank
@@ -276,6 +277,7 @@ function Withdraw() {
               </Field>
             </View>
           </Section>
+          </>
           )}
 
           {/* Jumlah */}
