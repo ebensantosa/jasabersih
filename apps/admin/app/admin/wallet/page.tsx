@@ -94,7 +94,7 @@ export default function WalletPage() {
                     {tab === 'rejected' && <td className="px-4 py-3 text-xs text-red-700">{w.reviewNote ?? w.failureReason ?? '—'}</td>}
                     {tab === 'pending' && (
                       <td className="px-4 py-3 text-right space-x-1">
-                        <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)} title="Trigger auto-disburse (kalau rekening verified)">Auto</Button>
+                        <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)}>Auto</Button>
                         <Button size="sm" variant="success" onClick={() => setApproving(w)} icon={<Check size={12} />}>Manual</Button>
                         <Button size="sm" variant="ghost" onClick={() => setRejecting(w)} icon={<X size={12} />}>Reject</Button>
                       </td>
