@@ -33,14 +33,17 @@ const VA_METHODS: {
   bg: string;
   fg: string;
   label: string;
+  logo: string;
 }[] = [
-  { code: 'bca',     name: 'BCA Virtual Account',         bg: '#0060AF', fg: '#FFFFFF', label: 'BCA' },
-  { code: 'bni',     name: 'BNI Virtual Account',         bg: '#F36F21', fg: '#FFFFFF', label: 'BNI' },
-  { code: 'bri',     name: 'BRI Virtual Account',         bg: '#00529C', fg: '#FFFFFF', label: 'BRI' },
-  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#003D79', fg: '#FFD200', label: 'mandiri' },
-  { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#7A1A1A', fg: '#FFFFFF', label: 'CIMB' },
-  { code: 'permata', name: 'Permata Virtual Account',     bg: '#00853F', fg: '#FFFFFF', label: 'Permata' },
+  { code: 'bca',     name: 'BCA Virtual Account',         bg: '#FFFFFF', fg: '#0060AF', label: 'BCA',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/240px-Bank_Central_Asia.svg.png' },
+  { code: 'bni',     name: 'BNI Virtual Account',         bg: '#FFFFFF', fg: '#F36F21', label: 'BNI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/BNI_logo.svg/240px-BNI_logo.svg.png' },
+  { code: 'bri',     name: 'BRI Virtual Account',         bg: '#FFFFFF', fg: '#00529C', label: 'BRI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/BANK_BRI_logo.svg/240px-BANK_BRI_logo.svg.png' },
+  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#FFFFFF', fg: '#003D79', label: 'mandiri', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/240px-Bank_Mandiri_logo_2016.svg.png' },
+  { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#FFFFFF', fg: '#7A1A1A', label: 'CIMB',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/CIMB_Niaga_logo.svg/240px-CIMB_Niaga_logo.svg.png' },
+  { code: 'permata', name: 'Permata Virtual Account',     bg: '#FFFFFF', fg: '#00853F', label: 'Permata', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/PermataBank.svg/240px-PermataBank.svg.png' },
 ];
+
+const QRIS_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/QRIS_logo.svg/240px-QRIS_logo.svg.png';
 
 function PaymentScreen() {
   const router = useRouter();
@@ -246,8 +249,8 @@ function MethodPicker({
           onPress={() => onPick('qris', 'wallet_account')}
           className="flex-row items-center gap-3 rounded-2xl bg-white p-4"
         >
-          <View className="h-12 w-14 items-center justify-center rounded-xl" style={{ backgroundColor: '#ED1C24' }}>
-            <Text className="font-bold text-xs text-white">QRIS</Text>
+          <View className="h-12 w-14 items-center justify-center rounded-xl bg-white border border-ink-100">
+            <Image source={{ uri: QRIS_LOGO }} style={{ width: 40, height: 28 }} contentFit="contain" />
           </View>
           <View className="flex-1">
             <Text className="font-bold text-sm text-ink-900">QRIS — Semua e-wallet & m-banking</Text>
@@ -266,16 +269,8 @@ function MethodPicker({
               onPress={() => onPick(m.code, 'virtual_account')}
               className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''}`}
             >
-              <View
-                className="h-10 w-14 items-center justify-center rounded"
-                style={{ backgroundColor: m.bg }}
-              >
-                <Text
-                  className="font-bold text-[11px]"
-                  style={{ color: m.fg, textTransform: m.label === 'mandiri' ? 'lowercase' : 'uppercase' }}
-                >
-                  {m.label}
-                </Text>
+              <View className="h-10 w-14 items-center justify-center rounded bg-white border border-ink-100">
+                <Image source={{ uri: m.logo }} style={{ width: 44, height: 28 }} contentFit="contain" />
               </View>
               <Text className="flex-1 font-semibold text-sm text-ink-900">{m.name}</Text>
               <Building2 color="#94A3B8" size={16} />
