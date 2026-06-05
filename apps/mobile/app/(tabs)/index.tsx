@@ -186,15 +186,13 @@ export default function Home() {
 
                 <View className="flex-row items-center gap-3">
                   <View className="flex-1">
-                    <View className="flex-row items-center gap-1.5">
-                      <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
-                      <View className="rounded bg-amber-100 px-1.5 py-0.5">
-                        <Text className="font-bold text-[9px] text-amber-700">PREMIUM</Text>
-                      </View>
-                    </View>
-                    <Text className="font-medium mt-1 text-[11px] text-ink-500" numberOfLines={1}>
+                    <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
+                    <Text className="font-medium mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>
                       Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
                     </Text>
+                    <View className="mt-2 self-start rounded-full bg-brand-600 px-3 py-1">
+                      <Text className="font-extrabold text-[10px] text-white">PESAN SEKARANG ›</Text>
+                    </View>
                   </View>
                   {ctaImageUrl ? (
                     <Image
@@ -332,10 +330,11 @@ export default function Home() {
                     }}
                     className="overflow-hidden rounded-2xl bg-white"
                   >
-                    <View className="relative h-28 w-full bg-ink-100">
+                    <View className="relative h-32 w-full bg-ink-100">
                       <Image source={s.imageUrl} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                       <LinearGradient
-                        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)']}
+                        colors={['rgba(15,23,42,0)', 'rgba(15,23,42,0.35)', 'rgba(15,23,42,0.92)']}
+                        locations={[0, 0.45, 1]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
                         style={{ position: 'absolute', inset: 0 }}
@@ -350,8 +349,14 @@ export default function Home() {
                           </View>
                         )}
                       </View>
-                      <View className="absolute bottom-2 left-2 right-2">
-                        <Text className="font-extrabold text-[14px] leading-tight text-white" numberOfLines={1}>{s.name}</Text>
+                      <View className="absolute bottom-2.5 left-2.5 right-2.5">
+                        <Text
+                          className="font-extrabold text-[15px] leading-tight text-white"
+                          numberOfLines={1}
+                          style={{ textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}
+                        >
+                          {s.name}
+                        </Text>
                       </View>
                     </View>
                     <View className="p-2.5">
