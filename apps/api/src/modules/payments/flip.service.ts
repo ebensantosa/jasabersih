@@ -99,7 +99,7 @@ export class FlipService {
     form.set('redirect_url', input.redirectUrl ?? '');
     form.set('is_address_required', '0');
     form.set('is_phone_number_required', '0');
-    form.set('step', '3'); // 3 = direct (skip method picker)
+    // Note: Flip v3 dropped numeric `step` param. Direct VA/QRIS handled by sender_bank + sender_bank_type.
     form.set('sender_bank', input.senderBank);
     form.set('sender_bank_type', input.senderBankType);
     if (input.customerName) form.set('sender_name', input.customerName);
@@ -140,7 +140,8 @@ export class FlipService {
     form.set('redirect_url', input.redirectUrl ?? '');
     form.set('is_address_required', '0');
     form.set('is_phone_number_required', '0');
-    form.set('step', '2'); // 2 = customer chooses payment method on Flip page
+    // Note: Flip v3 dropped numeric `step` param. Omit → defaults to "checkout"
+    // (customer picks payment method on Flip's hosted page) which is what we want.
     if (input.customerName) form.set('sender_name', input.customerName);
     if (input.customerEmail) form.set('sender_email', input.customerEmail);
     if (input.customerPhone) form.set('sender_phone_number', input.customerPhone);
