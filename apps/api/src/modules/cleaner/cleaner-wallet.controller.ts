@@ -188,15 +188,25 @@ export class CleanerWalletController {
         throw new ForbiddenException('KYC belum disetujui. Selesaikan verifikasi dulu.');
       }
 
-      const bal = await tx.$queryRaw<{ earnings: number | null; withdrawn: number | null }[]>`
+      // PENTING: cuma earnings dengan status='CLEARED' yang bisa ditarik.
+      // PENDING earnings = masih escrow 24h / nunggu customer confirm.
+      const bal = await tx.$queryRaw<{ available: number | null; pending: number | null; withdrawn: number | null }[]>`
         SELECT
-          COALESCE(SUM(CASE WHEN account_type = 'earnings' THEN amount ELSE 0 END), 0) AS earnings,
+          COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS available,
+          COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'PENDING' THEN amount ELSE 0 END), 0) AS pending,
           COALESCE(SUM(CASE WHEN account_type = 'withdrawal' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS withdrawn
         FROM wallet_ledger_entries WHERE user_id = ${user.id}::uuid
       `;
-      const balance = Number(bal[0]?.earnings ?? 0) - Number(bal[0]?.withdrawn ?? 0);
+      const available = Number(bal[0]?.available ?? 0);
+      const pending = Number(bal[0]?.pending ?? 0);
+      const withdrawn = Number(bal[0]?.withdrawn ?? 0);
+      const balance = available - withdrawn; // yang siap dicairkan
+
       if (balance < body.amount) {
-        throw new ForbiddenException(`Saldo tidak cukup. Saldo: Rp ${balance.toLocaleString('id-ID')}.`);
+        const msg = pending > 0
+          ? `Saldo siap tarik: Rp ${balance.toLocaleString('id-ID')}. Rp ${pending.toLocaleString('id-ID')} masih menunggu konfirmasi customer / 24 jam.`
+          : `Saldo tidak cukup. Saldo siap tarik: Rp ${balance.toLocaleString('id-ID')}.`;
+        throw new ForbiddenException(msg);
       }
 
       // Resolve bank info — prefer bankAccountId (verified), fallback ke inline (legacy)
