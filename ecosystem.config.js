@@ -4,6 +4,7 @@ module.exports = {
       name: 'jasabersih-api',
       cwd: '/var/www/jasabersih/apps/api',
       script: 'dist/main.js',
+      node_args: '--no-warnings',
       instances: 1,
       exec_mode: 'fork',
       env: {
