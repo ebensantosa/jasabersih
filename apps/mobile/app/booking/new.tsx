@@ -74,6 +74,13 @@ function NewBooking() {
 
   const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
 
+  // Full House / Paket Bundle pakai flow cart (customer pilih per-ruangan + add-ons).
+  useEffect(() => {
+    if (categoryCode === 'full_house' || categoryCode === 'paket_bundle') {
+      router.replace('/booking/custom');
+    }
+  }, [categoryCode, router]);
+
   // Prefer API packages for this service code (admin-editable). Fallback to local.
   const apiPackages = useApiPackagesForService(category?.code ?? '');
   const PACKAGES = useMemo(() => {

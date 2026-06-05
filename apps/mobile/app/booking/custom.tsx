@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
 import { useAddressesStore } from '../../src/stores/addresses';
+import { useApiAddons, useAppContent, useServices } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -15,29 +16,21 @@ import { safeBack } from '../../src/lib/safeBack';
 
 type Item = { key: string; label: string; price: number; icon: any; durationMin: number; unit?: string };
 
-const ROOMS: Item[] = [
-  { key: 'kamar_tidur', label: 'Kamar Tidur', price: 35000, icon: Bed, durationMin: 25 },
-  { key: 'kamar_mandi', label: 'Kamar Mandi', price: 30000, icon: Bath, durationMin: 20 },
-  { key: 'ruang_tamu', label: 'Ruang Tamu', price: 40000, icon: Sofa, durationMin: 30 },
-  { key: 'ruang_keluarga', label: 'Ruang Keluarga', price: 40000, icon: Sofa, durationMin: 30 },
-  { key: 'dapur', label: 'Dapur', price: 50000, icon: ChefHat, durationMin: 35 },
-  { key: 'ruang_makan', label: 'Ruang Makan', price: 35000, icon: UtensilsCrossed, durationMin: 25 },
-  { key: 'balkon', label: 'Balkon', price: 25000, icon: Trees, durationMin: 20 },
-  { key: 'halaman', label: 'Halaman / Teras', price: 30000, icon: Trees, durationMin: 25 },
-  { key: 'garasi', label: 'Garasi', price: 35000, icon: Warehouse, durationMin: 25 },
-  { key: 'tangga', label: 'Tangga (per lantai)', price: 20000, icon: Layers, durationMin: 15 },
-];
-
-const EXTRAS: Item[] = [
-  { key: 'sofa', label: 'Sofa (per seater)', price: 35000, icon: Sofa, durationMin: 15, unit: 'seater' },
-  { key: 'kasur', label: 'Kasur (per pcs)', price: 80000, icon: Bed, durationMin: 30, unit: 'kasur' },
-  { key: 'karpet', label: 'Karpet (per m²)', price: 25000, icon: Square, durationMin: 10, unit: 'm²' },
-  { key: 'ac', label: 'AC (per unit)', price: 75000, icon: Wind, durationMin: 30, unit: 'unit' },
-  { key: 'kipas_angin', label: 'Kipas Angin', price: 25000, icon: Wind, durationMin: 10, unit: 'unit' },
-  { key: 'jendela', label: 'Jendela / Kaca', price: 15000, icon: Square, durationMin: 10, unit: 'pcs' },
-  { key: 'lantai_extra', label: 'Pel Lantai Khusus', price: 30000, icon: Brush, durationMin: 15, unit: 'ruangan' },
-  { key: 'kamar_mandi_deep', label: 'Deep Clean K.Mandi', price: 60000, icon: Droplets, durationMin: 40, unit: 'unit' },
-];
+// Fallback icon resolver — pick icon by code substring.
+function iconFor(code: string): any {
+  const c = code.toLowerCase();
+  if (c.includes('kamar') && !c.includes('mandi')) return Bed;
+  if (c.includes('mandi') || c.includes('toilet') || c.includes('bath') || c.includes('shower')) return Bath;
+  if (c.includes('dapur') || c.includes('kompor') || c.includes('kulkas') || c.includes('piring') || c.includes('oven') || c.includes('masak') || c.includes('dispenser')) return ChefHat;
+  if (c.includes('sofa') || c.includes('tamu') || c.includes('keluarga')) return Sofa;
+  if (c.includes('vacuum') || c.includes('vakum') || c.includes('hydro')) return Wind;
+  if (c.includes('jendela') || c.includes('kaca')) return Square;
+  if (c.includes('pekarangan') || c.includes('halaman') || c.includes('teras')) return Trees;
+  if (c.includes('garasi')) return Warehouse;
+  if (c.includes('lemari') || c.includes('furniture') || c.includes('angkut')) return Layers;
+  if (c.includes('sampah') || c.includes('saluran')) return Droplets;
+  return Brush;
+}
 
 const TIME_SLOTS = ['07:00', '08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 
@@ -62,10 +55,31 @@ function CustomBooking() {
   const savedLocation = useLocationStore((s) => s.current);
   const defaultAddress = addressList.find((a) => a.isDefault) ?? addressList[0] ?? null;
 
+  const services = useServices();
+  const allPackages = useAppContent((s) => s.content.packages);
+  const apiAddons = useApiAddons();
+  // ROOMS = services × their package price (1 paket per service setelah seed).
+  const ROOMS: Item[] = useMemo(() => services.map((s: any) => {
+    const pkg = allPackages.find((p: any) => p.serviceId === s.id);
+    return {
+      key: s.code ?? s.id,
+      label: s.name,
+      price: Number(pkg?.price ?? 0),
+      icon: iconFor(String(s.code ?? '')),
+      durationMin: Number(pkg?.durationMin ?? 60),
+    };
+  }).filter((r) => r.price > 0), [services, allPackages]);
+  const EXTRAS: Item[] = useMemo(() => apiAddons.map((a: any) => ({
+    key: a.code ?? a.id,
+    label: a.name,
+    price: Number(a.price ?? 0),
+    icon: iconFor(String(a.code ?? '')),
+    durationMin: Number(a.durationMin ?? 15),
+    unit: a.description ?? undefined,
+  })), [apiAddons]);
+
   const allItems = [...ROOMS, ...EXTRAS];
-  const [counts, setCounts] = useState<Record<string, number>>(
-    Object.fromEntries(allItems.map((i) => [i.key, 0])),
-  );
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [address, setAddress] = useState(defaultAddress?.addressLine ?? savedLocation?.address ?? '');
 
   const dateOptions = useMemo(() => makeDateOptions(), []);
