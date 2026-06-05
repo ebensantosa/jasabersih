@@ -135,6 +135,19 @@ export class FlipService {
     return json;
   }
 
+  /** Fetch bill detail by link_id — kadang qr_code_data baru tersedia di sini, bukan di create response */
+  async getBillDetail(linkId: number | string): Promise<any> {
+    const c = await this.getCreds();
+    if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong.');
+    const res = await fetch(`${c.baseUrl}/pwf/${linkId}/get-payment-url`, {
+      method: 'GET',
+      headers: { Authorization: this.authHeader(c.secretKey) },
+    });
+    const json: any = await res.json().catch(() => ({}));
+    this.log.log(`flip get-bill-detail (link_id=${linkId}) — response: ${JSON.stringify(json)}`);
+    return json;
+  }
+
   async createBill(input: FlipCreateInput): Promise<FlipCreateResult> {
     const c = await this.getCreds();
     if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
