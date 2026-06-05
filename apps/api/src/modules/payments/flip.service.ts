@@ -108,6 +108,11 @@ export class FlipService {
     if (input.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.customerEmail) && !input.customerEmail.endsWith('@jasabersih.com')) {
       payload.sender_email = input.customerEmail;
     }
+    // Ewallet butuh nomor HP (OVO push notif; DANA/ShopeePay/LinkAja sebagai identifier)
+    if (input.senderBankType === 'wallet_account' && input.customerPhone && /^08\d{8,12}$/.test(input.customerPhone)) {
+      payload.sender_phone_number = input.customerPhone;
+    }
+    if (input.redirectUrl) payload.redirect_url = input.redirectUrl;
 
     const res = await fetch(`${c.baseUrl}/pwf/bill`, {
       method: 'POST',

@@ -216,6 +216,13 @@ export class PaymentsController {
         ?? billPayment?.qrcode_string
         ?? result?.qr_code_data
         ?? result?.qr_string;
+      const walletUrl: string | undefined =
+        billPayment?.customer?.payment_url
+        ?? billPayment?.redirect_url
+        ?? billPayment?.payment_url
+        ?? billPayment?.url
+        ?? result?.customer_url
+        ?? result?.payment_url;
       const expiredAt = result?.expired_date ?? null;
 
       this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
@@ -239,6 +246,7 @@ export class PaymentsController {
         senderBankType: body.senderBankType,
         accountNumber: accountNumber ?? null,
         qrString: qrString ?? null,
+        walletUrl: walletUrl ?? null,
         paymentUrl: checkoutUrl,
         expiredAt,
         linkId: result.link_id,

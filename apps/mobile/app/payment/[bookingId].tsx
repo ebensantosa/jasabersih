@@ -3,7 +3,7 @@ import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Building2, CheckCircle2, Copy, QrCode, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import QRCode from 'react-native-qrcode-svg';
@@ -22,6 +22,7 @@ type DirectResult = {
   senderBankType: 'virtual_account' | 'qris' | 'wallet_account';
   accountNumber: string | null;
   qrString: string | null;
+  walletUrl?: string | null;
   expiredAt: string | null;
   paymentUrl?: string | null;
 };
@@ -49,11 +50,10 @@ const VA_METHODS: {
 
 // E-wallet direct (alternatif kalau gak mau scan QRIS)
 const EWALLET_METHODS: { code: string; name: string; logo: any }[] = [
-  { code: 'gopay',     name: 'GoPay',     logo: require('../../assets/payment-logos/gopay-192x92-1.png') },
-  { code: 'ovo',       name: 'OVO',       logo: require('../../assets/payment-logos/logo-ovo.png') },
-  { code: 'dana',      name: 'DANA',      logo: require('../../assets/payment-logos/logo-dana.png') },
-  { code: 'shopeepay', name: 'ShopeePay', logo: require('../../assets/payment-logos/shopeepay.png') },
-  { code: 'linkaja',   name: 'LinkAja',   logo: require('../../assets/payment-logos/logo-linkaja.png') },
+  { code: 'ovo',           name: 'OVO',       logo: require('../../assets/payment-logos/logo-ovo.png') },
+  { code: 'dana',          name: 'DANA',      logo: require('../../assets/payment-logos/logo-dana.png') },
+  { code: 'shopeepay_app', name: 'ShopeePay', logo: require('../../assets/payment-logos/shopeepay.png') },
+  { code: 'linkaja_app',   name: 'LinkAja',   logo: require('../../assets/payment-logos/logo-linkaja.png') },
 ];
 
 const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
@@ -493,7 +493,61 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
     } catch { return ex; }
   };
 
-  if ((data.senderBankType === 'qris' || data.senderBankType === 'wallet_account') && data.qrString) {
+  // E-wallet (DANA, ShopeePay, LinkAja, GoPay): buka deep link langsung ke app wallet
+  if (data.senderBankType === 'wallet_account' && data.senderBank !== 'qris' && (data.walletUrl || data.senderBank === 'ovo')) {
+    const isOvo = data.senderBank === 'ovo';
+    const WALLET_LABELS: Record<string, string> = {
+      ovo: 'OVO', dana: 'DANA', shopeepay_app: 'ShopeePay', linkaja_app: 'LinkAja', gopay: 'GoPay',
+    };
+    const walletName = WALLET_LABELS[data.senderBank] ?? data.senderBank.toUpperCase();
+    const openWallet = async () => {
+      if (!data.walletUrl) return;
+      try { await Linking.openURL(data.walletUrl); }
+      catch { toast.error(`Gagal membuka app ${walletName}. Pastikan app sudah terinstall.`); }
+    };
+    return (
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} style={{ backgroundColor: '#F1F5F9' }}>
+        {CountdownBanner}
+        <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 80, height: 80, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+            <WalletIcon color="#1D4ED8" size={40} />
+          </View>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>{walletName}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A' }}>{formatRupiah(data.amount)}</Text>
+          {isOvo ? (
+            <View style={{ backgroundColor: '#FEF3C7', padding: 12, borderRadius: 10, gap: 4 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', textAlign: 'center' }}>
+                Cek notifikasi di app OVO kamu
+              </Text>
+              <Text style={{ fontSize: 12, color: '#92400E', textAlign: 'center', lineHeight: 18 }}>
+                Buka app OVO, terima permintaan pembayaran, lalu masukkan PIN OVO untuk konfirmasi.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={{ fontSize: 13, color: '#475569', textAlign: 'center', lineHeight: 20 }}>
+                Klik tombol di bawah untuk lanjut ke app {walletName}. Setelah bayar, kamu akan otomatis kembali ke sini.
+              </Text>
+              <Pressable
+                onPress={openWallet}
+                style={{ backgroundColor: '#1D4ED8', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
+              >
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>Bayar Sekarang</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+        <View style={{ padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
+          <Text style={{ fontSize: 14 }}>⚠️</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
+            Status pembayaran kami cek otomatis. Halaman ini akan pindah saat lunas.
+          </Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if ((data.senderBankType === 'qris' || data.senderBank === 'qris') && data.qrString) {
     return (
       <ScrollView contentContainerStyle={{ padding: 0, backgroundColor: '#F1F5F9' }}>
         {/* Header dengan tanggal expired */}
