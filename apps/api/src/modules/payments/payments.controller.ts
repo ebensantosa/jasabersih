@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Logger, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
@@ -207,11 +207,16 @@ export class PaymentsController {
 
   // Flip webhook. Flip POSTs application/x-www-form-urlencoded with `data` (JSON)
   // and `token` (validation token). No HMAC — just string-equal token check.
+  private readonly flipLog = new Logger('FlipCallback');
+
   @Post('flip/callback')
   async flipCallback(@Req() req: Request) {
     const body: any = req.body ?? {};
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    this.flipLog.log(`callback received from ${ip} — token=${typeof body.token === 'string' ? body.token.slice(0,8)+'…' : 'missing'} dataLen=${typeof body.data === 'string' ? body.data.length : 0}`);
     const token: string | undefined = typeof body.token === 'string' ? body.token : undefined;
     if (!(await this.flip.verifyCallbackToken(token))) {
+      this.flipLog.warn(`token verification FAILED from ${ip}`);
       throw new BadRequestException('Invalid Flip token');
     }
     let data: any;
@@ -222,6 +227,7 @@ export class PaymentsController {
 
     const linkId: string | number | undefined = data.bill_link_id ?? data.id;
     const status: string | undefined = data.status; // SUCCESSFUL | FAILED | PENDING | CANCELLED
+    this.flipLog.log(`callback verified — linkId=${linkId} status=${status}`);
 
     if (!linkId) return { ok: false, reason: 'no link id' };
 
@@ -229,7 +235,7 @@ export class PaymentsController {
       SELECT id, booking_id, user_id, status, amount FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
     `;
     const p = payRows[0];
-    if (!p) return { ok: false, reason: 'payment not found' };
+    if (!p) { this.flipLog.warn(`payment not found for linkId=${linkId} (this is expected for Flip test buttons)`); return { ok: false, reason: 'payment not found' }; }
 
     const raw = JSON.stringify(data);
     // Amount mismatch guard — Flip QRIS sometimes accepts arbitrary amount if
