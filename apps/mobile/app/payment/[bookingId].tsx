@@ -33,30 +33,30 @@ const VA_METHODS: {
   bg: string;
   fg: string;
   label: string;
-  logo: string;
+  logo: any;
 }[] = [
-  { code: 'bca',     name: 'BCA Virtual Account',         bg: '#FFFFFF', fg: '#0060AF', label: 'BCA',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/240px-Bank_Central_Asia.svg.png' },
-  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#FFFFFF', fg: '#003D79', label: 'mandiri', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/240px-Bank_Mandiri_logo_2016.svg.png' },
-  { code: 'bni',     name: 'BNI Virtual Account',         bg: '#FFFFFF', fg: '#F36F21', label: 'BNI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/BNI_logo.svg/240px-BNI_logo.svg.png' },
-  { code: 'bri',     name: 'BRI Virtual Account',         bg: '#FFFFFF', fg: '#00529C', label: 'BRI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/BANK_BRI_logo.svg/240px-BANK_BRI_logo.svg.png' },
-  { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#FFFFFF', fg: '#7A1A1A', label: 'CIMB',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/CIMB_Niaga_logo.svg/240px-CIMB_Niaga_logo.svg.png' },
-  { code: 'permata', name: 'Permata Virtual Account',     bg: '#FFFFFF', fg: '#00853F', label: 'Permata', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/PermataBank.svg/240px-PermataBank.svg.png' },
-  { code: 'bsi',     name: 'BSI Virtual Account',         bg: '#FFFFFF', fg: '#00904F', label: 'BSI',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Bank_Syariah_Indonesia.svg/240px-Bank_Syariah_Indonesia.svg.png' },
-  { code: 'danamon', name: 'Danamon Virtual Account',     bg: '#FFFFFF', fg: '#FF6B00', label: 'Danamon', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Bank_Danamon_logo.svg/240px-Bank_Danamon_logo.svg.png' },
-  { code: 'btn',     name: 'BTN Virtual Account',         bg: '#FFFFFF', fg: '#005DA8', label: 'BTN',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Bank_BTN_logo.svg/240px-Bank_BTN_logo.svg.png' },
-  { code: 'mega',    name: 'Bank Mega Virtual Account',   bg: '#FFFFFF', fg: '#FFB500', label: 'Mega',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Logo_Bank_Mega.svg/240px-Logo_Bank_Mega.svg.png' },
+  { code: 'bca',     name: 'BCA Virtual Account',         bg: '#FFFFFF', fg: '#0060AF', label: 'BCA',     logo: require('../../assets/payment-logos/logo-bca.png') },
+  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#FFFFFF', fg: '#003D79', label: 'mandiri', logo: require('../../assets/payment-logos/logo-mandiri.png') },
+  { code: 'bni',     name: 'BNI Virtual Account',         bg: '#FFFFFF', fg: '#F36F21', label: 'BNI',     logo: require('../../assets/payment-logos/logo-bni.png') },
+  { code: 'bri',     name: 'BRI Virtual Account',         bg: '#FFFFFF', fg: '#00529C', label: 'BRI',     logo: require('../../assets/payment-logos/logo-bri.png') },
+  { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#FFFFFF', fg: '#7A1A1A', label: 'CIMB',    logo: require('../../assets/payment-logos/cimb.png') },
+  { code: 'permata', name: 'Permata Virtual Account',     bg: '#FFFFFF', fg: '#00853F', label: 'Permata', logo: require('../../assets/payment-logos/logo-permatabank.png') },
+  { code: 'bsi',     name: 'BSI Virtual Account',         bg: '#FFFFFF', fg: '#00904F', label: 'BSI',     logo: require('../../assets/payment-logos/bsi-logo.png') },
+  { code: 'danamon', name: 'Danamon Virtual Account',     bg: '#FFFFFF', fg: '#FF6B00', label: 'Danamon', logo: require('../../assets/payment-logos/logo-danamon.png') },
+  { code: 'btn',     name: 'BTN Virtual Account',         bg: '#FFFFFF', fg: '#005DA8', label: 'BTN',     logo: require('../../assets/payment-logos/BTN.png') },
+  { code: 'mega',    name: 'Bank Mega Virtual Account',   bg: '#FFFFFF', fg: '#FFB500', label: 'Mega',    logo: require('../../assets/payment-logos/logo-mega.png') },
 ];
 
 // E-wallet direct (alternatif kalau gak mau scan QRIS)
-const EWALLET_METHODS: { code: string; name: string; logo: string }[] = [
-  { code: 'gopay',     name: 'GoPay',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Gopay_logo.svg/240px-Gopay_logo.svg.png' },
-  { code: 'ovo',       name: 'OVO',       logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Logo_ovo_purple.svg/240px-Logo_ovo_purple.svg.png' },
-  { code: 'dana',      name: 'DANA',      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/240px-Logo_dana_blue.svg.png' },
-  { code: 'shopeepay', name: 'ShopeePay', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/ShopeePay_logo.svg/240px-ShopeePay_logo.svg.png' },
-  { code: 'linkaja',   name: 'LinkAja',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/LinkAja.svg/240px-LinkAja.svg.png' },
+const EWALLET_METHODS: { code: string; name: string; logo: any }[] = [
+  { code: 'gopay',     name: 'GoPay',     logo: require('../../assets/payment-logos/gopay-192x92-1.png') },
+  { code: 'ovo',       name: 'OVO',       logo: require('../../assets/payment-logos/logo-ovo.png') },
+  { code: 'dana',      name: 'DANA',      logo: require('../../assets/payment-logos/logo-dana.png') },
+  { code: 'shopeepay', name: 'ShopeePay', logo: require('../../assets/payment-logos/shopeepay.png') },
+  { code: 'linkaja',   name: 'LinkAja',   logo: require('../../assets/payment-logos/logo-linkaja.png') },
 ];
 
-const QRIS_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/QRIS_logo.svg/240px-QRIS_logo.svg.png';
+const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
 
 type BankHealth = { code: string; status: 'normal' | 'delayed' | 'down'; message: string };
 
@@ -287,7 +287,7 @@ function MethodPicker({
               className={`flex-row items-center gap-3 rounded-2xl p-4 ${down ? 'bg-ink-100 opacity-50' : 'bg-white'}`}
             >
               <View className={`h-12 w-14 items-center justify-center rounded-xl border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                <Image source={{ uri: QRIS_LOGO }} style={{ width: 40, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                <Image source={QRIS_LOGO} style={{ width: 40, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
               </View>
               <View className="flex-1">
                 <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS — Semua e-wallet & m-banking</Text>
@@ -319,7 +319,7 @@ function MethodPicker({
                 className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
               >
                 <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  <Image source={{ uri: m.logo }} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                  <Image source={m.logo} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
@@ -348,7 +348,7 @@ function MethodPicker({
                 className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
               >
                 <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  <Image source={{ uri: m.logo }} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                  <Image source={m.logo} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
