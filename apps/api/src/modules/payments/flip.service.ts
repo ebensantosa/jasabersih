@@ -94,31 +94,29 @@ export class FlipService {
     if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
     if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
 
-    const form = new URLSearchParams();
-    form.set('title', input.title);
-    form.set('type', 'SINGLE');
-    form.set('step', 'direct_api'); // Flip v3 docs: required untuk direct mode (skip hosted picker)
-    form.set('amount', String(input.amount));
-    form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
-    if (input.redirectUrl) form.set('redirect_url', input.redirectUrl);
-    form.set('sender_bank', input.senderBank);
-    form.set('sender_bank_type', input.senderBankType);
-    if (input.refId) form.set('reference_id', input.refId);
-    if (input.customerName) form.set('sender_name', input.customerName);
+    // Per Flip docs: Content-Type=application/json, type=lowercase "single", direct_api step
+    const payload: Record<string, any> = {
+      title: input.title,
+      type: 'single',
+      step: 'direct_api',
+      amount: input.amount,
+      sender_bank: input.senderBank,
+      sender_bank_type: input.senderBankType,
+    };
+    if (input.refId) payload.reference_id = input.refId;
+    if (input.customerName) payload.sender_name = input.customerName;
     if (input.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.customerEmail) && !input.customerEmail.endsWith('@jasabersih.com')) {
-      form.set('sender_email', input.customerEmail);
-    }
-    if (input.customerPhone && /^08\d{8,12}$/.test(input.customerPhone)) {
-      form.set('sender_phone_number', input.customerPhone);
+      payload.sender_email = input.customerEmail;
     }
 
     const res = await fetch(`${c.baseUrl}/pwf/bill`, {
       method: 'POST',
       headers: {
         Authorization: this.authHeader(c.secretKey),
-        'content-type': 'application/x-www-form-urlencoded',
+        'content-type': 'application/json',
+        accept: 'application/json',
       },
-      body: form.toString(),
+      body: JSON.stringify(payload),
     });
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
@@ -185,32 +183,26 @@ export class FlipService {
     if (!c.enabled) throw new BadRequestException('Flip belum di-enable di App Settings.');
     if (!c.secretKey) throw new BadRequestException('Flip secret_key kosong di App Settings.');
 
-    // Flip expects multipart/form-data OR x-www-form-urlencoded for create-bill.
-    const form = new URLSearchParams();
-    form.set('title', input.title);
-    form.set('type', 'SINGLE');
-    form.set('amount', String(input.amount));
-    form.set('expired_date', this.formatExpired(input.expiredAt ?? new Date(Date.now() + 24 * 3600_000)));
-    if (input.redirectUrl) form.set('redirect_url', input.redirectUrl); // omit kalau kosong (Flip v3 reject empty string)
-    // Note: Flip v3 dropped numeric `step` param. Omit → defaults to "checkout"
-    // (customer picks payment method on Flip's hosted page) which is what we want.
-    // Sender fields are optional & Flip strict-validates email/phone format.
-    // Only send if format clearly valid to avoid 400.
-    if (input.customerName) form.set('sender_name', input.customerName);
+    // Per Flip docs: Content-Type=application/json, type=lowercase, step omitted = "checkout" (hosted picker)
+    const payload: Record<string, any> = {
+      title: input.title,
+      type: 'single',
+      amount: input.amount,
+    };
+    if (input.redirectUrl) payload.redirect_url = input.redirectUrl;
+    if (input.customerName) payload.sender_name = input.customerName;
     if (input.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.customerEmail) && !input.customerEmail.endsWith('@jasabersih.com')) {
-      form.set('sender_email', input.customerEmail);
-    }
-    if (input.customerPhone && /^08\d{8,12}$/.test(input.customerPhone)) {
-      form.set('sender_phone_number', input.customerPhone);
+      payload.sender_email = input.customerEmail;
     }
 
     const res = await fetch(`${c.baseUrl}/pwf/bill`, {
       method: 'POST',
       headers: {
         Authorization: this.authHeader(c.secretKey),
-        'content-type': 'application/x-www-form-urlencoded',
+        'content-type': 'application/json',
+        accept: 'application/json',
       },
-      body: form.toString(),
+      body: JSON.stringify(payload),
     });
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
