@@ -130,6 +130,8 @@ export class FlipService {
         || `Flip ${res.status}`;
       throw new BadRequestException(`Flip: ${detailMsg}`);
     }
+    // DEBUG: dump full Flip response to inspect where qr_code_data / account_number live
+    this.log.log(`flip direct-bill OK — full response: ${JSON.stringify(json)}`);
     return json;
   }
 
