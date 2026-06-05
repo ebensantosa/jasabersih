@@ -94,7 +94,7 @@ export default function Home() {
         colors={['#0B2A6F', '#1E40AF', '#2563EB']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ paddingBottom: 48 }}
+        style={{ paddingBottom: 24 }}
       >
         {/* Decorative blob untuk depth visual (pojok kanan atas) */}
         <View
@@ -225,10 +225,20 @@ export default function Home() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
+        style={{ backgroundColor: '#F8FAFC', marginTop: -20 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Curved top transition card - Gojek/Grab style */}
+        <View
+          style={{
+            backgroundColor: '#F8FAFC',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: 12,
+          }}
+        >
         {/* Service grid 4 col */}
-        <View className="mx-4 mt-3 rounded-2xl bg-white px-2 py-3">
+        <View className="mx-4 mt-1 rounded-2xl bg-white px-2 py-3" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
               const isKonsul = s.code === 'konsultasi';
@@ -462,6 +472,7 @@ export default function Home() {
               </View>
             </LinearGradient>
           </Pressable>
+        </View>
         </View>
       </ScrollView>
 
