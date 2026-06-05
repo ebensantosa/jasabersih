@@ -285,7 +285,13 @@ function MethodPicker({
       } catch { /* ignore — default semua normal */ }
     })();
   }, []);
-  const getStatus = (code: string) => bankHealth[code]?.status ?? 'normal';
+  // Hardcoded: bank yang BELUM diaktifkan di Flip account → disable di UI (cegah error 'not enabled')
+  // QRIS aktif by default, bank lain perlu CS Flip enable per-channel.
+  const NOT_ENABLED_YET = new Set(['bca','mandiri','bni','bri','cimb','permata','bsi','danamon','btn','mega','gopay','ovo','dana','shopeepay','linkaja']);
+  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => {
+    if (NOT_ENABLED_YET.has(code)) return 'down';
+    return bankHealth[code]?.status ?? 'normal';
+  };
   const getMessage = (code: string) => bankHealth[code]?.message ?? '';
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>

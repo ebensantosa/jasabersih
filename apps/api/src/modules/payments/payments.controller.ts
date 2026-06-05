@@ -184,15 +184,41 @@ export class PaymentsController {
         fellBackToCheckout = true;
       }
 
+      // Some Flip direct responses don't include qr_code_data/account_number on first create.
+      // Try fetching bill detail by link_id (best-effort) to get the data we need for native UI.
+      if (result?.link_id) {
+        try {
+          const detail = await this.flip.getBillDetail(result.link_id);
+          // Merge any qr_code_data / account_number found in detail
+          if (detail?.bill_payment) {
+            result.bill_payment = { ...(result.bill_payment ?? {}), ...detail.bill_payment };
+          }
+          // Some responses put data at top-level too
+          for (const k of ['qr_code_data', 'qr_string', 'qrcode_string', 'account_number']) {
+            if (detail?.[k] && !result?.[k]) result[k] = detail[k];
+          }
+        } catch (e: any) {
+          this.flipLog.warn(`getBillDetail failed for link_id ${result.link_id}: ${e?.message ?? e}`);
+        }
+      }
+
       const billPayment = result?.bill_payment ?? {};
       const receiverAcc = billPayment?.receiver_bank_account ?? {};
-      const accountNumber: string | undefined = receiverAcc?.account_number;
-      // QRIS EMV string lives at bill_payment.receiver_bank_account.qr_code_data per Flip Direct API docs
+      const accountNumber: string | undefined =
+        receiverAcc?.account_number
+        ?? billPayment?.account_number
+        ?? result?.account_number;
       const qrString: string | undefined =
         receiverAcc?.qr_code_data
+        ?? receiverAcc?.qr_string
         ?? billPayment?.qr_code_data
-        ?? billPayment?.qrcode_string;
+        ?? billPayment?.qr_string
+        ?? billPayment?.qrcode_string
+        ?? result?.qr_code_data
+        ?? result?.qr_string;
       const expiredAt = result?.expired_date ?? null;
+
+      this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
 
       await this.prisma.$executeRaw`
         UPDATE payments
