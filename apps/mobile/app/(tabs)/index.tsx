@@ -37,6 +37,7 @@ export default function Home() {
   const router = useRouter();
   const mode = useModeStore((s) => s.mode);
   const ctaAnimated = useConfig('home.cta_animated' as any, false as any) as unknown as boolean;
+  const ctaImageUrl = useConfig('home.cta_image_url' as any, '' as any) as unknown as string;
   const pulse = useState(() => new Animated.Value(1))[0];
   useEffect(() => {
     if (!ctaAnimated) return;
@@ -184,6 +185,13 @@ export default function Home() {
                 />
 
                 <View className="flex-row items-center gap-3">
+                  {ctaImageUrl ? (
+                    <Image
+                      source={{ uri: ctaImageUrl }}
+                      style={{ width: 56, height: 56, borderRadius: 12 }}
+                      contentFit="cover"
+                    />
+                  ) : null}
                   <View className="flex-1">
                     <View className="flex-row items-center gap-1.5">
                       <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
