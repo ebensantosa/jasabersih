@@ -3,10 +3,14 @@ module.exports = {
     {
       name: 'jasabersih-api',
       cwd: '/var/www/jasabersih/apps/api',
-      script: 'dist/src/main.js',
+      script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
-      env: { NODE_ENV: 'production', PORT: '5000' },
+      env: {
+        NODE_ENV: 'production',
+        PORT: '5000',
+        R2_SKIP_CORS_INIT: 'true',
+      },
       max_memory_restart: '512M',
       error_file: '/var/log/pm2/jasabersih-api.err.log',
       out_file: '/var/log/pm2/jasabersih-api.out.log',
