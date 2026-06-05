@@ -239,11 +239,11 @@ export default function Home() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ marginTop: -40 }}
+        style={{ marginTop: -20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Service grid 4 col */}
-        <View className="mx-4 rounded-2xl bg-white px-2 py-3">
+        <View className="mx-4 mt-2 rounded-2xl bg-white px-2 py-3">
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
               const isKonsul = s.code === 'konsultasi';
@@ -330,30 +330,36 @@ export default function Home() {
                     }}
                     className="overflow-hidden rounded-2xl bg-white"
                   >
-                    <View className="relative h-32 w-full bg-ink-100">
-                      <Image source={s.imageUrl} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                    <View style={{ position: 'relative', height: 112, width: '100%', backgroundColor: '#E2E8F0' }}>
+                      <Image source={s.imageUrl} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
                       <LinearGradient
-                        colors={['rgba(15,23,42,0)', 'rgba(15,23,42,0.35)', 'rgba(15,23,42,0.92)']}
-                        locations={[0, 0.45, 1]}
+                        colors={['rgba(15,23,42,0.0)', 'rgba(15,23,42,0.85)']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
-                        style={{ position: 'absolute', inset: 0 }}
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
                       />
-                      <View className="absolute left-2 top-2 flex-row gap-1">
-                        <View className="rounded bg-orange-500 px-1.5 py-0.5">
+                      <View style={{ position: 'absolute', top: 8, left: 8, flexDirection: 'row', gap: 4 }}>
+                        <View style={{ backgroundColor: '#F97316', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
                           <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Combo</Text>
                         </View>
                         {idx === 0 && (
-                          <View className="rounded bg-white/95 px-1.5 py-0.5">
+                          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
                             <Text className="font-extrabold text-[9px] uppercase tracking-wider text-ink-900">Best Seller</Text>
                           </View>
                         )}
                       </View>
-                      <View className="absolute bottom-2.5 left-2.5 right-2.5">
+                      <View style={{ position: 'absolute', bottom: 8, left: 10, right: 10 }}>
                         <Text
-                          className="font-extrabold text-[15px] leading-tight text-white"
                           numberOfLines={1}
-                          style={{ textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}
+                          style={{
+                            fontFamily: 'Inter_800ExtraBold',
+                            fontSize: 14,
+                            lineHeight: 18,
+                            color: 'white',
+                            textShadowColor: 'rgba(0,0,0,0.6)',
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 3,
+                          }}
                         >
                           {s.name}
                         </Text>
