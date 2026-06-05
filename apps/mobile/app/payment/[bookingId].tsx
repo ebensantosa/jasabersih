@@ -285,20 +285,10 @@ function MethodPicker({
       } catch { /* ignore — default semua normal */ }
     })();
   }, []);
-  // Channel yang aktif di akun Flip kami saat ini (cek dashboard Flip → Accept Payment → Konfigurasi)
-  // Update list ini sesuai status di Flip dashboard.
-  const ACTIVE_VA = new Set(['bni', 'bri']); // BNI VA + BRI VA aktif
-  const FLIP_MAINTENANCE = new Set(['qris', 'shopeepay', 'dana', 'gopay', 'ovo', 'linkaja']); // E-wallet/QRIS sedang maintenance Flip
-  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => {
-    if (FLIP_MAINTENANCE.has(code)) return 'down'; // maintenance Flip
-    if (['bca','mandiri','bni','bri','cimb','permata','bsi','danamon','btn','mega'].includes(code) && !ACTIVE_VA.has(code)) return 'down';
-    return bankHealth[code]?.status ?? 'normal';
-  };
-  const getMessage = (code: string) => {
-    if (FLIP_MAINTENANCE.has(code)) return 'Sedang pemeliharaan oleh Flip';
-    if (!ACTIVE_VA.has(code) && code !== 'qris') return 'Belum aktif di sistem kami';
-    return bankHealth[code]?.message ?? '';
-  };
+  // Trust backend API sepenuhnya. Admin bisa toggle aktif/tidak via App Settings
+  // (key: payment.active_channels) tanpa redeploy APK.
+  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => bankHealth[code]?.status ?? 'normal';
+  const getMessage = (code: string) => bankHealth[code]?.message ?? '';
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       {walletBalance > 0 && (

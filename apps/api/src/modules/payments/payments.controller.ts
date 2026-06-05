@@ -531,20 +531,40 @@ export class PaymentsController {
   }
 
   // Public endpoint untuk APK cek status bank sebelum tampilin picker.
-  // Bank dengan status 'down' di-disable di UI; 'delayed' tetap aktif dengan warning.
+  // Status sources (urutan priority):
+  // 1. payment.active_channels (admin override per channel — paling akurat)
+  // 2. payment.bank_status (auto-updated dari Flip Status Bank webhook)
+  // 3. Default 'normal'
   @Get('bank-health')
   async bankHealth() {
-    const rows = await this.prisma.$queryRaw<{ value: any }[]>`SELECT value FROM app_config WHERE key = 'payment.bank_status' LIMIT 1`;
-    const stored: Record<string, { status: string; updated_at: string }> = (rows[0]?.value ?? {}) as any;
-    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'];
+    const rows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
+      SELECT key, value FROM app_config WHERE key IN ('payment.bank_status', 'payment.active_channels')
+    `;
+    const stored: Record<string, { status: string; updated_at: string }> =
+      (rows.find((r) => r.key === 'payment.bank_status')?.value ?? {}) as any;
+    // active_channels: { bca: { active: false, reason: 'Belum aktif di Flip' }, qris: { active: false, reason: 'Maintenance Flip' }, ... }
+    const overrides: Record<string, { active?: boolean; reason?: string }> =
+      (rows.find((r) => r.key === 'payment.active_channels')?.value ?? {}) as any;
+    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'];
     const labels: Record<string, string> = {
-      bca: 'BCA', mandiri: 'Mandiri', bri: 'BRI', bni: 'BNI', cimb: 'CIMB Niaga', permata: 'Permata', bsi: 'BSI', danamon: 'Danamon',
+      bca: 'BCA', mandiri: 'Mandiri', bri: 'BRI', bni: 'BNI', cimb: 'CIMB Niaga', permata: 'Permata',
+      bsi: 'BSI', danamon: 'Danamon', btn: 'BTN', mega: 'Bank Mega',
       qris: 'QRIS', gopay: 'GoPay', ovo: 'OVO', dana: 'DANA', shopeepay: 'ShopeePay', linkaja: 'LinkAja',
     };
     return known.map((code) => {
+      const override = overrides[code];
       const s = stored[code];
-      const status = (s?.status as 'normal' | 'delayed' | 'down') ?? 'normal';
-      const message = status === 'down' ? `${labels[code]} sedang gangguan, mohon pilih metode lain.` : status === 'delayed' ? `${labels[code]} sedang tertunda, transaksi mungkin lambat.` : '';
+      let status: 'normal' | 'delayed' | 'down' = (s?.status as any) ?? 'normal';
+      let message = '';
+      // Admin override mengalahkan webhook status
+      if (override?.active === false) {
+        status = 'down';
+        message = override.reason ?? `${labels[code]} belum aktif`;
+      } else if (status === 'down') {
+        message = `${labels[code]} sedang gangguan, mohon pilih metode lain.`;
+      } else if (status === 'delayed') {
+        message = `${labels[code]} sedang tertunda, transaksi mungkin lambat.`;
+      }
       return { code, name: labels[code], status, message, updated_at: s?.updated_at ?? null };
     });
   }
