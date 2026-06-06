@@ -169,6 +169,18 @@ export default function RootLayout() {
 
   const splashVisible = !fontsLoaded || splashHold;
 
+  // Saat fonts belum siap, render minimal tree (cuma SplashOverlay) — Stack belum
+  // boleh render karena akan crash kalau ada navigation call sebelum siap.
+  if (!fontsLoaded) {
+    return (
+      <ErrorBoundary>
+        <QueryProvider>
+          <SplashOverlay visible />
+        </QueryProvider>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <QueryProvider>
