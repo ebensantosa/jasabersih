@@ -144,6 +144,11 @@ function NewBooking() {
   const [pickedPackageId, setPickedPackageId] = useState<string>(initialPackage?.id ?? '');
   const pkg = PACKAGES.find((p) => p.id === pickedPackageId);
 
+  // Layanan satuan (per-ruangan) — sembunyikan Properti, Ruangan, Fasilitas Lain.
+  // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
+  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'vacuum_lantai', 'garasi', 'pekarangan'];
+  const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
+
   const cleanMode = useCleaningModeStore((s) => s.mode);
   const setCleaningMode = useCleaningModeStore((s) => s.setMode);
   const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.45 as any);
@@ -561,7 +566,28 @@ function NewBooking() {
         >
           {step === 1 && (
             <>
-              {categoryPackages.length > 0 && (
+              {isSimpleService && pkg && (
+                <Section title={`Detail Pekerjaan ${category?.name ?? ''}`}>
+                  <View className="rounded-xl border border-brand-200 bg-brand-50 p-3">
+                    {(((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0 ? (
+                      ((pkg as any).includes as string[]).map((it, i) => (
+                        <View key={i} className="flex-row items-start gap-2 py-1">
+                          <Text className="text-success text-sm">✓</Text>
+                          <Text className="flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text className="text-[12px] leading-5 text-ink-700">{pkg.scope || 'Pembersihan menyeluruh sesuai layanan.'}</Text>
+                    )}
+                    <View className="mt-2 flex-row items-center gap-1.5">
+                      <Text className="text-[10px] text-ink-500">⏱</Text>
+                      <Text className="text-[10px] text-ink-500">Estimasi waktu: ±{pkg.durationMin} menit</Text>
+                    </View>
+                  </View>
+                </Section>
+              )}
+
+              {!isSimpleService && categoryPackages.length > 0 && (
                 <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
@@ -617,7 +643,7 @@ function NewBooking() {
                 </Section>
               )}
 
-              <Section title="Properti">
+              {!isSimpleService && <Section title="Properti">
                 <Label>Tipe Properti</Label>
                 <Chips
                   options={PROPERTY_TYPES as readonly string[]}
@@ -631,9 +657,9 @@ function NewBooking() {
                     <ToggleRow label="Akses Lift" value={hasLift} onChange={setHasLift} />
                   </View>
                 )}
-              </Section>
+              </Section>}
 
-              <Section title="Ruangan">
+              {!isSimpleService && <Section title="Ruangan">
                 <View className="flex-row items-center justify-between">
                   <Label className="mb-0">Kamar Tidur</Label>
                   <Stepper value={bedrooms} onChange={setBedrooms} min={0} max={10} />
@@ -675,9 +701,9 @@ function NewBooking() {
                     );
                   })}
                 </View>
-              </Section>
+              </Section>}
 
-              <Section title="Perkiraan Luas">
+              {!isSimpleService && <Section title="Perkiraan Luas">
                 <Text className="font-sans -mt-1 mb-3 text-[11px] text-ink-500">
                   Pilih kira-kira ukuran area yang akan dibersihkan. Kalau ragu, lihat contoh di bawah.
                 </Text>
@@ -742,7 +768,7 @@ function NewBooking() {
                     </Text>
                   </View>
                 )}
-              </Section>
+              </Section>}
             </>
           )}
 
