@@ -146,7 +146,7 @@ function NewBooking() {
 
   // Layanan satuan (per-ruangan) — sembunyikan Properti, Ruangan, Fasilitas Lain.
   // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
-  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'vacuum_lantai', 'garasi', 'pekarangan'];
+  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'garasi', 'pekarangan'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
 
   // Auto-centang Deep Cleaning saat masuk halaman simple service (sales default).

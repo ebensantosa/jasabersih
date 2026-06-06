@@ -45,7 +45,6 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { code: 'dapur',          name: 'Dapur',           description: 'Area dapur',                   icon: ChefHat,   iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
   { code: 'ruang_tamu',     name: 'Ruang Tamu',      description: 'Ruang tamu & keluarga',        icon: Sofa,      iconColor: '#7C3AED', iconBg: '#EDE9FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
   { code: 'pindah_kos',     name: 'Pindah Kost',     description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
-  { code: 'vacuum_lantai',  name: 'Vacuum',          description: 'Vacuum lantai full ruangan',   icon: Sparkles,  iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1581578731548-c64695cc6952'), startingPrice: 120_000 },
   { code: 'garasi',         name: 'Garasi/Teras',    description: 'Garasi & teras',               icon: Car,       iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
   { code: 'pekarangan',     name: 'Pekarangan',      description: 'Halaman rumah',                icon: Trees,     iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
 ];
@@ -69,7 +68,6 @@ export const PACKAGES: Package[] = [
   { id: 'pkg_dapur',          categoryCode: 'dapur',          name: 'Dapur',          price: 160_000, durationMin: 120, scope: 'Area dapur lengkap' },
   { id: 'pkg_ruang_tamu',     categoryCode: 'ruang_tamu',     name: 'Ruang Tamu',     price: 150_000, durationMin: 90,  scope: 'Ruang tamu & keluarga' },
   { id: 'pkg_pindah_kos',     categoryCode: 'pindah_kos',     name: 'Pindah Kost',    price: 200_000, durationMin: 180, scope: 'Serah terima kamar kos' },
-  { id: 'pkg_vacuum',         categoryCode: 'vacuum_lantai',  name: 'Vacuum',         price: 120_000, durationMin: 90,  scope: 'Vacuum lantai seluruh area' },
   { id: 'pkg_garasi',         categoryCode: 'garasi',         name: 'Garasi/Teras',   price: 130_000, durationMin: 90,  scope: 'Garasi atau teras depan' },
   { id: 'pkg_pekarangan',     categoryCode: 'pekarangan',     name: 'Pekarangan',     price: 150_000, durationMin: 120, scope: 'Area outdoor / taman' },
 ];
@@ -111,9 +109,12 @@ export type AddOnItem = {
 };
 
 export const ADDONS: AddOnItem[] = [
+  // Vacuum Lantai
+  { code: 'vacuum_mop_lantai',  name: 'Vacuum & Mop Lantai',      price: 120_000, durationMin: 90, unit: '/ruangan', icon: Sparkles,  group: 'Vakum Kasur' },
+
   // Vakum Kasur
   { code: 'vakum_kasur_single', name: 'Vakum Kasur Single Bed',   price: 45_000,  durationMin: 20, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
-  { code: 'vakum_kasur_twin',   name: 'Vakum Kasur Twin Bed',     price: 60_000,  durationMin: 25, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
+  { code: 'vakum_kasur_queen',  name: 'Vakum Kasur Queen Bed',    price: 60_000,  durationMin: 25, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
   { code: 'vakum_kasur_master', name: 'Vakum Kasur Master Bed',   price: 75_000,  durationMin: 30, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
 
   // Bak Mandi / Bathtub
@@ -147,7 +148,8 @@ export const ADDONS: AddOnItem[] = [
 
   // Furniture & Kaca
   { code: 'lap_kaca_jendela',   name: 'Lap Kaca Jendela',            price: 15_000, durationMin: 10, unit: '/daun',    icon: Wind,  group: 'Furniture & Kaca' },
-  { code: 'cuci_sofa_kering',   name: 'Cuci Sofa Kering',            price: 50_000, durationMin: 25, unit: '/dudukan', icon: Sofa,  group: 'Furniture & Kaca' },
+  { code: 'cuci_sofa_kering',   name: 'Cuci Sofa Dry Clean',         price: 50_000, durationMin: 25, unit: '/dudukan', icon: Sofa,  group: 'Furniture & Kaca' },
+  { code: 'cuci_sofa_wet',      name: 'Cuci Sofa Wet Clean',         price: 90_000, durationMin: 35, unit: '/dudukan', icon: Sofa,  group: 'Furniture & Kaca' },
   { code: 'lemari_kayu',        name: 'Lap / Poles Lemari Kayu',     price: 40_000, durationMin: 30, unit: '/dalam+luar', icon: Home, group: 'Furniture & Kaca' },
   { code: 'angkut_furniture',   name: 'Angkut / Pindah Furniture',   price: 30_000, durationMin: 15, unit: '/item',    icon: Hammer, group: 'Furniture & Kaca' },
 
