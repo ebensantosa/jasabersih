@@ -40,11 +40,13 @@ export class AdminController {
           b.address_line AS address, b.created_at AS "createdAt",
           cu.name AS "customerName", cu.phone AS "customerPhone",
           cl.name AS "cleanerName",
-          s.name AS service
+          COALESCE(s.name, sp.name, p.name) AS service
         FROM bookings b
         LEFT JOIN users cu ON cu.id = b.customer_id
         LEFT JOIN users cl ON cl.id = b.cleaner_id
         LEFT JOIN services s ON s.id = b.service_id
+        LEFT JOIN pricing_packages p ON p.id = b.package_id
+        LEFT JOIN services sp ON sp.id = p.service_id
         WHERE 1=1
           AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
           AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)

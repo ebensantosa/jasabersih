@@ -263,6 +263,15 @@ export class BookingsController {
     const wcRaw = (body.formSnapshot as any)?.workerCount ?? (body.formSnapshot as any)?.worker_count;
     const workerCount = Math.min(Math.max(Number(wcRaw) || 1, 1), 4);
 
+    // Derive serviceId from packageId kalau gak dikirim eksplisit
+    let derivedServiceId = body.serviceId ?? null;
+    if (!derivedServiceId && body.packageId) {
+      const pkgRow = await this.prisma.$queryRaw<{ serviceId: string }[]>`
+        SELECT service_id AS "serviceId" FROM pricing_packages WHERE id = ${body.packageId}::uuid LIMIT 1
+      `;
+      derivedServiceId = pkgRow[0]?.serviceId ?? null;
+    }
+
     const row = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
       `INSERT INTO bookings (
         customer_id, service_id, pricing_mode, package_id, hourly_tier_id, hours_booked,
@@ -277,7 +286,7 @@ export class BookingsController {
       )
       RETURNING id`,
       user.id,
-      body.serviceId ?? null,
+      derivedServiceId,
       body.pricingMode,
       body.packageId ?? null,
       body.hourlyTierId ?? null,
