@@ -1364,14 +1364,47 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
     setMinSel(e.getMinutes() - (e.getMinutes() % 5));
   }
 
+  // Auto-bump jam ke slot valid pertama saat ganti tanggal.
+  useEffect(() => {
+    const sel = new Date(dateOptions[dateIdx]!.date);
+    sel.setHours(hourSel, minSel, 0, 0);
+    if (sel.getTime() >= earliest.getTime()) return;
+    const validH = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR }, (_, i) => OPS_START_HOUR + i)
+      .find((h) => {
+        const t = new Date(dateOptions[dateIdx]!.date); t.setHours(h, 59, 0, 0);
+        return t.getTime() >= earliest.getTime();
+      });
+    if (validH !== undefined) {
+      setHourSel(validH);
+      setMinSel(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateIdx]);
+
   function confirm() {
     const sel = new Date(dateOptions[dateIdx]!.date);
     sel.setHours(hourSel, minSel, 0, 0);
+    if (sel.getTime() < earliestAvailable().getTime()) {
+      toast.error('Jadwal minimal 1 jam dari sekarang');
+      return;
+    }
     onChange(sel);
   }
 
-  const hourList = Array.from({ length: 24 }, (_, i) => i);
+  const earliest = earliestAvailable();
+  const hourList = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR }, (_, i) => OPS_START_HOUR + i);
   const minuteList = Array.from({ length: 12 }, (_, i) => i * 5);
+
+  function isHourValid(h: number): boolean {
+    const sel = new Date(dateOptions[dateIdx]!.date);
+    sel.setHours(h, 59, 0, 0);
+    return sel.getTime() >= earliest.getTime();
+  }
+  function isMinValid(m: number): boolean {
+    const sel = new Date(dateOptions[dateIdx]!.date);
+    sel.setHours(hourSel, m, 0, 0);
+    return sel.getTime() >= earliest.getTime();
+  }
 
   return (
     <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -1420,14 +1453,16 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-1.5 pr-4">
               {hourList.map((h) => {
-                const active = hourSel === h;
+                const disabled = !isHourValid(h);
+                const active = hourSel === h && !disabled;
                 return (
                   <Pressable
                     key={h}
+                    disabled={disabled}
                     onPress={() => setHourSel(h)}
-                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
                   >
-                    <Text className={`font-bold text-sm ${active ? 'text-white' : 'text-ink-800'}`}>
+                    <Text className={`font-bold text-sm ${disabled ? 'text-ink-300 line-through' : active ? 'text-white' : 'text-ink-800'}`}>
                       {String(h).padStart(2, '0')}
                     </Text>
                   </Pressable>
@@ -1440,14 +1475,16 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-1.5 pr-4">
               {minuteList.map((m) => {
-                const active = minSel === m;
+                const disabled = !isMinValid(m);
+                const active = minSel === m && !disabled;
                 return (
                   <Pressable
                     key={m}
+                    disabled={disabled}
                     onPress={() => setMinSel(m)}
-                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
                   >
-                    <Text className={`font-bold text-sm ${active ? 'text-white' : 'text-ink-800'}`}>
+                    <Text className={`font-bold text-sm ${disabled ? 'text-ink-300 line-through' : active ? 'text-white' : 'text-ink-800'}`}>
                       {String(m).padStart(2, '0')}
                     </Text>
                   </Pressable>
@@ -1455,6 +1492,8 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
               })}
             </View>
           </ScrollView>
+
+          <Text className="mt-2 text-[10px] text-ink-500">Operasional 07:00–21:00 · Min 1 jam dari sekarang</Text>
 
           <Pressable
             onPress={confirm}
