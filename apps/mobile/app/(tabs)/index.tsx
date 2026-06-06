@@ -91,7 +91,7 @@ export default function Home() {
     <View className="flex-1 bg-ink-50">
       {/* Hero header dengan U-shape curve (Gojek/Traveloka style) — gradient lebih cerah & welcoming */}
       <LinearGradient
-        colors={['#0B2A6F', '#1E40AF', '#2563EB']}
+        colors={['#1D4ED8', '#10B981', '#14B8A6']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingBottom: 24 }}
