@@ -9,6 +9,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -62,10 +63,19 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
+  // Cegah expo native splash auto-hide — kita kontrol manual via SplashOverlay
+  // biar gak ada flash transisi native → custom.
+  useEffect(() => {
+    SplashScreen.preventAutoHideAsync().catch(() => {});
+  }, []);
+
   // TEMP: tahan splash minimal 3 detik buat preview design.
   const [splashHold, setSplashHold] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setSplashHold(false), 3000);
+    const t = setTimeout(() => {
+      setSplashHold(false);
+      SplashScreen.hideAsync().catch(() => {});
+    }, 3000);
     return () => clearTimeout(t);
   }, []);
 
