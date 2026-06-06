@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, MessageCircle, Minus, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image as RNImage, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Image as RNImage, Linking, Modal as RNModal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -278,6 +278,7 @@ function NewBooking() {
 
   const [scheduleAt, setScheduleAt] = useState<Date>(() => earliestAvailable());
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
+  const [schedModalOpen, setSchedModalOpen] = useState(false);
   const scheduleIso = scheduleAt.toISOString();
   const [address, setAddress] = useState(
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
@@ -993,69 +994,21 @@ function NewBooking() {
           {step === 3 && (
             <>
               <Section title="Kapan dikerjakan">
-                {Platform.OS === 'web' ? (
-                  <WebSchedulePicker value={scheduleAt} onChange={setScheduleAt} />
-                ) : (
-                  <Pressable
-                    onPress={() => setPickerMode('date')}
-                    className="flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
-                  >
-                    <View>
-                      <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Pilih Tanggal & Jam</Text>
-                      <Text className="font-bold mt-0.5 text-sm text-ink-900">
-                        {formatScheduleLabel(scheduleAt)}
-                      </Text>
-                    </View>
-                    <Calendar color="#1D4ED8" size={18} />
-                  </Pressable>
-                )}
+                <Pressable
+                  onPress={() => setSchedModalOpen(true)}
+                  className="flex-row items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-3"
+                >
+                  <View>
+                    <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Pilih Tanggal & Jam</Text>
+                    <Text className="font-bold mt-0.5 text-sm text-ink-900">
+                      {formatScheduleLabel(scheduleAt)}
+                    </Text>
+                  </View>
+                  <Calendar color="#1D4ED8" size={18} />
+                </Pressable>
                 <Text className="mt-2 text-[11px] text-ink-500">
                   Operasional 07:00–21:00. Paling cepat 1 jam dari sekarang.
                 </Text>
-                {Platform.OS !== 'web' && pickerMode && (
-                  <DateTimePicker
-                    value={scheduleAt}
-                    mode={pickerMode}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    minimumDate={earliestAvailable()}
-                    is24Hour
-                    onChange={(event, selected) => {
-                      const wasMode = pickerMode;
-                      // Android closes after each pick; iOS stays open until manual dismiss.
-                      // Either way: process this pick, then chain to time if was date.
-                      if (Platform.OS === 'android') setPickerMode(null);
-                      if (event?.type === 'dismissed' || !selected) {
-                        setPickerMode(null);
-                        return;
-                      }
-                      const next = new Date(scheduleAt);
-                      if (wasMode === 'date') {
-                        next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
-                      } else {
-                        next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
-                      }
-                      // Enforce ops window
-                      if (next.getHours() < OPS_START_HOUR) next.setHours(OPS_START_HOUR, 0, 0, 0);
-                      if (next.getHours() >= OPS_END_HOUR) next.setHours(OPS_END_HOUR - 1, 0, 0, 0);
-                      // Enforce min = now+1h
-                      const min = earliestAvailable();
-                      if (next.getTime() < min.getTime()) {
-                        toast.error('Jadwal minimal 1 jam dari sekarang');
-                        setScheduleAt(min);
-                        setPickerMode(null);
-                        return;
-                      }
-                      setScheduleAt(next);
-                      // After date picked, auto-open time picker — single-flow UX.
-                      if (wasMode === 'date') {
-                        if (Platform.OS === 'android') setTimeout(() => setPickerMode('time'), 100);
-                        else setPickerMode('time');
-                      } else {
-                        setPickerMode(null);
-                      }
-                    }}
-                  />
-                )}
               </Section>
 
               <Section title="Alamat">
@@ -1364,8 +1317,123 @@ function NewBooking() {
             </View>
           </SafeAreaView>
         </View>
+
+        <ScheduleModal
+          visible={schedModalOpen}
+          value={scheduleAt}
+          onChange={(d) => { setScheduleAt(d); setSchedModalOpen(false); }}
+          onClose={() => setSchedModalOpen(false)}
+        />
       </View>
     </>
+  );
+}
+
+function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean; value: Date; onChange: (d: Date) => void; onClose: () => void }) {
+  const [dateIdx, setDateIdx] = useState(0);
+  const [hour, setHour] = useState<number>(value.getHours());
+  useEffect(() => {
+    if (!visible) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const v = new Date(value); v.setHours(0,0,0,0);
+    setDateIdx(Math.max(0, Math.min(13, Math.round((v.getTime() - today.getTime()) / 86400000))));
+    setHour(value.getHours());
+  }, [visible, value]);
+
+  const dateOptions = useMemo(() => {
+    const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const out: { date: Date; label: string; sub: string }[] = [];
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(now); d.setDate(now.getDate() + i);
+      const label = i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : days[d.getDay()] ?? '';
+      const sub = `${d.getDate()} ${months[d.getMonth()]}`;
+      out.push({ date: d, label, sub });
+    }
+    return out;
+  }, []);
+
+  const earliest = earliestAvailable();
+  const hours = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR }, (_, i) => OPS_START_HOUR + i);
+
+  function isHourValid(h: number): boolean {
+    const sel = new Date(dateOptions[dateIdx]!.date); sel.setHours(h, 0, 0, 0);
+    return sel.getTime() >= earliest.getTime();
+  }
+
+  function confirm() {
+    if (!isHourValid(hour)) {
+      // pilih jam valid pertama
+      const next = hours.find((h) => isHourValid(h));
+      if (!next) { onClose(); return; }
+      const sel = new Date(dateOptions[dateIdx]!.date); sel.setHours(next, 0, 0, 0);
+      onChange(sel);
+      return;
+    }
+    const sel = new Date(dateOptions[dateIdx]!.date); sel.setHours(hour, 0, 0, 0);
+    onChange(sel);
+  }
+
+  return (
+    <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 }}>
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="font-extrabold text-lg text-ink-900">Pilih Jadwal</Text>
+            <Pressable onPress={onClose} className="h-8 w-8 items-center justify-center rounded-full bg-ink-100">
+              <Text className="text-ink-700">×</Text>
+            </Pressable>
+          </View>
+
+          <Text className="font-semibold mb-2 text-xs text-ink-600">Tanggal</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-2 pr-4">
+              {dateOptions.map((d, i) => {
+                const active = dateIdx === i;
+                return (
+                  <Pressable
+                    key={i}
+                    onPress={() => setDateIdx(i)}
+                    className={`min-w-[72px] items-center rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                  >
+                    <Text className={`font-bold text-xs ${active ? 'text-brand-700' : 'text-ink-900'}`}>{d.label}</Text>
+                    <Text className={`mt-0.5 text-[10px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>{d.sub}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {hours.map((h) => {
+              const disabled = !isHourValid(h);
+              const active = hour === h && !disabled;
+              return (
+                <Pressable
+                  key={h}
+                  disabled={disabled}
+                  onPress={() => setHour(h)}
+                  className={`rounded-lg border px-3 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                >
+                  <Text className={`font-semibold text-xs ${disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'}`}>
+                    {String(h).padStart(2, '0')}:00
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable
+            onPress={confirm}
+            className="mt-5 h-12 items-center justify-center rounded-2xl bg-brand-600"
+          >
+            <Text className="font-bold text-sm text-white">Pilih Jadwal Ini</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </RNModal>
   );
 }
 
