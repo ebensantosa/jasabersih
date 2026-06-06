@@ -27,14 +27,6 @@
       "expo-router",
       "expo-secure-store",
       [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#0EA5E9",
-          "resizeMode": "contain",
-          "imageWidth": 0
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": "JasaBersih perlu akses galeri untuk upload foto kondisi rumah.",

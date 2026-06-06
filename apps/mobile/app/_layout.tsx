@@ -9,7 +9,6 @@ import {
 } from '@expo-google-fonts/inter';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -62,12 +61,6 @@ export default function RootLayout() {
     Inter_700Bold,
     Inter_800ExtraBold,
   });
-
-  // Hide native expo-splash-screen ASAP — biar gak overlap dengan SplashOverlay custom.
-  // SplashOverlay custom yang jadi splash satu-satunya.
-  useEffect(() => {
-    SplashScreen.hideAsync().catch(() => {});
-  }, []);
 
   // TEMP: tahan SplashOverlay minimal 3 detik buat preview design.
   const [splashHold, setSplashHold] = useState(true);
