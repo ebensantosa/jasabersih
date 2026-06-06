@@ -1006,9 +1006,6 @@ function NewBooking() {
                   </View>
                   <Calendar color="#1D4ED8" size={18} />
                 </Pressable>
-                <Text className="mt-2 text-[11px] text-ink-500">
-                  Operasional 07:00–21:00. Paling cepat 1 jam dari sekarang.
-                </Text>
               </Section>
 
               <Section title="Alamat">
@@ -1331,13 +1328,16 @@ function NewBooking() {
 
 function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean; value: Date; onChange: (d: Date) => void; onClose: () => void }) {
   const [dateIdx, setDateIdx] = useState(0);
-  const [hour, setHour] = useState<number>(value.getHours());
+  const [hourStr, setHourStr] = useState<string>(String(value.getHours()).padStart(2, '0'));
+  const [minStr, setMinStr] = useState<string>(String(value.getMinutes()).padStart(2, '0'));
+
   useEffect(() => {
     if (!visible) return;
     const today = new Date(); today.setHours(0,0,0,0);
     const v = new Date(value); v.setHours(0,0,0,0);
     setDateIdx(Math.max(0, Math.min(13, Math.round((v.getTime() - today.getTime()) / 86400000))));
-    setHour(value.getHours());
+    setHourStr(String(value.getHours()).padStart(2, '0'));
+    setMinStr(String(value.getMinutes()).padStart(2, '0'));
   }, [visible, value]);
 
   const dateOptions = useMemo(() => {
@@ -1354,24 +1354,21 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
     return out;
   }, []);
 
-  const earliest = earliestAvailable();
-  const hours = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR }, (_, i) => OPS_START_HOUR + i);
-
-  function isHourValid(h: number): boolean {
-    const sel = new Date(dateOptions[dateIdx]!.date); sel.setHours(h, 0, 0, 0);
-    return sel.getTime() >= earliest.getTime();
+  function pilihSekarang() {
+    const e = earliestAvailable();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const ed = new Date(e); ed.setHours(0, 0, 0, 0);
+    const diff = Math.round((ed.getTime() - today.getTime()) / 86400000);
+    setDateIdx(Math.max(0, Math.min(13, diff)));
+    setHourStr(String(e.getHours()).padStart(2, '0'));
+    setMinStr(String(e.getMinutes()).padStart(2, '0'));
   }
 
   function confirm() {
-    if (!isHourValid(hour)) {
-      // pilih jam valid pertama
-      const next = hours.find((h) => isHourValid(h));
-      if (!next) { onClose(); return; }
-      const sel = new Date(dateOptions[dateIdx]!.date); sel.setHours(next, 0, 0, 0);
-      onChange(sel);
-      return;
-    }
-    const sel = new Date(dateOptions[dateIdx]!.date); sel.setHours(hour, 0, 0, 0);
+    const h = Math.max(0, Math.min(23, parseInt(hourStr || '0', 10) || 0));
+    const m = Math.max(0, Math.min(59, parseInt(minStr || '0', 10) || 0));
+    const sel = new Date(dateOptions[dateIdx]!.date);
+    sel.setHours(h, m, 0, 0);
     onChange(sel);
   }
 
@@ -1405,25 +1402,38 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
             </View>
           </ScrollView>
 
-          <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {hours.map((h) => {
-              const disabled = !isHourValid(h);
-              const active = hour === h && !disabled;
-              return (
-                <Pressable
-                  key={h}
-                  disabled={disabled}
-                  onPress={() => setHour(h)}
-                  className={`rounded-lg border px-3 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                >
-                  <Text className={`font-semibold text-xs ${disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'}`}>
-                    {String(h).padStart(2, '0')}:00
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View className="mt-4 flex-row items-center justify-between">
+            <Text className="font-semibold text-xs text-ink-600">Jam</Text>
+            <Pressable onPress={pilihSekarang} className="rounded-full bg-brand-50 px-3 py-1">
+              <Text className="font-bold text-[11px] text-brand-700">⚡ Pilih Jam Sekarang</Text>
+            </Pressable>
           </View>
+          <View className="mt-2 flex-row items-center gap-2">
+            <View className="flex-1 flex-row items-center rounded-xl border border-ink-200 bg-white">
+              <TextInput
+                value={hourStr}
+                onChangeText={(t) => setHourStr(t.replace(/\D/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="HH"
+                placeholderTextColor="#94A3B8"
+                style={{ flex: 1, fontSize: 24, fontWeight: '800', color: '#0F172A', textAlign: 'center', paddingVertical: 12 }}
+              />
+            </View>
+            <Text className="font-extrabold text-2xl text-ink-900">:</Text>
+            <View className="flex-1 flex-row items-center rounded-xl border border-ink-200 bg-white">
+              <TextInput
+                value={minStr}
+                onChangeText={(t) => setMinStr(t.replace(/\D/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="MM"
+                placeholderTextColor="#94A3B8"
+                style={{ flex: 1, fontSize: 24, fontWeight: '800', color: '#0F172A', textAlign: 'center', paddingVertical: 12 }}
+              />
+            </View>
+          </View>
+          <Text className="mt-2 text-[10px] text-ink-500">Contoh: 11:30, 14:00, 16:45</Text>
 
           <Pressable
             onPress={confirm}
