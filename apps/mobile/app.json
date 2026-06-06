@@ -18,10 +18,7 @@
       "package": "com.jasabersih.app",
       "versionCode": 14,
       "edgeToEdgeEnabled": false,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0EA5E9"
-      }
+      "icon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",
