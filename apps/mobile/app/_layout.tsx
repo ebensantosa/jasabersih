@@ -167,16 +167,7 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  if (!fontsLoaded || splashHold) {
-    // Render minimal app supaya SplashOverlay (di dalam tree) bisa pakai useConfig
-    return (
-      <ErrorBoundary>
-        <QueryProvider>
-          <SplashOverlay visible />
-        </QueryProvider>
-      </ErrorBoundary>
-    );
-  }
+  const splashVisible = !fontsLoaded || splashHold;
 
   return (
     <ErrorBoundary>
@@ -223,6 +214,7 @@ export default function RootLayout() {
         <PopupRenderer event="app_open" />
         <SuspendedOverlay />
         <CleanerLockOverlay />
+        <SplashOverlay visible={splashVisible} />
       </QueryProvider>
     </ErrorBoundary>
   );
