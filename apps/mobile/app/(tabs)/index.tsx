@@ -190,8 +190,8 @@ export default function Home() {
                     <Text className="font-medium mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>
                       Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
                     </Text>
-                    <View className="mt-2 self-start rounded-full bg-brand-600 px-3 py-1">
-                      <Text className="font-extrabold text-[10px] text-white">PESAN SEKARANG ›</Text>
+                    <View className="mt-2 self-start bg-brand-600 px-3 py-1" style={{ borderRadius: 8 }}>
+                      <Text className="font-extrabold text-[10px] text-white">PESAN SEKARANG</Text>
                     </View>
                   </View>
                   {ctaImageUrl ? (
@@ -225,18 +225,26 @@ export default function Home() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ backgroundColor: '#F8FAFC', marginTop: -20 }}
+        style={{ backgroundColor: '#EFF4FB', marginTop: -20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Curved top transition card - Gojek/Grab style */}
         <View
           style={{
-            backgroundColor: '#F8FAFC',
+            backgroundColor: '#EFF4FB',
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingTop: 12,
           }}
         >
+          {/* Soft gradient fade dari header biru ke body */}
+          <LinearGradient
+            colors={['rgba(37,99,235,0.08)', 'rgba(37,99,235,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 80, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+            pointerEvents="none"
+          />
         {/* Service grid 4 col */}
         <View className="mx-4 mt-1 rounded-2xl bg-white px-2 py-3" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
           <View className="flex-row flex-wrap">
@@ -452,27 +460,6 @@ export default function Home() {
           </View>
         </View>
 
-        <View className="mx-4 mt-5">
-          <Pressable
-            onPress={() => router.push('/(auth)/cleaner-onboarding')}
-            className="overflow-hidden rounded-2xl"
-          >
-            <LinearGradient colors={['#1E40AF', '#2563EB']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <View className="flex-row items-center gap-3 p-4">
-                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                  <Wallet color="white" size={22} strokeWidth={2.2} />
-                </View>
-                <View className="flex-1">
-                  <Text className="font-bold text-sm text-white">Jadi Mitra Cleaner</Text>
-                  <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Kerja fleksibel, payout harian, atur jadwal sendiri
-                  </Text>
-                </View>
-                <ChevronRight color="white" size={18} />
-              </View>
-            </LinearGradient>
-          </Pressable>
-        </View>
         </View>
       </ScrollView>
 
