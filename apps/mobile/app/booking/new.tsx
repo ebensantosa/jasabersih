@@ -574,22 +574,46 @@ function NewBooking() {
           {step === 1 && (
             <>
               {isSimpleService && pkg && (
-                <Section title={`Detail Pekerjaan ${category?.name ?? ''}`}>
-                  <View className="rounded-xl border border-brand-200 bg-brand-50 p-3">
-                    {(((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0 ? (
-                      ((pkg as any).includes as string[]).map((it, i) => (
-                        <View key={i} className="flex-row items-start gap-2 py-1">
-                          <Text className="text-success text-sm">✓</Text>
-                          <Text className="flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                <Section title={`PAKET ${category?.name ?? ''}`}>
+                  <View className="rounded-2xl bg-white p-4" style={{ borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    {/* Header */}
+                    <View className="flex-row items-start justify-between">
+                      <View className="flex-1 pr-3">
+                        <Text className="font-extrabold text-base text-ink-900">{pkg.name}</Text>
+                        <View className="mt-1 flex-row items-center gap-1.5">
+                          <View className="rounded bg-amber-100 px-1.5 py-0.5">
+                            <Text className="font-extrabold text-[9px] text-amber-700">PALING LARIS</Text>
+                          </View>
+                          <Text className="font-medium text-[10px] text-ink-500">
+                            · Durasi ±{Math.round(pkg.durationMin / 60 * 10) / 10} jam
+                          </Text>
                         </View>
-                      ))
-                    ) : (
-                      <Text className="text-[12px] leading-5 text-ink-700">{pkg.scope || 'Pembersihan menyeluruh sesuai layanan.'}</Text>
-                    )}
-                    <View className="mt-2 flex-row items-center gap-1.5">
-                      <Text className="text-[10px] text-ink-500">⏱</Text>
-                      <Text className="text-[10px] text-ink-500">Estimasi waktu: ±{pkg.durationMin} menit</Text>
+                      </View>
+                      <View className="items-end">
+                        <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(pkg.price)}</Text>
+                      </View>
                     </View>
+
+                    {/* Description */}
+                    {((pkg as any).note || pkg.scope) && (
+                      <Text className="font-medium mt-2 text-[11px] leading-5 text-ink-600">
+                        {(pkg as any).note || pkg.scope}
+                      </Text>
+                    )}
+
+                    {/* Includes list */}
+                    {(((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0 && (
+                      <View className="mt-3 gap-1.5">
+                        {((pkg as any).includes as string[]).map((it, i) => (
+                          <View key={i} className="flex-row items-start gap-2">
+                            <View className="mt-0.5 h-4 w-4 items-center justify-center rounded-full bg-success/15">
+                              <Check color="#10B981" size={11} strokeWidth={3} />
+                            </View>
+                            <Text className="font-medium flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 </Section>
               )}
@@ -1256,14 +1280,14 @@ function NewBooking() {
                 <View className="flex-1">
                   <View className="flex-row items-center gap-1.5">
                     <Text className={`font-extrabold text-[13px] ${cleanMode === 'deep' ? 'text-amber-800' : 'text-ink-900'}`}>
-                      ✨ Bersih Sampai Kinclong
+                      Deep Cleaning
                     </Text>
                     <View className="rounded bg-amber-200 px-1.5 py-0.5">
                       <Text className="font-extrabold text-[8px] text-amber-900">RECOMMENDED</Text>
                     </View>
                   </View>
-                  <Text className="font-medium mt-0.5 text-[10px] text-ink-600" numberOfLines={1}>
-                    Kerak, jamur, noda membandel — semua hilang. Hasil maksimal.
+                  <Text className="font-medium mt-0.5 text-[10px] text-ink-600" numberOfLines={2}>
+                    Pembersihan menyeluruh hingga detail tersembunyi: kerak kamar mandi, jamur nat, noda membandel, sela furnitur, bekas renovasi. Pakai cairan khusus & waktu pengerjaan lebih lama.
                   </Text>
                 </View>
                 {pkg && (
@@ -1271,7 +1295,6 @@ function NewBooking() {
                     <Text className="font-bold text-[11px] text-amber-800">
                       +{formatRupiah(Math.round((pkg.price * (deepMultiplier - 1)) / 1000) * 1000)}
                     </Text>
-                    <Text className="font-medium text-[8px] text-ink-500">sekali tap</Text>
                   </View>
                 )}
               </Pressable>
