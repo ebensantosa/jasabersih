@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, MessageCircle, Minus, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image as RNImage, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Image as RNImage, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -546,9 +546,22 @@ function NewBooking() {
         </Text>
         <Pressable
           onPress={() => router.replace({ pathname: '/city-request', params: { city: userLoc?.shortLabel ?? '' } })}
-          className="mt-6 rounded-2xl bg-brand-600 px-6 py-3"
+          className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
         >
           <Text className="font-bold text-white">Request Kota Saya</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6281234567890';
+            const msg = encodeURIComponent(
+              `Halo admin JasaBersih, saya mau konsultasi booking di area ${userLoc?.shortLabel ?? 'lokasi saya'} (di luar coverage). Bisa tolong dibantu?`,
+            );
+            Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
+          }}
+          className="mt-3 w-full max-w-xs flex-row items-center justify-center gap-2 rounded-2xl bg-success px-6 py-3"
+        >
+          <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
+          <Text className="font-bold text-white">Hubungi Admin (WA)</Text>
         </Pressable>
         <Pressable onPress={() => safeBack()} className="mt-3">
           <Text className="font-semibold text-brand-600">Kembali</Text>
