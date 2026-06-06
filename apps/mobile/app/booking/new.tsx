@@ -1054,7 +1054,7 @@ function NewBooking() {
                 )}
               </Section>
 
-              <Section title="Upgrade Deep Cleaning (Opsional)">
+              {!isSimpleService && <Section title="Upgrade Deep Cleaning (Opsional)">
                 <Pressable
                   onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
                   className={`flex-row items-start gap-3 rounded-xl border p-3 ${
@@ -1086,7 +1086,7 @@ function NewBooking() {
                     )}
                   </View>
                 </Pressable>
-              </Section>
+              </Section>}
 
               <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
                 <Text className="font-bold text-sm text-ink-900">Rincian Harga</Text>
@@ -1232,6 +1232,33 @@ function NewBooking() {
 
         <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white" style={{ elevation: 8 }}>
           <SafeAreaView edges={['bottom']}>
+            {isSimpleService && (
+              <Pressable
+                onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
+                className="flex-row items-center gap-3 border-b border-ink-100 px-4 py-2.5"
+              >
+                <View
+                  className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                    cleanMode === 'deep' ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                  }`}
+                >
+                  {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-bold text-[13px] ${cleanMode === 'deep' ? 'text-brand-700' : 'text-ink-900'}`}>
+                    Upgrade ke Deep Cleaning
+                  </Text>
+                  <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
+                    Pembersihan menyeluruh + kerak, jamur, noda membandel
+                  </Text>
+                </View>
+                {pkg && (
+                  <Text className="font-bold text-[11px] text-amber-700">
+                    +{formatRupiah(Math.round((pkg.price * (deepMultiplier - 1)) / 1000) * 1000)}
+                  </Text>
+                )}
+              </Pressable>
+            )}
             {pkg && (
               <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-3">
                 <View className="flex-1 pr-2">
