@@ -520,11 +520,18 @@ function NewBooking() {
 
   if (!category) return null;
 
-  // Coverage gate — block booking if user location is outside service_areas radius.
+  // Coverage gate — cek alamat booking yang dipilih dulu (paling akurat untuk lokasi job).
+  // Kalau belum pilih alamat / alamat ga punya coords, fallback ke GPS user.
   // serviceAreas = [] (admin belum config any) treated as "covered" so we don't break onboarding.
   const userLoc = useLocationStore.getState().current;
   const areas = useAppContent.getState().content.serviceAreas;
-  const cov = checkCoverage(userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null, areas);
+  const checkLoc =
+    selectedAddress && Number.isFinite(selectedAddress.lat) && Number.isFinite(selectedAddress.lng)
+      ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
+      : userLoc
+        ? { lat: userLoc.lat, lng: userLoc.lng }
+        : null;
+  const cov = checkCoverage(checkLoc, areas);
   if (!cov.covered) {
     return (
       <View className="flex-1 items-center justify-center bg-white p-8">

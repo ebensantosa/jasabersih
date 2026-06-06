@@ -259,6 +259,28 @@ export class BookingsController {
 
     const totalWithTravel = Number(body.totalAmount) + travelFee - voucherDiscount - referralDiscount;
 
+    // Server-side coverage gate: pastikan booking address dalam radius minimal 1 service_area aktif.
+    // Pakai PostGIS ST_DWithin untuk performa (index gist). Skip kalau gak ada area sama sekali.
+    const areaCount = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM service_areas WHERE is_active = true
+    `;
+    if (Number(areaCount[0]?.c ?? 0) > 0) {
+      const covered = await this.prisma.$queryRaw<{ covered: boolean }[]>`
+        SELECT EXISTS (
+          SELECT 1 FROM service_areas
+           WHERE is_active = true
+             AND ST_DWithin(
+               centroid,
+               ST_SetSRID(ST_MakePoint(${lng}::float, ${lat}::float), 4326)::geography,
+               radius_m
+             )
+        ) AS covered
+      `;
+      if (!covered[0]?.covered) {
+        throw new BadRequestException('Lokasi booking di luar area layanan kami.');
+      }
+    }
+
     // Worker count dari form_snapshot — pre-validate (1-4, default 1).
     const wcRaw = (body.formSnapshot as any)?.workerCount ?? (body.formSnapshot as any)?.worker_count;
     const workerCount = Math.min(Math.max(Number(wcRaw) || 1, 1), 4);

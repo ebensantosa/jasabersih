@@ -25,8 +25,7 @@ export function checkCoverage(
   areas: ServiceArea[],
 ): CoverageResult {
   if (areas.length === 0) return { covered: true };
-  // Kalau user location belum siap (store belum hydrated), jangan blok — biar gak false-negative.
-  if (!userLoc) return { covered: true };
+  if (!userLoc) return { covered: false };
 
   let nearest: { area: ServiceArea; distance: number } | null = null;
   for (const a of areas) {
