@@ -182,10 +182,11 @@ export class CleanerJobsController {
   // HTTP fallback untuk accept (kalau socket ga konek). Atomic, race-safe.
   @Post(':id/accept')
   async accept(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any }[]>`
-      SELECT kyc_status, service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any; is_available: boolean | null }[]>`
+      SELECT kyc_status, service_areas, is_available FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
     if (profile[0]?.kyc_status !== 'approved') throw new ForbiddenException('KYC belum approved.');
+    if (!profile[0]?.is_available) throw new ForbiddenException('Aktifkan mode Online dulu sebelum ambil job.');
 
     // Defense in depth: re-check area at accept time so cleaner can't bypass
     // the /available filter via direct API call.

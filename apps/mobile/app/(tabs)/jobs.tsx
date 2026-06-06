@@ -123,6 +123,10 @@ function JobsScreen() {
   }
 
   async function accept(id: string) {
+    if (!online) {
+      toast.warning('Aktifkan mode Online dulu sebelum ambil job.');
+      return;
+    }
     try {
       await api.post(`/cleaner/jobs/${id}/accept`);
       toast.success('Job berhasil diambil!');

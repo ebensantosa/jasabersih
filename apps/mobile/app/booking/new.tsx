@@ -929,7 +929,7 @@ function NewBooking() {
                   <TextInput
                     value={petNote}
                     onChangeText={setPetNote}
-                    placeholder="Tipe & jumlah (mis. 2 kucing)"
+                    placeholder="Tipe & jumlah (contoh: 2 kucing)"
                     placeholderTextColor="#94A3B8"
                     className="font-sans mt-2 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm"
                   />

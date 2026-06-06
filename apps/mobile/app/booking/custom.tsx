@@ -318,7 +318,7 @@ function CustomBooking() {
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Mis. ada hewan peliharaan, akses pintu samping, dll"
+              placeholder="Contoh: ada hewan peliharaan, akses pintu samping, dll"
               multiline
               numberOfLines={3}
               className="rounded-xl border border-ink-200 bg-white p-3 text-sm text-ink-900"
