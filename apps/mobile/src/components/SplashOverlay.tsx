@@ -7,7 +7,7 @@ import { useConfig } from '../stores/appContent';
  * Splash overlay — logo saja, solid color (sama dengan native splash di app.json).
  * Logo configurable via brand.logo_url di App Settings.
  */
-const SPLASH_BG = '#0EA5E9'; // HARUS sama dengan app.json expo-splash-screen.backgroundColor
+const SPLASH_BG = '#FFFFFF';
 
 export function SplashOverlay({ visible }: { visible: boolean }) {
   const rawLogo = useConfig('brand.logo_url', '' as any) as unknown;
