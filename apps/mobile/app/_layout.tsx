@@ -63,19 +63,16 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
-  // Cegah expo native splash auto-hide — kita kontrol manual via SplashOverlay
-  // biar gak ada flash transisi native → custom.
+  // Hide native expo-splash-screen ASAP — biar gak overlap dengan SplashOverlay custom.
+  // SplashOverlay custom yang jadi splash satu-satunya.
   useEffect(() => {
-    SplashScreen.preventAutoHideAsync().catch(() => {});
+    SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // TEMP: tahan splash minimal 3 detik buat preview design.
+  // TEMP: tahan SplashOverlay minimal 3 detik buat preview design.
   const [splashHold, setSplashHold] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => {
-      setSplashHold(false);
-      SplashScreen.hideAsync().catch(() => {});
-    }, 3000);
+    const t = setTimeout(() => setSplashHold(false), 3000);
     return () => clearTimeout(t);
   }, []);
 
