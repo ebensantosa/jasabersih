@@ -1328,16 +1328,16 @@ function NewBooking() {
 
 function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean; value: Date; onChange: (d: Date) => void; onClose: () => void }) {
   const [dateIdx, setDateIdx] = useState(0);
-  const [hourStr, setHourStr] = useState<string>(String(value.getHours()).padStart(2, '0'));
-  const [minStr, setMinStr] = useState<string>(String(value.getMinutes()).padStart(2, '0'));
+  const [hourSel, setHourSel] = useState<number>(value.getHours());
+  const [minSel, setMinSel] = useState<number>(value.getMinutes() - (value.getMinutes() % 5));
 
   useEffect(() => {
     if (!visible) return;
     const today = new Date(); today.setHours(0,0,0,0);
     const v = new Date(value); v.setHours(0,0,0,0);
     setDateIdx(Math.max(0, Math.min(13, Math.round((v.getTime() - today.getTime()) / 86400000))));
-    setHourStr(String(value.getHours()).padStart(2, '0'));
-    setMinStr(String(value.getMinutes()).padStart(2, '0'));
+    setHourSel(value.getHours());
+    setMinSel(value.getMinutes() - (value.getMinutes() % 5));
   }, [visible, value]);
 
   const dateOptions = useMemo(() => {
@@ -1360,17 +1360,18 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
     const ed = new Date(e); ed.setHours(0, 0, 0, 0);
     const diff = Math.round((ed.getTime() - today.getTime()) / 86400000);
     setDateIdx(Math.max(0, Math.min(13, diff)));
-    setHourStr(String(e.getHours()).padStart(2, '0'));
-    setMinStr(String(e.getMinutes()).padStart(2, '0'));
+    setHourSel(e.getHours());
+    setMinSel(e.getMinutes() - (e.getMinutes() % 5));
   }
 
   function confirm() {
-    const h = Math.max(0, Math.min(23, parseInt(hourStr || '0', 10) || 0));
-    const m = Math.max(0, Math.min(59, parseInt(minStr || '0', 10) || 0));
     const sel = new Date(dateOptions[dateIdx]!.date);
-    sel.setHours(h, m, 0, 0);
+    sel.setHours(hourSel, minSel, 0, 0);
     onChange(sel);
   }
+
+  const hourList = Array.from({ length: 24 }, (_, i) => i);
+  const minuteList = Array.from({ length: 12 }, (_, i) => i * 5);
 
   return (
     <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -1405,35 +1406,55 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
           <View className="mt-4 flex-row items-center justify-between">
             <Text className="font-semibold text-xs text-ink-600">Jam</Text>
             <Pressable onPress={pilihSekarang} className="rounded-full bg-brand-50 px-3 py-1">
-              <Text className="font-bold text-[11px] text-brand-700">⚡ Pilih Jam Sekarang</Text>
+              <Text className="font-bold text-[11px] text-brand-700">Pilih Jam Sekarang</Text>
             </Pressable>
           </View>
-          <View className="mt-2 flex-row items-center gap-2">
-            <View className="flex-1 flex-row items-center rounded-xl border border-ink-200 bg-white">
-              <TextInput
-                value={hourStr}
-                onChangeText={(t) => setHourStr(t.replace(/\D/g, '').slice(0, 2))}
-                keyboardType="number-pad"
-                maxLength={2}
-                placeholder="HH"
-                placeholderTextColor="#94A3B8"
-                style={{ flex: 1, fontSize: 24, fontWeight: '800', color: '#0F172A', textAlign: 'center', paddingVertical: 12 }}
-              />
-            </View>
-            <Text className="font-extrabold text-2xl text-ink-900">:</Text>
-            <View className="flex-1 flex-row items-center rounded-xl border border-ink-200 bg-white">
-              <TextInput
-                value={minStr}
-                onChangeText={(t) => setMinStr(t.replace(/\D/g, '').slice(0, 2))}
-                keyboardType="number-pad"
-                maxLength={2}
-                placeholder="MM"
-                placeholderTextColor="#94A3B8"
-                style={{ flex: 1, fontSize: 24, fontWeight: '800', color: '#0F172A', textAlign: 'center', paddingVertical: 12 }}
-              />
-            </View>
+
+          <View className="mt-2 items-center rounded-xl bg-brand-50 py-3">
+            <Text className="font-extrabold text-3xl text-brand-700">
+              {String(hourSel).padStart(2, '0')}:{String(minSel).padStart(2, '0')}
+            </Text>
           </View>
-          <Text className="mt-2 text-[10px] text-ink-500">Contoh: 11:30, 14:00, 16:45</Text>
+
+          <Text className="mt-3 mb-1 text-[10px] uppercase tracking-wider text-ink-500">Jam</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-1.5 pr-4">
+              {hourList.map((h) => {
+                const active = hourSel === h;
+                return (
+                  <Pressable
+                    key={h}
+                    onPress={() => setHourSel(h)}
+                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                  >
+                    <Text className={`font-bold text-sm ${active ? 'text-white' : 'text-ink-800'}`}>
+                      {String(h).padStart(2, '0')}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          <Text className="mt-3 mb-1 text-[10px] uppercase tracking-wider text-ink-500">Menit</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-1.5 pr-4">
+              {minuteList.map((m) => {
+                const active = minSel === m;
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => setMinSel(m)}
+                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                  >
+                    <Text className={`font-bold text-sm ${active ? 'text-white' : 'text-ink-800'}`}>
+                      {String(m).padStart(2, '0')}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
 
           <Pressable
             onPress={confirm}
