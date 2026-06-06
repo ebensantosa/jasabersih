@@ -201,8 +201,11 @@ export default function Home() {
             }}
           >
             <View style={{ paddingVertical: 14, paddingHorizontal: 16, position: 'relative' }}>
-              <View
-                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#1D4ED8' }}
+              <LinearGradient
+                colors={['#1D4ED8', '#10B981', '#14B8A6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 }}
               />
               <View className="flex-row items-center gap-3">
                 <View className="flex-1">
