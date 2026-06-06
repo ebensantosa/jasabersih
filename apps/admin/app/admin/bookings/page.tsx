@@ -605,7 +605,7 @@ function OfflineCard({ onRetry }: { onRetry: () => void }) {
       <div className="flex-1">
         <div className="text-sm font-bold text-amber-900">Backend tidak terkoneksi</div>
         <div className="text-xs text-amber-900">
-          Pastikan API jalan: <code>npm run dev -w @jasabersih/api</code>
+          Server sedang tidak merespon. Coba lagi sebentar atau hubungi tim teknis.
         </div>
       </div>
       <button

@@ -119,9 +119,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-[11px] text-slate-400">
-          Backend: <code>{API_BASE}</code>
-        </p>
       </div>
     </main>
   );
