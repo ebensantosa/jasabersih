@@ -62,6 +62,13 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
+  // TEMP: tahan splash minimal 3 detik buat preview design.
+  const [splashHold, setSplashHold] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setSplashHold(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     void hydrateStorageCache([
       'app.mode',
@@ -150,7 +157,7 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || splashHold) {
     // Render minimal app supaya SplashOverlay (di dalam tree) bisa pakai useConfig
     return (
       <ErrorBoundary>
