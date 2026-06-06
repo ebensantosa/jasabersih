@@ -149,6 +149,13 @@ function NewBooking() {
   const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'vacuum_lantai', 'garasi', 'pekarangan'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
 
+  // Auto-centang Deep Cleaning saat masuk halaman simple service (sales default).
+  // User tetap bisa unceklis kalau gak mau.
+  useEffect(() => {
+    if (isSimpleService) setCleaningMode('deep');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category?.code]);
+
   const cleanMode = useCleaningModeStore((s) => s.mode);
   const setCleaningMode = useCleaningModeStore((s) => s.setMode);
   const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.45 as any);
@@ -1235,27 +1242,37 @@ function NewBooking() {
             {isSimpleService && (
               <Pressable
                 onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
-                className="flex-row items-center gap-3 border-b border-ink-100 px-4 py-2.5"
+                className={`flex-row items-center gap-3 border-b border-ink-100 px-4 py-2.5 ${
+                  cleanMode === 'deep' ? 'bg-amber-50' : ''
+                }`}
               >
                 <View
                   className={`h-5 w-5 items-center justify-center rounded border-2 ${
-                    cleanMode === 'deep' ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                    cleanMode === 'deep' ? 'border-amber-600 bg-amber-600' : 'border-ink-300 bg-white'
                   }`}
                 >
                   {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
                 </View>
                 <View className="flex-1">
-                  <Text className={`font-bold text-[13px] ${cleanMode === 'deep' ? 'text-brand-700' : 'text-ink-900'}`}>
-                    Upgrade ke Deep Cleaning
-                  </Text>
-                  <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
-                    Pembersihan menyeluruh + kerak, jamur, noda membandel
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className={`font-extrabold text-[13px] ${cleanMode === 'deep' ? 'text-amber-800' : 'text-ink-900'}`}>
+                      ✨ Bersih Sampai Kinclong
+                    </Text>
+                    <View className="rounded bg-amber-200 px-1.5 py-0.5">
+                      <Text className="font-extrabold text-[8px] text-amber-900">RECOMMENDED</Text>
+                    </View>
+                  </View>
+                  <Text className="font-medium mt-0.5 text-[10px] text-ink-600" numberOfLines={1}>
+                    Kerak, jamur, noda membandel — semua hilang. Hasil maksimal.
                   </Text>
                 </View>
                 {pkg && (
-                  <Text className="font-bold text-[11px] text-amber-700">
-                    +{formatRupiah(Math.round((pkg.price * (deepMultiplier - 1)) / 1000) * 1000)}
-                  </Text>
+                  <View className="items-end">
+                    <Text className="font-bold text-[11px] text-amber-800">
+                      +{formatRupiah(Math.round((pkg.price * (deepMultiplier - 1)) / 1000) * 1000)}
+                    </Text>
+                    <Text className="font-medium text-[8px] text-ink-500">sekali tap</Text>
+                  </View>
                 )}
               </Pressable>
             )}
