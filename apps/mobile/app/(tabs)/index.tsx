@@ -160,64 +160,6 @@ export default function Home() {
               </View>
             </View>
 
-            <Pressable
-              onPress={() => router.push('/booking/custom')}
-              className="mt-3 overflow-hidden rounded-2xl bg-white"
-              style={{
-                elevation: 4,
-                shadowColor: '#0F172A',
-                shadowOpacity: 0.12,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 3 },
-              }}
-            >
-              <View style={{ paddingVertical: 14, paddingHorizontal: 16, position: 'relative' }}>
-                {/* Subtle accent strip kiri */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 4,
-                    backgroundColor: '#1D4ED8',
-                  }}
-                />
-
-                <View className="flex-row items-center gap-3">
-                  <View className="flex-1">
-                    <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
-                    <Text className="font-medium mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>
-                      Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
-                    </Text>
-                    <View className="mt-2 self-start bg-brand-600 px-3 py-1" style={{ borderRadius: 8 }}>
-                      <Text className="font-extrabold text-[10px] text-white">PESAN SEKARANG</Text>
-                    </View>
-                  </View>
-                  {ctaImageUrl ? (
-                    <Image
-                      source={{ uri: ctaImageUrl }}
-                      style={{ width: 48, height: 48 }}
-                      contentFit="contain"
-                    />
-                  ) : (
-                    <Animated.View
-                      style={{
-                        backgroundColor: '#1D4ED8',
-                        height: 36,
-                        width: 36,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 18,
-                        transform: ctaAnimated ? [{ scale: pulse }] : [],
-                      }}
-                    >
-                      <ChevronRight color="white" size={18} strokeWidth={3} />
-                    </Animated.View>
-                  )}
-                </View>
-              </View>
-            </Pressable>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -245,6 +187,57 @@ export default function Home() {
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 80, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
             pointerEvents="none"
           />
+
+          {/* CTA Bersih Full Custom — scroll bareng content, gak sticky */}
+          <Pressable
+            onPress={() => router.push('/booking/custom')}
+            className="mx-4 mt-1 overflow-hidden rounded-2xl bg-white"
+            style={{
+              elevation: 4,
+              shadowColor: '#0F172A',
+              shadowOpacity: 0.12,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 3 },
+            }}
+          >
+            <View style={{ paddingVertical: 14, paddingHorizontal: 16, position: 'relative' }}>
+              <View
+                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#1D4ED8' }}
+              />
+              <View className="flex-row items-center gap-3">
+                <View className="flex-1">
+                  <Text className="font-extrabold text-base text-ink-900">Bersih Full Custom</Text>
+                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>
+                    Pilih sendiri layanan & jumlahnya, bayar sesuai pakai
+                  </Text>
+                  <View className="mt-2 self-start bg-brand-600 px-3 py-1" style={{ borderRadius: 8 }}>
+                    <Text className="font-extrabold text-[10px] text-white">PESAN SEKARANG</Text>
+                  </View>
+                </View>
+                {ctaImageUrl ? (
+                  <Image
+                    source={{ uri: ctaImageUrl }}
+                    style={{ width: 48, height: 48 }}
+                    contentFit="contain"
+                  />
+                ) : (
+                  <Animated.View
+                    style={{
+                      backgroundColor: '#1D4ED8',
+                      height: 36,
+                      width: 36,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 18,
+                      transform: ctaAnimated ? [{ scale: pulse }] : [],
+                    }}
+                  >
+                    <ChevronRight color="white" size={18} strokeWidth={3} />
+                  </Animated.View>
+                )}
+              </View>
+            </View>
+          </Pressable>
         {/* Service grid 4 col */}
         <View className="mx-4 mt-1 rounded-2xl bg-white px-2 py-3" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
           <View className="flex-row flex-wrap">
