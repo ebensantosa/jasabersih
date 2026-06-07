@@ -170,7 +170,7 @@ function NewBooking() {
   const [facilities, setFacilities] = useState<Set<string>>(new Set(['Dapur', 'Ruang Tamu']));
   const [areaM2, setAreaM2] = useState(60);
 
-  const [dirtLevel, setDirtLevel] = useState<1 | 2 | 3 | 4 | 5>(2);
+  const [dirtLevel, setDirtLevel] = useState<1 | 2 | 3>(1);
   const [photos, setPhotos] = useState<{ uri: string; size: number; url?: string }[]>([]);
   const photoCount = photos.length;
   const MAX_PHOTOS = 3;

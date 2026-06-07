@@ -170,11 +170,9 @@ export type FloorOption = (typeof FLOOR_OPTIONS)[number];
 export const ROOM_FACILITIES = ['Dapur', 'Ruang Tamu', 'Pekarangan', 'Garasi'] as const;
 
 export const DIRT_LEVELS: { level: 1 | 2 | 3 | 4 | 5; label: string; desc: string; multiplier: number }[] = [
-  { level: 1, label: 'Baru rapi', desc: 'Habis dibersihkan, tinggal touch-up', multiplier: 1 },
-  { level: 2, label: 'Ringan', desc: 'Debu & kotoran harian', multiplier: 1 },
-  { level: 3, label: 'Sedang', desc: 'Belum dibersihkan beberapa hari', multiplier: 1 },
-  { level: 4, label: 'Berat', desc: 'Lama tidak dibersihkan, foto wajib', multiplier: 1.25 },
-  { level: 5, label: 'Ekstrim', desc: 'Pasca renovasi/banjir, foto wajib', multiplier: 1.5 },
+  { level: 1, label: 'Ringan', desc: 'Debu & kotoran harian', multiplier: 1 },
+  { level: 2, label: 'Sedang', desc: 'Belum dibersihkan beberapa hari', multiplier: 1.15 },
+  { level: 3, label: 'Sangat Kotor', desc: 'Lama tidak dibersihkan / pasca renovasi · foto wajib', multiplier: 1.4 },
 ];
 
 export const DIRT_CHARACTERS = [
