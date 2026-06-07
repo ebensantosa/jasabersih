@@ -2,6 +2,7 @@ import { router, usePathname } from 'expo-router';
 import { useCallback, useEffect } from 'react';
 
 import { api } from '../lib/api';
+import { useVisiblePoll } from '../lib/useVisiblePoll';
 import { useAuthStore } from '../stores/auth';
 import { useCleanerKycStore } from '../stores/cleanerKyc';
 import { useModeStore } from '../stores/mode';
@@ -31,14 +32,9 @@ export function CleanerLockOverlay() {
     } catch { /* keep cached */ }
   }, [tokens, mode, setKycStatus]);
 
-  useEffect(() => { void fetchStatus(); }, [fetchStatus]);
-
-  // Refresh tiap 60s — auto unlock kalau admin approve di server
-  useEffect(() => {
-    if (!tokens || mode !== 'freelancer') return;
-    const t = setInterval(fetchStatus, 60_000);
-    return () => clearInterval(t);
-  }, [tokens, mode, fetchStatus]);
+  // Refresh tiap 60s — auto unlock kalau admin approve di server.
+  // Pause saat app di background biar gak buang baterai.
+  useVisiblePoll(fetchStatus, 60_000, !!tokens && mode === 'freelancer');
 
   useEffect(() => {
     if (!tokens || mode !== 'freelancer' || kycStatus === null) return;

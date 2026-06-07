@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Briefcase, ClipboardList, Home, MessageCircle, Search, TrendingUp, User } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import { useT } from '../../src/lib/i18n';
 import { useModeStore } from '../../src/stores/mode';
 import { useAuthStore } from '../../src/stores/auth';
 import { api } from '../../src/lib/api';
+import { useVisiblePoll } from '../../src/lib/useVisiblePoll';
 
 export default function TabsLayout() {
   const mode = useModeStore((s) => s.mode);
@@ -17,18 +18,15 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const [chatUnread, setChatUnread] = useState(0);
 
-  // Poll unread count tiap 30s
-  useEffect(() => {
-    if (!tokens) { setChatUnread(0); return; }
-    const fetchUnread = () => {
-      api.get('/chat/unread-count').then((r) => {
-        setChatUnread(Number((r.data?.data ?? r.data)?.count ?? 0));
-      }).catch(() => {});
-    };
-    fetchUnread();
-    const t = setInterval(fetchUnread, 30_000);
-    return () => clearInterval(t);
-  }, [tokens]);
+  // Poll chat unread tiap 30s (pause saat app di background)
+  const fetchChatUnread = useCallback(async () => {
+    try {
+      const r = await api.get('/chat/unread-count');
+      setChatUnread(Number((r.data?.data ?? r.data)?.count ?? 0));
+    } catch { /* silent */ }
+  }, []);
+  useVisiblePoll(fetchChatUnread, 30_000, !!tokens);
+  useEffect(() => { if (!tokens) setChatUnread(0); }, [tokens]);
 
   return (
     <Tabs
