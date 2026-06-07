@@ -43,7 +43,7 @@ export async function loginAdmin(
       body: JSON.stringify({ email, password }),
     });
   } catch {
-    throw new Error('Tidak bisa konek ke backend. Pastikan API jalan di ' + apiBase);
+    throw new Error('Tidak bisa konek ke backend. Coba lagi sebentar atau hubungi tim teknis.');
   }
   if (!res.ok) {
     const j = await res.json().catch(() => null);
