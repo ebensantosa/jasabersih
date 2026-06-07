@@ -88,6 +88,8 @@ function CustomBooking() {
   const dateOptions = useMemo(() => makeDateOptions(), []);
   const [dateIdx, setDateIdx] = useState(1); // default besok
   const [timeSlot, setTimeSlot] = useState('09:00');
+  // "Sekarang" mode = pakai jam tercepat exact (sekarang+1h dengan menit asli)
+  const [useNowTime, setUseNowTime] = useState(false);
 
   // Auto-pilih slot jam pertama yang masih valid (kalau hari ini & slot terpilih udah lewat).
   useEffect(() => {
@@ -111,11 +113,15 @@ function CustomBooking() {
   const EMPTY_HOUSE_DISC = 0.20;
 
   const scheduleAt = useMemo(() => {
+    if (useNowTime && dateIdx === 0) {
+      // Exact earliest: sekarang + 1 jam (menit asli, gak dibulatkan)
+      return new Date(Date.now() + 60 * 60 * 1000);
+    }
     const d = new Date(dateOptions[dateIdx]!.date);
     const [hh, mm] = timeSlot.split(':').map(Number);
     d.setHours(hh!, mm!, 0, 0);
     return d;
-  }, [dateOptions, dateIdx, timeSlot]);
+  }, [dateOptions, dateIdx, timeSlot, useNowTime]);
 
   const { subtotal, total, discount, totalMin, itemCount } = useMemo(() => {
     let t = 0, m = 0, n = 0;
@@ -291,18 +297,20 @@ function CustomBooking() {
                 const out: React.ReactNode[] = [];
                 TIME_SLOTS.forEach((t, idx) => {
                   if (idx === firstValidIdx) {
+                    const now = new Date(Date.now() + 60 * 60 * 1000);
+                    const label = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                     out.push(
                       <Pressable
                         key="now"
-                        onPress={() => { setDateIdx(0); setTimeSlot(TIME_SLOTS[firstValidIdx]!); }}
+                        onPress={() => { setDateIdx(0); setUseNowTime(true); }}
                         className={`rounded-lg border px-3 py-2 ${
-                          timeSlot === TIME_SLOTS[firstValidIdx] && dateIdx === 0
+                          useNowTime && dateIdx === 0
                             ? 'border-emerald-600 bg-emerald-600'
                             : 'border-emerald-400 bg-emerald-50'
                         }`}
                       >
-                        <Text className={`font-extrabold text-xs ${timeSlot === TIME_SLOTS[firstValidIdx] && dateIdx === 0 ? 'text-white' : 'text-emerald-700'}`}>
-                          Sekarang
+                        <Text className={`font-extrabold text-xs ${useNowTime && dateIdx === 0 ? 'text-white' : 'text-emerald-700'}`}>
+                          Sekarang ({label})
                         </Text>
                       </Pressable>,
                     );
@@ -314,12 +322,12 @@ function CustomBooking() {
                     const slot = new Date(); slot.setHours(hh!, mm!, 0, 0);
                     disabled = slot.getTime() < earliest.getTime();
                   }
-                  const active = timeSlot === t && (!isTodayMode || !disabled);
+                  const active = timeSlot === t && !useNowTime && (!isTodayMode || !disabled);
                   out.push(
                     <Pressable
                       key={t}
                       disabled={disabled}
-                      onPress={() => setTimeSlot(t)}
+                      onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
                       className={`rounded-lg border px-3 py-2 ${
                         disabled
                           ? 'border-ink-100 bg-ink-50'
