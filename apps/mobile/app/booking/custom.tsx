@@ -92,7 +92,7 @@ function CustomBooking() {
   // Auto-pilih slot jam pertama yang masih valid (kalau hari ini & slot terpilih udah lewat).
   useEffect(() => {
     if (dateIdx !== 0) return;
-    const earliest = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const earliest = new Date(Date.now() + 60 * 60 * 1000);
     const [hh, mm] = timeSlot.split(':').map(Number);
     const cur = new Date(); cur.setHours(hh!, mm!, 0, 0);
     if (cur.getTime() >= earliest.getTime()) return;
@@ -287,7 +287,7 @@ function CustomBooking() {
                   const slot = new Date();
                   slot.setHours(hh!, mm!, 0, 0);
                   // Butuh min lead time 2 jam dari sekarang.
-                  const earliest = new Date(Date.now() + 2 * 60 * 60 * 1000);
+                  const earliest = new Date(Date.now() + 60 * 60 * 1000);
                   disabled = slot.getTime() < earliest.getTime();
                 }
                 const active = timeSlot === t;
