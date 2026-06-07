@@ -59,25 +59,50 @@ function CustomBooking() {
   const services = useApiServices();
   const allPackages = useAppContent((s) => s.content.packages);
   const apiAddons = useApiAddons();
-  // ROOMS = services × their package price (1 paket per service setelah seed).
-  const ROOMS: Item[] = useMemo(() => services.map((s: any) => {
-    const pkg = allPackages.find((p: any) => p.serviceId === s.id);
-    return {
-      key: s.code ?? s.id,
-      label: s.name,
-      price: Number(pkg?.price ?? 0),
-      icon: iconFor(String(s.code ?? '')),
-      durationMin: Number(pkg?.durationMin ?? 60),
-    };
-  }).filter((r) => r.price > 0), [services, allPackages]);
-  const EXTRAS: Item[] = useMemo(() => apiAddons.map((a: any) => ({
-    key: a.code ?? a.id,
-    label: a.name,
-    price: Number(a.price ?? 0),
-    icon: iconFor(String(a.code ?? '')),
-    durationMin: Number(a.durationMin ?? 15),
-    unit: a.description ?? undefined,
-  })), [apiAddons]);
+
+  // Skip services yang tabrakan / kombo (kamar+toilet = kombo dari kamar & toilet)
+  // dan service per-meter (ruko/kantor/apartemen) — itu butuh flow sendiri.
+  const EXCLUDED_SERVICE_CODES = new Set([
+    'kamar_km_dalam',  // kombo, sudah ada Kamar Tidur + Toilet terpisah
+    'ruko', 'kantor', 'apartemen', // per-meter, gak fit qty-based selector
+    'full_house', 'paket_bundle', 'subscription', 'general_cleaning', 'deep_cleaning',
+    'kos', 'konsultasi', 'pasca_renovasi',
+  ]);
+
+  // ROOMS = services atomic (per ruangan), bukan kombo & bukan per-meter.
+  const ROOMS: Item[] = useMemo(() => services
+    .filter((s: any) => !EXCLUDED_SERVICE_CODES.has(String(s.code ?? '')))
+    .map((s: any) => {
+      const pkg = allPackages.find((p: any) => p.serviceId === s.id);
+      // Skip kalau package per-meter
+      if (pkg?.scope && typeof pkg.scope === 'object' && (pkg.scope as any).perMeter) return null;
+      return {
+        key: s.code ?? s.id,
+        label: s.name,
+        price: Number(pkg?.price ?? 0),
+        icon: iconFor(String(s.code ?? '')),
+        durationMin: Number(pkg?.durationMin ?? 60),
+      };
+    })
+    .filter((r): r is Item => r !== null && r.price > 0), [services, allPackages]);
+
+  // Add-ons yang punya unit khusus (per m², per panel, per lubang, dll) gak masuk EXTRAS
+  // karena rancu kalau dikalikan qty bulat (user gak bisa pilih "0.5 m²").
+  // Add-on per-pcs / per-unit / per-dudukan tetap masuk.
+  const isSpecialUnit = (desc: string | null | undefined) => {
+    const d = (desc ?? '').toLowerCase();
+    return d.includes('per m²') || d.includes('/m²') || d.includes('per panel') || d.includes('per lubang') || d.includes('per daun');
+  };
+  const EXTRAS: Item[] = useMemo(() => apiAddons
+    .filter((a: any) => !isSpecialUnit(a.description))
+    .map((a: any) => ({
+      key: a.code ?? a.id,
+      label: a.name,
+      price: Number(a.price ?? 0),
+      icon: iconFor(String(a.code ?? '')),
+      durationMin: Number(a.durationMin ?? 15),
+      unit: a.description ?? undefined,
+    })), [apiAddons]);
 
   const allItems = [...ROOMS, ...EXTRAS];
   const [counts, setCounts] = useState<Record<string, number>>({});
