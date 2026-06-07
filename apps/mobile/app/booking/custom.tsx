@@ -116,7 +116,9 @@ function CustomBooking() {
   // "Sekarang" mode = pakai jam tercepat exact (sekarang+1h dengan menit asli)
   const [useNowTime, setUseNowTime] = useState(false);
 
-  // Auto-pilih slot jam pertama yang masih valid (kalau hari ini & slot terpilih udah lewat).
+  // Auto-bump timeSlot ke jam valid pertama saat user ganti ke "Hari ini" dan
+  // jam yang dipilih udah lewat. Modal handle case "semua slot lewat" via warning
+  // card — JANGAN auto-flip dateIdx (bikin tombol Hari ini terasa "ga bisa di-tap").
   useEffect(() => {
     if (dateIdx !== 0) return;
     const earliest = new Date(Date.now() + 60 * 60 * 1000);
@@ -129,7 +131,7 @@ function CustomBooking() {
       return d.getTime() >= earliest.getTime();
     });
     if (next) setTimeSlot(next);
-    else setDateIdx(1); // semua slot hari ini udah lewat → besok
+    // Kalau gak ada slot valid hari ini, modal nampilin "Operasional tutup" + tombol Pilih Besok
   }, [dateIdx, timeSlot]);
   const [notes, setNotes] = useState('');
   const [emptyHouse, setEmptyHouse] = useState(false);
