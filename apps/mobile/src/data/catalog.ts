@@ -45,6 +45,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { code: 'dapur',          name: 'Dapur',           description: 'Area dapur',                   icon: ChefHat,   iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
   { code: 'ruang_tamu',     name: 'Ruang Tamu',      description: 'Ruang tamu & keluarga',        icon: Sofa,      iconColor: '#7C3AED', iconBg: '#EDE9FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
   { code: 'pindah_kos',     name: 'Pindah Kost',     description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
+  { code: 'ruangan_kosong', name: 'Ruangan Kosong',  description: 'Ruangan kosongan tanpa furniture', icon: DoorOpen, iconColor: '#9333EA', iconBg: '#F3E8FF', imageUrl: UNS('photo-1505691938895-1758d7feb511'), startingPrice: 140_000 },
   { code: 'garasi',         name: 'Garasi/Teras',    description: 'Garasi & teras',               icon: Car,       iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
   { code: 'pekarangan',     name: 'Pekarangan',      description: 'Halaman rumah',                icon: Trees,     iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
   { code: 'ruko',           name: 'Ruko',            description: 'Bersih ruko/toko · per m²',    icon: Building2, iconColor: '#7C2D12', iconBg: '#FED7AA', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 6_000 },
@@ -71,6 +72,7 @@ export const PACKAGES: Package[] = [
   { id: 'pkg_dapur',          categoryCode: 'dapur',          name: 'Dapur',          price: 160_000, durationMin: 120, scope: 'Area dapur lengkap' },
   { id: 'pkg_ruang_tamu',     categoryCode: 'ruang_tamu',     name: 'Ruang Tamu',     price: 150_000, durationMin: 90,  scope: 'Ruang tamu & keluarga' },
   { id: 'pkg_pindah_kos',     categoryCode: 'pindah_kos',     name: 'Pindah Kost',    price: 200_000, durationMin: 180, scope: 'Serah terima kamar kos' },
+  { id: 'pkg_ruangan_kosong', categoryCode: 'ruangan_kosong', name: 'Ruangan Kosong', price: 140_000, durationMin: 100, scope: 'Ruangan tanpa furniture · pasca pindah / baru beli' },
   { id: 'pkg_garasi',         categoryCode: 'garasi',         name: 'Garasi/Teras',   price: 130_000, durationMin: 90,  scope: 'Garasi atau teras depan' },
   { id: 'pkg_pekarangan',     categoryCode: 'pekarangan',     name: 'Pekarangan',     price: 150_000, durationMin: 120, scope: 'Area outdoor / taman' },
 ];

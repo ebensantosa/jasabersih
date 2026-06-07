@@ -146,7 +146,7 @@ function NewBooking() {
 
   // Layanan satuan (per-ruangan) — sembunyikan Properti, Ruangan, Fasilitas Lain.
   // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
-  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'garasi', 'pekarangan'];
+  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'ruangan_kosong', 'garasi', 'pekarangan'];
   const PER_METER_CODES = ['ruko', 'kantor', 'apartemen'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
   const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
@@ -169,6 +169,16 @@ function NewBooking() {
     { code: '3br',    label: '3 Kamar',  m2: 80 },
   ];
   const [aptType, setAptType] = useState<string>('studio');
+
+  // Kamar mandi: variasi ukuran (multiplier ke harga paket)
+  const BATHROOM_SIZES = [
+    { code: 'kecil',  label: 'Kecil',  desc: '≤4m²',     mult: 1.0 },
+    { code: 'sedang', label: 'Sedang', desc: '4–8m²',    mult: 1.25 },
+    { code: 'besar',  label: 'Besar',  desc: '>8m²',     mult: 1.5 },
+  ];
+  const [bathroomSize, setBathroomSize] = useState<string>('kecil');
+  const isBathroom = category?.code === 'kamar_mandi';
+  const bathroomMult = isBathroom ? (BATHROOM_SIZES.find((s) => s.code === bathroomSize)?.mult ?? 1) : 1;
 
   // Auto-centang Deep Cleaning saat masuk halaman simple service (sales default).
   // User tetap bisa unceklis kalau gak mau.
@@ -366,7 +376,9 @@ function NewBooking() {
   const photoPenalty = 0;
   const rawPackagePrice = isPerMeter
     ? Math.max(perMeterMin, areaM2 * perMeterRate)
-    : (pkg?.price ?? 0);
+    : isBathroom
+      ? Math.round(((pkg?.price ?? 0) * bathroomMult) / 1000) * 1000
+      : (pkg?.price ?? 0);
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
   const deepSurcharge = cleanMode === 'deep' ? basePrice - rawPackagePrice : 0;
   const dirtSurcharge = Math.round(basePrice * (dirtMultiplier - 1 + photoPenalty));
@@ -699,9 +711,34 @@ function NewBooking() {
                         </View>
                       </View>
                       <View className="items-end">
-                        <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(pkg.price)}</Text>
+                        <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(rawPackagePrice)}</Text>
+                        {isBathroom && bathroomMult !== 1 && (
+                          <Text className="font-medium text-[10px] text-ink-400 line-through">{formatRupiah(pkg.price)}</Text>
+                        )}
                       </View>
                     </View>
+
+                    {/* Kamar mandi: pilih ukuran */}
+                    {isBathroom && (
+                      <View className="mt-3">
+                        <Text className="font-semibold mb-2 text-[10px] uppercase tracking-wider text-ink-500">Ukuran Kamar Mandi</Text>
+                        <View className="flex-row gap-2">
+                          {BATHROOM_SIZES.map((s) => {
+                            const active = bathroomSize === s.code;
+                            return (
+                              <Pressable
+                                key={s.code}
+                                onPress={() => setBathroomSize(s.code)}
+                                className={`flex-1 items-center rounded-xl border py-2 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                              >
+                                <Text className={`font-bold text-xs ${active ? 'text-brand-700' : 'text-ink-900'}`}>{s.label}</Text>
+                                <Text className={`mt-0.5 text-[9px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>{s.desc}</Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
 
                     {/* Description */}
                     {((pkg as any).note || pkg.scope) && (
@@ -1449,7 +1486,9 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
     const diff = Math.round((ed.getTime() - today.getTime()) / 86400000);
     setDateIdx(Math.max(0, Math.min(13, diff)));
     setHourSel(e.getHours());
-    setMinSel(e.getMinutes() - (e.getMinutes() % 5));
+    // Bulatkan ke 5min terdekat ke ATAS (gak under-shoot earliest)
+    const mins = e.getMinutes();
+    setMinSel(Math.min(55, Math.ceil(mins / 5) * 5));
   }
 
   // Auto-bump jam ke slot valid pertama saat ganti tanggal.
