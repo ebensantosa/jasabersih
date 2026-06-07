@@ -133,6 +133,8 @@ function CustomBooking() {
   }, [dateIdx, timeSlot]);
   const [notes, setNotes] = useState('');
   const [emptyHouse, setEmptyHouse] = useState(false);
+  const [schedModalOpen, setSchedModalOpen] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]); // foto before (full house)
   const [submitting, setSubmitting] = useState(false);
 
   const EMPTY_HOUSE_DISC = 0.20;
@@ -291,90 +293,21 @@ function CustomBooking() {
             )}
           </View>
 
-          <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-            <Text className="font-bold mb-3 text-sm text-ink-900">Tanggal</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2 pr-4">
-                {dateOptions.map((d, i) => (
-                  <Pressable
-                    key={i}
-                    onPress={() => setDateIdx(i)}
-                    className={`min-w-[70px] items-center rounded-xl border px-3 py-2.5 ${dateIdx === i ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                  >
-                    <Text className={`font-bold text-xs ${dateIdx === i ? 'text-brand-700' : 'text-ink-900'}`}>{d.label}</Text>
-                    <Text className={`mt-0.5 text-[10px] ${dateIdx === i ? 'text-brand-600' : 'text-ink-500'}`}>{d.sub}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </ScrollView>
-
-            <Text className="font-bold mt-4 mb-2 text-sm text-ink-900">Jam</Text>
-            {/* Cari posisi slot valid pertama (untuk insert "Sekarang" chip) */}
-            <View className="flex-row flex-wrap gap-2">
-              {(() => {
-                const isTodayMode = dateIdx === 0;
-                const earliest = new Date(Date.now() + 60 * 60 * 1000);
-                const firstValidIdx = !isTodayMode ? -1 : TIME_SLOTS.findIndex((t) => {
-                  const [hh, mm] = t.split(':').map(Number);
-                  const d = new Date(); d.setHours(hh!, mm!, 0, 0);
-                  return d.getTime() >= earliest.getTime();
-                });
-                const out: React.ReactNode[] = [];
-                TIME_SLOTS.forEach((t, idx) => {
-                  if (idx === firstValidIdx) {
-                    const now = new Date(Date.now() + 60 * 60 * 1000);
-                    const label = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                    out.push(
-                      <Pressable
-                        key="now"
-                        onPress={() => { setDateIdx(0); setUseNowTime(true); }}
-                        className={`rounded-lg border px-3 py-2 ${
-                          useNowTime && dateIdx === 0
-                            ? 'border-emerald-600 bg-emerald-600'
-                            : 'border-emerald-400 bg-emerald-50'
-                        }`}
-                      >
-                        <Text className={`font-extrabold text-xs ${useNowTime && dateIdx === 0 ? 'text-white' : 'text-emerald-700'}`}>
-                          Sekarang ({label})
-                        </Text>
-                      </Pressable>,
-                    );
-                  }
-                  // Render slot biasa inline
-                  let disabled = false;
-                  if (isTodayMode) {
-                    const [hh, mm] = t.split(':').map(Number);
-                    const slot = new Date(); slot.setHours(hh!, mm!, 0, 0);
-                    disabled = slot.getTime() < earliest.getTime();
-                  }
-                  const active = timeSlot === t && !useNowTime && (!isTodayMode || !disabled);
-                  out.push(
-                    <Pressable
-                      key={t}
-                      disabled={disabled}
-                      onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
-                      className={`rounded-lg border px-3 py-2 ${
-                        disabled
-                          ? 'border-ink-100 bg-ink-50'
-                          : active
-                          ? 'border-brand-600 bg-brand-50'
-                          : 'border-ink-200 bg-white'
-                      }`}
-                    >
-                      <Text
-                        className={`font-semibold text-xs ${
-                          disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'
-                        }`}
-                      >
-                        {t}
-                      </Text>
-                    </Pressable>,
-                  );
-                });
-                return out;
-              })()}
+          {/* Tap card → buka modal Pilih Jadwal */}
+          <Pressable
+            onPress={() => setSchedModalOpen(true)}
+            className="mx-4 mt-3 flex-row items-center justify-between rounded-2xl bg-white p-4"
+          >
+            <View>
+              <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Pilih Tanggal & Jam</Text>
+              <Text className="font-bold mt-0.5 text-sm text-ink-900">
+                {useNowTime && dateIdx === 0
+                  ? `Sekarang (${(() => { const n = new Date(Date.now() + 60 * 60 * 1000); return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; })()})`
+                  : `${dateOptions[dateIdx]?.label ?? ''} · ${timeSlot}`}
+              </Text>
             </View>
-          </View>
+            <Text className="font-bold text-brand-600">›</Text>
+          </Pressable>
 
           <Pressable
             onPress={() => setEmptyHouse(!emptyHouse)}
@@ -469,6 +402,95 @@ function CustomBooking() {
           </SafeAreaView>
         </View>
       </SafeAreaView>
+
+      <Modal visible={schedModalOpen} transparent animationType="slide" onRequestClose={() => setSchedModalOpen(false)}>
+        <Pressable onPress={() => setSchedModalOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 }}>
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="font-extrabold text-lg text-ink-900">Pilih Jadwal</Text>
+              <Pressable onPress={() => setSchedModalOpen(false)} className="h-8 w-8 items-center justify-center rounded-full bg-ink-100">
+                <Text className="text-ink-700">×</Text>
+              </Pressable>
+            </View>
+
+            <Text className="font-semibold mb-2 text-xs text-ink-600">Tanggal</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-2 pr-4">
+                {dateOptions.map((d, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => { setDateIdx(i); setUseNowTime(false); }}
+                    className={`min-w-[70px] items-center rounded-xl border px-3 py-2.5 ${dateIdx === i ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                  >
+                    <Text className={`font-bold text-xs ${dateIdx === i ? 'text-brand-700' : 'text-ink-900'}`}>{d.label}</Text>
+                    <Text className={`mt-0.5 text-[10px] ${dateIdx === i ? 'text-brand-600' : 'text-ink-500'}`}>{d.sub}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {(() => {
+                const isTodayMode = dateIdx === 0;
+                const earliest = new Date(Date.now() + 60 * 60 * 1000);
+                const firstValidIdx = !isTodayMode ? -1 : TIME_SLOTS.findIndex((t) => {
+                  const [hh, mm] = t.split(':').map(Number);
+                  const d = new Date(); d.setHours(hh!, mm!, 0, 0);
+                  return d.getTime() >= earliest.getTime();
+                });
+                const out: React.ReactNode[] = [];
+                TIME_SLOTS.forEach((t, idx) => {
+                  if (idx === firstValidIdx) {
+                    const now = new Date(Date.now() + 60 * 60 * 1000);
+                    const label = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    out.push(
+                      <Pressable
+                        key="now"
+                        onPress={() => { setDateIdx(0); setUseNowTime(true); }}
+                        className={`rounded-lg border px-3 py-2 ${useNowTime && dateIdx === 0 ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
+                      >
+                        <Text className={`font-extrabold text-xs ${useNowTime && dateIdx === 0 ? 'text-white' : 'text-emerald-700'}`}>
+                          Sekarang ({label})
+                        </Text>
+                      </Pressable>,
+                    );
+                  }
+                  let disabled = false;
+                  if (isTodayMode) {
+                    const [hh, mm] = t.split(':').map(Number);
+                    const slot = new Date(); slot.setHours(hh!, mm!, 0, 0);
+                    disabled = slot.getTime() < earliest.getTime();
+                  }
+                  const active = timeSlot === t && !useNowTime && (!isTodayMode || !disabled);
+                  out.push(
+                    <Pressable
+                      key={t}
+                      disabled={disabled}
+                      onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
+                      className={`rounded-lg border px-3 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                    >
+                      <Text className={`font-semibold text-xs ${disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'}`}>
+                        {t}
+                      </Text>
+                    </Pressable>,
+                  );
+                });
+                return out;
+              })()}
+            </View>
+
+            <Text className="mt-3 text-[10px] text-ink-500">Operasional 07:00–20:00 · Min 1 jam dari sekarang</Text>
+
+            <Pressable
+              onPress={() => setSchedModalOpen(false)}
+              className="mt-5 h-12 items-center justify-center rounded-2xl bg-brand-600"
+            >
+              <Text className="font-bold text-sm text-white">Pilih Jadwal Ini</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }

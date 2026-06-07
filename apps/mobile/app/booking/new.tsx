@@ -1455,18 +1455,25 @@ function NewBooking() {
   );
 }
 
+// Slot jam fix 07:00-20:00. Lebih simpel & predictable buat user.
+const TIME_SLOTS_FIXED = [
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
+];
+
 function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean; value: Date; onChange: (d: Date) => void; onClose: () => void }) {
   const [dateIdx, setDateIdx] = useState(0);
-  const [hourSel, setHourSel] = useState<number>(value.getHours());
-  const [minSel, setMinSel] = useState<number>(value.getMinutes() - (value.getMinutes() % 5));
+  const [timeSlot, setTimeSlot] = useState<string>('09:00');
+  const [useNowTime, setUseNowTime] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     const today = new Date(); today.setHours(0,0,0,0);
     const v = new Date(value); v.setHours(0,0,0,0);
     setDateIdx(Math.max(0, Math.min(13, Math.round((v.getTime() - today.getTime()) / 86400000))));
-    setHourSel(value.getHours());
-    setMinSel(value.getMinutes() - (value.getMinutes() % 5));
+    const hh = String(value.getHours()).padStart(2, '0');
+    setTimeSlot(`${hh}:00`);
+    setUseNowTime(false);
   }, [visible, value]);
 
   const dateOptions = useMemo(() => {
@@ -1483,38 +1490,15 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
     return out;
   }, []);
 
-  function pilihSekarang() {
-    const e = earliestAvailable();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const ed = new Date(e); ed.setHours(0, 0, 0, 0);
-    const diff = Math.round((ed.getTime() - today.getTime()) / 86400000);
-    setDateIdx(Math.max(0, Math.min(13, diff)));
-    setHourSel(e.getHours());
-    // Bulatkan ke 5min terdekat ke ATAS (gak under-shoot earliest)
-    const mins = e.getMinutes();
-    setMinSel(Math.min(55, Math.ceil(mins / 5) * 5));
-  }
-
-  // Auto-bump jam ke slot valid pertama saat ganti tanggal.
-  useEffect(() => {
-    const sel = new Date(dateOptions[dateIdx]!.date);
-    sel.setHours(hourSel, minSel, 0, 0);
-    if (sel.getTime() >= earliest.getTime()) return;
-    const validH = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR }, (_, i) => OPS_START_HOUR + i)
-      .find((h) => {
-        const t = new Date(dateOptions[dateIdx]!.date); t.setHours(h, 59, 0, 0);
-        return t.getTime() >= earliest.getTime();
-      });
-    if (validH !== undefined) {
-      setHourSel(validH);
-      setMinSel(0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateIdx]);
-
   function confirm() {
-    const sel = new Date(dateOptions[dateIdx]!.date);
-    sel.setHours(hourSel, minSel, 0, 0);
+    let sel: Date;
+    if (useNowTime && dateIdx === 0) {
+      sel = new Date(Date.now() + 60 * 60 * 1000);
+    } else {
+      sel = new Date(dateOptions[dateIdx]!.date);
+      const [hh, mm] = timeSlot.split(':').map(Number);
+      sel.setHours(hh!, mm!, 0, 0);
+    }
     if (sel.getTime() < earliestAvailable().getTime()) {
       toast.error('Jadwal minimal 1 jam dari sekarang');
       return;
@@ -1523,19 +1507,24 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
   }
 
   const earliest = earliestAvailable();
-  const hourList = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR }, (_, i) => OPS_START_HOUR + i);
-  const minuteList = Array.from({ length: 12 }, (_, i) => i * 5);
+  const isToday = dateIdx === 0;
+  const firstValidIdx = !isToday ? -1 : TIME_SLOTS_FIXED.findIndex((t) => {
+    const [hh, mm] = t.split(':').map(Number);
+    const d = new Date(); d.setHours(hh!, mm!, 0, 0);
+    return d.getTime() >= earliest.getTime();
+  });
 
-  function isHourValid(h: number): boolean {
-    const sel = new Date(dateOptions[dateIdx]!.date);
-    sel.setHours(h, 59, 0, 0);
-    return sel.getTime() >= earliest.getTime();
+  function isSlotValid(t: string): boolean {
+    if (!isToday) return true;
+    const [hh, mm] = t.split(':').map(Number);
+    const d = new Date(); d.setHours(hh!, mm!, 0, 0);
+    return d.getTime() >= earliest.getTime();
   }
-  function isMinValid(m: number): boolean {
-    const sel = new Date(dateOptions[dateIdx]!.date);
-    sel.setHours(hourSel, m, 0, 0);
-    return sel.getTime() >= earliest.getTime();
-  }
+
+  const nowLabel = (() => {
+    const e = new Date(Date.now() + 60 * 60 * 1000);
+    return `${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`;
+  })();
 
   return (
     <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -1556,7 +1545,7 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
                 return (
                   <Pressable
                     key={i}
-                    onPress={() => setDateIdx(i)}
+                    onPress={() => { setDateIdx(i); setUseNowTime(false); }}
                     className={`min-w-[72px] items-center rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
                   >
                     <Text className={`font-bold text-xs ${active ? 'text-brand-700' : 'text-ink-900'}`}>{d.label}</Text>
@@ -1567,64 +1556,44 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
             </View>
           </ScrollView>
 
-          <View className="mt-4 flex-row items-center justify-between">
-            <Text className="font-semibold text-xs text-ink-600">Jam</Text>
-            <Pressable onPress={pilihSekarang} className="rounded-full bg-brand-50 px-3 py-1">
-              <Text className="font-bold text-[11px] text-brand-700">Pilih Jam Sekarang</Text>
-            </Pressable>
+          <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {(() => {
+              const out: React.ReactNode[] = [];
+              TIME_SLOTS_FIXED.forEach((t, idx) => {
+                if (idx === firstValidIdx) {
+                  out.push(
+                    <Pressable
+                      key="now"
+                      onPress={() => { setDateIdx(0); setUseNowTime(true); }}
+                      className={`rounded-lg border px-3 py-2 ${useNowTime && isToday ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
+                    >
+                      <Text className={`font-extrabold text-xs ${useNowTime && isToday ? 'text-white' : 'text-emerald-700'}`}>
+                        Sekarang ({nowLabel})
+                      </Text>
+                    </Pressable>,
+                  );
+                }
+                const disabled = !isSlotValid(t);
+                const active = timeSlot === t && !useNowTime && !disabled;
+                out.push(
+                  <Pressable
+                    key={t}
+                    disabled={disabled}
+                    onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
+                    className={`rounded-lg border px-3 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                  >
+                    <Text className={`font-semibold text-xs ${disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'}`}>
+                      {t}
+                    </Text>
+                  </Pressable>,
+                );
+              });
+              return out;
+            })()}
           </View>
 
-          <View className="mt-2 items-center rounded-xl bg-brand-50 py-3">
-            <Text className="font-extrabold text-3xl text-brand-700">
-              {String(hourSel).padStart(2, '0')}:{String(minSel).padStart(2, '0')}
-            </Text>
-          </View>
-
-          <Text className="mt-3 mb-1 text-[10px] uppercase tracking-wider text-ink-500">Jam</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-1.5 pr-4">
-              {hourList.map((h) => {
-                const disabled = !isHourValid(h);
-                const active = hourSel === h && !disabled;
-                return (
-                  <Pressable
-                    key={h}
-                    disabled={disabled}
-                    onPress={() => setHourSel(h)}
-                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
-                  >
-                    <Text className={`font-bold text-sm ${disabled ? 'text-ink-300 line-through' : active ? 'text-white' : 'text-ink-800'}`}>
-                      {String(h).padStart(2, '0')}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-          <Text className="mt-3 mb-1 text-[10px] uppercase tracking-wider text-ink-500">Menit</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-1.5 pr-4">
-              {minuteList.map((m) => {
-                const disabled = !isMinValid(m);
-                const active = minSel === m && !disabled;
-                return (
-                  <Pressable
-                    key={m}
-                    disabled={disabled}
-                    onPress={() => setMinSel(m)}
-                    className={`min-w-[44px] items-center rounded-lg border px-2 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
-                  >
-                    <Text className={`font-bold text-sm ${disabled ? 'text-ink-300 line-through' : active ? 'text-white' : 'text-ink-800'}`}>
-                      {String(m).padStart(2, '0')}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-          <Text className="mt-2 text-[10px] text-ink-500">Operasional 07:00–21:00 · Min 1 jam dari sekarang</Text>
+          <Text className="mt-3 text-[10px] text-ink-500">Operasional 07:00–21:00 · Min 1 jam dari sekarang</Text>
 
           <Pressable
             onPress={confirm}
