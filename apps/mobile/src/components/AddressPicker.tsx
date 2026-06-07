@@ -5,6 +5,9 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAddressesStore, type SavedAddress } from '../stores/addresses';
+import { toast } from '../stores/ui';
+
+const MAX_ADDRESSES = 5;
 
 export function AddressPickerInline({
   selectedId,
@@ -19,6 +22,7 @@ export function AddressPickerInline({
   const list = useAddressesStore((s) => s.list);
   const selected = list.find((a) => a.id === selectedId) ?? null;
   const [open, setOpen] = useState(false);
+  const atLimit = list.length >= MAX_ADDRESSES;
 
   if (list.length === 0) {
     return (
@@ -96,13 +100,20 @@ export function AddressPickerInline({
                 <Text className="font-bold text-base text-ink-900">Pilih Alamat</Text>
                 <Pressable
                   onPress={() => {
+                    if (atLimit) {
+                      toast.warning(`Maksimal ${MAX_ADDRESSES} alamat. Hapus salah satu dulu.`);
+                      return;
+                    }
                     setOpen(false);
                     router.push('/addresses/edit');
                   }}
-                  className="flex-row items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5"
+                  disabled={atLimit}
+                  className={`flex-row items-center gap-1 rounded-full px-3 py-1.5 ${atLimit ? 'bg-ink-100' : 'bg-brand-50'}`}
                 >
-                  <Plus color="#1D4ED8" size={12} strokeWidth={2.4} />
-                  <Text className="font-semibold text-xs text-brand-700">Tambah</Text>
+                  <Plus color={atLimit ? '#94A3B8' : '#1D4ED8'} size={12} strokeWidth={2.4} />
+                  <Text className={`font-semibold text-xs ${atLimit ? 'text-ink-400' : 'text-brand-700'}`}>
+                    {atLimit ? `Penuh (${list.length}/${MAX_ADDRESSES})` : 'Tambah'}
+                  </Text>
                 </Pressable>
               </View>
               <ScrollView contentContainerStyle={{ padding: 16, gap: 8, paddingTop: 4 }}>
