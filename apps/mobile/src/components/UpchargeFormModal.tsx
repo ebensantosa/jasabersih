@@ -96,7 +96,7 @@ export function UpchargeFormModal({
           </Text>
 
           <ScrollView className="mt-4" showsVerticalScrollIndicator={false}>
-            <Text className="font-semibold text-xs text-ink-700">Nominal (Rp) · Max 50% base</Text>
+            <Text className="font-semibold text-xs text-ink-700">Nominal Tambahan (Rp)</Text>
             <TextInput
               value={amountStr}
               onChangeText={(v) => setAmountStr(v.replace(/[^\d]/g, ''))}
@@ -107,15 +107,9 @@ export function UpchargeFormModal({
 
             {preview && (
               <View className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <Text className="font-bold text-[11px] text-emerald-900">Pembagian (sesuai tier komisi)</Text>
-                <View className="mt-1.5 flex-row justify-between">
-                  <Text className="text-[11px] text-ink-600">Kamu terima ({preview.pct}%)</Text>
-                  <Text className="font-bold text-[12px] text-emerald-700">Rp {Number(preview.cleanerShare).toLocaleString('id-ID')}</Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-[11px] text-ink-600">Platform fee ({100 - preview.pct}%)</Text>
-                  <Text className="text-[11px] text-ink-700">Rp {Number(preview.platformFee).toLocaleString('id-ID')}</Text>
-                </View>
+                <Text className="font-semibold text-[10px] uppercase tracking-wider text-emerald-700">Yang Kamu Terima</Text>
+                <Text className="font-extrabold mt-1 text-lg text-emerald-800">Rp {Number(preview.cleanerShare).toLocaleString('id-ID')}</Text>
+                <Text className="font-medium mt-1 text-[10px] text-emerald-700">Akan masuk ke saldo setelah disetujui customer.</Text>
               </View>
             )}
 

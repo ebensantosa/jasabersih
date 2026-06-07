@@ -558,7 +558,7 @@ export class CleanerJobsController {
     // Max 50% dari base
     const maxAllowed = Math.floor(Number(b.base_amount) * 0.5);
     if (amount > maxAllowed) {
-      throw new BadRequestException(`Maksimal Rp ${maxAllowed.toLocaleString('id-ID')} (50% dari base)`);
+      throw new BadRequestException(`Nominal melebihi batas maksimum (Rp ${maxAllowed.toLocaleString('id-ID')}). Konsultasi admin via chat jika perlu lebih.`);
     }
     // Anti-spam: 1× pending sekaligus per booking
     const pending = await this.prisma.$queryRaw<{ c: number }[]>`
