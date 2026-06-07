@@ -9,6 +9,8 @@ import {
 } from '@expo-google-fonts/inter';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+
+import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -135,9 +137,11 @@ export default function RootLayout() {
   // are immediately refetched once tokens are available.
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) { setUserId(null); return; }
+    trackEvent('app_open');
     void fetchUser().then((profile) => {
       if (!profile) return;
+      setUserId(String((profile as any).id ?? (profile as any).userId ?? ''));
       void syncAddresses();
       void syncBookings();
       void syncWallet();
@@ -151,6 +155,7 @@ export default function RootLayout() {
       const data = res.notification.request.content.data as Record<string, unknown> | undefined;
       const type = data?.type as string | undefined;
       const bookingId = data?.bookingId as string | undefined;
+      if (type) Track.notificationTapped(type);
       if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
       else if ((type === 'booking_completed' || type === 'wallet_credit') && bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
     });

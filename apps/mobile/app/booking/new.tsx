@@ -551,6 +551,10 @@ function NewBooking() {
       const { storage } = await import('../../src/lib/storage');
       storage.set(`useCredit:${booking.id}`, useCredit ? '1' : '0');
     } catch {}
+    try {
+      const { Track } = await import('../../src/lib/analytics');
+      Track.bookingCreated(booking.id, total, 'package');
+    } catch {}
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
 

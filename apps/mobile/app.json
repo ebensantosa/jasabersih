@@ -11,18 +11,28 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jasabersih.app",
-      "buildNumber": "13",
-      "icon": "./assets/icon.png"
+      "buildNumber": "15",
+      "icon": "./assets/icon.png",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.jasabersih.app",
-      "versionCode": 14,
+      "versionCode": 15,
       "edgeToEdgeEnabled": false,
-      "icon": "./assets/icon.png"
+      "icon": "./assets/icon.png",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
+      [
+        "expo-build-properties",
+        {
+          "ios": { "useFrameworks": "static" }
+        }
+      ],
       [
         "expo-image-picker",
         {

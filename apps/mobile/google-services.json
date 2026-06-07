@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1090298695121",
+    "project_id": "jasabersih-app",
+    "storage_bucket": "jasabersih-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1090298695121:android:fc2061fa209eb245e764f0",
+        "android_client_info": {
+          "package_name": "com.jasabersih.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCl9zJUGWlyuYc8gsu5G_ga3YbZBOI5kpo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

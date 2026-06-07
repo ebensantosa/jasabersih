@@ -87,6 +87,10 @@ function JobsScreen() {
       await api.patch('/cleaner/profile', { isAvailable: next });
       setOnline(next);
       toast.success(next ? 'Status: Online — siap terima job' : 'Status: Offline');
+      try {
+        const { Track } = await import('../../src/lib/analytics');
+        if (next) Track.cleanerOnline(); else Track.cleanerOffline();
+      } catch {}
     } catch (e: any) {
       const code = e?.response?.data?.error?.code ?? e?.response?.data?.code;
       if (code === 'NEED_PROFILE_PHOTO') {
@@ -137,6 +141,10 @@ function JobsScreen() {
     try {
       await api.post(`/cleaner/jobs/${id}/accept`);
       toast.success('Job berhasil diambil!');
+      try {
+        const { Track } = await import('../../src/lib/analytics');
+        Track.jobAccepted(id);
+      } catch {}
       void load();
       router.push({ pathname: '/booking/[id]', params: { id } });
     } catch (e: any) {

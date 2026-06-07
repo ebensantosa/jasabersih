@@ -114,6 +114,10 @@ function PaymentScreen() {
       const res = await api.post('/payments/flip/create-direct', { bookingId, senderBank, senderBankType, useCredit });
       const data: DirectResult = res.data?.data ?? res.data;
       setDirect(data);
+      try {
+        const { Track } = await import('../../src/lib/analytics');
+        Track.paymentStarted(String(bookingId), senderBank, data.amount);
+      } catch {}
       // Poll status
       pollRef.current = setInterval(async () => {
         try {
@@ -123,10 +127,18 @@ function PaymentScreen() {
             setPaid(true);
             if (pollRef.current) clearInterval(pollRef.current);
             void syncBookings();
+            try {
+              const { Track } = await import('../../src/lib/analytics');
+              Track.paymentSuccess(String(bookingId), data.senderBank, data.amount);
+            } catch {}
             setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
           } else if (['failed', 'cancelled', 'expired'].includes(status)) {
             toast.error('Pembayaran gagal/expired. Coba lagi.');
             if (pollRef.current) clearInterval(pollRef.current);
+            try {
+              const { Track } = await import('../../src/lib/analytics');
+              Track.paymentFailed(String(bookingId), data.senderBank, status);
+            } catch {}
             setDirect(null);
           }
         } catch {}

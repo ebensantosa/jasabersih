@@ -229,6 +229,10 @@ function CustomBooking() {
         initialStatus: 'pending_payment',
       });
       toast.success('Pesanan custom dibuat — silakan bayar');
+      try {
+        const { Track } = await import('../../src/lib/analytics');
+        Track.bookingCreated(booking.id, total, 'custom');
+      } catch {}
       router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
     } catch {
       // toast handled in store
