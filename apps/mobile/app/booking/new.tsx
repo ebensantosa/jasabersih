@@ -147,7 +147,28 @@ function NewBooking() {
   // Layanan satuan (per-ruangan) — sembunyikan Properti, Ruangan, Fasilitas Lain.
   // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
   const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'garasi', 'pekarangan'];
+  const PER_METER_CODES = ['ruko', 'kantor', 'apartemen'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
+  const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
+
+  // Per-meter rates (config-driven)
+  const rateRuko      = Number(useConfig('pricing.per_meter_ruko' as any, 6000 as any)) || 6000;
+  const rateKantor    = Number(useConfig('pricing.per_meter_kantor' as any, 5500 as any)) || 5500;
+  const rateApartemen = Number(useConfig('pricing.per_meter_apartemen' as any, 8000 as any)) || 8000;
+  const perMeterMin   = Number(useConfig('pricing.per_meter_minimum' as any, 150000 as any)) || 150000;
+  const perMeterRate =
+    category?.code === 'ruko' ? rateRuko :
+    category?.code === 'kantor' ? rateKantor :
+    category?.code === 'apartemen' ? rateApartemen : 0;
+
+  // Apartment type: studio | 1BR | 2BR | 3BR — preset m² (user bisa override)
+  const APT_TYPES = [
+    { code: 'studio', label: 'Studio',   m2: 25 },
+    { code: '1br',    label: '1 Kamar',  m2: 36 },
+    { code: '2br',    label: '2 Kamar',  m2: 54 },
+    { code: '3br',    label: '3 Kamar',  m2: 80 },
+  ];
+  const [aptType, setAptType] = useState<string>('studio');
 
   // Auto-centang Deep Cleaning saat masuk halaman simple service (sales default).
   // User tetap bisa unceklis kalau gak mau.
@@ -343,7 +364,9 @@ function NewBooking() {
   })();
 
   const photoPenalty = 0;
-  const rawPackagePrice = pkg?.price ?? 0;
+  const rawPackagePrice = isPerMeter
+    ? Math.max(perMeterMin, areaM2 * perMeterRate)
+    : (pkg?.price ?? 0);
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
   const deepSurcharge = cleanMode === 'deep' ? basePrice - rawPackagePrice : 0;
   const dirtSurcharge = Math.round(basePrice * (dirtMultiplier - 1 + photoPenalty));
@@ -594,6 +617,71 @@ function NewBooking() {
         >
           {step === 1 && (
             <>
+              {isPerMeter && (
+                <Section title={`${category?.name ?? ''} — per m²`}>
+                  <View className="rounded-xl border border-brand-200 bg-brand-50 p-3">
+                    <Text className="font-extrabold text-base text-brand-800">
+                      Rp {perMeterRate.toLocaleString('id-ID')}/m²
+                    </Text>
+                    <Text className="font-medium mt-1 text-[11px] text-ink-700">
+                      Estimasi total dihitung dari luas area. Minimum {formatRupiah(perMeterMin)}.
+                    </Text>
+                  </View>
+
+                  {category?.code === 'apartemen' && (
+                    <>
+                      <Label className="mt-4">Tipe Unit</Label>
+                      <View className="flex-row flex-wrap gap-2">
+                        {APT_TYPES.map((t) => {
+                          const active = aptType === t.code;
+                          return (
+                            <Pressable
+                              key={t.code}
+                              onPress={() => { setAptType(t.code); setAreaM2(t.m2); }}
+                              className={`rounded-full border px-3 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                            >
+                              <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>
+                                {t.label} · {t.m2}m²
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+
+                  <Label className="mt-4">Luas Area (m²)</Label>
+                  <View className="flex-row items-center gap-2">
+                    <Pressable
+                      onPress={() => setAreaM2(Math.max(10, areaM2 - 10))}
+                      className="h-10 w-10 items-center justify-center rounded-full border border-ink-300 bg-white"
+                    >
+                      <Minus color="#1D4ED8" size={18} strokeWidth={2.4} />
+                    </Pressable>
+                    <View className="flex-1 items-center rounded-xl border border-ink-200 bg-white py-2">
+                      <Text className="font-extrabold text-2xl text-ink-900">{areaM2} m²</Text>
+                    </View>
+                    <Pressable
+                      onPress={() => setAreaM2(Math.min(2000, areaM2 + 10))}
+                      className="h-10 w-10 items-center justify-center rounded-full border border-ink-300 bg-white"
+                    >
+                      <Plus color="#1D4ED8" size={18} strokeWidth={2.4} />
+                    </Pressable>
+                  </View>
+
+                  <View className="mt-3 rounded-lg bg-emerald-50 p-3">
+                    <Text className="font-medium text-[10px] uppercase tracking-wider text-emerald-700">Estimasi Harga</Text>
+                    <Text className="font-extrabold mt-1 text-2xl text-emerald-900">
+                      {formatRupiah(Math.max(perMeterMin, areaM2 * perMeterRate))}
+                    </Text>
+                    <Text className="font-medium mt-1 text-[10px] text-emerald-700">
+                      {areaM2} m² × Rp {perMeterRate.toLocaleString('id-ID')} = {formatRupiah(areaM2 * perMeterRate)}
+                      {areaM2 * perMeterRate < perMeterMin && ' (kena harga minimum)'}
+                    </Text>
+                  </View>
+                </Section>
+              )}
+
               {isSimpleService && pkg && (
                 <Section title={`PAKET ${category?.name ?? ''}`}>
                   <View className="rounded-2xl bg-white p-4" style={{ borderWidth: 1, borderColor: '#E2E8F0' }}>
@@ -695,7 +783,7 @@ function NewBooking() {
                 </Section>
               )}
 
-              {!isSimpleService && <Section title="Properti">
+              {!isSimpleService && !isPerMeter && <Section title="Properti">
                 <Label>Tipe Properti</Label>
                 <Chips
                   options={PROPERTY_TYPES as readonly string[]}
@@ -711,7 +799,7 @@ function NewBooking() {
                 )}
               </Section>}
 
-              {!isSimpleService && <Section title="Ruangan">
+              {!isSimpleService && !isPerMeter && <Section title="Ruangan">
                 <View className="flex-row items-center justify-between">
                   <Label className="mb-0">Kamar Tidur</Label>
                   <Stepper value={bedrooms} onChange={setBedrooms} min={0} max={10} />
@@ -755,7 +843,7 @@ function NewBooking() {
                 </View>
               </Section>}
 
-              {!isSimpleService && <Section title="Perkiraan Luas">
+              {!isSimpleService && !isPerMeter && <Section title="Perkiraan Luas">
                 <Text className="font-sans -mt-1 mb-3 text-[11px] text-ink-500">
                   Pilih kira-kira ukuran area yang akan dibersihkan. Kalau ragu, lihat contoh di bawah.
                 </Text>
