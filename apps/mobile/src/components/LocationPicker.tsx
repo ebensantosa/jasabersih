@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { Crosshair, MapPin, Search, X } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -114,6 +114,13 @@ export function LocationPicker({
 }) {
   const [lat, setLat] = useState(initial?.lat ?? DEFAULT_LAT);
   const [lng, setLng] = useState(initial?.lng ?? DEFAULT_LNG);
+  // Render HTML SEKALI di awal (pakai initial coords). Update map pakai postMessage,
+  // jangan ganti srcDoc — itu bikin iframe re-mount + flicker tiles.
+  const initialHtml = useMemo(
+    () => HTML(initial?.lat ?? DEFAULT_LAT, initial?.lng ?? DEFAULT_LNG),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   const [address, setAddress] = useState('');
   const [resolving, setResolving] = useState(false);
   const [searchQ, setSearchQ] = useState('');
@@ -288,14 +295,14 @@ export function LocationPicker({
           // @ts-ignore iframe is web-only
           <iframe
             ref={iframeRef}
-            srcDoc={HTML(lat, lng)}
+            srcDoc={initialHtml}
             style={{ width: '100%', height: '100%', border: 0 }}
           />
         ) : (
           <WebView
             ref={webRef}
             originWhitelist={['*']}
-            source={{ html: HTML(lat, lng) }}
+            source={{ html: initialHtml }}
             onMessage={onWebViewMessage}
             style={{ flex: 1 }}
           />
