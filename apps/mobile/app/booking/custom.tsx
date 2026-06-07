@@ -292,9 +292,8 @@ function CustomBooking() {
                   if (slot) setTimeSlot(slot);
                   else { setDateIdx(1); setTimeSlot('07:00'); }
                 }}
-                className="flex-row items-center gap-1 rounded-lg border border-emerald-400 bg-emerald-50 px-3 py-2"
+                className="rounded-lg border border-emerald-400 bg-emerald-50 px-3 py-2"
               >
-                <Text style={{ fontSize: 11 }}>⚡</Text>
                 <Text className="font-extrabold text-xs text-emerald-700">Tercepat</Text>
               </Pressable>
 
