@@ -46,6 +46,8 @@ function JobsScreen() {
   const [active, setActive] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(false);
+  const cleanerAreas = useCleanerStore((s) => s.serviceAreas);
+  const noAreaPicked = cleanerAreas.length === 0;
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const bringsTools = useCleanerStore((s) => s.bringsTools);
@@ -76,6 +78,11 @@ function JobsScreen() {
 
   async function toggleOnline() {
     const next = !online;
+    if (next && noAreaPicked) {
+      toast.warning('Pilih kota / area kerja kamu dulu sebelum Online.');
+      router.push('/cleaner/areas');
+      return;
+    }
     try {
       await api.patch('/cleaner/profile', { isAvailable: next });
       setOnline(next);
@@ -156,9 +163,26 @@ function JobsScreen() {
             </View>
           </View>
 
+          {noAreaPicked && (
+            <Pressable
+              onPress={() => router.push('/cleaner/areas')}
+              className="mt-3 flex-row items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3"
+            >
+              <Text className="text-base">📍</Text>
+              <View className="flex-1">
+                <Text className="font-extrabold text-xs text-amber-900">Pilih kota / area kerjamu</Text>
+                <Text className="font-medium mt-0.5 text-[10px] text-amber-800">
+                  Wajib pilih dulu sebelum bisa Online & terima job. Tap di sini.
+                </Text>
+              </View>
+              <Text className="font-bold text-amber-900">›</Text>
+            </Pressable>
+          )}
+
           <Pressable
             onPress={toggleOnline}
-            className={`mt-3 flex-row items-center gap-2 rounded-xl border p-2.5 ${online ? 'border-success bg-emerald-50' : 'border-ink-200 bg-white'}`}
+            disabled={noAreaPicked}
+            className={`mt-3 flex-row items-center gap-2 rounded-xl border p-2.5 ${noAreaPicked ? 'border-ink-100 bg-ink-50 opacity-60' : online ? 'border-success bg-emerald-50' : 'border-ink-200 bg-white'}`}
           >
             <View className={`h-9 w-9 items-center justify-center rounded-xl ${online ? 'bg-success' : 'bg-ink-200'}`}>
               <Power color="white" size={18} strokeWidth={2.2} />
