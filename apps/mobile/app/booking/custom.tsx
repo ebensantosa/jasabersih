@@ -105,7 +105,10 @@ function CustomBooking() {
     else setDateIdx(1); // semua slot hari ini udah lewat → besok
   }, [dateIdx, timeSlot]);
   const [notes, setNotes] = useState('');
+  const [emptyHouse, setEmptyHouse] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const EMPTY_HOUSE_DISC = 0.20;
 
   const scheduleAt = useMemo(() => {
     const d = new Date(dateOptions[dateIdx]!.date);
@@ -114,14 +117,15 @@ function CustomBooking() {
     return d;
   }, [dateOptions, dateIdx, timeSlot]);
 
-  const { total, totalMin, itemCount } = useMemo(() => {
+  const { subtotal, total, discount, totalMin, itemCount } = useMemo(() => {
     let t = 0, m = 0, n = 0;
     for (const it of allItems) {
       const c = counts[it.key] ?? 0;
       if (c > 0) { t += c * it.price; m += c * it.durationMin; n += c; }
     }
-    return { total: t, totalMin: m, itemCount: n };
-  }, [counts]);
+    const disc = emptyHouse ? Math.round((t * EMPTY_HOUSE_DISC) / 1000) * 1000 : 0;
+    return { subtotal: t, total: t - disc, discount: disc, totalMin: m, itemCount: n };
+  }, [counts, emptyHouse]);
 
   function bump(k: string, delta: number) {
     setCounts((p) => ({ ...p, [k]: Math.max(0, Math.min(50, (p[k] ?? 0) + delta)) }));
@@ -146,10 +150,10 @@ function CustomBooking() {
         addressLine: address,
         scheduledAt: scheduleAt.toISOString(),
         addOns: [],
-        baseAmount: total,
+        baseAmount: subtotal,
         totalPrice: total,
         durationMin: totalMin,
-        formSnapshot: { mode: 'custom', items, totalMin, notes },
+        formSnapshot: { mode: 'custom', items, totalMin, notes, emptyHouse, emptyHouseDiscount: discount },
         initialStatus: 'pending_payment',
       });
       toast.success('Pesanan custom dibuat — silakan bayar');
@@ -313,6 +317,34 @@ function CustomBooking() {
             </View>
           </View>
 
+          <Pressable
+            onPress={() => setEmptyHouse(!emptyHouse)}
+            className={`mx-4 mt-3 flex-row items-center gap-3 rounded-2xl border p-3.5 ${
+              emptyHouse ? 'border-emerald-500 bg-emerald-50' : 'border-ink-200 bg-white'
+            }`}
+          >
+            <View
+              className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                emptyHouse ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'
+              }`}
+            >
+              {emptyHouse && <Text className="text-[10px] font-bold text-white">✓</Text>}
+            </View>
+            <View className="flex-1">
+              <View className="flex-row items-center gap-1.5">
+                <Text className={`font-extrabold text-sm ${emptyHouse ? 'text-emerald-800' : 'text-ink-900'}`}>
+                  Rumah Kosong (Tanpa Barang)
+                </Text>
+                <View className="rounded bg-emerald-200 px-1.5 py-0.5">
+                  <Text className="font-extrabold text-[9px] text-emerald-900">DISKON 20%</Text>
+                </View>
+              </View>
+              <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
+                Semua barang sudah dipindah, kerja lebih cepat tanpa hambatan furniture.
+              </Text>
+            </View>
+          </Pressable>
+
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <Text className="font-bold mb-2 text-sm text-ink-900">Catatan (opsional)</Text>
             <TextInput
@@ -335,7 +367,19 @@ function CustomBooking() {
                   <Text className="text-xs text-ink-900">{formatRupiah(counts[r.key]! * r.price)}</Text>
                 </View>
               ))}
-              <View className="mt-2 border-t border-ink-100 pt-2 flex-row justify-between">
+              {discount > 0 && (
+                <View className="mt-2 flex-row justify-between border-t border-ink-100 pt-2">
+                  <Text className="text-xs text-emerald-700">Subtotal</Text>
+                  <Text className="text-xs text-ink-700">{formatRupiah(subtotal)}</Text>
+                </View>
+              )}
+              {discount > 0 && (
+                <View className="flex-row justify-between py-1">
+                  <Text className="text-xs text-emerald-700">Diskon Rumah Kosong (20%)</Text>
+                  <Text className="text-xs font-bold text-emerald-700">−{formatRupiah(discount)}</Text>
+                </View>
+              )}
+              <View className={`flex-row justify-between ${discount > 0 ? 'border-t border-ink-100 pt-2' : 'mt-2 border-t border-ink-100 pt-2'}`}>
                 <Text className="font-bold text-sm text-ink-900">Total · ~{Math.round(totalMin / 60 * 10) / 10}j</Text>
                 <Text className="font-bold text-sm text-brand-700">{formatRupiah(total)}</Text>
               </View>
