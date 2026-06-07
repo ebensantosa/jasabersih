@@ -149,6 +149,71 @@ export class SystemConfigController {
     return { ok: true };
   }
 
+  // Edit detail pekerjaan (scope JSON) di pricing_packages aktif untuk service ini.
+  // Body: { note: string, includes: string[], price?: number, durationMin?: number }
+  @Patch('services/:id/package')
+  @Roles('super_admin', 'ops')
+  async updateServicePackage(
+    @Param('id') id: string,
+    @Body() body: { note?: string; includes?: string[]; price?: number; durationMin?: number },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const pkg = await this.prisma.$queryRaw<{ id: string; scope: any }[]>`
+      SELECT id, scope FROM pricing_packages WHERE service_id = ${id}::uuid AND is_active = true LIMIT 1
+    `;
+    if (!pkg[0]) {
+      // Auto-create kalau belum ada package aktif
+      const svc = await this.prisma.$queryRaw<{ name: string }[]>`SELECT name FROM services WHERE id = ${id}::uuid LIMIT 1`;
+      const name = svc[0]?.name ?? 'Paket';
+      const newScope = { note: body.note ?? '', includes: Array.isArray(body.includes) ? body.includes : [] };
+      await this.prisma.$executeRaw`
+        INSERT INTO pricing_packages (service_id, name, price, duration_min, scope, is_active)
+        VALUES (${id}::uuid, ${name}, ${body.price ?? 0}::bigint, ${body.durationMin ?? 60}::int, ${JSON.stringify(newScope)}::jsonb, true)
+      `;
+    } else {
+      const oldScope = (pkg[0].scope && typeof pkg[0].scope === 'object') ? pkg[0].scope : {};
+      const newScope = {
+        ...oldScope,
+        ...(body.note !== undefined ? { note: body.note } : {}),
+        ...(body.includes !== undefined ? { includes: body.includes } : {}),
+      };
+      await this.prisma.$executeRaw`UPDATE pricing_packages SET scope = ${JSON.stringify(newScope)}::jsonb WHERE id = ${pkg[0].id}::uuid`;
+      if (body.price !== undefined) await this.prisma.$executeRaw`UPDATE pricing_packages SET price = ${body.price}::bigint WHERE id = ${pkg[0].id}::uuid`;
+      if (body.durationMin !== undefined) await this.prisma.$executeRaw`UPDATE pricing_packages SET duration_min = ${body.durationMin}::int WHERE id = ${pkg[0].id}::uuid`;
+    }
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'service.package.update',
+      resourceType: 'pricing_package',
+      resourceId: id,
+      changes: body,
+      ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
+  // Get current package (untuk edit form di admin)
+  @Get('services/:id/package')
+  @Roles('super_admin', 'ops')
+  async getServicePackage(@Param('id') id: string) {
+    const rows = await this.prisma.$queryRaw<{ id: string; name: string; price: bigint; durationMin: number; scope: any }[]>`
+      SELECT id, name, price, duration_min AS "durationMin", scope FROM pricing_packages
+       WHERE service_id = ${id}::uuid AND is_active = true LIMIT 1
+    `;
+    if (!rows[0]) return { id: null, name: null, price: 0, durationMin: 0, note: '', includes: [] };
+    const p = rows[0];
+    const scope = (p.scope && typeof p.scope === 'object') ? p.scope : {};
+    return {
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      durationMin: p.durationMin,
+      note: typeof (scope as any).note === 'string' ? (scope as any).note : '',
+      includes: Array.isArray((scope as any).includes) ? (scope as any).includes : [],
+    };
+  }
+
   @Delete('services/:id')
   @Roles('super_admin')
   async deactivateService(@Param('id') id: string, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {

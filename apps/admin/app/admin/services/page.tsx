@@ -144,6 +144,24 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
+  // === Detail Pekerjaan (scope JSON di pricing_packages) ===
+  const [pkgNote, setPkgNote] = useState('');
+  const [pkgIncludes, setPkgIncludes] = useState<string[]>([]);
+  const [pkgPrice, setPkgPrice] = useState<number>(0);
+  const [pkgDuration, setPkgDuration] = useState<number>(60);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    api.admin.getServicePackage(service.id)
+      .then((p: any) => {
+        setPkgNote(p?.note ?? '');
+        setPkgIncludes(Array.isArray(p?.includes) ? p.includes : []);
+        setPkgPrice(Number(p?.price ?? 0));
+        setPkgDuration(Number(p?.durationMin ?? 60));
+      })
+      .catch(() => {});
+  }, [isEdit, service?.id]);
+
   async function save() {
     const e: Record<string, string> = {};
     if (!form.code) e.code = 'Wajib.';
@@ -154,6 +172,15 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     try {
       if (isEdit) await api.admin.updateService(service.id, form);
       else await api.admin.createService(form);
+      // Save package detail kalau edit mode
+      if (isEdit) {
+        await api.admin.updateServicePackage(service.id, {
+          note: pkgNote,
+          includes: pkgIncludes.filter((s) => s.trim().length > 0),
+          price: pkgPrice > 0 ? pkgPrice : undefined,
+          durationMin: pkgDuration > 0 ? pkgDuration : undefined,
+        }).catch(() => {/* non-fatal */});
+      }
       toast.success(isEdit ? 'Di-update.' : 'Dibuat.');
       onSaved();
     } catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
@@ -227,6 +254,78 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
             hint="JPG/PNG/WebP, max 2MB. Landscape 1200x600px disarankan."
           />
         </section>
+
+        {/* === SECTION 4: Detail Pekerjaan (Paket Aktif) === */}
+        {isEdit && (
+          <section className="space-y-3">
+            <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Detail Pekerjaan (tampil di mobile)
+            </div>
+            <div className="rounded border bg-amber-50 p-3 text-[11px] text-amber-900">
+              Bagian ini muncul di card <strong>"Yang Akan Dikerjakan Cleaner"</strong> di mobile.
+              Edit di sini biar customer tahu detail pekerjaan tanpa tanya.
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Harga (Rp)"
+                type="number"
+                value={String(pkgPrice)}
+                onChange={(v) => setPkgPrice(Number(v) || 0)}
+                helpText="Harga dasar paket (general clean)."
+              />
+              <Input
+                label="Durasi (menit)"
+                type="number"
+                value={String(pkgDuration)}
+                onChange={(v) => setPkgDuration(Number(v) || 60)}
+                helpText="Estimasi waktu pengerjaan."
+              />
+            </div>
+
+            <Textarea
+              label="Deskripsi Pekerjaan"
+              rows={3}
+              value={pkgNote}
+              onChange={setPkgNote}
+              placeholder="Contoh: Cocok untuk kamar kotor ringan–sedang. Jika ada kerak tebal/jamur biasanya perlu biaya tambahan."
+            />
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Poin Pekerjaan (bullet ✓)</label>
+              <div className="space-y-2">
+                {pkgIncludes.map((item, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => setPkgIncludes((arr) => arr.map((x, idx) => idx === i ? e.target.value : x))}
+                      placeholder={`Poin ${i + 1}, contoh: Plafon & sarang laba-laba`}
+                      className="flex-1 rounded border border-slate-200 px-3 py-1.5 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPkgIncludes((arr) => arr.filter((_, idx) => idx !== i))}
+                      className="rounded border border-rose-200 bg-rose-50 px-2 text-xs font-bold text-rose-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPkgIncludes((arr) => [...arr, ''])}
+                  className="rounded border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  + Tambah Poin
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-slate-500">
+                Tap "+ Tambah Poin" untuk nambah baris. Tap × buat hapus. Min 3 poin recommended.
+              </p>
+            </div>
+          </section>
+        )}
       </div>
     </Modal>
   );

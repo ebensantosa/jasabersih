@@ -231,6 +231,10 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('DELETE', `/admin/config/services/${id}`),
       deleteService: (id: string) =>
         request<unknown>('DELETE', `/admin/config/services/${id}`),
+      getServicePackage: (id: string) =>
+        request<{ id: string | null; name: string | null; price: number; durationMin: number; note: string; includes: string[] }>('GET', `/admin/config/services/${id}/package`),
+      updateServicePackage: (id: string, body: { note?: string; includes?: string[]; price?: number; durationMin?: number }) =>
+        request<unknown>('PATCH', `/admin/config/services/${id}/package`, body),
       // Disputes
       listDisputes: (status: 'open' | 'in_progress' | 'resolved' | 'escalated' = 'open') =>
         request<any[]>('GET', `/admin/disputes?status=${status}`),
