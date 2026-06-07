@@ -62,10 +62,10 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
-  // TEMP: tahan SplashOverlay minimal 3 detik buat preview design.
+  // Tahan SplashOverlay sebentar biar transisi smooth (no flash).
   const [splashHold, setSplashHold] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setSplashHold(false), 3000);
+    const t = setTimeout(() => setSplashHold(false), 800);
     return () => clearTimeout(t);
   }, []);
 
