@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Bath, Bed, ChefHat, Minus, Plus, Sofa, Trees, UtensilsCrossed, Warehouse, Wind, Square, Droplets, Layers, Brush } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image as RNImage, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -134,7 +134,46 @@ function CustomBooking() {
   const [notes, setNotes] = useState('');
   const [emptyHouse, setEmptyHouse] = useState(false);
   const [schedModalOpen, setSchedModalOpen] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]); // foto before (full house)
+  const [photos, setPhotos] = useState<{ uri: string; url: string }[]>([]); // foto before (full house)
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  async function pickPhoto(source: 'camera' | 'library') {
+    if (photos.length >= 5) {
+      toast.warning('Maksimal 5 foto');
+      return;
+    }
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const { launchImageLibraryAsync, launchCameraAsync, MediaTypeOptions,
+        requestCameraPermissionsAsync, requestMediaLibraryPermissionsAsync } = ImagePicker;
+      if (source === 'camera') {
+        const perm = await requestCameraPermissionsAsync();
+        if (!perm.granted) { toast.warning('Izin kamera ditolak'); return; }
+      } else {
+        const perm = await requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) { toast.warning('Izin galeri ditolak'); return; }
+      }
+      const r = source === 'camera'
+        ? await launchCameraAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.9 })
+        : await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.9 });
+      if (r.canceled || !r.assets?.[0]) return;
+      const asset = r.assets[0];
+      setPhotoUploading(true);
+      const { compressImage } = await import('../../src/lib/imageCompress');
+      const c = await compressImage(asset.uri);
+      const { api } = await import('../../src/lib/api');
+      const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });
+      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
+      const blob = await (await fetch(c.uri)).blob();
+      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      if (!up.ok) throw new Error('Upload gagal');
+      setPhotos((p) => [...p, { uri: c.uri, url: publicUrl }]);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal upload foto');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
   const [submitting, setSubmitting] = useState(false);
 
   const EMPTY_HOUSE_DISC = 0.20;
@@ -186,7 +225,7 @@ function CustomBooking() {
         baseAmount: subtotal,
         totalPrice: total,
         durationMin: totalMin,
-        formSnapshot: { mode: 'custom', items, totalMin, notes, emptyHouse, emptyHouseDiscount: discount },
+        formSnapshot: { mode: 'custom', items, totalMin, notes, emptyHouse, emptyHouseDiscount: discount, beforePhotos: photos.map((p) => p.url) },
         initialStatus: 'pending_payment',
       });
       toast.success('Pesanan custom dibuat — silakan bayar');
@@ -291,6 +330,50 @@ function CustomBooking() {
                 )}
               </>
             )}
+          </View>
+
+          {/* Foto Before — kondisi awal full house */}
+          <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
+            <Text className="font-bold mb-1 text-sm text-ink-900">Foto Before (Opsional)</Text>
+            <Text className="font-medium mb-3 text-[11px] text-ink-500">
+              Upload foto kondisi awal rumah biar cleaner siap & estimasi lebih akurat. Max 5 foto.
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {photos.map((p, i) => (
+                <View key={i} className="relative">
+                  <RNImage source={{ uri: p.uri }} style={{ width: 72, height: 72, borderRadius: 10 }} />
+                  <Pressable
+                    onPress={() => setPhotos((arr) => arr.filter((_, idx) => idx !== i))}
+                    style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#DC2626', borderRadius: 12, width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, lineHeight: 12 }}>×</Text>
+                  </Pressable>
+                </View>
+              ))}
+              {photos.length < 5 && (
+                <>
+                  <Pressable
+                    onPress={() => pickPhoto('camera')}
+                    disabled={photoUploading}
+                    className="items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-ink-50"
+                    style={{ width: 72, height: 72 }}
+                  >
+                    <Text style={{ fontSize: 20 }}>📷</Text>
+                    <Text className="font-bold mt-1 text-[10px] text-ink-700">Kamera</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => pickPhoto('library')}
+                    disabled={photoUploading}
+                    className="items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-ink-50"
+                    style={{ width: 72, height: 72 }}
+                  >
+                    <Text style={{ fontSize: 20 }}>🖼️</Text>
+                    <Text className="font-bold mt-1 text-[10px] text-ink-700">Galeri</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+            {photoUploading && <Text className="mt-2 text-[10px] text-ink-500">Mengunggah foto...</Text>}
           </View>
 
           {/* Tap card → buka modal Pilih Jadwal */}
