@@ -277,7 +277,27 @@ function CustomBooking() {
               </View>
             </ScrollView>
 
-            <Text className="font-bold mt-4 mb-2 text-sm text-ink-900">Jam</Text>
+            <View className="mt-4 mb-2 flex-row items-center justify-between">
+              <Text className="font-bold text-sm text-ink-900">Jam</Text>
+              <Pressable
+                onPress={() => {
+                  const earliest = new Date(Date.now() + 60 * 60 * 1000);
+                  // Pindah ke hari ini kalau belum
+                  setDateIdx(0);
+                  // Cari slot pertama yang valid
+                  const slot = TIME_SLOTS.find((t) => {
+                    const [hh, mm] = t.split(':').map(Number);
+                    const d = new Date(); d.setHours(hh!, mm!, 0, 0);
+                    return d.getTime() >= earliest.getTime();
+                  });
+                  if (slot) setTimeSlot(slot);
+                  else { setDateIdx(1); setTimeSlot('07:00'); }
+                }}
+                className="rounded-full bg-brand-50 px-3 py-1"
+              >
+                <Text className="font-bold text-[11px] text-brand-700">Pilih Jam Tercepat</Text>
+              </Pressable>
+            </View>
             <View className="flex-row flex-wrap gap-2">
               {TIME_SLOTS.map((t) => {
                 const isToday = dateIdx === 0;
