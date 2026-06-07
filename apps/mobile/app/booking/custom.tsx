@@ -278,60 +278,68 @@ function CustomBooking() {
             </ScrollView>
 
             <Text className="font-bold mt-4 mb-2 text-sm text-ink-900">Jam</Text>
+            {/* Cari posisi slot valid pertama (untuk insert "Sekarang" chip) */}
             <View className="flex-row flex-wrap gap-2">
-              {/* Quick action: pilih jam tercepat */}
-              <Pressable
-                onPress={() => {
-                  const earliest = new Date(Date.now() + 60 * 60 * 1000);
-                  setDateIdx(0);
-                  const slot = TIME_SLOTS.find((t) => {
-                    const [hh, mm] = t.split(':').map(Number);
-                    const d = new Date(); d.setHours(hh!, mm!, 0, 0);
-                    return d.getTime() >= earliest.getTime();
-                  });
-                  if (slot) setTimeSlot(slot);
-                  else { setDateIdx(1); setTimeSlot('07:00'); }
-                }}
-                className="rounded-lg border border-emerald-400 bg-emerald-50 px-3 py-2"
-              >
-                <Text className="font-extrabold text-xs text-emerald-700">Tercepat</Text>
-              </Pressable>
-
-              {TIME_SLOTS.map((t) => {
-                const isToday = dateIdx === 0;
-                let disabled = false;
-                if (isToday) {
+              {(() => {
+                const isTodayMode = dateIdx === 0;
+                const earliest = new Date(Date.now() + 60 * 60 * 1000);
+                const firstValidIdx = !isTodayMode ? -1 : TIME_SLOTS.findIndex((t) => {
                   const [hh, mm] = t.split(':').map(Number);
-                  const slot = new Date();
-                  slot.setHours(hh!, mm!, 0, 0);
-                  // Butuh min lead time 2 jam dari sekarang.
-                  const earliest = new Date(Date.now() + 60 * 60 * 1000);
-                  disabled = slot.getTime() < earliest.getTime();
-                }
-                const active = timeSlot === t;
-                return (
-                  <Pressable
-                    key={t}
-                    disabled={disabled}
-                    onPress={() => setTimeSlot(t)}
-                    className={`rounded-lg border px-3 py-2 ${
-                      disabled
-                        ? 'border-ink-100 bg-ink-50'
-                        : active
-                        ? 'border-brand-600 bg-brand-50'
-                        : 'border-ink-200 bg-white'
-                    }`}
-                  >
-                    <Text
-                      className={`font-semibold text-xs ${
-                        disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'
+                  const d = new Date(); d.setHours(hh!, mm!, 0, 0);
+                  return d.getTime() >= earliest.getTime();
+                });
+                const out: React.ReactNode[] = [];
+                TIME_SLOTS.forEach((t, idx) => {
+                  if (idx === firstValidIdx) {
+                    out.push(
+                      <Pressable
+                        key="now"
+                        onPress={() => { setDateIdx(0); setTimeSlot(TIME_SLOTS[firstValidIdx]!); }}
+                        className={`rounded-lg border px-3 py-2 ${
+                          timeSlot === TIME_SLOTS[firstValidIdx] && dateIdx === 0
+                            ? 'border-emerald-600 bg-emerald-600'
+                            : 'border-emerald-400 bg-emerald-50'
+                        }`}
+                      >
+                        <Text className={`font-extrabold text-xs ${timeSlot === TIME_SLOTS[firstValidIdx] && dateIdx === 0 ? 'text-white' : 'text-emerald-700'}`}>
+                          Sekarang
+                        </Text>
+                      </Pressable>,
+                    );
+                  }
+                  // Render slot biasa inline
+                  let disabled = false;
+                  if (isTodayMode) {
+                    const [hh, mm] = t.split(':').map(Number);
+                    const slot = new Date(); slot.setHours(hh!, mm!, 0, 0);
+                    disabled = slot.getTime() < earliest.getTime();
+                  }
+                  const active = timeSlot === t && (!isTodayMode || !disabled);
+                  out.push(
+                    <Pressable
+                      key={t}
+                      disabled={disabled}
+                      onPress={() => setTimeSlot(t)}
+                      className={`rounded-lg border px-3 py-2 ${
+                        disabled
+                          ? 'border-ink-100 bg-ink-50'
+                          : active
+                          ? 'border-brand-600 bg-brand-50'
+                          : 'border-ink-200 bg-white'
                       }`}
                     >
-                      {t}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <Text
+                        className={`font-semibold text-xs ${
+                          disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'
+                        }`}
+                      >
+                        {t}
+                      </Text>
+                    </Pressable>,
+                  );
+                });
+                return out;
+              })()}
             </View>
           </View>
 
