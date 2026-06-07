@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Bath, Bed, ChefHat, Minus, Plus, Sofa, Trees, UtensilsCrossed, Warehouse, Wind, Square, Droplets, Layers, Brush } from 'lucide-react-native';
+import { ArrowLeft, Bath, Bed, Camera, ChefHat, Minus, Plus, Sofa, Trees, UtensilsCrossed, Warehouse, Wind, Square, Droplets, Layers, Brush } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Image as RNImage, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Image as RNImage, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -137,9 +137,18 @@ function CustomBooking() {
   const [photos, setPhotos] = useState<{ uri: string; url: string }[]>([]); // foto before (full house)
   const [photoUploading, setPhotoUploading] = useState(false);
 
+  function showPhotoPicker() {
+    if (Platform.OS === 'web') { void pickPhoto('library'); return; }
+    Alert.alert('Tambah Foto', 'Ambil dari:', [
+      { text: 'Kamera', onPress: () => pickPhoto('camera') },
+      { text: 'Galeri', onPress: () => pickPhoto('library') },
+      { text: 'Batal', style: 'cancel' },
+    ]);
+  }
+
   async function pickPhoto(source: 'camera' | 'library') {
-    if (photos.length >= 5) {
-      toast.warning('Maksimal 5 foto');
+    if (photos.length >= 3) {
+      toast.warning('Maksimal 3 foto');
       return;
     }
     try {
@@ -338,46 +347,37 @@ function CustomBooking() {
 
           {/* Foto Before — kondisi awal full house */}
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-            <Text className="font-bold mb-1 text-sm text-ink-900">Foto Before (Opsional)</Text>
-            <Text className="font-medium mb-3 text-[11px] text-ink-500">
-              Upload foto kondisi awal rumah biar cleaner siap & estimasi lebih akurat. Max 5 foto.
+            <Text className="font-semibold mb-2 text-[11px] uppercase tracking-wider text-ink-500">
+              Foto Kondisi (Opsional, max 3)
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {photos.map((p, i) => (
-                <View key={i} className="relative">
-                  <RNImage source={{ uri: p.uri }} style={{ width: 72, height: 72, borderRadius: 10 }} />
+                <View key={i} className="relative h-20 w-20">
+                  <RNImage source={{ uri: p.uri }} style={{ width: 80, height: 80, borderRadius: 12 }} />
                   <Pressable
                     onPress={() => setPhotos((arr) => arr.filter((_, idx) => idx !== i))}
-                    style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#DC2626', borderRadius: 12, width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}
+                    className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-red-600"
                   >
-                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, lineHeight: 12 }}>×</Text>
+                    <Text className="font-bold text-[10px] text-white">×</Text>
                   </Pressable>
                 </View>
               ))}
-              {photos.length < 5 && (
-                <>
-                  <Pressable
-                    onPress={() => pickPhoto('camera')}
-                    disabled={photoUploading}
-                    className="items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-ink-50"
-                    style={{ width: 72, height: 72 }}
-                  >
-                    <Text style={{ fontSize: 20 }}>📷</Text>
-                    <Text className="font-bold mt-1 text-[10px] text-ink-700">Kamera</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => pickPhoto('library')}
-                    disabled={photoUploading}
-                    className="items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-ink-50"
-                    style={{ width: 72, height: 72 }}
-                  >
-                    <Text style={{ fontSize: 20 }}>🖼️</Text>
-                    <Text className="font-bold mt-1 text-[10px] text-ink-700">Galeri</Text>
-                  </Pressable>
-                </>
+              {photos.length < 3 && (
+                <Pressable
+                  onPress={showPhotoPicker}
+                  disabled={photoUploading}
+                  className="h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-brand-300 bg-brand-50"
+                >
+                  <Camera color="#1D4ED8" size={20} strokeWidth={2.2} />
+                  <Text className="font-medium mt-1 text-[10px] text-brand-700">
+                    {photoUploading ? '...' : '+ Tambah'}
+                  </Text>
+                </Pressable>
               )}
             </View>
-            {photoUploading && <Text className="mt-2 text-[10px] text-ink-500">Mengunggah foto...</Text>}
+            <Text className="font-sans mt-2 text-[10px] text-ink-500">
+              JPG / PNG / WEBP · auto compress {`<5MB`}
+            </Text>
           </View>
 
           {/* Tap card → buka modal Pilih Jadwal */}
