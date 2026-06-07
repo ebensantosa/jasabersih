@@ -1560,44 +1560,78 @@ function ScheduleModal({ visible, value, onChange, onClose }: { visible: boolean
             </View>
           </ScrollView>
 
-          <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {(() => {
-              const out: React.ReactNode[] = [];
-              TIME_SLOTS_FIXED.forEach((t, idx) => {
-                if (idx === firstValidIdx) {
-                  out.push(
-                    <Pressable
-                      key="now"
-                      onPress={() => { setDateIdx(0); setUseNowTime(true); }}
-                      className={`rounded-lg border px-3 py-2 ${useNowTime && isToday ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
-                    >
-                      <Text className={`font-extrabold text-xs ${useNowTime && isToday ? 'text-white' : 'text-emerald-700'}`}>
-                        Sekarang ({nowLabel})
-                      </Text>
-                    </Pressable>,
-                  );
-                }
-                const disabled = !isSlotValid(t);
-                const active = timeSlot === t && !useNowTime && !disabled;
-                out.push(
+          {(() => {
+            const validSlots = TIME_SLOTS_FIXED.filter((t) => isSlotValid(t));
+            const allTodayPast = isToday && validSlots.length === 0;
+            if (allTodayPast) {
+              return (
+                <View className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                  <Text className="font-bold text-sm text-amber-900">Operasional hari ini sudah tutup</Text>
+                  <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                    Operasional 07:00–20:00. Pilih tanggal lain (Besok / hari setelahnya) untuk lihat slot jam tersedia.
+                  </Text>
                   <Pressable
-                    key={t}
-                    disabled={disabled}
-                    onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
-                    className={`rounded-lg border px-3 py-2 ${disabled ? 'border-ink-100 bg-ink-50' : active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                    onPress={() => { setDateIdx(1); setUseNowTime(false); }}
+                    className="mt-3 self-start rounded-full bg-amber-600 px-4 py-2"
                   >
-                    <Text className={`font-semibold text-xs ${disabled ? 'text-ink-300 line-through' : active ? 'text-brand-700' : 'text-ink-700'}`}>
-                      {t}
-                    </Text>
-                  </Pressable>,
-                );
-              });
-              return out;
-            })()}
-          </View>
-
-          <Text className="mt-3 text-[10px] text-ink-500">Operasional 07:00–21:00 · Min 1 jam dari sekarang</Text>
+                    <Text className="font-bold text-xs text-white">Pilih Besok</Text>
+                  </Pressable>
+                </View>
+              );
+            }
+            return (
+              <>
+                <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {(() => {
+                    const out: React.ReactNode[] = [];
+                    TIME_SLOTS_FIXED.forEach((t, idx) => {
+                      if (idx === firstValidIdx && isToday) {
+                        out.push(
+                          <Pressable
+                            key="now"
+                            onPress={() => { setDateIdx(0); setUseNowTime(true); }}
+                            className={`rounded-lg border px-3 py-2 ${useNowTime && isToday ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
+                          >
+                            <Text className={`font-extrabold text-xs ${useNowTime && isToday ? 'text-white' : 'text-emerald-700'}`}>
+                              Sekarang ({nowLabel})
+                            </Text>
+                          </Pressable>,
+                        );
+                      }
+                      const disabled = !isSlotValid(t);
+                      const active = timeSlot === t && !useNowTime && !disabled;
+                      out.push(
+                        <Pressable
+                          key={t}
+                          disabled={disabled}
+                          onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
+                          style={disabled ? { opacity: 0.4 } : undefined}
+                          className={`rounded-lg border-2 px-3 py-2 ${
+                            disabled
+                              ? 'border-ink-200 bg-ink-100'
+                              : active
+                              ? 'border-brand-600 bg-brand-50'
+                              : 'border-ink-200 bg-white'
+                          }`}
+                        >
+                          <Text
+                            className={`font-bold text-xs ${
+                              disabled ? 'text-ink-400 line-through' : active ? 'text-brand-700' : 'text-ink-800'
+                            }`}
+                          >
+                            {t}
+                          </Text>
+                        </Pressable>,
+                      );
+                    });
+                    return out;
+                  })()}
+                </View>
+                <Text className="mt-3 text-[10px] text-ink-500">Operasional 07:00–20:00 · Min 1 jam dari sekarang</Text>
+              </>
+            );
+          })()}
 
           <Pressable
             onPress={confirm}
