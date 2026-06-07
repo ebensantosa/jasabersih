@@ -191,8 +191,14 @@ function CustomBooking() {
 
   const scheduleAt = useMemo(() => {
     if (useNowTime && dateIdx === 0) {
-      // Exact earliest: sekarang + 1 jam (menit asli, gak dibulatkan)
-      return new Date(Date.now() + 60 * 60 * 1000);
+      // Exact earliest: sekarang + 1 jam, tapi clamp ke jam operasional 07:00-20:00
+      const nowPlus1h = new Date(Date.now() + 60 * 60 * 1000);
+      if (nowPlus1h.getHours() < 7) { nowPlus1h.setHours(7, 0, 0, 0); }
+      else if (nowPlus1h.getHours() >= 20) {
+        nowPlus1h.setDate(nowPlus1h.getDate() + 1);
+        nowPlus1h.setHours(7, 0, 0, 0);
+      }
+      return nowPlus1h;
     }
     const d = new Date(dateOptions[dateIdx]!.date);
     const [hh, mm] = timeSlot.split(':').map(Number);
@@ -391,7 +397,7 @@ function CustomBooking() {
               <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Pilih Tanggal & Jam</Text>
               <Text className="font-bold mt-0.5 text-sm text-ink-900">
                 {useNowTime && dateIdx === 0
-                  ? `Sekarang (${(() => { const n = new Date(Date.now() + 60 * 60 * 1000); return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; })()})`
+                  ? `Sekarang (${String(scheduleAt.getHours()).padStart(2, '0')}:${String(scheduleAt.getMinutes()).padStart(2, '0')})`
                   : `${dateOptions[dateIdx]?.label ?? ''} · ${timeSlot}`}
               </Text>
             </View>
@@ -521,6 +527,8 @@ function CustomBooking() {
             {(() => {
               const isTodayMode = dateIdx === 0;
               const earliest = new Date(Date.now() + 60 * 60 * 1000);
+              // "Sekarang" cuma valid kalau now+1h ada dalam jam operasional 07:00-19:59
+              const nowInOps = isTodayMode && earliest.getHours() >= 7 && earliest.getHours() < 20;
               const validSlots = TIME_SLOTS.filter((t) => {
                 if (!isTodayMode) return true;
                 const [hh, mm] = t.split(':').map(Number);
@@ -528,7 +536,7 @@ function CustomBooking() {
                 return d.getTime() >= earliest.getTime();
               });
               const allTodayPast = isTodayMode && validSlots.length === 0;
-              const firstValidIdx = !isTodayMode ? -1 : TIME_SLOTS.findIndex((t) => validSlots.includes(t));
+              const firstValidIdx = !isTodayMode || !nowInOps ? -1 : TIME_SLOTS.findIndex((t) => validSlots.includes(t));
 
               if (allTodayPast) {
                 return (
