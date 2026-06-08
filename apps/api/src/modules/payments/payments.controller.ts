@@ -101,7 +101,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async flipCreateDirect(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { bookingId: string; senderBank: string; senderBankType: 'virtual_account' | 'qris' | 'wallet_account'; useCredit?: boolean },
+    @Body() body: { bookingId: string; senderBank: string; senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer'; useCredit?: boolean },
   ) {
     if (!body?.bookingId || !body?.senderBank || !body?.senderBankType) {
       throw new BadRequestException('bookingId, senderBank, senderBankType wajib.');

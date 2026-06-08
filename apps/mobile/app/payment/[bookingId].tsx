@@ -20,7 +20,7 @@ type DirectResult = {
   paymentId: string;
   amount: number;
   senderBank: string;
-  senderBankType: 'virtual_account' | 'qris' | 'wallet_account';
+  senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer';
   accountNumber: string | null;
   qrString: string | null;
   walletUrl?: string | null;
@@ -55,6 +55,16 @@ const EWALLET_METHODS: { code: string; name: string; logo: any }[] = [
   { code: 'dana',          name: 'DANA',      logo: require('../../assets/payment-logos/logo-dana.png') },
   { code: 'shopeepay_app', name: 'ShopeePay', logo: require('../../assets/payment-logos/shopeepay.png') },
   { code: 'linkaja_app',   name: 'LinkAja',   logo: require('../../assets/payment-logos/logo-linkaja.png') },
+];
+
+// Transfer Bank (channel Flip) — customer transfer ke rekening tetap merchant,
+// Flip auto-detect dari mutasi. Cek Flip dashboard → Accept Payment → Transfer Bank
+// untuk lihat channel aktif.
+const TRANSFER_BANK_METHODS: { code: string; name: string; logo?: any; label: string }[] = [
+  { code: 'bri',          name: 'Transfer dari BRI',         label: 'BRI',          logo: require('../../assets/payment-logos/logo-bri.png') },
+  { code: 'dbs',          name: 'Transfer dari DBS',         label: 'DBS' },
+  { code: 'muamalat',     name: 'Transfer dari Muamalat',    label: 'MUAMALAT' },
+  { code: 'bni_syariah',  name: 'Transfer dari BNI Syariah', label: 'BNI SYARIAH' },
 ];
 
 const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
@@ -421,7 +431,37 @@ function MethodPicker({
         </View>
       </View>
 
-      <ManualBankSection total={total} disabled={disabled} />
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Transfer Bank</Text>
+        <View className="overflow-hidden rounded-2xl bg-white">
+          {TRANSFER_BANK_METHODS.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'bank_transfer')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  {m.logo ? (
+                    <Image source={m.logo} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                  ) : (
+                    <Text className="font-extrabold text-[9px] text-ink-700">{m.label}</Text>
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Transfer ke rekening kami, auto-detect</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔧 {getMessage(m.code) || 'Belum tersedia'}</Text>}
+                </View>
+                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">E-Wallet (langsung)</Text>
@@ -776,102 +816,6 @@ function QRCodeWeb({ value, size }: { value: string; size: number }) {
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
   // @ts-expect-error host elem
   return <img src={url} width={size} height={size} alt="QRIS" />;
-}
-
-// ===== Manual Bank Transfer Section =====
-// Customer transfer ke rekening merchant manual, lalu konfirmasi via WhatsApp.
-// Berbeda dari VA (yang nomor unik auto-generated per transaksi).
-type ManualBank = { bankCode: string; bankName: string; accountNumber: string; accountName: string };
-
-function ManualBankSection({ total, disabled }: { total: number; disabled: boolean }) {
-  const banks = useConfig('payment.manual_bank_accounts' as any, [] as any) as unknown as ManualBank[];
-  const waNumber = (useConfig('contact.whatsapp', '6281234567890') as string) || '6281234567890';
-  const [openBank, setOpenBank] = useState<ManualBank | null>(null);
-
-  if (!Array.isArray(banks) || banks.length === 0) return null;
-
-  function confirmViaWA(b: ManualBank) {
-    const msg = encodeURIComponent(
-      `Halo admin JasaBersih, saya sudah transfer Rp ${total.toLocaleString('id-ID')} ke ${b.bankName} ${b.accountNumber} a/n ${b.accountName}.\n\nMohon dikonfirmasi pembayarannya. Terima kasih.`,
-    );
-    Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
-  }
-
-  return (
-    <View>
-      <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Transfer Bank Manual</Text>
-      <View className="overflow-hidden rounded-2xl bg-white">
-        {banks.map((b, i) => (
-          <Pressable
-            key={b.bankCode}
-            disabled={disabled}
-            onPress={() => setOpenBank(b)}
-            className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''}`}
-          >
-            <View className="h-10 w-14 items-center justify-center rounded border border-ink-100 bg-white">
-              <Text className="font-extrabold text-[10px] text-ink-700">{b.bankName.toUpperCase()}</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-semibold text-sm text-ink-900">Transfer Bank {b.bankName}</Text>
-              <Text className="font-medium mt-0.5 text-[11px] text-ink-500">{b.accountNumber} · a/n {b.accountName.split(' ').slice(0, 3).join(' ')}</Text>
-            </View>
-            <Building2 color="#94A3B8" size={16} />
-          </Pressable>
-        ))}
-      </View>
-      <Text className="font-medium mt-2 text-[10px] text-ink-500">
-        Transfer ke rekening di atas, lalu konfirmasi via WhatsApp ke admin (kirim bukti transfer).
-      </Text>
-
-      <RNModal visible={!!openBank} transparent animationType="fade" onRequestClose={() => setOpenBank(null)}>
-        <Pressable onPress={() => setOpenBank(null)} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', padding: 24 }}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 24, padding: 20 }}>
-            {openBank && (
-              <>
-                <Text className="font-extrabold text-base text-ink-900">Transfer Bank {openBank.bankName}</Text>
-                <View className="mt-3 rounded-xl bg-brand-50 p-3">
-                  <Text className="font-medium text-[10px] uppercase tracking-wider text-brand-700">Nominal</Text>
-                  <Text className="font-extrabold mt-1 text-2xl text-brand-800">{formatRupiah(total)}</Text>
-                </View>
-                <View className="mt-3 rounded-xl bg-ink-50 p-3">
-                  <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">No. Rekening</Text>
-                  <Text selectable className="font-extrabold mt-1 text-xl text-ink-900" style={{ fontVariant: ['tabular-nums'] }}>
-                    {openBank.accountNumber}
-                  </Text>
-                  <Text className="font-medium mt-1 text-[11px] text-ink-600">a/n {openBank.accountName}</Text>
-                  <Pressable
-                    onPress={async () => {
-                      const { setStringAsync } = await import('expo-clipboard');
-                      await setStringAsync(openBank.accountNumber);
-                      toast.success('Nomor rekening disalin');
-                    }}
-                    className="mt-2 self-start rounded-full bg-ink-200 px-3 py-1"
-                  >
-                    <Text className="font-bold text-[11px] text-ink-700">Salin Nomor</Text>
-                  </Pressable>
-                </View>
-                <View className="mt-3 rounded-lg bg-amber-50 p-3">
-                  <Text className="font-medium text-[11px] leading-5 text-amber-900">
-                    Transfer sesuai nominal di atas. Setelah transfer, klik tombol di bawah untuk konfirmasi via WhatsApp + kirim bukti transfer.
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => { confirmViaWA(openBank); setOpenBank(null); }}
-                  className="mt-4 flex-row items-center justify-center gap-2 rounded-2xl bg-success py-3"
-                >
-                  <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
-                  <Text className="font-bold text-sm text-white">Konfirmasi via WhatsApp</Text>
-                </Pressable>
-                <Pressable onPress={() => setOpenBank(null)} className="mt-2 items-center py-2">
-                  <Text className="font-semibold text-sm text-ink-600">Tutup</Text>
-                </Pressable>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </RNModal>
-    </View>
-  );
 }
 
 export default withAuth(PaymentScreen, 'customer');

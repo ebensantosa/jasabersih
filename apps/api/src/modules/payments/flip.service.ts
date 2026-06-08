@@ -88,7 +88,7 @@ export class FlipService {
   // we render natively in our app.
   async createDirectBill(input: FlipCreateInput & {
     senderBank: string;          // bca|bni|bri|mandiri|cimb|permata|bsi|qris
-    senderBankType: 'virtual_account' | 'qris' | 'wallet_account';
+    senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer';
   }): Promise<any> {
     const c = await this.getCreds();
     if (!c.enabled) throw new BadRequestException('Layanan pembayaran belum di-enable. Cek App Settings.');
