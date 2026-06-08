@@ -197,7 +197,7 @@ export default function Home() {
           {/* CTA Bersih Full Custom - scroll bareng content, gak sticky */}
           <Pressable
             onPress={() => router.push('/booking/custom')}
-            className="mx-4 mt-1 overflow-hidden rounded-2xl bg-white"
+            className="mx-4 mt-2 mb-1 overflow-hidden rounded-2xl bg-white"
             style={{
               elevation: 4,
               shadowColor: '#0F172A',
@@ -248,7 +248,11 @@ export default function Home() {
             </View>
           </Pressable>
         {/* Service grid 4 col */}
-        <View className="mx-4 mt-1 rounded-2xl bg-white px-2 py-3" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
+        <View className="mb-1 mt-4 px-4">
+          <Text className="font-extrabold text-sm text-ink-900">Pilih Layanan</Text>
+          <Text className="font-medium mt-0.5 text-[11px] text-ink-500">Tap untuk lihat detail & pesan</Text>
+        </View>
+        <View className="mx-4 mt-2 rounded-2xl bg-white px-2 py-4" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
               const isKonsul = s.code === 'konsultasi' || s.code === 'skala_besar';
@@ -260,11 +264,11 @@ export default function Home() {
                       ? router.push('/services/konsultasi')
                       : router.push(`/services/${s.code}`)
                   }
-                  className="w-1/4 items-center px-1 py-2"
+                  className="w-1/4 items-center px-1 py-3"
                 >
                   <View
                     style={{ backgroundColor: isKonsul ? '#D1FAE5' : s.iconBg }}
-                    className="h-12 w-12 items-center justify-center rounded-2xl"
+                    className="h-14 w-14 items-center justify-center rounded-2xl"
                   >
                     {isKonsul ? (
                       <WaIcon size={22} />
@@ -304,7 +308,7 @@ export default function Home() {
 
 
         {BUNDLE_SERVICES.length > 0 && (
-          <View className="mt-6">
+          <View className="mt-8">
             <View className="mb-3 flex-row items-end justify-between px-4">
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
@@ -313,7 +317,7 @@ export default function Home() {
                     <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Hemat</Text>
                   </View>
                 </View>
-                <Text className="font-sans mt-0.5 text-[11px] text-ink-500">Combo all-in untuk rumah, kantor & berkala</Text>
+                <Text className="font-medium mt-1 text-[11px] text-ink-500">Combo all-in untuk rumah, kantor & berkala</Text>
               </View>
               <Pressable onPress={() => router.push('/(tabs)/explore')}>
                 <Text className="font-semibold text-[12px] text-brand-600">Lihat semua ›</Text>
@@ -391,15 +395,15 @@ export default function Home() {
           </View>
         )}
 
-        <View className="mt-6">
+        <View className="mt-8">
           <BannerCarousel />
         </View>
 
-        <View className="mt-6">
+        <View className="mt-8">
           <FeaturedCleaners />
         </View>
 
-        <View className="mt-6">
+        <View className="mt-8">
           <View className="mb-3 flex-row items-center justify-between px-4">
             <Text className="font-extrabold text-base text-ink-900">{t('home.popular')}</Text>
             <Pressable onPress={() => router.push('/(tabs)/explore')} className="flex-row items-center">
