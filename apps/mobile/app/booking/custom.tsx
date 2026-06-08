@@ -235,11 +235,15 @@ function CustomBooking() {
     }));
     const labelSummary = items.map((i) => `${i.qty}× ${i.label}`).join(', ');
     try {
+      // Pakai home.cta_image_url (config admin) sebagai icon Layanan Custom
+      const ctaImage = useAppContent.getState().content.config['home.cta_image_url' as keyof typeof useAppContent.prototype.content.config] as unknown as string | undefined;
+      const customIcon = typeof ctaImage === 'string' && ctaImage.trim() ? { uri: ctaImage.trim() } : undefined;
+
       const booking = await create({
         pricingMode: 'package',
         categoryCode: 'custom',
         categoryName: 'Layanan Custom',
-        categoryImage: undefined,
+        categoryImage: customIcon as any,
         packageId: undefined,
         packageName: `Custom: ${labelSummary}`,
         addressLine: address,
