@@ -153,6 +153,8 @@ export class BookingsController {
   ) {
     // Anti-abuse: max active booking limit dihapus permanently per request user.
     // Customer bebas buat berapa pun pesanan aktif simultan.
+    // Tapi limits config tetap di-load untuk voucherMaxUsesPerPhone di bawah.
+    const limits = await this.abuse.get();
     // Hitung travel fee — kalau out-of-range, throw BadRequest (mobile arahkan ke WA)
     const lat = body.lat ?? -7.7956;
     const lng = body.lng ?? 110.3695;
