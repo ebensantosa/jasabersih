@@ -76,9 +76,12 @@ function NewBooking() {
   const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
 
   // Full House / Paket Bundle pakai flow cart (customer pilih per-ruangan + add-ons).
+  // Skala Besar / Konsultasi langsung ke WA admin (gak ada flow booking standar).
   useEffect(() => {
     if (categoryCode === 'full_house' || categoryCode === 'paket_bundle') {
       router.replace('/booking/custom');
+    } else if (categoryCode === 'skala_besar' || categoryCode === 'konsultasi') {
+      router.replace('/services/konsultasi');
     }
   }, [categoryCode, router]);
 
@@ -884,7 +887,7 @@ function NewBooking() {
                     </Text>
                   </View>
                 )}
-                <Label className="mt-4">Fasilitas Lain</Label>
+                <Label className="mt-4">Fasilitas Lain (pilih beberapa)</Label>
                 <View className="flex-row flex-wrap gap-2">
                   {ROOM_FACILITIES.map((f) => {
                     const active = facilities.has(f);
@@ -892,10 +895,11 @@ function NewBooking() {
                       <Pressable
                         key={f}
                         onPress={() => setFacilities(toggleSet(facilities, f))}
-                        className={`rounded-full border px-3 py-1.5 ${
+                        className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
                           active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
                         }`}
                       >
+                        {active && <Check color="white" size={12} strokeWidth={3} />}
                         <Text
                           className={`font-semibold text-xs ${active ? 'text-white' : 'text-ink-700'}`}
                         >
@@ -1046,10 +1050,11 @@ function NewBooking() {
                       <Pressable
                         key={c}
                         onPress={() => setDirtChars(toggleSet(dirtChars, c))}
-                        className={`rounded-full border px-3 py-1.5 ${
+                        className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
                           active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
                         }`}
                       >
+                        {active && <Check color="white" size={12} strokeWidth={3} />}
                         <Text className={`font-medium text-xs ${active ? 'text-white' : 'text-ink-700'}`}>
                           {c}
                         </Text>
