@@ -701,56 +701,30 @@ function NewBooking() {
 
               {isSimpleService && pkg && (
                 <>
-                  {/* Card 1: Paket + harga + ukuran (no description) */}
-                  <Section title={`PAKET ${category?.name ?? ''}`}>
-                    <View className="rounded-2xl bg-white p-4" style={{ borderWidth: 1, borderColor: '#E2E8F0' }}>
-                      <View className="flex-row items-start justify-between">
-                        <View className="flex-1 pr-3">
-                          <Text className="font-extrabold text-base text-ink-900">{pkg.name}</Text>
-                          <View className="mt-1 flex-row items-center gap-1.5">
-                            <View className="rounded bg-amber-100 px-1.5 py-0.5">
-                              <Text className="font-extrabold text-[9px] text-amber-700">PALING LARIS</Text>
-                            </View>
-                            <Text className="font-medium text-[10px] text-ink-500">
-                              · Durasi ±{Math.round(pkg.durationMin / 60 * 10) / 10} jam
-                            </Text>
-                          </View>
-                        </View>
-                        <View className="items-end">
-                          <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(rawPackagePrice)}</Text>
-                          {isBathroom && bathroomMult !== 1 && (
-                            <Text className="font-medium text-[10px] text-ink-400 line-through">{formatRupiah(pkg.price)}</Text>
-                          )}
-                        </View>
+                  {/* Kamar mandi: pilih ukuran (kalau ada) */}
+                  {isBathroom && (
+                    <Section title="Ukuran Kamar Mandi">
+                      <View className="flex-row gap-2">
+                        {BATHROOM_SIZES.map((s) => {
+                          const active = bathroomSize === s.code;
+                          return (
+                            <Pressable
+                              key={s.code}
+                              onPress={() => setBathroomSize(s.code)}
+                              className={`flex-1 items-center rounded-xl border py-3 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                            >
+                              <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>{s.label}</Text>
+                              <Text className={`mt-0.5 text-[10px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>{s.desc}</Text>
+                            </Pressable>
+                          );
+                        })}
                       </View>
+                    </Section>
+                  )}
 
-                      {/* Kamar mandi: pilih ukuran */}
-                      {isBathroom && (
-                        <View className="mt-3">
-                          <Text className="font-semibold mb-2 text-[10px] uppercase tracking-wider text-ink-500">Ukuran Kamar Mandi</Text>
-                          <View className="flex-row gap-2">
-                            {BATHROOM_SIZES.map((s) => {
-                              const active = bathroomSize === s.code;
-                              return (
-                                <Pressable
-                                  key={s.code}
-                                  onPress={() => setBathroomSize(s.code)}
-                                  className={`flex-1 items-center rounded-xl border py-2 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                                >
-                                  <Text className={`font-bold text-xs ${active ? 'text-brand-700' : 'text-ink-900'}`}>{s.label}</Text>
-                                  <Text className={`mt-0.5 text-[9px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>{s.desc}</Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  </Section>
-
-                  {/* Card 2: Yang akan dikerjakan cleaner (description + includes, NO price) */}
+                  {/* Detail Pekerjaan (description + includes, NO harga — final price di bottom bar) */}
                   {(((pkg as any).note || pkg.scope) || (((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0) && (
-                    <Section title="Yang Akan Dikerjakan Cleaner">
+                    <Section title={`Detail Layanan · ${pkg.name}`}>
                       {((pkg as any).note || pkg.scope) && (
                         <Text className="font-medium text-[11px] leading-5 text-ink-600">
                           {(pkg as any).note || pkg.scope}
