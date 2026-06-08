@@ -1,0 +1,64 @@
+// Dynamic Expo config.
+// Firebase native plugins di-include cuma saat native build (EAS / expo run:*),
+// dan di-skip saat web dev (Metro tidak punya native runtime).
+// Override via env: EXPO_NO_FIREBASE=1 untuk paksa skip.
+
+const IS_NATIVE_BUILD =
+  !!process.env.EAS_BUILD ||
+  process.env.EXPO_PLATFORM === 'ios' ||
+  process.env.EXPO_PLATFORM === 'android';
+
+const SHOULD_USE_FIREBASE =
+  IS_NATIVE_BUILD && process.env.EXPO_NO_FIREBASE !== '1';
+
+const basePlugins = [
+  'expo-router',
+  'expo-secure-store',
+  [
+    'expo-image-picker',
+    {
+      photosPermission: 'JasaBersih perlu akses galeri untuk upload foto kondisi rumah.',
+      cameraPermission: 'JasaBersih perlu akses kamera untuk ambil foto kondisi rumah langsung.',
+    },
+  ],
+];
+
+const firebasePlugins = [
+  '@react-native-firebase/app',
+  '@react-native-firebase/crashlytics',
+  ['expo-build-properties', { ios: { useFrameworks: 'static' } }],
+];
+
+module.exports = {
+  expo: {
+    name: 'JasaBersih',
+    slug: 'jasabersih-app',
+    version: '1.3.0',
+    scheme: 'jasabersih',
+    orientation: 'default',
+    userInterfaceStyle: 'automatic',
+    newArchEnabled: false,
+    icon: './assets/icon.png',
+    ios: {
+      supportsTablet: false,
+      bundleIdentifier: 'com.jasabersih.app',
+      buildNumber: '15',
+      icon: './assets/icon.png',
+      googleServicesFile: './GoogleService-Info.plist',
+    },
+    android: {
+      package: 'com.jasabersih.app',
+      versionCode: 15,
+      edgeToEdgeEnabled: false,
+      icon: './assets/icon.png',
+      googleServicesFile: './google-services.json',
+    },
+    plugins: SHOULD_USE_FIREBASE ? [...basePlugins, ...firebasePlugins] : basePlugins,
+    experiments: { typedRoutes: false },
+    extra: {
+      apiBaseUrl: 'https://api.jasabersih.com/v1',
+      eas: { projectId: '4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a' },
+    },
+    owner: 'ebensantosa',
+  },
+};
