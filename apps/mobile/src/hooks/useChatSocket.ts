@@ -25,7 +25,7 @@ export function useChatSocket(bookingId: string | undefined) {
           createdAt: m.createdAt,
         })));
       } catch {
-        // silent — connection still works
+        // silent - connection still works
       }
     })();
     return () => { cancelled = true; };

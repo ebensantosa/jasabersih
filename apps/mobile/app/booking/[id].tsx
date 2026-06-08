@@ -73,7 +73,7 @@ function BookingDetail() {
   const cancel = useBookingsStore((s) => s.cancel);
   const setStatus = useBookingsStore((s) => s.setStatus);
 
-  // Cleaner mostly opens jobs they accepted — those rows aren't in their
+  // Cleaner mostly opens jobs they accepted - those rows aren't in their
   // local store yet (store seeded from /bookings which is customer-only).
   // Fetch + seed on mount when missing.
   useEffect(() => {
@@ -119,7 +119,7 @@ function BookingDetail() {
   }
   const t = useT();
 
-  // Cleaner advance status — pakai API kalau bukan local-only booking
+  // Cleaner advance status - pakai API kalau bukan local-only booking
   async function advanceStatus(to: 'on_the_way' | 'in_progress' | 'completed') {
     if (!booking) return;
     if (booking.id.startsWith('bk_')) {
@@ -149,7 +149,7 @@ function BookingDetail() {
     && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status);
 
   // ───── ALL HOOKS BEFORE ANY EARLY RETURN ─────
-  // Hook rules require unconditional ordering — moving these above the
+  // Hook rules require unconditional ordering - moving these above the
   // !booking guard fixed "Rendered fewer hooks than expected" crash.
   const SEARCH_TIMEOUT_SEC = 15 * 60;
   const [now, setNow] = useState(Date.now());
@@ -255,7 +255,7 @@ function BookingDetail() {
       const refund = booking.totalPrice - penalty;
       Alert.alert(
         '⚠️ Cancel Mendadak',
-        `Lewat ${FREE_CANCEL_WINDOW_SEC}s setelah bayar — kena potongan ${PENALTY_PCT * 100}%.\n\nTotal: ${formatRupiah(booking.totalPrice)}\nPotongan: -${formatRupiah(penalty)}\nRefund: ${formatRupiah(refund)}`,
+        `Lewat ${FREE_CANCEL_WINDOW_SEC}s setelah bayar - kena potongan ${PENALTY_PCT * 100}%.\n\nTotal: ${formatRupiah(booking.totalPrice)}\nPotongan: -${formatRupiah(penalty)}\nRefund: ${formatRupiah(refund)}`,
         [
           { text: 'Batal' },
           {
@@ -273,7 +273,7 @@ function BookingDetail() {
 
   function onPay() {
     if (!booking) return;
-    // Booking yang gagal sync ke server (id masih bk_xxx) tidak bisa dibayar —
+    // Booking yang gagal sync ke server (id masih bk_xxx) tidak bisa dibayar -
     // Flip butuh booking_id real di DB. User harus retry create booking dulu.
     if (booking.id.startsWith('bk_')) {
       toast.error('Pesanan belum tersimpan di server. Tutup dan buat ulang pesanan.');
@@ -289,7 +289,7 @@ function BookingDetail() {
         ? `Per Jam${booking.hourlyTierName ? ` · ${booking.hourlyTierName}` : ''}${booking.hours ? ` × ${booking.hours}j` : ''}`
         : 'Konsultasi WhatsApp';
 
-  // Full-screen searching mode: pesanan sudah dibayar — tidak ada cancel
+  // Full-screen searching mode: pesanan sudah dibayar - tidak ada cancel
   if (!isCleaner && booking.status === 'searching' && !searchTimeout) {
     return (
       <>
@@ -369,21 +369,21 @@ function BookingDetail() {
             </View>
           </View>
 
-          {/* Foto Pekerjaan — cleaner: taruh di atas biar gak kelewat upload before/after */}
+          {/* Foto Pekerjaan - cleaner: taruh di atas biar gak kelewat upload before/after */}
           {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
               <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
             </View>
           )}
 
-          {/* Live searching indicator + countdown — customer only */}
+          {/* Live searching indicator + countdown - customer only */}
           {!isCleaner && booking.status === 'searching' && !searchTimeout && (
             <View className="mx-4 mt-3">
               <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
             </View>
           )}
 
-          {/* Timeout — fallback ke WA, customer only */}
+          {/* Timeout - fallback ke WA, customer only */}
           {!isCleaner && searchTimeout && (
             <View className="mx-4 mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
               <View className="flex-row items-center gap-2">
@@ -394,7 +394,7 @@ function BookingDetail() {
               </View>
               <Text className="font-sans mt-2 text-[12px] leading-[18px] text-amber-900">
                 Sudah lebih dari 15 menit dan belum ada cleaner yang ambil. Bisa karena jam sibuk
-                atau kurang cleaner di area kamu. Yuk lanjut konsultasi via WhatsApp — CS akan
+                atau kurang cleaner di area kamu. Yuk lanjut konsultasi via WhatsApp - CS akan
                 bantu cariin cleaner.
               </Text>
               <View className="mt-3">
@@ -465,7 +465,7 @@ function BookingDetail() {
                 <Detail icon={Clock} label="Durasi" value={`${booking.hours} jam`} />
               )}
             </View>
-            {/* Maps button — single, prominent (cleaner pakai untuk navigasi).
+            {/* Maps button - single, prominent (cleaner pakai untuk navigasi).
                 Chat dipindah ke bottom action bar biar gak duplikat. */}
             {['matched', 'on_the_way', 'in_progress'].includes(booking.status) && (
               <Pressable
@@ -556,7 +556,7 @@ function BookingDetail() {
             </View>
           )}
 
-          {/* Cleaner gak perlu lihat rincian harga customer — sembunyikan blok pembayaran. */}
+          {/* Cleaner gak perlu lihat rincian harga customer - sembunyikan blok pembayaran. */}
           {!isCleaner && booking.totalPrice > 0 && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
@@ -705,7 +705,7 @@ function BookingDetail() {
           </View>
         )}
 
-        {/* CLEANER bottom actions — kalau job ini di-take dia */}
+        {/* CLEANER bottom actions - kalau job ini di-take dia */}
         {isCleaner &&
           booking.status !== 'canceled' &&
           booking.status !== 'completed' &&
@@ -790,7 +790,7 @@ function BookingDetail() {
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <View className="w-full max-w-sm rounded-2xl bg-white p-5">
             <Text className="font-bold text-base text-ink-900">Batalkan Pesanan?</Text>
-            <Text className="mt-2 text-sm text-ink-600">Belum dibayar — gratis batal.</Text>
+            <Text className="mt-2 text-sm text-ink-600">Belum dibayar - gratis batal.</Text>
             <View className="mt-5 flex-row gap-2">
               <Pressable
                 onPress={() => setShowCancelConfirm(false)}

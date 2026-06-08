@@ -8,7 +8,7 @@ const KEY = 'app.locale';
 
 // Translation dictionary. Add new keys to BOTH id and en.
 // Keys use dot.notation by feature (e.g. 'auth.login', 'common.cancel').
-// For interpolation, use {name} placeholders — replace at call time.
+// For interpolation, use {name} placeholders - replace at call time.
 const TRANSLATIONS = {
   id: {
     'common.cancel': 'Batal',
@@ -34,7 +34,7 @@ const TRANSLATIONS = {
     'auth.otp_sent': 'Kode 6 digit dikirim ke {phone}',
     'auth.full_name': 'Nama lengkap',
     'auth.create_password': 'Buat password (min 8 karakter)',
-    'auth.referral_code': 'Kode referral (opsional) — dapat bonus',
+    'auth.referral_code': 'Kode referral (opsional) - dapat bonus',
     'auth.processing': 'Memproses…',
     'auth.complete': 'Selesai & Masuk',
 
@@ -145,7 +145,7 @@ const TRANSLATIONS = {
     'auth.otp_sent': '6-digit code sent to {phone}',
     'auth.full_name': 'Full name',
     'auth.create_password': 'Create password (min 8 characters)',
-    'auth.referral_code': 'Referral code (optional) — get bonus',
+    'auth.referral_code': 'Referral code (optional) - get bonus',
     'auth.processing': 'Processing…',
     'auth.complete': 'Finish & Sign In',
 
@@ -270,7 +270,7 @@ export function useT() {
   };
 }
 
-// Standalone t (non-reactive) — for use outside React (e.g. toast helpers)
+// Standalone t (non-reactive) - for use outside React (e.g. toast helpers)
 export function t(key: TranslationKey, params?: Record<string, string | number>): string {
   const locale = useLocaleStore.getState().locale;
   const dict = TRANSLATIONS[locale] ?? TRANSLATIONS.id;

@@ -133,7 +133,7 @@ function EarningsScreen() {
           </View>
         </View>
 
-        {/* Leaderboard — nominal di-sensor */}
+        {/* Leaderboard - nominal di-sensor */}
         <View className="mx-4 mt-4 rounded-2xl bg-white p-4">
           <View className="mb-3 flex-row items-center justify-between">
             <Text className="font-bold text-sm text-ink-900">🏆 Top Cleaner Bulan Ini</Text>
@@ -194,7 +194,7 @@ function EarningsScreen() {
           <View className="mt-3 gap-2">
             <Tip text="Jaga rating ≥ 4.5 untuk dapat job premium duluan" />
             <Tip text="Tambah area layanan di kota tetangga = lebih banyak job" />
-            <Tip text="Selesaikan job tepat waktu — bonus loyalitas" />
+            <Tip text="Selesaikan job tepat waktu - bonus loyalitas" />
           </View>
         </View>
       </ScrollView>

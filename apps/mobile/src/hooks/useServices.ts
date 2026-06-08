@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { SERVICE_CATEGORIES, type ServiceCategory } from '../data/catalog';
 import { useAppContent } from '../stores/appContent';
 
-// Returns service list — API as source of truth (admin-editable),
+// Returns service list - API as source of truth (admin-editable),
 // merged with local visual props (icon/colors/imageUrl) by code.
 // Falls back to local SERVICE_CATEGORIES kalau API kosong (offline first launch).
 export function useServices(): ServiceCategory[] {
@@ -35,7 +35,7 @@ export function useServices(): ServiceCategory[] {
         popular: local?.popular,
         // Default true kalau API gak return field (backwards compat)
         showOnHome: api.showOnHome !== false,
-        // Admin-controlled — kalau true, masuk section Paket Lengkap di Home.
+        // Admin-controlled - kalau true, masuk section Paket Lengkap di Home.
         isBundle: (api as any).isBundle === true,
       };
       return merged;

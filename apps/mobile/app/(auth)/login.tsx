@@ -67,15 +67,15 @@ export default function Login() {
       }
       setTokens(result.tokens);
       setMode(result.user.mode);
-      // Fetch full profile from /auth/me — populates name/phone/email/photo for Profile tab
+      // Fetch full profile from /auth/me - populates name/phone/email/photo for Profile tab
       void fetchUser();
       if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
       // Toast 'Selamat datang' hanya untuk customer.
-      // Cleaner: skip — KYC gate akan show context yang lebih relevant
+      // Cleaner: skip - KYC gate akan show context yang lebih relevant
       if (result.user.mode === 'customer') {
         toast.success(`Selamat datang, ${result.user.name}`);
       }
-      // Cleaner: jangan ke (tabs) dulu — CleanerLockOverlay handle routing
+      // Cleaner: jangan ke (tabs) dulu - CleanerLockOverlay handle routing
       // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
       router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : '/(tabs)');
     } catch (e) {
@@ -92,7 +92,7 @@ export default function Login() {
       } else if (lc.includes('suspend') || lc.includes('blocked') || lc.includes('disabled')) {
         userMsg = 'Akun kamu di-suspend. Hubungi customer service.';
       }
-      // Cuma red border di dua field — pesan asli di toast. Hindari duplikasi text.
+      // Cuma red border di dua field - pesan asli di toast. Hindari duplikasi text.
       setErrors({ email: ' ', password: ' ' });
       toast.error(userMsg);
     } finally {

@@ -74,7 +74,7 @@ function EditProfile() {
 
             <View className="mt-3 rounded-lg bg-ink-50 px-3 py-2">
               <Text className="text-[10px] text-ink-500">Nomor HP</Text>
-              <Text className="font-medium text-sm text-ink-700">{profile?.phone ?? '—'}</Text>
+              <Text className="font-medium text-sm text-ink-700">{profile?.phone ?? '-'}</Text>
               <Text className="mt-0.5 text-[10px] text-ink-400">Hubungi CS untuk ganti nomor HP</Text>
             </View>
           </View>

@@ -32,7 +32,7 @@ export function CleanerLockOverlay() {
     } catch { /* keep cached */ }
   }, [tokens, mode, setKycStatus]);
 
-  // Refresh tiap 60s — auto unlock kalau admin approve di server.
+  // Refresh tiap 60s - auto unlock kalau admin approve di server.
   // Pause saat app di background biar gak buang baterai.
   useVisiblePoll(fetchStatus, 60_000, !!tokens && mode === 'freelancer');
 

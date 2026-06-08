@@ -24,7 +24,7 @@ async function ensureInit(): Promise<void> {
     ]);
     analytics = analyticsModule.default;
     crashlytics = crashlyticsModule.default;
-    // Enable Crashlytics collection (production only — di dev mode auto-disable)
+    // Enable Crashlytics collection (production only - di dev mode auto-disable)
     if (!__DEV__) {
       crashlytics().setCrashlyticsCollectionEnabled(true);
     }

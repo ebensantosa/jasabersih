@@ -18,7 +18,7 @@ import { safeBack } from '../../src/lib/safeBack';
 
 type Item = { key: string; label: string; price: number; icon: any; durationMin: number; unit?: string };
 
-// Fallback icon resolver — pick icon by code substring.
+// Fallback icon resolver - pick icon by code substring.
 function iconFor(code: string): any {
   const c = code.toLowerCase();
   if (c.includes('kamar') && !c.includes('mandi')) return Bed;
@@ -62,7 +62,7 @@ function CustomBooking() {
   const apiAddons = useApiAddons();
 
   // Skip services yang tabrakan / kombo (kamar+toilet = kombo dari kamar & toilet)
-  // dan service per-meter (ruko/kantor/apartemen) — itu butuh flow sendiri.
+  // dan service per-meter (ruko/kantor/apartemen) - itu butuh flow sendiri.
   const EXCLUDED_SERVICE_CODES = new Set([
     'kamar_km_dalam',  // kombo, sudah ada Kamar Tidur + Toilet terpisah
     'ruko', 'kantor', 'apartemen', // per-meter, gak fit qty-based selector
@@ -230,7 +230,7 @@ function CustomBooking() {
         formSnapshot: { mode: 'custom', items, totalMin, notes, emptyHouse, emptyHouseDiscount: discount, beforePhotos: photos.map((p) => p.url) },
         initialStatus: 'pending_payment',
       });
-      toast.success('Pesanan custom dibuat — silakan bayar');
+      toast.success('Pesanan custom dibuat - silakan bayar');
       try {
         const { Track } = await import('../../src/lib/analytics');
         Track.bookingCreated(booking.id, total, 'custom');
@@ -338,7 +338,7 @@ function CustomBooking() {
             )}
           </View>
 
-          {/* Foto Before — kondisi awal full house */}
+          {/* Foto Before - kondisi awal full house */}
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <Text className="font-semibold mb-2 text-[11px] uppercase tracking-wider text-ink-500">
               Foto Kondisi (Opsional, max 3)

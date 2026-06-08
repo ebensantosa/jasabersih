@@ -86,7 +86,7 @@ function JobsScreen() {
     try {
       await api.patch('/cleaner/profile', { isAvailable: next });
       setOnline(next);
-      toast.success(next ? 'Status: Online — siap terima job' : 'Status: Offline');
+      toast.success(next ? 'Status: Online - siap terima job' : 'Status: Offline');
       try {
         const { Track } = await import('../../src/lib/analytics');
         if (next) Track.cleanerOnline(); else Track.cleanerOffline();
@@ -125,7 +125,7 @@ function JobsScreen() {
       setShowPhotoModal(false);
       await api.patch('/cleaner/profile', { isAvailable: true });
       setOnline(true);
-      toast.success('Status: Online — siap terima job');
+      toast.success('Status: Online - siap terima job');
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal upload foto');
     } finally {
@@ -254,7 +254,7 @@ function JobsScreen() {
             </View>
             <Text className="font-bold mt-4 text-lg text-ink-900">Belum ada job</Text>
             <Text className="font-sans mt-1 text-center text-sm text-ink-500">
-              {online ? 'Cek kembali nanti — job baru akan muncul otomatis.' : 'Aktifkan Online dulu untuk terima job.'}
+              {online ? 'Cek kembali nanti - job baru akan muncul otomatis.' : 'Aktifkan Online dulu untuk terima job.'}
             </Text>
             <Pressable onPress={() => void load()} className="mt-4 flex-row items-center gap-1 rounded-lg bg-brand-50 px-4 py-2">
               <RefreshCw color="#1D4ED8" size={14} />
@@ -264,7 +264,7 @@ function JobsScreen() {
         ) : (
           <View className="gap-3">
             {available.map((b) => {
-              // Cleaner cuma lihat bagiannya — totalAmount tidak di-expose dari backend.
+              // Cleaner cuma lihat bagiannya - totalAmount tidak di-expose dari backend.
               const earning = b.cleanerPayout ?? 0;
               return (
                 <View key={b.id} className="rounded-2xl bg-white p-3">

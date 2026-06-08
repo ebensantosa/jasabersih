@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { useConfig } from '../stores/appContent';
 
 /**
- * Splash overlay — logo saja, solid color (sama dengan native splash di app.json).
+ * Splash overlay - logo saja, solid color (sama dengan native splash di app.json).
  * Logo configurable via brand.logo_url di App Settings.
  */
 const SPLASH_BG = '#FFFFFF';

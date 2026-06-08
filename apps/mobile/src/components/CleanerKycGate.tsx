@@ -19,7 +19,7 @@ export function CleanerKycGate({ children }: { children: React.ReactNode }) {
 
   // Default optimistic: anggap approved kalau status null (belum di-fetch).
   // CleanerLockOverlay akan force redirect ke /cleaner/kyc kalau ternyata
-  // bukan approved — jadi user gak akan stuck di tab restricted.
+  // bukan approved - jadi user gak akan stuck di tab restricted.
   if (kycStatus === null || kycStatus === 'approved') return <>{children}</>;
 
   const isPending = kycStatus === 'pending';
@@ -63,7 +63,7 @@ export function CleanerKycGate({ children }: { children: React.ReactNode }) {
         )}
         {isReview && (
           <View style={{ marginTop: 16, padding: 14, borderRadius: 12, backgroundColor: '#EFF6FF' }}>
-            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#1E40AF' }}>Tim admin sedang review dokumen kamu — biasanya 1×24 jam kerja. Notifikasi akan dikirim saat selesai.</Text>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#1E40AF' }}>Tim admin sedang review dokumen kamu - biasanya 1×24 jam kerja. Notifikasi akan dikirim saat selesai.</Text>
           </View>
         )}
         {isRejected && (

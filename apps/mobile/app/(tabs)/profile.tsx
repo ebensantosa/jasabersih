@@ -126,7 +126,7 @@ function ProfileScreen() {
           </Pressable>
         )}
 
-        {/* Mode toggle dihapus — role akun (customer/cleaner) sekarang hard-locked
+        {/* Mode toggle dihapus - role akun (customer/cleaner) sekarang hard-locked
             sesuai pilihan saat register. Cegah confusion + role-switch jadi celah security. */}
 
         {!tokens && (

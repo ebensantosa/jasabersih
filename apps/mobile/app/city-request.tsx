@@ -34,7 +34,7 @@ export default function CityRequestScreen() {
         lng: loc?.lng,
       });
       setDone(true);
-      toast.success('Permintaan dikirim — terima kasih!');
+      toast.success('Permintaan dikirim - terima kasih!');
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim');
     } finally {

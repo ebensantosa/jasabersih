@@ -31,7 +31,7 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   }, [tokens, router]);
 
   if (!tokens) {
-    // Empty View placeholder — bukan ActivityIndicator (Animated bisa trigger Fabric error).
+    // Empty View placeholder - bukan ActivityIndicator (Animated bisa trigger Fabric error).
     return <View style={{ flex: 1, backgroundColor: 'white' }} />;
   }
 

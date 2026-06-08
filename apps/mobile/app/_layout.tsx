@@ -92,7 +92,7 @@ export default function RootLayout() {
       hydrateLocale();
       hydrateCleaningMode();
       hydrateUser();
-      // Fetch fresh app content (banners/services/config/popups) — non-blocking
+      // Fetch fresh app content (banners/services/config/popups) - non-blocking
       void fetchAppContent();
       // Anonymous users: ensure no stale user-bound data leaks to UI
       if (!useAuthStore.getState().tokens) {
@@ -103,7 +103,7 @@ export default function RootLayout() {
         if (!useAuthStore.getState().tokens) return;
         void fetchUser().then((profile) => {
           if (!profile) {
-            // /auth/me failed — token bogus (orphan from old fake-register flow).
+            // /auth/me failed - token bogus (orphan from old fake-register flow).
             // Force logout so user gets a clean state instead of seeing "Pengguna" forever.
             useAuthStore.getState().logout();
             return;
@@ -164,7 +164,7 @@ export default function RootLayout() {
 
   const splashVisible = !fontsLoaded || splashHold;
 
-  // Saat fonts belum siap, render minimal tree (cuma SplashOverlay) — Stack belum
+  // Saat fonts belum siap, render minimal tree (cuma SplashOverlay) - Stack belum
   // boleh render karena akan crash kalau ada navigation call sebelum siap.
   if (!fontsLoaded) {
     return (

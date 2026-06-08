@@ -38,7 +38,7 @@ export function compareVersion(a: string, b: string): number {
 
 /** Fetch info update dari backend (PUBLIC endpoint, no auth needed) */
 export async function fetchUpdateInfo(): Promise<UpdateInfo | null> {
-  // Skip di web — gak relevan (gak ada app store), dan biasanya kena CORS dev.
+  // Skip di web - gak relevan (gak ada app store), dan biasanya kena CORS dev.
   if (Platform.OS === 'web') return null;
   try {
     const baseUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl ?? 'https://api.jasabersih.com/v1';
@@ -51,7 +51,7 @@ export async function fetchUpdateInfo(): Promise<UpdateInfo | null> {
     if (!data?.latestVersion) return null;
     return data;
   } catch {
-    // Silent fail — version check is best-effort, never block app.
+    // Silent fail - version check is best-effort, never block app.
     return null;
   }
 }

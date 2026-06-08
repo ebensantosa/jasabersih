@@ -74,7 +74,7 @@ function ReferralScreen() {
       try {
         await nav.share({ title: 'Kode Referral JasaBersih', text: me.shareText, url: me.shareUrl });
         return;
-      } catch { /* user cancelled or denied — fall through to modal */ }
+      } catch { /* user cancelled or denied - fall through to modal */ }
     }
     setShareOpen(true);
   }
@@ -197,7 +197,7 @@ function ReferralScreen() {
                   {history.map((h) => (
                     <View key={h.id} className="flex-row items-center justify-between border-t border-ink-100 pt-2">
                       <View className="flex-1">
-                        <Text className="font-medium text-sm text-ink-900">{h.referredName ?? '—'}</Text>
+                        <Text className="font-medium text-sm text-ink-900">{h.referredName ?? '-'}</Text>
                         <Text className="font-sans text-[11px] text-ink-500">
                           {new Date(h.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </Text>

@@ -71,7 +71,7 @@ export async function registerForPushAsync(): Promise<string | null> {
     });
     registered = true;
   } catch {
-    return token; // token tetap ke-return walau register gagal — bisa di-retry
+    return token; // token tetap ke-return walau register gagal - bisa di-retry
   }
   return token;
 }

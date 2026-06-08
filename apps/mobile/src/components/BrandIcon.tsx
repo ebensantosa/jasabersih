@@ -12,7 +12,7 @@ export function MapsIcon({ size = 22 }: { size?: number }) {
   return <Image source={MAPS_URL} style={{ width: size, height: size }} contentFit="contain" />;
 }
 
-/** Wraps icon in a colored circle background — useful for buttons. */
+/** Wraps icon in a colored circle background - useful for buttons. */
 export function BrandIconCircle({
   type,
   size = 40,

@@ -69,7 +69,7 @@ function CleanerWallet() {
               <Text className="font-bold mt-1 text-3xl text-white">{formatRupiah(balance)}</Text>
               {escrowPending > 0 && (
                 <Text className="font-medium mt-1 text-[11px] text-amber-200">
-                  Escrow {formatRupiah(escrowPending)} — cair otomatis 24 jam setelah job selesai
+                  Escrow {formatRupiah(escrowPending)} - cair otomatis 24 jam setelah job selesai
                 </Text>
               )}
               {pending > 0 && (

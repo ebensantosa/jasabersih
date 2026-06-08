@@ -45,7 +45,7 @@ function Chat() {
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
-  // Mark-read saat buka chat — clear badge
+  // Mark-read saat buka chat - clear badge
   useEffect(() => {
     if (!id) return;
     import('../../src/lib/api').then(({ api }) => {
@@ -131,7 +131,7 @@ function Chat() {
       return;
     }
     if (res.blocked) {
-      setBlockWarning(res.userMessage ?? 'Pesan ditolak — dilarang share kontak / link / tawaran di luar app.');
+      setBlockWarning(res.userMessage ?? 'Pesan ditolak - dilarang share kontak / link / tawaran di luar app.');
       setText('');
       return;
     }
@@ -189,7 +189,7 @@ function Chat() {
           </View>
         </SafeAreaView>
 
-        {/* Order context — link ke booking */}
+        {/* Order context - link ke booking */}
         {booking && (
           <Pressable
             onPress={() => router.push({ pathname: '/booking/[id]', params: { id: booking.id } })}
@@ -220,7 +220,7 @@ function Chat() {
           <ShieldAlert color="#92400E" size={14} />
           <View className="flex-1">
             <Text className="font-sans text-[11px] text-amber-900">
-              Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app — dapat <Text className="font-bold">voucher Rp 50.000</Text>.
+              Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app - dapat <Text className="font-bold">voucher Rp 50.000</Text>.
             </Text>
             <Pressable
               onPress={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })}

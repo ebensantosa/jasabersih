@@ -20,10 +20,10 @@ type Props = {
 
 /**
  * Performance-optimized "finding cleaner" view:
- * - 2 pulse rings (was 3) — visually still good, half the work
- * - useNativeDriver: true — animasi jalan di UI thread, gak block JS thread
+ * - 2 pulse rings (was 3) - visually still good, half the work
+ * - useNativeDriver: true - animasi jalan di UI thread, gak block JS thread
  * - Auto-pause kalau screen unfocused (lewat useFocusEffect)
- * - Slow rotate (8s loop) — barely consumes CPU
+ * - Slow rotate (8s loop) - barely consumes CPU
  */
 export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo }: Props) {
   const remainingSec = Math.max(0, timeoutSec - elapsedSec);

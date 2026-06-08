@@ -5,7 +5,7 @@ import { AppState } from 'react-native';
  * Polling yang otomatis berhenti saat app di background, dan jalan ulang
  * saat kembali aktif. Hemat baterai + bandwidth.
  *
- * Pakai untuk polling endpoint API yang gak urgent — kalau user lagi
+ * Pakai untuk polling endpoint API yang gak urgent - kalau user lagi
  * gak liat layar, gak perlu fetch terus.
  */
 export function useVisiblePoll(

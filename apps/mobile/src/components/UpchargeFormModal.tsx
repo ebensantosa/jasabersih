@@ -74,7 +74,7 @@ export function UpchargeFormModal({
     setSubmitting(true);
     try {
       await api.post(`/cleaner/jobs/${bookingId}/upcharge`, { amount, reason: reason.trim(), photoUrl });
-      toast.success('Permintaan terkirim — tunggu approval customer');
+      toast.success('Permintaan terkirim - tunggu approval customer');
       onSubmitted();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal submit');

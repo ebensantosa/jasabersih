@@ -42,7 +42,7 @@ export type ChatMessage = {
   createdAt: number;
 };
 
-/** Snapshot form yang customer submit — immutable, untuk anti-fraud audit. */
+/** Snapshot form yang customer submit - immutable, untuk anti-fraud audit. */
 export type FormSnapshot = {
   propertyType?: string;
   floor?: string;
@@ -109,7 +109,7 @@ type State = {
   appendMessage: (id: string, msg: Omit<ChatMessage, 'id' | 'createdAt'>) => void;
   hydrate: () => void;
   setListInternal: (list: Booking[]) => void;
-  // API integration — pull server state, push local mutations
+  // API integration - pull server state, push local mutations
   syncFromApi: () => Promise<void>;
   /** Fetch a single booking by id from server (works for cleaner too) and seed into list. */
   fetchOne: (id: string) => Promise<void>;
@@ -155,7 +155,7 @@ export const useBookingsStore = create<State>((set, get) => ({
     try {
       const res = await api.get('/bookings');
       const items: any[] = res.data?.data ?? [];
-      // Merge with local list — server entries take precedence on conflict (id match);
+      // Merge with local list - server entries take precedence on conflict (id match);
       // entries that exist only locally (not yet pushed) stay.
       const local = get().list;
       const serverIds = new Set(items.map((i) => i.id));
@@ -180,7 +180,7 @@ export const useBookingsStore = create<State>((set, get) => ({
               messages: [],
             } as Booking;
       });
-      // Keep local-only (not yet on server — likely fresh creates not synced)
+      // Keep local-only (not yet on server - likely fresh creates not synced)
       const localOnly = local.filter((b) => !serverIds.has(b.id));
       const merged = [...serverMapped, ...localOnly];
       persist(merged);

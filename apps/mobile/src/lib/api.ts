@@ -23,7 +23,7 @@ api.interceptors.response.use(
     const errorCode = error.response?.data?.error?.code;
     const errorMsg = error.response?.data?.error?.message;
 
-    // Account-level rejection — set global store, root layout akan render overlay <SuspendedOverlay />
+    // Account-level rejection - set global store, root layout akan render overlay <SuspendedOverlay />
     if (error.response?.status === 401 && (errorCode === 'ACCOUNT_SUSPENDED' || errorCode === 'ACCOUNT_BANNED' || errorCode === 'ACCOUNT_DELETED')) {
       const kind = errorCode === 'ACCOUNT_BANNED' ? 'banned' : errorCode === 'ACCOUNT_DELETED' ? 'deleted' : 'suspended';
       const details = error.response?.data?.error?.details ?? {};
@@ -38,7 +38,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !original?._retry) {
       const hasTokens = !!useAuthStore.getState().tokens;
-      // No tokens = anonymous user, don't try refresh — caller handles "not logged in"
+      // No tokens = anonymous user, don't try refresh - caller handles "not logged in"
       if (!hasTokens) return Promise.reject(error);
       original._retry = true;
       try {

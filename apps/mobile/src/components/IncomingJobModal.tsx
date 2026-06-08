@@ -27,7 +27,7 @@ export function IncomingJobModal() {
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SEC);
-  /** ID job yang sedang ditampilkan di modal — track untuk detect kalau ke-take cleaner lain */
+  /** ID job yang sedang ditampilkan di modal - track untuk detect kalau ke-take cleaner lain */
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [takenByOther, setTakenByOther] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);

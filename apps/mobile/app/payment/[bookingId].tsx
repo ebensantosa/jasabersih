@@ -28,7 +28,7 @@ type DirectResult = {
   paymentUrl?: string | null;
 };
 
-// Stylized brand badges — no external image deps so always renders.
+// Stylized brand badges - no external image deps so always renders.
 const VA_METHODS: {
   code: string;
   name: string;
@@ -57,7 +57,7 @@ const EWALLET_METHODS: { code: string; name: string; logo: any }[] = [
   { code: 'linkaja_app',   name: 'LinkAja',   logo: require('../../assets/payment-logos/logo-linkaja.png') },
 ];
 
-// Transfer Bank (channel Flip) — customer transfer ke rekening tetap merchant,
+// Transfer Bank (channel Flip) - customer transfer ke rekening tetap merchant,
 // Flip auto-detect dari mutasi. Cek Flip dashboard → Accept Payment → Transfer Bank
 // untuk lihat channel aktif.
 const TRANSFER_BANK_METHODS: { code: string; name: string; logo?: any; label: string }[] = [
@@ -248,7 +248,7 @@ function CountdownBadge({ expiredAt }: { expiredAt: string }) {
     if (!expiredAt) return null;
     // ISO format kalau dari fallback createBill, native parse
     if (expiredAt.includes('T')) return new Date(expiredAt).getTime();
-    // Flip format "2026-06-08 00:00" — treat as local server time
+    // Flip format "2026-06-08 00:00" - treat as local server time
     return new Date(expiredAt.replace(' ', 'T') + ':00').getTime();
   })();
   if (!target) return null;
@@ -294,7 +294,7 @@ function MethodPicker({
   const creditUsed = useCredit ? Math.min(walletBalance, total) : 0;
   const remaining = total - creditUsed;
 
-  // Bank health — disable bank yang lagi down
+  // Bank health - disable bank yang lagi down
   const [bankHealth, setBankHealth] = useState<Record<string, BankHealth>>({});
   useEffect(() => {
     (async () => {
@@ -305,7 +305,7 @@ function MethodPicker({
         const map: Record<string, BankHealth> = {};
         for (const b of list) map[b.code] = b;
         setBankHealth(map);
-      } catch { /* ignore — default semua normal */ }
+      } catch { /* ignore - default semua normal */ }
     })();
   }, []);
   // Trust backend API sepenuhnya. Admin bisa toggle aktif/tidak via App Settings
@@ -329,7 +329,7 @@ function MethodPicker({
               <View className="flex-1">
                 <Text className="font-bold text-sm text-emerald-900">Bayar dengan Saldo</Text>
                 <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                  Saldo: {formatRupiah(walletBalance)} — bayar penuh dari saldo
+                  Saldo: {formatRupiah(walletBalance)} - bayar penuh dari saldo
                 </Text>
               </View>
             </Pressable>
@@ -388,7 +388,7 @@ function MethodPicker({
                 <Image source={QRIS_LOGO} style={{ width: 40, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
               </View>
               <View className="flex-1">
-                <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS — Semua e-wallet & m-banking</Text>
+                <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS - Semua e-wallet & m-banking</Text>
                 {down ? (
                   <Text className="font-bold mt-0.5 text-[11px] text-rose-600">🔧 {getMessage('qris') || 'Sedang pemeliharaan'}</Text>
                 ) : delayed ? (
@@ -677,7 +677,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} style={{ backgroundColor: '#F1F5F9' }}>
         {CountdownBanner}
 
-        {/* VA Number — highlight biru muda */}
+        {/* VA Number - highlight biru muda */}
         <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1.5, borderColor: '#BFDBFE', borderRadius: 16, padding: 18 }}>
           <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: '#1E3A8A', textTransform: 'uppercase', marginBottom: 10 }}>
             {data.senderBank.toUpperCase()} Virtual Account
@@ -694,7 +694,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           </Pressable>
         </View>
 
-        {/* Total Bayar — highlight hijau */}
+        {/* Total Bayar - highlight hijau */}
         <View style={{ backgroundColor: '#ECFDF5', borderWidth: 1.5, borderColor: '#A7F3D0', borderRadius: 16, padding: 18 }}>
           <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: '#065F46', textTransform: 'uppercase', marginBottom: 6 }}>
             Total Bayar
@@ -758,7 +758,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           <View className="items-center rounded-2xl bg-white p-6">
             <Text className="font-bold text-base text-ink-900">Lanjutkan Pembayaran</Text>
             <Text className="font-sans text-center mt-2 text-[12px] text-ink-500 leading-5">
-              Halaman pembayaran akan terbuka di tab baru. Selesaikan transaksi di sana, lalu kembali ke tab ini — status pembayaran akan otomatis ter-update.
+              Halaman pembayaran akan terbuka di tab baru. Selesaikan transaksi di sana, lalu kembali ke tab ini - status pembayaran akan otomatis ter-update.
             </Text>
             <Pressable
               onPress={() => {
@@ -811,7 +811,7 @@ function PaidView() {
   );
 }
 
-// Web fallback for QR — uses canvas via google chart API or qr-code-styling import
+// Web fallback for QR - uses canvas via google chart API or qr-code-styling import
 function QRCodeWeb({ value, size }: { value: string; size: number }) {
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
   // @ts-expect-error host elem

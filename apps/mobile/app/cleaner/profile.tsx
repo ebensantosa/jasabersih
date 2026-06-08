@@ -105,7 +105,7 @@ function CleanerProfileScreen() {
   async function save() {
     setSaving(true);
     try {
-      // bringsTools INTENTIONALLY not sent — admin-only (anti-fraud).
+      // bringsTools INTENTIONALLY not sent - admin-only (anti-fraud).
       await api.patch('/cleaner/profile', {
         bio,
         isAvailable,
@@ -184,7 +184,7 @@ function CleanerProfileScreen() {
             <View className="rounded-2xl bg-white p-4">
               <Text className="font-bold mb-2 text-sm text-ink-900">Review dari Customer</Text>
               {reviews.length === 0 ? (
-                <Text className="font-sans text-[12px] text-ink-500">Belum ada review. Selesaikan job dulu — customer akan kasih rating.</Text>
+                <Text className="font-sans text-[12px] text-ink-500">Belum ada review. Selesaikan job dulu - customer akan kasih rating.</Text>
               ) : (
                 reviews.map((rv, i) => (
                   <View key={rv.id} className={`py-3 ${i > 0 ? 'border-t border-ink-100' : ''}`}>

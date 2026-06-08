@@ -90,7 +90,7 @@ export default function Home() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      {/* Hero header dengan U-shape curve (Gojek/Traveloka style) — gradient lebih cerah & welcoming */}
+      {/* Hero header dengan U-shape curve (Gojek/Traveloka style) - gradient lebih cerah & welcoming */}
       <LinearGradient
         colors={['#1E3A8A', '#047857', '#0E7490']}
         start={{ x: 0, y: 0 }}
@@ -194,7 +194,7 @@ export default function Home() {
             pointerEvents="none"
           />
 
-          {/* CTA Bersih Full Custom — scroll bareng content, gak sticky */}
+          {/* CTA Bersih Full Custom - scroll bareng content, gak sticky */}
           <Pressable
             onPress={() => router.push('/booking/custom')}
             className="mx-4 mt-1 overflow-hidden rounded-2xl bg-white"

@@ -97,8 +97,8 @@ function NewBooking() {
         note: typeof p.scope === 'object' && p.scope ? (p.scope as any).note as string | undefined : undefined,
       }));
     }
-    // FALLBACK ke catalog lokal — kalau ini dipakai berarti API belum sync atau offline.
-    if (__DEV__) console.warn('[booking/new] API packages empty — fallback to LOCAL_PACKAGES (offline?)');
+    // FALLBACK ke catalog lokal - kalau ini dipakai berarti API belum sync atau offline.
+    if (__DEV__) console.warn('[booking/new] API packages empty - fallback to LOCAL_PACKAGES (offline?)');
     return LOCAL_PACKAGES.map((p) => ({ ...p, includes: [] as string[], note: undefined as string | undefined }));
   }, [apiPackages, category?.code]);
 
@@ -106,7 +106,7 @@ function NewBooking() {
   const apiAddons = useApiAddons();
   const ADDONS = useMemo(() => {
     if (apiAddons.length === 0) {
-      if (__DEV__) console.warn('[booking/new] API addons empty — fallback to LOCAL_ADDONS');
+      if (__DEV__) console.warn('[booking/new] API addons empty - fallback to LOCAL_ADDONS');
       return LOCAL_ADDONS;
     }
     const localByCode = new Map(LOCAL_ADDONS.map((a) => [a.code, a]));
@@ -145,7 +145,7 @@ function NewBooking() {
   const [pickedPackageId, setPickedPackageId] = useState<string>(initialPackage?.id ?? '');
   const pkg = PACKAGES.find((p) => p.id === pickedPackageId);
 
-  // Layanan satuan (per-ruangan) — sembunyikan Properti, Ruangan, Fasilitas Lain.
+  // Layanan satuan (per-ruangan) - sembunyikan Properti, Ruangan, Fasilitas Lain.
   // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
   const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'ruangan_kosong', 'garasi', 'pekarangan'];
   const PER_METER_CODES = ['ruko', 'kantor', 'apartemen'];
@@ -162,7 +162,7 @@ function NewBooking() {
     category?.code === 'kantor' ? rateKantor :
     category?.code === 'apartemen' ? rateApartemen : 0;
 
-  // Apartment type: studio | 1BR | 2BR | 3BR — preset m² (user bisa override)
+  // Apartment type: studio | 1BR | 2BR | 3BR - preset m² (user bisa override)
   const APT_TYPES = [
     { code: 'studio', label: 'Studio',   m2: 25 },
     { code: '1br',    label: '1 Kamar',  m2: 36 },
@@ -316,7 +316,7 @@ function NewBooking() {
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
   );
 
-  // Hitung travel fee — debounce 800ms + cache per koordinat (hindari spam API)
+  // Hitung travel fee - debounce 800ms + cache per koordinat (hindari spam API)
   useEffect(() => {
     const lat = selectedAddress?.lat ?? savedLocation?.lat;
     const lng = selectedAddress?.lng ?? savedLocation?.lng;
@@ -449,7 +449,7 @@ function NewBooking() {
       const data = res.data?.data ?? res.data;
       setVoucher({ code: data.code, discount: data.discount, voucherId: data.voucherId });
       setVoucherInput('');
-      toast.success(`Voucher ${data.code} dipakai — hemat ${formatRupiah(data.discount)}!`);
+      toast.success(`Voucher ${data.code} dipakai - hemat ${formatRupiah(data.discount)}!`);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Voucher tidak valid');
     } finally {
@@ -547,7 +547,7 @@ function NewBooking() {
       // Error toast already shown by store; abort navigation.
       return;
     }
-    toast.success('Pesanan dibuat — silakan bayar untuk mulai cari cleaner');
+    toast.success('Pesanan dibuat - silakan bayar untuk mulai cari cleaner');
     try {
       const { storage } = await import('../../src/lib/storage');
       storage.set(`useCredit:${booking.id}`, useCredit ? '1' : '0');
@@ -561,7 +561,7 @@ function NewBooking() {
 
   if (!category) return null;
 
-  // Coverage gate — cek alamat booking yang dipilih dulu (paling akurat untuk lokasi job).
+  // Coverage gate - cek alamat booking yang dipilih dulu (paling akurat untuk lokasi job).
   // Kalau belum pilih alamat / alamat ga punya coords, fallback ke GPS user.
   // serviceAreas = [] (admin belum config any) treated as "covered" so we don't break onboarding.
   const userLoc = useLocationStore.getState().current;
@@ -635,7 +635,7 @@ function NewBooking() {
           {step === 1 && (
             <>
               {isPerMeter && (
-                <Section title={`${category?.name ?? ''} — per m²`}>
+                <Section title={`${category?.name ?? ''} - per m²`}>
                   <View className="rounded-xl border border-brand-200 bg-brand-50 p-3">
                     <Text className="font-extrabold text-base text-brand-800">
                       Rp {perMeterRate.toLocaleString('id-ID')}/m²
@@ -764,7 +764,7 @@ function NewBooking() {
                     </Section>
                   )}
 
-                  {/* Detail Pekerjaan — selalu tampil (fallback ke generic kalau scope kosong) */}
+                  {/* Detail Pekerjaan - selalu tampil (fallback ke generic kalau scope kosong) */}
                   <Section title={`Detail Layanan · ${pkg.name}`}>
                     <Text className="font-medium text-[11px] leading-5 text-ink-600">
                       {(pkg as any).note || (typeof pkg.scope === 'string' ? pkg.scope : '') || 'Pembersihan menyeluruh sesuai standar layanan.'}
@@ -880,7 +880,7 @@ function NewBooking() {
                   <View className="mt-2 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
                     <Text className="text-base">💬</Text>
                     <Text className="flex-1 font-bold text-xs text-emerald-900">
-                      {workers} petugas — perlu konsultasi. Pakai tombol "Chat WA" di bawah.
+                      {workers} petugas - perlu konsultasi. Pakai tombol "Chat WA" di bawah.
                     </Text>
                   </View>
                 )}
@@ -968,7 +968,7 @@ function NewBooking() {
                   <View className="mt-3 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
                     <AlertTriangle color="#047857" size={16} />
                     <Text className="flex-1 font-bold text-xs text-emerald-900">
-                      Luas {'>'} 200 m² — perlu konsultasi. Pakai tombol "Chat WA" di bawah.
+                      Luas {'>'} 200 m² - perlu konsultasi. Pakai tombol "Chat WA" di bawah.
                     </Text>
                   </View>
                 )}
@@ -1590,7 +1590,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 
-// Web-only schedule picker — uses native HTML <input type="date|time"> via
+// Web-only schedule picker - uses native HTML <input type="date|time"> via
 // React Native Web. Validates ops window 07–21 and min lead-time = now+1h.
 function WebSchedulePicker({ value, onChange }: { value: Date; onChange: (d: Date) => void }) {
   const min = earliestAvailable();
@@ -1610,7 +1610,7 @@ function WebSchedulePicker({ value, onChange }: { value: Date; onChange: (d: Dat
   }
 
   return (
-    // @ts-expect-error — host elements work in react-native-web
+    // @ts-expect-error - host elements work in react-native-web
     <input
       type="datetime-local"
       value={toLocal(value)}

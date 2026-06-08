@@ -10,14 +10,14 @@ export type AuthResult = {
   user: { email: string; name: string; mode: 'customer' | 'freelancer' };
 };
 
-// AbortSignal.timeout() not in Hermes — pakai manual controller.
+// AbortSignal.timeout() not in Hermes - pakai manual controller.
 function timeoutSignal(ms: number): AbortSignal {
   const c = new AbortController();
   setTimeout(() => c.abort(), ms);
   return c.signal;
 }
 
-/** Login real ke backend NestJS — no mock. */
+/** Login real ke backend NestJS - no mock. */
 export async function login(email: string, password: string): Promise<AuthResult> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
@@ -49,7 +49,7 @@ export async function login(email: string, password: string): Promise<AuthResult
         mode: p.mode === 'freelancer' ? 'freelancer' : 'customer',
       };
     }
-  } catch { /* ignore — fall back to placeholder */ }
+  } catch { /* ignore - fall back to placeholder */ }
 
   return { tokens, user };
 }

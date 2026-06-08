@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 
 type Page = { slug: string; title: string; bodyMarkdown: string; updatedAt: string };
 
-// Lightweight markdown renderer — handles headings (#, ##, ###), bullets (- or *),
+// Lightweight markdown renderer - handles headings (#, ##, ###), bullets (- or *),
 // bold (**text**), and paragraphs. Cukup untuk halaman statis CMS.
 function renderMarkdown(md: string): React.ReactNode {
   const lines = md.split(/\r?\n/);

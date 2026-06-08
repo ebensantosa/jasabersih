@@ -207,7 +207,7 @@ function EditAddress() {
             <Text className="font-medium mt-1 text-[11px] text-danger">{errors.addressLine}</Text>
           )}
 
-          {/* Detail tambahan — wajib */}
+          {/* Detail tambahan - wajib */}
           <View className="mb-2 mt-4 flex-row items-center gap-1">
             <Text className="font-semibold text-[11px] uppercase tracking-wider text-ink-500">
               Detail Alamat
@@ -233,7 +233,7 @@ function EditAddress() {
             <Text className="font-medium mt-1 text-[11px] text-danger">{errors.detailNote}</Text>
           ) : (
             <Text className="font-sans mt-1 text-[10px] text-ink-500">
-              Cleaner butuh detail spesifik, bukan cuma GPS — biar tidak kesasar.
+              Cleaner butuh detail spesifik, bukan cuma GPS - biar tidak kesasar.
             </Text>
           )}
 

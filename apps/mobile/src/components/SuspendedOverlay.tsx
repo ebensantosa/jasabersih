@@ -78,7 +78,7 @@ export function SuspendedOverlay() {
                   : isBanned
                     ? 'Akun kamu diblokir secara permanen dari layanan JasaBersih.'
                     : untilLabel
-                      ? 'Akun kamu disuspend sementara — bisa aktif kembali setelah masa suspend berakhir.'
+                      ? 'Akun kamu disuspend sementara - bisa aktif kembali setelah masa suspend berakhir.'
                       : 'Akun kamu sedang disuspend sementara.'}
               </Text>
             </View>

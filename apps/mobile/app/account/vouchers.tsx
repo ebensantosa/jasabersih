@@ -80,7 +80,7 @@ function VouchersScreen() {
             <View className="flex-1 items-center justify-center px-8">
               <Tag color="#94A3B8" size={40} />
               <Text className="font-bold mt-3 text-base text-ink-900">Belum ada voucher tersedia</Text>
-              <Text className="font-sans mt-1 text-center text-xs text-ink-500">Cek lagi nanti — promo baru muncul tiap minggu.</Text>
+              <Text className="font-sans mt-1 text-center text-xs text-ink-500">Cek lagi nanti - promo baru muncul tiap minggu.</Text>
             </View>
           ) : (
             <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>

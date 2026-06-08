@@ -60,7 +60,7 @@ const HTML = (lat: number, lng: number) => `<!DOCTYPE html>
 </script>
 </body></html>`;
 
-// Promise.race timeout — gak depend AbortController (Hermes occasionally flaky).
+// Promise.race timeout - gak depend AbortController (Hermes occasionally flaky).
 function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
     p,
@@ -115,7 +115,7 @@ export function LocationPicker({
   const [lat, setLat] = useState(initial?.lat ?? DEFAULT_LAT);
   const [lng, setLng] = useState(initial?.lng ?? DEFAULT_LNG);
   // Render HTML SEKALI di awal (pakai initial coords). Update map pakai postMessage,
-  // jangan ganti srcDoc — itu bikin iframe re-mount + flicker tiles.
+  // jangan ganti srcDoc - itu bikin iframe re-mount + flicker tiles.
   const initialHtml = useMemo(
     () => HTML(initial?.lat ?? DEFAULT_LAT, initial?.lng ?? DEFAULT_LNG),
     // eslint-disable-next-line react-hooks/exhaustive-deps

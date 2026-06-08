@@ -78,7 +78,7 @@ function CleanerKycScreen() {
 
     setUploading(docType);
     try {
-      // 1. Compress + resize (target max 1600px, quality 0.7) — irit bandwidth & R2 storage
+      // 1. Compress + resize (target max 1600px, quality 0.7) - irit bandwidth & R2 storage
       const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
       const compressed = await compressImage(asset.uri);
       if (compressed.oversize) {
@@ -111,7 +111,7 @@ function CleanerKycScreen() {
     } catch (e: any) {
       const apiMsg = e?.response?.data?.error?.message;
       const status = e?.response?.status;
-      let msg = apiMsg ?? e?.message ?? 'Upload gagal — coba lagi';
+      let msg = apiMsg ?? e?.message ?? 'Upload gagal - coba lagi';
       if (status === 413) msg = 'File terlalu besar. Coba kompres atau pilih foto lain.';
       else if (status === 415) msg = 'Format tidak didukung. Pakai JPG/PNG/WebP saja.';
       else if (status >= 500) msg = 'Server error. Coba lagi dalam beberapa saat.';
@@ -234,7 +234,7 @@ function CleanerKycScreen() {
               </Text>
             </View>
 
-            {/* Submit button — enabled hanya kalau 3 doc terupload + status masih pending */}
+            {/* Submit button - enabled hanya kalau 3 doc terupload + status masih pending */}
             {(() => {
               const uploadedCount = (['ktp', 'selfie_ktp', 'bank_book'] as DocType[])
                 .filter((t) => docByType(t)).length;

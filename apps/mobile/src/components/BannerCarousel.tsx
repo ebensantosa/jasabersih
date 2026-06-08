@@ -40,7 +40,7 @@ export function BannerCarousel() {
       if (/^https?:\/\//.test(b.linkUrl)) Linking.openURL(b.linkUrl).catch(() => {});
       else router.push(b.linkUrl as any);
     }
-    // No-op kalau gak ada linkUrl — banner cuma display
+    // No-op kalau gak ada linkUrl - banner cuma display
   }
 
   useEffect(() => {

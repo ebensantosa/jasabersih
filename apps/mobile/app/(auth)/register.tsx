@@ -65,7 +65,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      // Request OTP — backend kirim 6-digit code ke email user via Resend
+      // Request OTP - backend kirim 6-digit code ke email user via Resend
       const reg = await api.post('/auth/register', {
         phone: phone.trim(),
         mode: targetMode,
@@ -100,7 +100,7 @@ export default function Register() {
   }
 
   const isFreelancer = targetMode === 'freelancer';
-  // Tema visual beda antara Customer (biru) vs Cleaner (emerald/teal) — biar sekilas user tahu lagi daftar mana
+  // Tema visual beda antara Customer (biru) vs Cleaner (emerald/teal) - biar sekilas user tahu lagi daftar mana
   const theme = isFreelancer
     ? { gradient: ['#065F46', '#10B981'] as const, btn: 'bg-emerald-600', accent: 'text-emerald-700', linkAccent: 'text-emerald-700', bg: 'bg-emerald-50' }
     : { gradient: ['#0B2A6F', '#1D4ED8'] as const, btn: 'bg-brand-600', accent: 'text-brand-700', linkAccent: 'text-brand-600', bg: 'bg-white' };

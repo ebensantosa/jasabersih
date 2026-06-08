@@ -60,11 +60,11 @@ export function FeaturedCleaners() {
                   )}
                 </View>
                 <Text className="font-bold mt-2 text-center text-xs text-ink-900" numberOfLines={1}>
-                  {c.name ?? '—'}
+                  {c.name ?? '-'}
                 </Text>
                 <View className="mt-1 flex-row items-center gap-0.5">
                   <Star color="#FACC15" fill="#FACC15" size={10} strokeWidth={1} />
-                  <Text className="font-bold text-[11px] text-ink-900">{Number.isFinite(Number(c.ratingAvg)) ? Number(c.ratingAvg).toFixed(2) : '—'}</Text>
+                  <Text className="font-bold text-[11px] text-ink-900">{Number.isFinite(Number(c.ratingAvg)) ? Number(c.ratingAvg).toFixed(2) : '-'}</Text>
                   <Text className="font-sans text-[9px] text-ink-500">({c.ratingCount})</Text>
                 </View>
                 <Text className="font-medium mt-0.5 text-[10px] text-ink-500">{c.totalJobsDone} job</Text>

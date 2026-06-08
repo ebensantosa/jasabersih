@@ -119,7 +119,7 @@ export default function Verify() {
         {devOtp && (
           <View className="mt-4 rounded-lg bg-amber-50 px-3 py-2">
             <Text className="font-medium text-center text-[11px] text-amber-800">
-              ⓘ Dev mode — kode otomatis: <Text className="font-mono font-bold">{devOtp}</Text>
+              ⓘ Dev mode - kode otomatis: <Text className="font-mono font-bold">{devOtp}</Text>
             </Text>
           </View>
         )}

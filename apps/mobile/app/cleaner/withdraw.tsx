@@ -54,7 +54,7 @@ function Withdraw() {
     amount?: string | null;
   }>({});
 
-  // Verified bank accounts (preferred — auto-Flip transfer)
+  // Verified bank accounts (preferred - auto-Flip transfer)
   const [verifiedAccounts, setVerifiedAccounts] = useState<VerifiedAccount[]>([]);
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -69,7 +69,7 @@ function Withdraw() {
         const def = verified.find((a) => a.isDefault) ?? verified[0];
         if (def) setSelectedBankAccountId(def.id);
       } catch {
-        /* ignore — fallback ke inline form */
+        /* ignore - fallback ke inline form */
       } finally {
         setLoadingAccounts(false);
       }
@@ -206,7 +206,7 @@ function Withdraw() {
             </View>
           )}
 
-          {/* Pilih metode (legacy fallback — kalau gak pilih dari verified, akan masuk admin queue) */}
+          {/* Pilih metode (legacy fallback - kalau gak pilih dari verified, akan masuk admin queue) */}
           {selectedBankAccountId === null && (
           <>
           <Section title="Pilih Tujuan">

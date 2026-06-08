@@ -71,7 +71,7 @@ export function BookingTimeline({ bookingId }: { bookingId: string }) {
             </View>
             <View className="flex-1 pb-3">
               <Text className={`font-semibold text-xs ${done ? 'text-ink-900' : current ? 'text-amber-700' : 'text-ink-400'}`}>{s.label}</Text>
-              <Text className="font-sans text-[10px] text-ink-500">{ts ? fmt(ts) : current ? 'Sedang berjalan…' : '—'}</Text>
+              <Text className="font-sans text-[10px] text-ink-500">{ts ? fmt(ts) : current ? 'Sedang berjalan…' : '-'}</Text>
             </View>
           </View>
         );

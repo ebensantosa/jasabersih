@@ -89,12 +89,12 @@ export default function CleanerPublicProfile() {
               )}
             </View>
             <View className="mt-3 flex-row items-center gap-1">
-              <Text className="font-bold text-lg text-ink-900">{p.name ?? '—'}</Text>
+              <Text className="font-bold text-lg text-ink-900">{p.name ?? '-'}</Text>
               <BadgeCheck color="#1D4ED8" size={18} />
             </View>
             <View className="mt-1 flex-row items-center gap-1">
               <Star color="#FACC15" fill="#FACC15" size={14} strokeWidth={1} />
-              <Text className="font-bold text-sm text-ink-900">{p.ratingAvg != null ? Number(p.ratingAvg).toFixed(2) : '—'}</Text>
+              <Text className="font-bold text-sm text-ink-900">{p.ratingAvg != null ? Number(p.ratingAvg).toFixed(2) : '-'}</Text>
               <Text className="font-sans text-xs text-ink-500">({p.ratingCount ?? 0} review)</Text>
             </View>
             {yearsActive > 0 && (

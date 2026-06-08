@@ -75,7 +75,7 @@ export function Addresses() {
           </View>
           <Text className="font-semibold mt-3 text-sm text-ink-700">Belum ada alamat</Text>
           <Text className="font-sans mt-1 text-center text-xs text-ink-500">
-            Simpan alamat agar booking lebih cepat — tinggal pilih saat checkout
+            Simpan alamat agar booking lebih cepat - tinggal pilih saat checkout
           </Text>
         </View>
       ) : (

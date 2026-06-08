@@ -27,12 +27,12 @@ export type ServiceCategory = {
   icon: LucideIcon;
   iconColor: string;
   iconBg: string;
-  /** Custom icon URL dari CMS (override Lucide). Optional — fallback ke `icon`. */
+  /** Custom icon URL dari CMS (override Lucide). Optional - fallback ke `icon`. */
   customIconUrl?: string | null;
   imageUrl: string;
   startingPrice: number;
   popular?: boolean;
-  /** Admin-controlled flag dari CMS — kalau false, gak muncul di home grid. */
+  /** Admin-controlled flag dari CMS - kalau false, gak muncul di home grid. */
   showOnHome?: boolean;
   /** True = tampil di section "Paket Lengkap" (combo/bundle), bukan grid Home reguler. */
   isBundle?: boolean;
@@ -64,7 +64,7 @@ export type Package = {
   scope: string;
 };
 
-// Satu paket per kategori — gak ada lagi "Pilih Paket" sub-card.
+// Satu paket per kategori - gak ada lagi "Pilih Paket" sub-card.
 // Harga = Regular (PDF). Deep Clean dihitung pakai multiplier dari cleanMode.
 export const PACKAGES: Package[] = [
   { id: 'pkg_kamar',          categoryCode: 'kamar',          name: 'Kamar Tidur',    price: 120_000, durationMin: 90,  scope: 'Bersih kamar tidur standar' },

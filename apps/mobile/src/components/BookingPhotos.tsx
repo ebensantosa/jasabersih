@@ -36,7 +36,7 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
 
     setUploading(type);
     try {
-      // Compress dulu (max 1600px, JPEG 0.7) — cleaner sering upload via 4G, irit data
+      // Compress dulu (max 1600px, JPEG 0.7) - cleaner sering upload via 4G, irit data
       const { compressImage, formatBytes } = await import('../lib/imageCompress');
       const compressed = await compressImage(asset.uri);
       if (compressed.oversize) throw new Error(`Foto terlalu besar (${formatBytes(compressed.size)} > 5MB). Coba foto ulang.`);

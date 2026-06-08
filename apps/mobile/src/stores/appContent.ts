@@ -65,7 +65,7 @@ type AppContentStore = {
   fetch: (force?: boolean) => Promise<void>;
 };
 
-const TTL_MS = 30_000; // 30s — keeps mobile in sync with admin CMS edits without forcing manual refresh
+const TTL_MS = 30_000; // 30s - keeps mobile in sync with admin CMS edits without forcing manual refresh
 
 export const useAppContent = create<AppContentStore>((set, get) => ({
   content: EMPTY,
