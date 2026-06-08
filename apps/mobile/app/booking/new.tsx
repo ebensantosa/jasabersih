@@ -629,7 +629,7 @@ function NewBooking() {
 
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={{ paddingBottom: 180 }}
+          contentContainerStyle={{ paddingBottom: 260 }}
           showsVerticalScrollIndicator={false}
         >
           {step === 1 && (
