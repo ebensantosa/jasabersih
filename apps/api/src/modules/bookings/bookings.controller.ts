@@ -151,18 +151,8 @@ export class BookingsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateBookingSchema)) body: CreateBookingDto,
   ) {
-    // Anti-abuse: max booking aktif simultan per customer.
-    const limits = await this.abuse.get();
-    if (limits.maxActiveBookings > 0) {
-      const cnt = await this.prisma.$queryRaw<{ c: number }[]>`
-        SELECT COUNT(*)::int AS c FROM bookings
-         WHERE customer_id = ${user.id}::uuid
-           AND status IN ('pending_payment', 'searching', 'matched', 'on_the_way', 'cleaner_otw', 'in_progress', 'started')
-      `;
-      if (Number(cnt[0]?.c ?? 0) >= limits.maxActiveBookings) {
-        throw new BadRequestException(`Kamu punya ${limits.maxActiveBookings} pesanan aktif. Selesaikan dulu sebelum buat baru.`);
-      }
-    }
+    // Anti-abuse: max active booking limit dihapus permanently per request user.
+    // Customer bebas buat berapa pun pesanan aktif simultan.
     // Hitung travel fee — kalau out-of-range, throw BadRequest (mobile arahkan ke WA)
     const lat = body.lat ?? -7.7956;
     const lng = body.lng ?? 110.3695;
