@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
 import { AddressPickerInline } from '../../src/components/AddressPicker';
+import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -116,23 +117,7 @@ function CustomBooking() {
   // "Sekarang" mode = pakai jam tercepat exact (sekarang+1h dengan menit asli)
   const [useNowTime, setUseNowTime] = useState(false);
 
-  // Auto-bump timeSlot ke jam valid pertama saat user ganti ke "Hari ini" dan
-  // jam yang dipilih udah lewat. Modal handle case "semua slot lewat" via warning
-  // card — JANGAN auto-flip dateIdx (bikin tombol Hari ini terasa "ga bisa di-tap").
-  useEffect(() => {
-    if (dateIdx !== 0) return;
-    const earliest = new Date(Date.now() + 60 * 60 * 1000);
-    const [hh, mm] = timeSlot.split(':').map(Number);
-    const cur = new Date(); cur.setHours(hh!, mm!, 0, 0);
-    if (cur.getTime() >= earliest.getTime()) return;
-    const next = TIME_SLOTS.find((t) => {
-      const [h, m] = t.split(':').map(Number);
-      const d = new Date(); d.setHours(h!, m!, 0, 0);
-      return d.getTime() >= earliest.getTime();
-    });
-    if (next) setTimeSlot(next);
-    // Kalau gak ada slot valid hari ini, modal nampilin "Operasional tutup" + tombol Pilih Besok
-  }, [dateIdx, timeSlot]);
+  // Modal handle validasi jam operasional + bump otomatis.
   const [notes, setNotes] = useState('');
   const [emptyHouse, setEmptyHouse] = useState(false);
   const [schedModalOpen, setSchedModalOpen] = useState(false);
@@ -498,133 +483,19 @@ function CustomBooking() {
         </View>
       </SafeAreaView>
 
-      <Modal visible={schedModalOpen} transparent animationType="slide" onRequestClose={() => setSchedModalOpen(false)}>
-        <Pressable onPress={() => setSchedModalOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 }}>
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-extrabold text-lg text-ink-900">Pilih Jadwal</Text>
-              <Pressable onPress={() => setSchedModalOpen(false)} className="h-8 w-8 items-center justify-center rounded-full bg-ink-100">
-                <Text className="text-ink-700">×</Text>
-              </Pressable>
-            </View>
-
-            <Text className="font-semibold mb-2 text-xs text-ink-600">Tanggal</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2 pr-4">
-                {dateOptions.map((d, i) => (
-                  <Pressable
-                    key={i}
-                    onPress={() => { setDateIdx(i); setUseNowTime(false); }}
-                    className={`min-w-[70px] items-center rounded-xl border px-3 py-2.5 ${dateIdx === i ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                  >
-                    <Text className={`font-bold text-xs ${dateIdx === i ? 'text-brand-700' : 'text-ink-900'}`}>{d.label}</Text>
-                    <Text className={`mt-0.5 text-[10px] ${dateIdx === i ? 'text-brand-600' : 'text-ink-500'}`}>{d.sub}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </ScrollView>
-
-            {(() => {
-              const isTodayMode = dateIdx === 0;
-              const earliest = new Date(Date.now() + 60 * 60 * 1000);
-              // "Sekarang" cuma valid kalau now+1h ada dalam jam operasional 07:00-19:59
-              const nowInOps = isTodayMode && earliest.getHours() >= 7 && earliest.getHours() < 20;
-              const validSlots = TIME_SLOTS.filter((t) => {
-                if (!isTodayMode) return true;
-                const [hh, mm] = t.split(':').map(Number);
-                const d = new Date(); d.setHours(hh!, mm!, 0, 0);
-                return d.getTime() >= earliest.getTime();
-              });
-              const allTodayPast = isTodayMode && validSlots.length === 0;
-              const firstValidIdx = !isTodayMode || !nowInOps ? -1 : TIME_SLOTS.findIndex((t) => validSlots.includes(t));
-
-              if (allTodayPast) {
-                return (
-                  <View className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-                    <Text className="font-bold text-sm text-amber-900">Operasional hari ini sudah tutup</Text>
-                    <Text className="font-medium mt-1 text-[11px] text-amber-800">
-                      Operasional 07:00–20:00. Pilih tanggal lain (Besok / hari setelahnya) untuk lihat slot jam tersedia.
-                    </Text>
-                    <Pressable
-                      onPress={() => { setDateIdx(1); setUseNowTime(false); }}
-                      className="mt-3 self-start rounded-full bg-amber-600 px-4 py-2"
-                    >
-                      <Text className="font-bold text-xs text-white">Pilih Besok</Text>
-                    </Pressable>
-                  </View>
-                );
-              }
-
-              return (
-                <>
-                  <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {(() => {
-                      const out: React.ReactNode[] = [];
-                      TIME_SLOTS.forEach((t, idx) => {
-                        if (idx === firstValidIdx && isTodayMode) {
-                          const now = new Date(Date.now() + 60 * 60 * 1000);
-                          const label = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                          out.push(
-                            <Pressable
-                              key="now"
-                              onPress={() => { setDateIdx(0); setUseNowTime(true); }}
-                              className={`rounded-lg border px-3 py-2 ${useNowTime && dateIdx === 0 ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
-                            >
-                              <Text className={`font-extrabold text-xs ${useNowTime && dateIdx === 0 ? 'text-white' : 'text-emerald-700'}`}>
-                                Sekarang ({label})
-                              </Text>
-                            </Pressable>,
-                          );
-                        }
-                        let disabled = false;
-                        if (isTodayMode) {
-                          const [hh, mm] = t.split(':').map(Number);
-                          const slot = new Date(); slot.setHours(hh!, mm!, 0, 0);
-                          disabled = slot.getTime() < earliest.getTime();
-                        }
-                        const active = timeSlot === t && !useNowTime && !disabled;
-                        out.push(
-                          <Pressable
-                            key={t}
-                            disabled={disabled}
-                            onPress={() => { setUseNowTime(false); setTimeSlot(t); }}
-                            style={disabled ? { opacity: 0.4 } : undefined}
-                            className={`rounded-lg border-2 px-3 py-2 ${
-                              disabled
-                                ? 'border-ink-200 bg-ink-100'
-                                : active
-                                ? 'border-brand-600 bg-brand-50'
-                                : 'border-ink-200 bg-white'
-                            }`}
-                          >
-                            <Text
-                              className={`font-bold text-xs ${
-                                disabled ? 'text-ink-400 line-through' : active ? 'text-brand-700' : 'text-ink-800'
-                              }`}
-                            >
-                              {t}
-                            </Text>
-                          </Pressable>,
-                        );
-                      });
-                      return out;
-                    })()}
-                  </View>
-                  <Text className="mt-3 text-[10px] text-ink-500">Operasional 07:00–20:00 · Min 1 jam dari sekarang</Text>
-                </>
-              );
-            })()}
-
-            <Pressable
-              onPress={() => setSchedModalOpen(false)}
-              className="mt-5 h-12 items-center justify-center rounded-2xl bg-brand-600"
-            >
-              <Text className="font-bold text-sm text-white">Pilih Jadwal Ini</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ScheduleModal
+        visible={schedModalOpen}
+        value={scheduleAt}
+        onChange={(d) => {
+          setUseNowTime(false);
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+          setDateIdx(Math.max(0, Math.min(13, Math.round((dd.getTime() - today.getTime()) / 86400000))));
+          setTimeSlot(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+          setSchedModalOpen(false);
+        }}
+        onClose={() => setSchedModalOpen(false)}
+      />
     </>
   );
 }
