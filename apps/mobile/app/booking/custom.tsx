@@ -208,6 +208,28 @@ function CustomBooking() {
   async function submit() {
     if (itemCount === 0) { toast.error('Pilih minimal 1 layanan'); return; }
     if (!address.trim()) { toast.error('Alamat wajib diisi'); return; }
+
+    // Coverage gate — cek alamat booking dalam area layanan
+    const { checkCoverage } = await import('../../src/lib/coverage');
+    const { useLocationStore } = await import('../../src/stores/location');
+    const { useAppContent } = await import('../../src/stores/appContent');
+    const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
+    const userLoc = useLocationStore.getState().current;
+    const areas = useAppContent.getState().content.serviceAreas;
+    const checkLoc =
+      selectedAddress && Number.isFinite(selectedAddress.lat) && Number.isFinite(selectedAddress.lng)
+        ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
+        : userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null;
+    const cov = checkCoverage(checkLoc, areas);
+    if (!cov.covered) {
+      toast.error(
+        cov.nearestAreaName
+          ? `Alamat di luar coverage. Area terdekat: ${cov.nearestAreaName}.`
+          : 'Alamat di luar area layanan kami.',
+      );
+      return;
+    }
+
     setSubmitting(true);
     const items = allItems.filter((r) => (counts[r.key] ?? 0) > 0).map((r) => ({
       key: r.key, label: r.label, qty: counts[r.key]!, pricePerUnit: r.price, subtotal: counts[r.key]! * r.price,
@@ -224,12 +246,12 @@ function CustomBooking() {
         addressLine: address,
         scheduledAt: scheduleAt.toISOString(),
         addOns: [],
-        baseAmount: subtotal,
+        basePrice: subtotal,
+        dirtSurcharge: 0,
         totalPrice: total,
-        durationMin: totalMin,
         formSnapshot: { mode: 'custom', items, totalMin, notes, emptyHouse, emptyHouseDiscount: discount, beforePhotos: photos.map((p) => p.url) },
         initialStatus: 'pending_payment',
-      });
+      } as any);
       toast.success('Pesanan custom dibuat - silakan bayar');
       try {
         const { Track } = await import('../../src/lib/analytics');
