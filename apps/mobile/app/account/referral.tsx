@@ -153,13 +153,6 @@ function ReferralScreen() {
                 </View>
               </View>
 
-              <Pressable
-                onPress={shareCode}
-                className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-white py-3"
-              >
-                <Share2 color="#1D4ED8" size={16} />
-                <Text className="font-bold text-sm text-brand-700">Bagikan Kode</Text>
-              </Pressable>
             </View>
 
             {/* Stats */}

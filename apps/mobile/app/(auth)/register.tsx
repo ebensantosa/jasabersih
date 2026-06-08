@@ -41,6 +41,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -70,6 +71,7 @@ export default function Register() {
         phone: phone.trim(),
         mode: targetMode,
         email: email.trim().toLowerCase(),
+        ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
       });
       const data = reg.data?.data ?? reg.data;
       const emailSent: boolean = !!data?.emailSent;
@@ -85,6 +87,7 @@ export default function Register() {
             email: email.trim().toLowerCase(),
             password,
             mode: targetMode,
+            ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
             ...(devOtp ? { devOtp } : {}),
           },
         });
@@ -236,6 +239,18 @@ export default function Register() {
               <Pressable onPress={() => setShowPwd((v) => !v)} hitSlop={8}>
                 {showPwd ? <EyeOff color="#94A3B8" size={18} /> : <Eye color="#94A3B8" size={18} />}
               </Pressable>
+            </Field>
+
+            <Field label="Kode Referral (opsional)" hint="Punya kode dari teman? Dapatkan bonus untuk order pertama.">
+              <TextInput
+                value={referralCode}
+                onChangeText={(v) => setReferralCode(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))}
+                placeholder="Contoh: 4P2F9Z3"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+                className="font-sans flex-1 text-sm text-ink-900"
+                style={{ letterSpacing: 1 }}
+              />
             </Field>
           </View>
 

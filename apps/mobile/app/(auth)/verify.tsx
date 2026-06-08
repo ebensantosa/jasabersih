@@ -21,6 +21,7 @@ export default function Verify() {
     password: passwordParam,
     mode: modeParam,
     devOtp,
+    referralCode: referralCodeParam,
   } = useLocalSearchParams<{
     phone: string;
     email?: string;
@@ -28,12 +29,13 @@ export default function Verify() {
     password?: string;
     mode?: string;
     devOtp?: string;
+    referralCode?: string;
   }>();
   const setTokens = useAuthStore((s) => s.setTokens);
 
   const [otp, setOtp] = useState(devOtp ?? '');
-  const [referralCode, setReferralCode] = useState('');
-  const [showReferral, setShowReferral] = useState(false);
+  const [referralCode, setReferralCode] = useState(referralCodeParam ?? '');
+  const [showReferral, setShowReferral] = useState(!!referralCodeParam);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(devOtp ? 0 : RESEND_COOLDOWN_SEC);
