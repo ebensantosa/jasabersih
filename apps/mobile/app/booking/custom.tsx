@@ -222,11 +222,10 @@ function CustomBooking() {
         : userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null;
     const cov = checkCoverage(checkLoc, areas);
     if (!cov.covered) {
-      toast.error(
-        cov.nearestAreaName
-          ? `Alamat di luar coverage. Area terdekat: ${cov.nearestAreaName}.`
-          : 'Alamat di luar area layanan kami.',
-      );
+      router.push({
+        pathname: '/city-request',
+        params: { city: userLoc?.shortLabel ?? cov.nearestAreaName ?? '' },
+      });
       return;
     }
 
