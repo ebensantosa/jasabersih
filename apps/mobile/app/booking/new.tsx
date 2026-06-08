@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
 import { AddressPickerInline } from '../../src/components/AddressPicker';
+import { Dropdown } from '../../src/components/Dropdown';
 import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { Stepper } from '../../src/components/Stepper';
 import { StepProgress } from '../../src/components/StepWizard';
@@ -76,11 +77,12 @@ function NewBooking() {
   const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
 
   // Full House / Paket Bundle pakai flow cart (customer pilih per-ruangan + add-ons).
-  // Skala Besar / Konsultasi langsung ke WA admin (gak ada flow booking standar).
+  // Konsultasi langsung ke WA admin (gak ada flow booking standar).
+  // Skala Besar tetap masuk booking flow biar customer bisa pilih "Per Ruangan".
   useEffect(() => {
     if (categoryCode === 'full_house' || categoryCode === 'paket_bundle') {
       router.replace('/booking/custom');
-    } else if (categoryCode === 'skala_besar' || categoryCode === 'konsultasi') {
+    } else if (categoryCode === 'konsultasi') {
       router.replace('/services/konsultasi');
     }
   }, [categoryCode, router]);
@@ -852,10 +854,11 @@ function NewBooking() {
 
               {!isSimpleService && !isPerMeter && <Section title="Properti">
                 <Label>Tipe Properti</Label>
-                <Chips
+                <Dropdown
                   options={PROPERTY_TYPES as readonly string[]}
                   value={propertyType}
                   onChange={(v) => setPropertyType(v as PropertyType)}
+                  placeholder="Pilih tipe properti"
                 />
                 <Label className="mt-3">Lantai / Tingkat</Label>
                 <Chips options={FLOOR_OPTIONS as readonly string[]} value={floor} onChange={setFloor} />
@@ -888,21 +891,25 @@ function NewBooking() {
                   </View>
                 )}
                 <Label className="mt-4">Fasilitas Lain (pilih beberapa)</Label>
-                <View className="flex-row flex-wrap gap-2">
+                <View className="gap-1.5">
                   {ROOM_FACILITIES.map((f) => {
                     const active = facilities.has(f);
                     return (
                       <Pressable
                         key={f}
                         onPress={() => setFacilities(toggleSet(facilities, f))}
-                        className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
-                          active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
+                        className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
                         }`}
                       >
-                        {active && <Check color="white" size={12} strokeWidth={3} />}
-                        <Text
-                          className={`font-semibold text-xs ${active ? 'text-white' : 'text-ink-700'}`}
+                        <View
+                          className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                            active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                          }`}
                         >
+                          {active && <Check color="white" size={13} strokeWidth={3} />}
+                        </View>
+                        <Text className={`font-semibold text-sm ${active ? 'text-brand-700' : 'text-ink-800'}`}>
                           {f}
                         </Text>
                       </Pressable>
@@ -1043,19 +1050,25 @@ function NewBooking() {
                 <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
                   Pilih semua yang sesuai biar cleaner siap bawa alat & cairan yang tepat.
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
+                <View className="gap-1.5">
                   {DIRT_CHARACTERS.map((c) => {
                     const active = dirtChars.has(c);
                     return (
                       <Pressable
                         key={c}
                         onPress={() => setDirtChars(toggleSet(dirtChars, c))}
-                        className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
-                          active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
+                        className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
                         }`}
                       >
-                        {active && <Check color="white" size={12} strokeWidth={3} />}
-                        <Text className={`font-medium text-xs ${active ? 'text-white' : 'text-ink-700'}`}>
+                        <View
+                          className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                            active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                          }`}
+                        >
+                          {active && <Check color="white" size={13} strokeWidth={3} />}
+                        </View>
+                        <Text className={`font-semibold text-sm ${active ? 'text-brand-700' : 'text-ink-800'}`}>
                           {c}
                         </Text>
                       </Pressable>
@@ -1066,10 +1079,11 @@ function NewBooking() {
 
               <Section title="Kondisi Ruangan">
                 <Label>Jenis Lantai</Label>
-                <Chips
+                <Dropdown
                   options={FLOOR_TYPES as readonly string[]}
                   value={floorType}
                   onChange={setFloorType}
+                  placeholder="Pilih jenis lantai"
                 />
 
                 <Label className="mt-4">Kepadatan Barang</Label>
