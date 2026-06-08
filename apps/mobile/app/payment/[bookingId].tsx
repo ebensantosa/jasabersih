@@ -392,7 +392,7 @@ function MethodPicker({
       </View>
 
       <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Virtual Account</Text>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Transfer Bank (Virtual Account)</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
           {VA_METHODS.map((m, i) => {
             const st = getStatus(m.code);
