@@ -991,7 +991,10 @@ function NewBooking() {
                   JPG / PNG / WEBP · auto compress {`<5MB`}
                 </Text>
 
-                <Label className="mt-4">Karakter Kotor</Label>
+                <Label className="mt-4">Jenis Kotoran (pilih beberapa)</Label>
+                <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
+                  Pilih semua yang sesuai biar cleaner siap bawa alat & cairan yang tepat.
+                </Text>
                 <View className="flex-row flex-wrap gap-2">
                   {DIRT_CHARACTERS.map((c) => {
                     const active = dirtChars.has(c);
@@ -1012,33 +1015,62 @@ function NewBooking() {
                 </View>
               </Section>
 
-              <Section title="Material & Akses">
-                <Label>Tipe Lantai</Label>
+              <Section title="Kondisi Ruangan">
+                <Label>Jenis Lantai</Label>
                 <Chips
                   options={FLOOR_TYPES as readonly string[]}
                   value={floorType}
                   onChange={setFloorType}
                 />
-                <Label className="mt-3">Furniture</Label>
-                <Chips
-                  options={FURNITURE_DENSITY as readonly string[]}
-                  value={furniture}
-                  onChange={(v) => setFurniture(v as FurnitureDensity)}
-                />
-                <View className="mt-3 gap-2">
-                  <ToggleRow label="Sumber Air Tersedia" value={hasWater} onChange={setHasWater} />
+
+                <Label className="mt-4">Kepadatan Barang</Label>
+                <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
+                  Seberapa penuh ruangan dengan furniture & barang?
+                </Text>
+                <View className="flex-row gap-2">
+                  {(FURNITURE_DENSITY as readonly string[]).map((opt) => {
+                    const active = furniture === opt;
+                    const desc = opt === 'Sedikit' ? 'Lega, mudah dibersihkan'
+                      : opt === 'Sedang' ? 'Normal, ada beberapa furniture'
+                      : 'Penuh, banyak barang';
+                    return (
+                      <Pressable
+                        key={opt}
+                        onPress={() => setFurniture(opt as FurnitureDensity)}
+                        className={`flex-1 items-center rounded-xl border py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                      >
+                        <Text className={`font-bold text-xs ${active ? 'text-brand-700' : 'text-ink-900'}`}>{opt}</Text>
+                        <Text className={`mt-0.5 text-center text-[9px] leading-3 ${active ? 'text-brand-600' : 'text-ink-500'}`} numberOfLines={2}>
+                          {desc}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Label className="mt-5">Fasilitas Tersedia di Lokasi</Label>
+                <View className="mt-1 gap-2">
                   <ToggleRow
-                    label="Sumber Listrik (untuk vacuum)"
+                    label="Ada keran air"
+                    value={hasWater}
+                    onChange={setHasWater}
+                  />
+                  <ToggleRow
+                    label="Ada colokan listrik (untuk vacuum)"
                     value={hasElectricity}
                     onChange={setHasElectricity}
                   />
-                  <ToggleRow label="Hewan Peliharaan" value={hasPet} onChange={setHasPet} />
+                  <ToggleRow
+                    label="Ada hewan peliharaan di rumah"
+                    value={hasPet}
+                    onChange={setHasPet}
+                  />
                 </View>
                 {hasPet && (
                   <TextInput
                     value={petNote}
                     onChangeText={setPetNote}
-                    placeholder="Tipe & jumlah (contoh: 2 kucing)"
+                    placeholder="Tipe & jumlah (contoh: 2 kucing, 1 anjing kecil)"
                     placeholderTextColor="#94A3B8"
                     className="font-sans mt-2 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm"
                   />

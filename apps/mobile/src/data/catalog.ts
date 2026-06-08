@@ -182,13 +182,13 @@ export const DIRT_LEVELS: { level: 1 | 2 | 3 | 4 | 5; label: string; desc: strin
 
 export const DIRT_CHARACTERS = [
   'Debu',
-  'Tumpahan cair',
-  'Lemak dapur',
-  'Kerak kamar mandi',
-  'Jamur',
-  'Bekas renovasi',
+  'Noda cair',
+  'Minyak / lemak',
+  'Kerak / karat',
+  'Jamur / lumut',
+  'Sisa renovasi',
   'Bulu hewan',
-  'Sampah numpuk',
+  'Sampah menumpuk',
 ] as const;
 
 export const FLOOR_TYPES = ['Keramik', 'Marmer', 'Kayu', 'Vinyl', 'Karpet', 'Beton ekspos'] as const;
