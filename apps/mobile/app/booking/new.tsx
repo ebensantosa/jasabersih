@@ -1344,37 +1344,35 @@ function NewBooking() {
             {isSimpleService && (
               <Pressable
                 onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
-                className={`flex-row items-center gap-3 border-b border-ink-100 px-4 py-2.5 ${
+                className={`border-b border-ink-100 px-4 py-3 ${
                   cleanMode === 'deep' ? 'bg-amber-50' : ''
                 }`}
               >
-                <View
-                  className={`h-5 w-5 items-center justify-center rounded border-2 ${
-                    cleanMode === 'deep' ? 'border-amber-600 bg-amber-600' : 'border-ink-300 bg-white'
-                  }`}
-                >
-                  {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className={`font-extrabold text-[13px] ${cleanMode === 'deep' ? 'text-amber-800' : 'text-ink-900'}`}>
-                      Deep Cleaning
-                    </Text>
-                    <View className="rounded bg-amber-200 px-1.5 py-0.5">
-                      <Text className="font-extrabold text-[8px] text-amber-900">RECOMMENDED</Text>
-                    </View>
+                {/* Row 1: checkbox + judul + badge + harga */}
+                <View className="flex-row items-center gap-3">
+                  <View
+                    className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                      cleanMode === 'deep' ? 'border-amber-600 bg-amber-600' : 'border-ink-300 bg-white'
+                    }`}
+                  >
+                    {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
                   </View>
-                  <Text className="font-medium mt-0.5 text-[10px] text-ink-600" numberOfLines={2}>
-                    Pembersihan menyeluruh hingga detail tersembunyi: kerak kamar mandi, jamur nat, noda membandel, sela furnitur, bekas renovasi. Pakai cairan khusus & waktu pengerjaan lebih lama.
+                  <Text className={`font-extrabold text-[13px] ${cleanMode === 'deep' ? 'text-amber-800' : 'text-ink-900'}`}>
+                    Deep Cleaning
                   </Text>
-                </View>
-                {pkg && (
-                  <View className="items-end">
-                    <Text className="font-bold text-[11px] text-amber-800">
+                  <View className="rounded bg-amber-200 px-1.5 py-0.5">
+                    <Text className="font-extrabold text-[8px] text-amber-900">RECOMMENDED</Text>
+                  </View>
+                  {pkg && (
+                    <Text className="font-bold ml-auto text-[12px] text-amber-800">
                       +{formatRupiah(Math.round((pkg.price * (deepMultiplier - 1)) / 1000) * 1000)}
                     </Text>
-                  </View>
-                )}
+                  )}
+                </View>
+                {/* Row 2: deskripsi full width, gak kepotong */}
+                <Text className="font-medium mt-1.5 text-[11px] leading-[16px] text-ink-600">
+                  Bersih sampai detail: kerak kamar mandi, jamur nat, noda membandel, sela furnitur, bekas renovasi. Pakai cairan khusus.
+                </Text>
               </Pressable>
             )}
             {pkg && (
