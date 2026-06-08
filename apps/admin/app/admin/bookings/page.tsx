@@ -34,6 +34,8 @@ export default function Bookings() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const PAGE_SIZE = 25;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -158,7 +160,8 @@ export default function Bookings() {
 
   useEffect(() => {
     void load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter, from, to]);
 
   async function load() {
     setLoading(true);
@@ -168,8 +171,8 @@ export default function Bookings() {
         status: filter === 'all' || filter === 'needs_manual' ? undefined : filter,
         from: from || undefined,
         to: to || undefined,
-        limit: 50,
-        offset: 0,
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
       })) as any;
       // Handle both paginated { items, total } and legacy array
       const items = Array.isArray(res) ? res : (res.items ?? []);
@@ -242,7 +245,7 @@ export default function Bookings() {
           {FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => { setFilter(f.key); setTimeout(() => load(), 50); }}
+              onClick={() => { setFilter(f.key); setPage(1); }}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                 filter === f.key
                   ? 'bg-primary text-white'
@@ -452,6 +455,34 @@ export default function Bookings() {
             {orders && orders.length === 0
               ? 'Belum ada order di database. Buat booking dari mobile app dulu.'
               : 'Tidak ada order yang cocok dengan filter.'}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalOrders > PAGE_SIZE && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs">
+            <span className="text-slate-600">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalOrders)} dari {totalOrders.toLocaleString('id-ID')} order
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || loading}
+                className="rounded border border-slate-200 px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-40"
+              >
+                ← Prev
+              </button>
+              <span className="px-3 font-bold text-slate-700">
+                {page} / {Math.max(1, Math.ceil(totalOrders / PAGE_SIZE))}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(Math.ceil(totalOrders / PAGE_SIZE), p + 1))}
+                disabled={page >= Math.ceil(totalOrders / PAGE_SIZE) || loading}
+                className="rounded border border-slate-200 px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-40"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         )}
       </div>
