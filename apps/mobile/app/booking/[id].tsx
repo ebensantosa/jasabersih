@@ -28,6 +28,7 @@ import { api } from '../../src/lib/api';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useT } from '../../src/lib/i18n';
 import { formatRupiah } from '../../src/data/catalog';
+import { useConfig } from '../../src/stores/appContent';
 import { useModeStore } from '../../src/stores/mode';
 import {
   STATUS_COLOR,
@@ -335,17 +336,10 @@ function BookingDetail() {
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <View className="flex-row items-center gap-3">
-              <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-ink-100">
-                {booking.categoryImage ? (
-                  <Image
-                    source={booking.categoryImage}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <Sparkles color="#64748B" size={24} strokeWidth={2} />
-                )}
-              </View>
+              <CategoryIcon
+                image={booking.categoryImage}
+                categoryCode={booking.categoryCode}
+              />
               <View className="flex-1">
                 <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-400">
                   {isCleaner ? 'JOB AKTIF' : 'PESANANMU'}
@@ -883,4 +877,22 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 // Both customer + cleaner can view (component branches on isCleaner internally).
+function CategoryIcon({ image, categoryCode }: { image: any; categoryCode?: string | null }) {
+  // Untuk Layanan Custom: kalau snapshot image null, fallback ke config home.cta_image_url
+  const ctaImage = useConfig('home.cta_image_url' as any, '' as any) as unknown as string;
+  let resolved: any = image;
+  if (!resolved && categoryCode === 'custom' && typeof ctaImage === 'string' && ctaImage.trim()) {
+    resolved = { uri: ctaImage.trim() };
+  }
+  return (
+    <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-ink-100">
+      {resolved ? (
+        <Image source={resolved} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+      ) : (
+        <Sparkles color="#64748B" size={24} strokeWidth={2} />
+      )}
+    </View>
+  );
+}
+
 export default withAuth(BookingDetail);

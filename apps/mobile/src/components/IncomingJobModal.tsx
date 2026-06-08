@@ -107,6 +107,10 @@ export function IncomingJobModal() {
     router.push({ pathname: '/booking/[id]', params: { id } });
   }
 
+  // Hard guard: modal ini cuma untuk cleaner. Kalau customer mode atau belum login,
+  // jangan render apapun (cegah popup "sudah diambil" bocor ke customer).
+  if (!tokens || mode !== 'freelancer') return null;
+
   // Kalau sudah ke-take cleaner lain → tampilkan flash screen
   if (takenByOther && currentJobId) {
     const b = list.find((x) => x.id === currentJobId);
