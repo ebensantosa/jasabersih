@@ -13,7 +13,7 @@ type Limits = {
 
 const DEFAULTS: Limits = {
   chatMsgPerMin: 15,
-  maxActiveBookings: 3,
+  maxActiveBookings: 0, // 0 = no limit; admin bisa override via app_config
   maxOpenDisputesSameCleaner: 1,
   ratingEditWindowHours: 24,
   voucherMaxUsesPerPhone: 1,
