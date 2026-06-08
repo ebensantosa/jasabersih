@@ -251,7 +251,7 @@ export default function Home() {
         <View className="mx-4 mt-1 rounded-2xl bg-white px-2 py-3" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
-              const isKonsul = s.code === 'konsultasi';
+              const isKonsul = s.code === 'konsultasi' || s.code === 'skala_besar';
               return (
                 <Pressable
                   key={s.code}

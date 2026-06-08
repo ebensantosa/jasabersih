@@ -51,6 +51,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { code: 'ruko',           name: 'Ruko',            description: 'Bersih ruko/toko · per m²',    icon: Building2, iconColor: '#7C2D12', iconBg: '#FED7AA', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 6_000 },
   { code: 'kantor',         name: 'Kantor',          description: 'Bersih kantor · per m²',       icon: Building2, iconColor: '#075985', iconBg: '#BAE6FD', imageUrl: UNS('photo-1497366754035-f200968a6e72'), startingPrice: 5_500 },
   { code: 'apartemen',      name: 'Apartemen',       description: 'Bersih apartemen · per m²',    icon: Home,      iconColor: '#5B21B6', iconBg: '#DDD6FE', imageUrl: UNS('photo-1502672260266-1c1ef2d93688'), startingPrice: 8_000 },
+  { code: 'skala_besar',    name: 'Skala Besar',     description: 'Mall, pabrik, hotel · konsultasi', icon: Building2, iconColor: '#7C2D12', iconBg: '#FED7AA', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 0 },
 ];
 
 // ============ PAKET FIXED COST (sesuai 06-pricing-modes.md) ============

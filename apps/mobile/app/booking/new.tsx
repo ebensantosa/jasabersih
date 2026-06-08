@@ -687,13 +687,55 @@ function NewBooking() {
                   </View>
 
                   <View className="mt-3 rounded-lg bg-emerald-50 p-3">
-                    <Text className="font-medium text-[10px] uppercase tracking-wider text-emerald-700">Estimasi Harga</Text>
+                    <Text className="font-medium text-[10px] uppercase tracking-wider text-emerald-700">Estimasi Awal</Text>
                     <Text className="font-extrabold mt-1 text-2xl text-emerald-900">
                       {formatRupiah(Math.max(perMeterMin, areaM2 * perMeterRate))}
                     </Text>
                     <Text className="font-medium mt-1 text-[10px] text-emerald-700">
                       {areaM2} m² × Rp {perMeterRate.toLocaleString('id-ID')} = {formatRupiah(areaM2 * perMeterRate)}
                       {areaM2 * perMeterRate < perMeterMin && ' (kena harga minimum)'}
+                    </Text>
+                  </View>
+
+                  {/* Disclaimer charge tambahan */}
+                  <View className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                    <Text className="font-bold text-[11px] text-amber-900">⚠ Charge Tambahan Mungkin Berlaku</Text>
+                    <Text className="font-medium mt-1 text-[10px] leading-4 text-amber-800">
+                      Harga di atas estimasi awal berdasarkan luas. Jika di lokasi kondisi kotor parah (kerak tebal, jamur berat, pasca renovasi) atau ada tambahan area yang harus dibersihkan, cleaner akan kirim permintaan charge tambahan via app sebelum lanjut kerja. Kamu bisa Setujui / Tolak.
+                    </Text>
+                  </View>
+                </Section>
+              )}
+
+              {/* Detail Layanan untuk per-meter (Ruko/Kantor/Apartemen) */}
+              {isPerMeter && pkg && (
+                <Section title={`Detail Layanan · ${category?.name ?? ''}`}>
+                  <Text className="font-medium text-[11px] leading-5 text-ink-600">
+                    {(pkg as any).note || (typeof pkg.scope === 'string' ? pkg.scope : '') || 'Pembersihan area komersial sesuai standar layanan.'}
+                  </Text>
+                  {(((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0 ? (
+                    <View className="mt-3 gap-1.5">
+                      {((pkg as any).includes as string[]).map((it, i) => (
+                        <View key={i} className="flex-row items-start gap-2">
+                          <View className="mt-0.5 h-4 w-4 items-center justify-center rounded-full bg-success/15">
+                            <Check color="#10B981" size={11} strokeWidth={3} />
+                          </View>
+                          <Text className="font-medium flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <View className="mt-2 rounded-lg bg-amber-50 p-2">
+                      <Text className="font-medium text-[10px] text-amber-800">
+                        Detail layanan belum lengkap. Hubungi admin via chat untuk info detail.
+                      </Text>
+                    </View>
+                  )}
+
+                  <View className="mt-3 rounded-lg bg-brand-50 p-3">
+                    <Text className="font-bold text-[11px] text-brand-900">💬 Butuh konsultasi area kompleks?</Text>
+                    <Text className="font-medium mt-1 text-[10px] leading-4 text-brand-700">
+                      Untuk area besar / kondisi khusus, chat admin via WhatsApp dari tombol di bawah agar dapat estimasi akurat sebelum booking.
                     </Text>
                   </View>
                 </Section>
@@ -722,32 +764,34 @@ function NewBooking() {
                     </Section>
                   )}
 
-                  {/* Detail Pekerjaan (description + includes, NO harga — final price di bottom bar) */}
-                  {(((pkg as any).note || pkg.scope) || (((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0) && (
-                    <Section title={`Detail Layanan · ${pkg.name}`}>
-                      {((pkg as any).note || pkg.scope) && (
-                        <Text className="font-medium text-[11px] leading-5 text-ink-600">
-                          {(pkg as any).note || pkg.scope}
-                        </Text>
-                      )}
-                      {(((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0 && (
-                        <View className="mt-3 gap-1.5">
-                          {((pkg as any).includes as string[]).map((it, i) => (
-                            <View key={i} className="flex-row items-start gap-2">
-                              <View className="mt-0.5 h-4 w-4 items-center justify-center rounded-full bg-success/15">
-                                <Check color="#10B981" size={11} strokeWidth={3} />
-                              </View>
-                              <Text className="font-medium flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                  {/* Detail Pekerjaan — selalu tampil (fallback ke generic kalau scope kosong) */}
+                  <Section title={`Detail Layanan · ${pkg.name}`}>
+                    <Text className="font-medium text-[11px] leading-5 text-ink-600">
+                      {(pkg as any).note || (typeof pkg.scope === 'string' ? pkg.scope : '') || 'Pembersihan menyeluruh sesuai standar layanan.'}
+                    </Text>
+                    {(((pkg as any).includes as string[] | undefined)?.length ?? 0) > 0 ? (
+                      <View className="mt-3 gap-1.5">
+                        {((pkg as any).includes as string[]).map((it, i) => (
+                          <View key={i} className="flex-row items-start gap-2">
+                            <View className="mt-0.5 h-4 w-4 items-center justify-center rounded-full bg-success/15">
+                              <Check color="#10B981" size={11} strokeWidth={3} />
                             </View>
-                          ))}
-                        </View>
-                      )}
-                    </Section>
-                  )}
+                            <Text className="font-medium flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <View className="mt-2 rounded-lg bg-amber-50 p-2">
+                        <Text className="font-medium text-[10px] text-amber-800">
+                          Detail layanan belum lengkap. Hubungi admin via chat untuk info detail.
+                        </Text>
+                      </View>
+                    )}
+                  </Section>
                 </>
               )}
 
-              {!isSimpleService && categoryPackages.length > 0 && (
+              {!isSimpleService && !isPerMeter && categoryPackages.length > 0 && (
                 <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
