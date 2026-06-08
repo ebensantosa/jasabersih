@@ -92,11 +92,16 @@ export default function Home() {
     <View className="flex-1 bg-ink-50">
       {/* Hero header dengan U-shape curve (Gojek/Traveloka style) — gradient lebih cerah & welcoming */}
       <LinearGradient
-        colors={['#1D4ED8', '#10B981', '#14B8A6']}
+        colors={['#1E3A8A', '#047857', '#0E7490']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingBottom: 24 }}
       >
+        {/* Dim overlay biar text putih lebih kontras */}
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }}
+        />
         {/* Decorative blob untuk depth visual (pojok kanan atas) */}
         <View
           pointerEvents="none"
