@@ -177,7 +177,16 @@ export default function ServiceDetail() {
               Tiga cara tersedia, pilih sesuai kebutuhanmu
             </Text>
 
-            <View className="mt-4 gap-2.5">
+            {category.isActive === false && (
+              <View className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                <Text className="font-bold text-sm text-amber-900">🔧 Layanan Sedang Tidak Tersedia</Text>
+                <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
+                  Layanan {category.name} lagi maintenance / pause sementara. Coba lagi nanti atau pilih layanan lain.
+                </Text>
+              </View>
+            )}
+
+            <View className="mt-4 gap-2.5" style={category.isActive === false ? { opacity: 0.5 } : undefined} pointerEvents={category.isActive === false ? 'none' : 'auto'}>
               <ModeCard
                 renderIcon={() => <Wallet color="#1D4ED8" size={26} strokeWidth={2.2} />}
                 iconBg="#DBEAFE"

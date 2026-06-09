@@ -37,6 +37,8 @@ export function useServices(): ServiceCategory[] {
         showOnHome: api.showOnHome !== false,
         // Admin-controlled - kalau true, masuk section Paket Lengkap di Home.
         isBundle: (api as any).isBundle === true,
+        // Default true kalau API gak return field (backwards compat).
+        isActive: (api as any).isActive !== false,
       };
       return merged;
     });

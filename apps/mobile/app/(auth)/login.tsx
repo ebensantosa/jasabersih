@@ -203,7 +203,7 @@ export default function Login() {
             </Text>
           </Pressable>
 
-          <Pressable onPress={() => router.replace('/(auth)/register')} className="mt-3">
+          <Pressable onPress={() => router.replace({ pathname: '/(auth)/register', params: { mode: loginAs } })} className="mt-3">
             <Text className="font-sans text-center text-sm text-ink-500">
               {t('login.no_account')}{' '}
               <Text className="font-semibold text-brand-600">{t('login.signup_link')}</Text>

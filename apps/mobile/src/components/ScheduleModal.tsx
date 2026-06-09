@@ -140,6 +140,19 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
                 <Text className="font-bold text-xs text-white">Pilih Besok</Text>
               </Pressable>
             </View>
+          ) : isToday && !nowInOps ? (
+            <View className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <Text className="font-bold text-sm text-amber-900">Di luar jam operasional</Text>
+              <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
+                Jam operasional 07:00–20:00. Pesanan untuk hari ini sudah tidak bisa dijadwalkan. Pilih Besok untuk lihat slot tersedia.
+              </Text>
+              <Pressable
+                onPress={() => { setDateIdx(1); setUseNowTime(false); }}
+                className="mt-3 self-start rounded-full bg-amber-600 px-4 py-2"
+              >
+                <Text className="font-bold text-xs text-white">Pilih Besok</Text>
+              </Pressable>
+            </View>
           ) : (
             <>
               <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
@@ -197,7 +210,8 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
 
           <Pressable
             onPress={confirm}
-            className="mt-5 h-12 items-center justify-center rounded-2xl bg-brand-600"
+            disabled={isToday && (allTodayPast || !nowInOps)}
+            className={`mt-5 h-12 items-center justify-center rounded-2xl ${isToday && (allTodayPast || !nowInOps) ? 'bg-ink-300' : 'bg-brand-600'}`}
           >
             <Text className="font-bold text-sm text-white">Pilih Jadwal Ini</Text>
           </Pressable>

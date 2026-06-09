@@ -18,6 +18,16 @@ import {
   FLOOR_OPTIONS,
   FLOOR_TYPES,
   FURNITURE_DENSITY,
+  LARGE_SCALE_BATHROOM_RATE,
+  LARGE_SCALE_MAX_M2,
+  LARGE_SCALE_PROPERTY_TYPES,
+  LARGE_SCALE_TARGETS,
+  POST_RENO_BATHROOM_RATE,
+  POST_RENO_KITCHEN_FLAT,
+  POST_RENO_LEVELS,
+  POST_RENO_MAX_M2,
+  POST_RENO_PROPERTY_TYPES,
+  POST_RENO_TARGETS,
   PACKAGES as LOCAL_PACKAGES,
   PROPERTY_TYPES,
   ROOM_FACILITIES,
@@ -79,6 +89,7 @@ function NewBooking() {
   // Full House / Paket Bundle pakai flow cart (customer pilih per-ruangan + add-ons).
   // Konsultasi langsung ke WA admin (gak ada flow booking standar).
   // Skala Besar tetap masuk booking flow biar customer bisa pilih "Per Ruangan".
+  const shouldRedirect = categoryCode === 'full_house' || categoryCode === 'paket_bundle' || categoryCode === 'konsultasi';
   useEffect(() => {
     if (categoryCode === 'full_house' || categoryCode === 'paket_bundle') {
       router.replace('/booking/custom');
@@ -186,10 +197,14 @@ function NewBooking() {
   const isBathroom = category?.code === 'kamar_mandi';
   const bathroomMult = isBathroom ? (BATHROOM_SIZES.find((s) => s.code === bathroomSize)?.mult ?? 1) : 1;
 
-  // Auto-centang Deep Cleaning saat masuk halaman simple service (sales default).
-  // User tetap bisa unceklis kalau gak mau.
+  // Auto-centang Deep Cleaning sekali aja saat first mount untuk simple service.
+  // Kalau user uncheck, jangan auto-aktif lagi (useRef guard).
+  const deepDefaultedRef = useRef(false);
   useEffect(() => {
-    if (isSimpleService) setCleaningMode('deep');
+    if (isSimpleService && !deepDefaultedRef.current) {
+      setCleaningMode('deep');
+      deepDefaultedRef.current = true;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category?.code]);
 
@@ -198,7 +213,15 @@ function NewBooking() {
   const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.45 as any);
   const deepMultiplier = Number(deepMultiplierRaw) || 1.45;
 
-  const [propertyType, setPropertyType] = useState<PropertyType>('Rumah');
+  const isLargeScale = category?.code === 'skala_besar';
+  const isPostReno = category?.code === 'pasca_renovasi';
+  const [propertyType, setPropertyType] = useState<PropertyType>(
+    isLargeScale ? ('Mall' as any) : isPostReno ? ('Rumah' as any) : 'Rumah',
+  );
+  const [largeScaleTargets, setLargeScaleTargets] = useState<Set<string>>(new Set(['lantai']));
+  const [postRenoTargets, setPostRenoTargets] = useState<Set<string>>(new Set(['debu_semen', 'kaca']));
+  const [postRenoLevel, setPostRenoLevel] = useState<string>('renovasi_sedang');
+  const [postRenoHasKitchen, setPostRenoHasKitchen] = useState(false);
   const [floor, setFloor] = useState<string>('1');
   const [hasLift, setHasLift] = useState(false);
   const [bedrooms, setBedrooms] = useState(1);
@@ -206,6 +229,24 @@ function NewBooking() {
   const [bathrooms, setBathrooms] = useState(1);
   const [facilities, setFacilities] = useState<Set<string>>(new Set(['Dapur', 'Ruang Tamu']));
   const [areaM2, setAreaM2] = useState(60);
+
+  const largeScaleOverLimit = isLargeScale && areaM2 > LARGE_SCALE_MAX_M2;
+  const largeScaleTargetTotal = useMemo(() => {
+    if (!isLargeScale) return 0;
+    const sumRate = LARGE_SCALE_TARGETS.filter((t) => largeScaleTargets.has(t.code)).reduce((s, t) => s + t.ratePerM2, 0);
+    return sumRate * areaM2 + bathrooms * LARGE_SCALE_BATHROOM_RATE;
+  }, [isLargeScale, largeScaleTargets, areaM2, bathrooms]);
+
+  const postRenoOverLimit = isPostReno && areaM2 > POST_RENO_MAX_M2;
+  const postRenoTotal = useMemo(() => {
+    if (!isPostReno) return 0;
+    const lvl = POST_RENO_LEVELS.find((l) => l.code === postRenoLevel)?.multiplier ?? 1;
+    const sumRate = POST_RENO_TARGETS.filter((t) => postRenoTargets.has(t.code)).reduce((s, t) => s + t.ratePerM2, 0);
+    const targetBase = Math.round(sumRate * areaM2 * lvl);
+    const bathroomTotal = bathrooms * POST_RENO_BATHROOM_RATE;
+    const kitchenTotal = postRenoHasKitchen ? POST_RENO_KITCHEN_FLAT : 0;
+    return targetBase + bathroomTotal + kitchenTotal;
+  }, [isPostReno, postRenoTargets, postRenoLevel, areaM2, bathrooms, postRenoHasKitchen]);
 
   const [dirtLevel, setDirtLevel] = useState<1 | 2 | 3>(1);
   const [photos, setPhotos] = useState<{ uri: string; size: number; url?: string }[]>([]);
@@ -387,12 +428,14 @@ function NewBooking() {
       : (pkg?.price ?? 0);
   const basePrice = applyCleanMode(rawPackagePrice, cleanMode, deepMultiplier);
   const deepSurcharge = cleanMode === 'deep' ? basePrice - rawPackagePrice : 0;
-  const dirtSurcharge = Math.round(basePrice * (dirtMultiplier - 1 + photoPenalty));
+  // Surcharge dihitung dari rawPackagePrice (BUKAN basePrice) supaya gak compound dengan Deep Clean multiplier.
+  const dirtSurcharge = Math.round(rawPackagePrice * (dirtMultiplier - 1 + photoPenalty));
 
-  // Penyesuaian luas: baseline 60 m², +5% per 20 m² ekstra, max +20%
-  const areaSteps = Math.min(4, Math.max(0, Math.floor((areaM2 - 60) / 20)));
-  const sizePctExtra = areaSteps * 0.05;
-  const sizeSurcharge = Math.round(basePrice * sizePctExtra);
+  // Penyesuaian luas: baseline 60 m², +5% per 20 m² ekstra, max +40% (8 step).
+  // Per-meter & large scale gak kena (udah area-based di rawPackagePrice).
+  const areaSteps = Math.min(8, Math.max(0, Math.floor((areaM2 - 60) / 20)));
+  const sizePctExtra = (isPerMeter || isLargeScale) ? 0 : areaSteps * 0.05;
+  const sizeSurcharge = Math.round(rawPackagePrice * sizePctExtra);
 
   // Lantai: pakai admin-configurable surcharges. Default: 1=0, 2=50k, 3=100k, >3=200k.
   const floorSurchargeFlat = (() => {
@@ -414,22 +457,24 @@ function NewBooking() {
   })();
   const noLiftPenalty = floorN >= 3 && !hasLift ? 0.05 : 0;
   // Floor surcharge: flat (dari admin config) + no-lift penalty (5% kalau lantai 3+ tanpa lift)
-  const floorSurcharge = floorSurchargeFlat + Math.round(basePrice * noLiftPenalty);
-  const furnitureSurcharge = Math.round(basePrice * (furnitureMultiplier - 1));
+  const floorSurcharge = floorSurchargeFlat + Math.round(rawPackagePrice * noLiftPenalty);
+  const furnitureSurcharge = Math.round(rawPackagePrice * (furnitureMultiplier - 1));
 
-  // Ruangan ekstra: kamar tidur ke-2+ +10% per kamar (max 4 ekstra), kamar mandi ke-2+ +5% per (max 3 ekstra)
+  // Ruangan ekstra: kamar tidur ke-2+ +10% per kamar (max 4), kamar mandi ke-2+ +5% per (max 3).
+  // Total room surcharge di-cap di +40% biar gak meledak gabung sama surcharge lain.
   const extraBedrooms = Math.min(4, Math.max(0, bedrooms - 1));
   const extraBathrooms = Math.min(3, Math.max(0, bathrooms - 1));
-  const roomPctExtra = extraBedrooms * 0.10 + extraBathrooms * 0.05;
-  const roomSurcharge = Math.round(basePrice * roomPctExtra);
+  const roomPctExtra = Math.min(0.40, extraBedrooms * 0.10 + extraBathrooms * 0.05);
+  const roomSurcharge = Math.round(rawPackagePrice * roomPctExtra);
 
-  // Tipe properti modifier
+  // Tipe properti modifier: komersial (Ruko/Kantor) paling tinggi krn area lebih kompleks,
+  // Villa medium, Apartemen ringan.
   const propertyMultiplier =
-    propertyType === 'Villa' ? 0.15 :
+    propertyType === 'Ruko' || propertyType === 'Kantor' ? 0.15 :
+    propertyType === 'Villa' ? 0.10 :
     propertyType === 'Apartemen' ? 0.05 :
-    propertyType === 'Ruko' || propertyType === 'Kantor' ? 0.10 :
     0;
-  const propertySurcharge = Math.round(basePrice * propertyMultiplier);
+  const propertySurcharge = Math.round(rawPackagePrice * propertyMultiplier);
 
   // Hewan peliharaan: +Rp 15k flat (extra time + risiko alergi/cleaner takut)
   const petSurcharge = hasPet ? 15000 : 0;
@@ -439,7 +484,11 @@ function NewBooking() {
     [selectedAddons],
   );
   // basePrice sudah include deepSurcharge (via applyCleanMode). Surcharge lain = additive di atasnya.
-  const subtotal = basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
+  const subtotal = isLargeScale
+    ? largeScaleTargetTotal + addonTotal
+    : isPostReno
+      ? postRenoTotal + addonTotal
+      : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherChecking, setVoucherChecking] = useState(false);
@@ -470,8 +519,26 @@ function NewBooking() {
   }
 
   function next() {
-    if (step === 1 && !pkg) {
+    if (step === 1 && !pkg && !isLargeScale && !isPostReno) {
       toast.error('Pilih paket dulu');
+      return;
+    }
+    if (step === 1 && isLargeScale && areaM2 < 50) {
+      toast.error('Masukin luas area minimal 50 m²');
+      return;
+    }
+    if (step === 1 && isPostReno && areaM2 < 20) {
+      toast.error('Masukin luas area minimal 20 m²');
+      return;
+    }
+    // Skala Besar / Pasca Renovasi over-limit wajib WA quote.
+    if (step === 1 && (largeScaleOverLimit || postRenoOverLimit)) {
+      router.push({ pathname: '/booking/wa-survey', params: { category: categoryCode } });
+      return;
+    }
+    if (step === 2 && !address.trim()) {
+      toast.error('Isi alamat dulu sebelum lanjut');
+      setAddressError('Alamat wajib diisi (pin di peta atau ketik manual)');
       return;
     }
     if (step < TOTAL_STEPS) {
@@ -492,7 +559,7 @@ function NewBooking() {
   }
 
   function submit() {
-    if (!pkg || !category) return;
+    if ((!pkg && !isLargeScale && !isPostReno) || !category) return;
     if (!address.trim()) {
       setAddressError('Alamat wajib diisi (pin di peta atau ketik manual)');
       toast.error('Alamat wajib diisi');
@@ -503,7 +570,11 @@ function NewBooking() {
   }
 
   async function doSubmit() {
-    if (!pkg || !category) return;
+    if ((!pkg && !isLargeScale && !isPostReno) || !category) return;
+    if (largeScaleOverLimit || postRenoOverLimit) {
+      router.replace({ pathname: '/booking/wa-survey', params: { category: categoryCode } });
+      return;
+    }
     let booking;
     try {
       booking = await create({
@@ -531,6 +602,10 @@ function NewBooking() {
         bathrooms,
         facilities: Array.from(facilities),
         areaM2,
+        largeScaleTargets: isLargeScale ? Array.from(largeScaleTargets) : undefined,
+        postRenoTargets: isPostReno ? Array.from(postRenoTargets) : undefined,
+        postRenoLevel: isPostReno ? postRenoLevel : undefined,
+        postRenoHasKitchen: isPostReno ? postRenoHasKitchen : undefined,
         dirtLevel,
         dirtCharacters: Array.from(dirtChars),
         floorType,
@@ -613,6 +688,15 @@ function NewBooking() {
           <Text className="font-semibold text-brand-600">Kembali</Text>
         </Pressable>
       </View>
+    );
+  }
+
+  if (shouldRedirect) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 items-center justify-center bg-ink-50" />
+      </>
     );
   }
 
@@ -796,7 +880,33 @@ function NewBooking() {
                 </>
               )}
 
-              {!isSimpleService && !isPerMeter && categoryPackages.length > 0 && (
+              {isPostReno && (
+                <Section title="Cakupan Layanan Bersih Pasca Renovasi">
+                  <Text className="font-medium mb-2 text-[11px] text-ink-600">
+                    Layanan basic yang kamu dapet (detail scope kamu pilih di step berikutnya):
+                  </Text>
+                  <View className="gap-1.5">
+                    {[
+                      'Sapu & buang debu konstruksi seluruh area',
+                      'Lap kaca, jendela, kusen & frame pintu',
+                      'Bersih sisa cat / plamir di lantai & permukaan',
+                      'Pel + poles lantai sampai bersih',
+                      'Lap saklar, stop kontak & AC outdoor',
+                      'Bersih sarang laba-laba & plafon',
+                      'Lap furniture, kabinet & rak built-in',
+                      'Bawa alat & cairan khusus pasca renovasi',
+                    ].map((it, i) => (
+                      <View key={i} className="flex-row items-start gap-2">
+                        <View className="mt-0.5 h-4 w-4 items-center justify-center rounded-full bg-success/15">
+                          <Check color="#10B981" size={11} strokeWidth={3} />
+                        </View>
+                        <Text className="font-medium flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Section>
+              )}
+              {!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length > 0 && (
                 <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
@@ -855,21 +965,114 @@ function NewBooking() {
               {!isSimpleService && !isPerMeter && <Section title="Properti">
                 <Label>Tipe Properti</Label>
                 <Dropdown
-                  options={PROPERTY_TYPES as readonly string[]}
+                  options={(isLargeScale ? LARGE_SCALE_PROPERTY_TYPES : isPostReno ? POST_RENO_PROPERTY_TYPES : PROPERTY_TYPES) as readonly string[]}
                   value={propertyType}
                   onChange={(v) => setPropertyType(v as PropertyType)}
                   placeholder="Pilih tipe properti"
                 />
-                <Label className="mt-3">Lantai / Tingkat</Label>
-                <Chips options={FLOOR_OPTIONS as readonly string[]} value={floor} onChange={setFloor} />
-                {(propertyType === 'Apartemen' || floor !== '1') && (
-                  <View className="mt-3">
-                    <ToggleRow label="Akses Lift" value={hasLift} onChange={setHasLift} />
-                  </View>
+                {isPostReno && (
+                  <>
+                    <Label className="mt-4">Tingkat Renovasi</Label>
+                    <View className="gap-1.5">
+                      {POST_RENO_LEVELS.map((lvl) => {
+                        const active = postRenoLevel === lvl.code;
+                        return (
+                          <Pressable
+                            key={lvl.code}
+                            onPress={() => setPostRenoLevel(lvl.code)}
+                            className={`rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                          >
+                            <View className="flex-row items-center justify-between">
+                              <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>{lvl.label}</Text>
+                              <Text className={`font-bold text-[11px] ${active ? 'text-brand-700' : 'text-ink-500'}`}>x{lvl.multiplier}</Text>
+                            </View>
+                            <Text className="font-medium mt-0.5 text-[11px] text-ink-500">{lvl.desc}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    <Label className="mt-4">Luas Area (m²)</Label>
+                    <Text className="font-sans -mt-1 mb-2 text-[11px] text-ink-500">
+                      Masukin luas total area yang dibersihin pasca renovasi.
+                    </Text>
+                    <View className="flex-row items-center rounded-xl border border-ink-200 bg-white">
+                      <Pressable onPress={() => setAreaM2(Math.max(0, areaM2 - 10))} className="h-12 w-12 items-center justify-center">
+                        <Minus color="#1D4ED8" size={20} strokeWidth={2.4} />
+                      </Pressable>
+                      <TextInput
+                        value={String(areaM2)}
+                        onChangeText={(v) => {
+                          const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
+                          setAreaM2(Number.isFinite(n) ? Math.min(10000, Math.max(0, n)) : 0);
+                        }}
+                        keyboardType="number-pad"
+                        placeholder="100"
+                        placeholderTextColor="#94A3B8"
+                        className="font-bold flex-1 py-3 text-center text-base text-ink-900"
+                      />
+                      <Pressable onPress={() => setAreaM2(Math.min(10000, areaM2 + 10))} className="h-12 w-12 items-center justify-center">
+                        <Plus color="#1D4ED8" size={20} strokeWidth={2.4} />
+                      </Pressable>
+                    </View>
+                    <Text className="font-sans mt-1.5 text-[10px] text-ink-500">Satuan m² · tombol +/- ubah 10 m²</Text>
+                    {postRenoOverLimit && (
+                      <View className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                        <Text className="font-bold text-xs text-amber-900">Luas {'>'} 300 m² - perlu survei</Text>
+                        <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                          Pasca renovasi area besar bervariasi tingkat puing-nya. Tim kami survei dulu.
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+                {isLargeScale && (
+                  <>
+                    <Label className="mt-4">Luas Area (m²)</Label>
+                    <Text className="font-sans -mt-1 mb-2 text-[11px] text-ink-500">
+                      Masukin perkiraan luas total yang mau dibersihin. Tim kami akan konfirmasi ulang setelah survei.
+                    </Text>
+                    <View className="flex-row items-center rounded-xl border border-ink-200 bg-white">
+                      <Pressable
+                        onPress={() => setAreaM2(Math.max(0, areaM2 - 50))}
+                        className="h-12 w-12 items-center justify-center"
+                      >
+                        <Minus color="#1D4ED8" size={20} strokeWidth={2.4} />
+                      </Pressable>
+                      <TextInput
+                        value={String(areaM2)}
+                        onChangeText={(v) => {
+                          const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
+                          setAreaM2(Number.isFinite(n) ? Math.min(50000, Math.max(0, n)) : 0);
+                        }}
+                        keyboardType="number-pad"
+                        placeholder="1500"
+                        placeholderTextColor="#94A3B8"
+                        className="font-bold flex-1 py-3 text-center text-base text-ink-900"
+                      />
+                      <Pressable
+                        onPress={() => setAreaM2(Math.min(50000, areaM2 + 50))}
+                        className="h-12 w-12 items-center justify-center"
+                      >
+                        <Plus color="#1D4ED8" size={20} strokeWidth={2.4} />
+                      </Pressable>
+                    </View>
+                    <Text className="font-sans mt-1.5 text-[10px] text-ink-500">Satuan m² · tombol +/- ubah 50 m²</Text>
+                  </>
+                )}
+                {!isLargeScale && !isPostReno && (
+                  <>
+                    <Label className="mt-3">Lantai / Tingkat</Label>
+                    <Chips options={FLOOR_OPTIONS as readonly string[]} value={floor} onChange={setFloor} />
+                    {(propertyType === 'Apartemen' || floor !== '1') && (
+                      <View className="mt-3">
+                        <ToggleRow label="Akses Lift" value={hasLift} onChange={setHasLift} />
+                      </View>
+                    )}
+                  </>
                 )}
               </Section>}
 
-              {!isSimpleService && !isPerMeter && <Section title="Ruangan">
+              {!isSimpleService && !isPerMeter && !isLargeScale && !isPostReno && <Section title="Ruangan">
                 <View className="flex-row items-center justify-between">
                   <Label className="mb-0">Kamar Tidur</Label>
                   <Stepper value={bedrooms} onChange={setBedrooms} min={0} max={10} />
@@ -918,7 +1121,7 @@ function NewBooking() {
                 </View>
               </Section>}
 
-              {!isSimpleService && !isPerMeter && <Section title="Perkiraan Luas">
+              {!isSimpleService && !isPerMeter && !isLargeScale && !isPostReno && <Section title="Perkiraan Luas">
                 <Text className="font-sans -mt-1 mb-3 text-[11px] text-ink-500">
                   Pilih kira-kira ukuran area yang akan dibersihkan. Kalau ragu, lihat contoh di bawah.
                 </Text>
@@ -989,6 +1192,67 @@ function NewBooking() {
 
           {step === 2 && (
             <>
+              {isPostReno && (
+                <Section title="Scope Pasca Renovasi">
+                  {postRenoOverLimit && (
+                    <View className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                      <Text className="font-bold text-xs text-amber-900">Luas {'>'} 300 m² - perlu survei</Text>
+                      <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                        Tombol "Lanjut" otomatis arahin ke Chat WA untuk Quote.
+                      </Text>
+                    </View>
+                  )}
+                  <View className="flex-row items-center justify-between">
+                    <Label className="mb-0">Jumlah Kamar Mandi</Label>
+                    <Stepper value={bathrooms} onChange={setBathrooms} min={0} max={20} />
+                  </View>
+                  {!postRenoOverLimit && bathrooms > 0 && (
+                    <Text className="font-medium mt-1 text-[10px] text-ink-500">
+                      {bathrooms} x {formatRupiah(POST_RENO_BATHROOM_RATE)} = {formatRupiah(bathrooms * POST_RENO_BATHROOM_RATE)}
+                    </Text>
+                  )}
+                  <View className="mt-4">
+                    <ToggleRow label={`Bersih Dapur Pasca Renovasi (+${formatRupiah(POST_RENO_KITCHEN_FLAT)})`} value={postRenoHasKitchen} onChange={setPostRenoHasKitchen} />
+                  </View>
+                  <Label className="mt-4">Scope Pembersihan (pilih beberapa)</Label>
+                  <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
+                    {postRenoOverLimit
+                      ? 'Centang scope - harga final dari survei.'
+                      : `Harga = rate x luas (${areaM2} m²) x multiplier tingkat renovasi.`}
+                  </Text>
+                  <View className="gap-1.5">
+                    {POST_RENO_TARGETS.map((t) => {
+                      const active = postRenoTargets.has(t.code);
+                      const lvl = POST_RENO_LEVELS.find((l) => l.code === postRenoLevel)?.multiplier ?? 1;
+                      const lineTotal = Math.round(t.ratePerM2 * areaM2 * lvl);
+                      return (
+                        <Pressable
+                          key={t.code}
+                          onPress={() => setPostRenoTargets(toggleSet(postRenoTargets, t.code))}
+                          className={`rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                        >
+                          <View className="flex-row items-center gap-3">
+                            <View className={`h-5 w-5 items-center justify-center rounded border-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'}`}>
+                              {active && <Check color="white" size={13} strokeWidth={3} />}
+                            </View>
+                            <View className="flex-1">
+                              <Text className={`font-semibold text-sm ${active ? 'text-brand-700' : 'text-ink-800'}`}>{t.label}</Text>
+                              <Text className="font-sans mt-0.5 text-[10px] text-ink-500">{t.desc}</Text>
+                            </View>
+                            <View className="items-end">
+                              <Text className={`font-bold text-[11px] ${active ? 'text-brand-700' : 'text-ink-700'}`}>{formatRupiah(t.ratePerM2)}/m²</Text>
+                              {active && !postRenoOverLimit && (
+                                <Text className="font-medium text-[10px] text-brand-600">{formatRupiah(lineTotal)}</Text>
+                              )}
+                            </View>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </Section>
+              )}
+              {!isPostReno && (
               <Section title="Tingkat Kotor">
                 <View className="flex-row gap-1.5">
                   {DIRT_LEVELS.map((d) => {
@@ -1076,8 +1340,82 @@ function NewBooking() {
                   })}
                 </View>
               </Section>
+              )}
 
-              <Section title="Kondisi Ruangan">
+              {isLargeScale && (
+                <Section title="Detail Skala Besar">
+                  {largeScaleOverLimit && (
+                    <View className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                      <Text className="font-bold text-xs text-amber-900">Luas {'>'} 500 m² - perlu survei langsung</Text>
+                      <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                        Estimasi otomatis di-skip. Tombol "Lanjut" otomatis arahin ke Chat WA untuk Quote - tim kami hitung berdasarkan survei.
+                      </Text>
+                      <Pressable
+                        onPress={() => router.push({ pathname: '/booking/wa-survey', params: { category: categoryCode } })}
+                        className="mt-3 self-start rounded-full bg-amber-600 px-4 py-2"
+                      >
+                        <Text className="font-bold text-xs text-white">Chat WA Sekarang</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                  <View className="flex-row items-center justify-between">
+                    <Label className="mb-0">Jumlah Kamar Mandi / Toilet</Label>
+                    <Stepper value={bathrooms} onChange={setBathrooms} min={0} max={50} />
+                  </View>
+                  {!largeScaleOverLimit && bathrooms > 0 && (
+                    <Text className="font-medium mt-1 text-[10px] text-ink-500">
+                      {bathrooms} x {formatRupiah(LARGE_SCALE_BATHROOM_RATE)} = {formatRupiah(bathrooms * LARGE_SCALE_BATHROOM_RATE)}
+                    </Text>
+                  )}
+                  <Label className="mt-4">Apa Yang Mau Dibersihin (pilih beberapa)</Label>
+                  <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
+                    {largeScaleOverLimit
+                      ? 'Centang scope - harga final dari hasil survei.'
+                      : `Centang area yg masuk scope. Harga = rate per m² x luas (${areaM2} m²).`}
+                  </Text>
+                  <View className="gap-1.5">
+                    {LARGE_SCALE_TARGETS.map((t) => {
+                      const active = largeScaleTargets.has(t.code);
+                      const lineTotal = t.ratePerM2 * areaM2;
+                      return (
+                        <Pressable
+                          key={t.code}
+                          onPress={() => setLargeScaleTargets(toggleSet(largeScaleTargets, t.code))}
+                          className={`rounded-xl border px-3 py-2.5 ${
+                            active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
+                          }`}
+                        >
+                          <View className="flex-row items-center gap-3">
+                            <View
+                              className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                                active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                              }`}
+                            >
+                              {active && <Check color="white" size={13} strokeWidth={3} />}
+                            </View>
+                            <View className="flex-1">
+                              <Text className={`font-semibold text-sm ${active ? 'text-brand-700' : 'text-ink-800'}`}>
+                                {t.label}
+                              </Text>
+                              <Text className="font-sans mt-0.5 text-[10px] text-ink-500">{t.desc}</Text>
+                            </View>
+                            <View className="items-end">
+                              <Text className={`font-bold text-[11px] ${active ? 'text-brand-700' : 'text-ink-700'}`}>
+                                {formatRupiah(t.ratePerM2)}/m²
+                              </Text>
+                              {active && !largeScaleOverLimit && (
+                                <Text className="font-medium text-[10px] text-brand-600">{formatRupiah(lineTotal)}</Text>
+                              )}
+                            </View>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </Section>
+              )}
+
+              {!isLargeScale && !isPerMeter && !isPostReno && <Section title="Kondisi Ruangan">
                 <Label>Jenis Lantai</Label>
                 <Dropdown
                   options={FLOOR_TYPES as readonly string[]}
@@ -1138,7 +1476,7 @@ function NewBooking() {
                     className="font-sans mt-2 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm"
                   />
                 )}
-              </Section>
+              </Section>}
 
               <Section title="Add-on (Opsional)">
                 <View className="gap-2">
@@ -1470,7 +1808,7 @@ function NewBooking() {
                 </Text>
               </Pressable>
             )}
-            {pkg && (
+            {(pkg || isLargeScale || isPostReno) && !(((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1) && (
               <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-3">
                 <View className="flex-1 pr-2">
                   <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
@@ -1495,9 +1833,9 @@ function NewBooking() {
                   {step === 1 ? 'Batal' : 'Kembali'}
                 </Text>
               </Pressable>
-              {(areaM2 >= 200 || workers > 1) && step === 1 ? (
+              {((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1 ? (
                 <Pressable
-                  onPress={() => router.push('/booking/wa-survey')}
+                  onPress={() => router.push({ pathname: '/booking/wa-survey', params: { category: categoryCode } })}
                   className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-success"
                 >
                   <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />

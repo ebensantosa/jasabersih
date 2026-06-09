@@ -36,6 +36,8 @@ export type ServiceCategory = {
   showOnHome?: boolean;
   /** True = tampil di section "Paket Lengkap" (combo/bundle), bukan grid Home reguler. */
   isBundle?: boolean;
+  /** False = lagi maintenance / tidak tersedia. Mobile tampil grey + blok CTA. Default true. */
+  isActive?: boolean;
 };
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
@@ -116,7 +118,7 @@ export type AddOnItem = {
 
 export const ADDONS: AddOnItem[] = [
   // Vacuum Lantai
-  { code: 'vacuum_mop_lantai',  name: 'Vacuum & Mop Lantai',      price: 120_000, durationMin: 90, unit: '/ruangan', icon: Sparkles,  group: 'Vakum Kasur' },
+  { code: 'vacuum_mop_lantai',  name: 'Vacuum & Mop Lantai',      price: 65_000,  durationMin: 45, unit: '/ruangan', icon: Sparkles,  group: 'Vakum Kasur' },
 
   // Vakum Kasur
   { code: 'vakum_kasur_single', name: 'Vakum Kasur Single Bed',   price: 45_000,  durationMin: 20, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
@@ -169,6 +171,57 @@ export const ADDONS: AddOnItem[] = [
 // ============ FORM OPTIONS ============
 export const PROPERTY_TYPES = ['Kos', 'Apartemen', 'Rumah', 'Ruko', 'Kantor', 'Villa', 'Guest House'] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
+
+// Skala Besar: properti komersial / skala besar
+export const LARGE_SCALE_PROPERTY_TYPES = ['Mall', 'Pabrik', 'Hotel', 'Sekolah', 'Gudang', 'Kantor', 'Ruko', 'Restoran', 'Rumah Sakit', 'Lainnya'] as const;
+export type LargeScalePropertyType = (typeof LARGE_SCALE_PROPERTY_TYPES)[number];
+
+// Area / item yg dibersihkan untuk skala besar (rate per m² × luas area)
+export const LARGE_SCALE_TARGETS: { code: string; label: string; ratePerM2: number; desc: string }[] = [
+  { code: 'lantai',         label: 'Lantai / area utama',      ratePerM2: 5500, desc: 'Sweep, mop, vacuum lantai keseluruhan' },
+  { code: 'lantai_marmer',  label: 'Lantai marmer / granit',   ratePerM2: 7500, desc: 'Polish + kristalisasi lantai marmer' },
+  { code: 'karpet',         label: 'Karpet / vinyl',           ratePerM2: 5500, desc: 'Vacuum + shampoo karpet, deep clean' },
+  { code: 'atap',           label: 'Atap / genteng',           ratePerM2: 8000, desc: 'Bersihin atap dari debu, lumut, daun' },
+  { code: 'plafon',         label: 'Plafon / langit-langit',   ratePerM2: 6500, desc: 'Sapu sarang laba-laba, lap plafon' },
+  { code: 'dinding_dalam',  label: 'Dinding dalam',            ratePerM2: 5000, desc: 'Lap dinding interior, hilangin debu & noda' },
+  { code: 'dinding',        label: 'Dinding luar / fasad',     ratePerM2: 7000, desc: 'Cuci dinding luar (kotor air hujan, lumut)' },
+  { code: 'kaca',           label: 'Jendela / kaca',           ratePerM2: 5500, desc: 'Lap kaca dalam + luar' },
+  { code: 'kaca_tinggi',    label: 'Kaca tinggi / gondola',    ratePerM2: 12000, desc: 'Kaca gedung tinggi pakai rope access / gondola' },
+  { code: 'parkir',         label: 'Area parkir',              ratePerM2: 3500, desc: 'Sapu, semprot area parkir / drop-off' },
+  { code: 'tangga',         label: 'Tangga / koridor',         ratePerM2: 4000, desc: 'Mop tangga, pegangan & koridor' },
+  { code: 'lift',           label: 'Area lift / lobby',        ratePerM2: 5500, desc: 'Lap dinding lift, lantai lobby' },
+  { code: 'taman',          label: 'Taman / halaman',          ratePerM2: 3000, desc: 'Sapu daun, bersihin halaman terbuka' },
+  { code: 'kolam',          label: 'Kolam / fountain',         ratePerM2: 9000, desc: 'Drain, sikat, refill kolam' },
+  { code: 'dapur_komersial',label: 'Dapur komersial',          ratePerM2: 8500, desc: 'Degreasing dapur, hood, lantai berminyak' },
+  { code: 'gudang',         label: 'Gudang / warehouse',       ratePerM2: 3500, desc: 'Sapu lantai gudang, rak, area logistik' },
+  { code: 'furniture',      label: 'Furniture / sofa kantor',  ratePerM2: 4000, desc: 'Vacuum + shampoo sofa, kursi kerja' },
+  { code: 'sampah',         label: 'Pembersihan post-event',   ratePerM2: 3500, desc: 'Angkut sampah, sapu sisa acara' },
+  { code: 'kaca_dalam',     label: 'Partisi kaca / sekat',     ratePerM2: 4500, desc: 'Lap partisi kaca kantor, ruang meeting' },
+];
+export const LARGE_SCALE_BATHROOM_RATE = 75_000;
+export const LARGE_SCALE_MAX_M2 = 500;
+
+// Pasca Renovasi: scope spesial (debu konstruksi, sisa cat, puing, kaca)
+export const POST_RENO_PROPERTY_TYPES = ['Rumah', 'Apartemen', 'Ruko', 'Kantor', 'Villa', 'Lainnya'] as const;
+export const POST_RENO_LEVELS: { code: string; label: string; desc: string; multiplier: number }[] = [
+  { code: 'cat_ulang', label: 'Cat Ulang / Minor', desc: 'Repaint dinding, debu cat ringan, minim puing', multiplier: 1.0 },
+  { code: 'renovasi_sedang', label: 'Renovasi Sedang', desc: 'Ada bongkar partisi, debu semen sedang, sisa material', multiplier: 1.3 },
+  { code: 'renovasi_total', label: 'Renovasi Total', desc: 'Bongkar besar, debu semen tebal, banyak puing & sisa cat', multiplier: 1.6 },
+];
+export const POST_RENO_TARGETS: { code: string; label: string; ratePerM2: number; desc: string }[] = [
+  { code: 'debu_semen',  label: 'Sapu & buang debu semen',  ratePerM2: 8000, desc: 'Debu konstruksi dari lantai, sudut, sela' },
+  { code: 'sisa_cat',    label: 'Bersih sisa cat / plamir',  ratePerM2: 6500, desc: 'Cat menempel di lantai, kaca, kusen' },
+  { code: 'kaca',        label: 'Lap kaca & jendela',        ratePerM2: 5500, desc: 'Kaca berdebu / ada residu cat' },
+  { code: 'kusen',       label: 'Lap kusen & frame pintu',   ratePerM2: 4500, desc: 'Kusen pintu/jendela penuh debu konstruksi' },
+  { code: 'plafon',      label: 'Lap plafon & langit-langit', ratePerM2: 6000, desc: 'Sarang laba-laba + debu pasca cat' },
+  { code: 'lantai_poles',label: 'Pel + poles lantai',         ratePerM2: 5000, desc: 'Pel deep clean, poles bila marmer' },
+  { code: 'furniture',   label: 'Lap furniture & kabinet',    ratePerM2: 4500, desc: 'Lemari, meja, kabinet built-in' },
+  { code: 'puing',       label: 'Angkut puing kecil',         ratePerM2: 4000, desc: 'Sisa kayu, kardus, potongan kecil' },
+  { code: 'saklar',      label: 'Bersih saklar & stop kontak', ratePerM2: 2000, desc: 'Saklar, stop kontak, AC outdoor' },
+];
+export const POST_RENO_BATHROOM_RATE = 100_000;  // bersih kamar mandi pasca reno
+export const POST_RENO_KITCHEN_FLAT = 150_000;   // dapur pasca reno (degrease)
+export const POST_RENO_MAX_M2 = 300;
 
 export const FLOOR_OPTIONS = ['1', '2', '3', '>3'] as const;
 export type FloorOption = (typeof FLOOR_OPTIONS)[number];

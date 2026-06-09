@@ -97,7 +97,7 @@ export default function ServicesPage() {
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-              <tr><th className="px-4 py-2">Icon</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Jenis</th><th className="px-4 py-2">Home</th><th className="px-4 py-2">Sort</th><th className="px-4 py-2 text-right">Aksi</th></tr>
+              <tr><th className="px-4 py-2">Icon</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Jenis</th><th className="px-4 py-2">Home</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Sort</th><th className="px-4 py-2 text-right">Aksi</th></tr>
             </thead>
             <tbody>
               {list.map((s) => (
@@ -111,6 +111,7 @@ export default function ServicesPage() {
                   <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
                   <td className="px-4 py-2">{s.isBundle ? <Badge variant="amber">🎁 Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
                   <td className="px-4 py-2"><Badge variant={s.showOnHome ? 'green' : 'red'}>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
+                  <td className="px-4 py-2"><Badge variant={s.isActive ? 'green' : 'red'}>{s.isActive ? '🟢 Aktif' : '🔴 Off'}</Badge></td>
                   <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
@@ -118,7 +119,7 @@ export default function ServicesPage() {
                   </td>
                 </tr>
               ))}
-              {list.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada layanan.</td></tr>}
+              {list.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada layanan.</td></tr>}
             </tbody>
           </table>
         )}
@@ -139,6 +140,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     coverImageUrl: service?.coverImageUrl ?? '',
     showOnHome: service?.showOnHome ?? true,
     isBundle: service?.isBundle ?? false,
+    isActive: service?.isActive ?? true,
     displayOrder: service?.displayOrder ?? 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -228,6 +230,11 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
             checked={form.showOnHome}
             onChange={(v) => setForm({ ...form, showOnHome: v })}
             label={form.showOnHome ? '✅ Tampil di Home' : '🙈 Disembunyikan dari Home'}
+          />
+          <Switch
+            checked={form.isActive}
+            onChange={(v) => setForm({ ...form, isActive: v })}
+            label={form.isActive ? '🟢 Layanan Aktif - bisa dipesan customer' : '🔴 Tidak Tersedia - tampil grey di mobile, gak bisa dipesan (cocok buat maintenance)'}
           />
           <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan (1 paling kiri/atas)." />
         </section>

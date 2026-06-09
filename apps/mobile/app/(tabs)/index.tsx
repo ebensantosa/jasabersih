@@ -255,19 +255,22 @@ export default function Home() {
         <View className="mx-4 mt-2 rounded-2xl bg-white px-2 py-4" style={{ elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
           <View className="flex-row flex-wrap">
             {SERVICE_CATEGORIES.map((s) => {
-              const isKonsul = s.code === 'konsultasi' || s.code === 'skala_besar';
+              const isKonsul = s.code === 'konsultasi';
+              const isDisabled = s.isActive === false;
               return (
                 <Pressable
                   key={s.code}
+                  disabled={isDisabled}
                   onPress={() =>
                     isKonsul
                       ? router.push('/services/konsultasi')
                       : router.push(`/services/${s.code}`)
                   }
                   className="w-1/4 items-center px-1 py-3"
+                  style={isDisabled ? { opacity: 0.5 } : undefined}
                 >
                   <View
-                    style={{ backgroundColor: isKonsul ? '#D1FAE5' : s.iconBg }}
+                    style={{ backgroundColor: isDisabled ? '#E2E8F0' : isKonsul ? '#D1FAE5' : s.iconBg }}
                     className="h-14 w-14 items-center justify-center rounded-2xl"
                   >
                     {isKonsul ? (
@@ -275,15 +278,18 @@ export default function Home() {
                     ) : s.customIconUrl ? (
                       <Image source={{ uri: s.customIconUrl }} style={{ width: 26, height: 26 }} contentFit="contain" />
                     ) : (
-                      <s.icon color={s.iconColor} size={22} strokeWidth={2} />
+                      <s.icon color={isDisabled ? '#94A3B8' : s.iconColor} size={22} strokeWidth={2} />
                     )}
                   </View>
                   <Text
-                    className="font-medium mt-1.5 text-center text-[10px] leading-tight text-ink-700"
+                    className={`font-medium mt-1.5 text-center text-[10px] leading-tight ${isDisabled ? 'text-ink-400' : 'text-ink-700'}`}
                     numberOfLines={2}
                   >
                     {isKonsul ? 'Konsultasi WA' : s.name}
                   </Text>
+                  {isDisabled && (
+                    <Text className="font-semibold mt-0.5 text-[9px] text-ink-400">Tidak Tersedia</Text>
+                  )}
                 </Pressable>
               );
             })}
@@ -325,9 +331,12 @@ export default function Home() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-3 px-4">
-                {BUNDLE_SERVICES.map((s, idx) => (
+                {BUNDLE_SERVICES.map((s, idx) => {
+                  const isDisabled = s.isActive === false;
+                  return (
                   <Pressable
                     key={s.code}
+                    disabled={isDisabled}
                     onPress={() => router.push(`/services/${s.code}`)}
                     style={{
                       width: 220,
@@ -336,6 +345,7 @@ export default function Home() {
                       shadowOpacity: 0.12,
                       shadowRadius: 10,
                       shadowOffset: { width: 0, height: 4 },
+                      opacity: isDisabled ? 0.5 : 1,
                     }}
                     className="overflow-hidden rounded-2xl bg-white"
                   >
@@ -383,13 +393,14 @@ export default function Home() {
                             {s.startingPrice > 0 ? formatRupiah(s.startingPrice) : 'WA Survey'}
                           </Text>
                         </View>
-                        <View className="rounded-full bg-brand-50 px-2 py-1">
-                          <Text className="font-bold text-[10px] text-brand-700">Pesan ›</Text>
+                        <View className={`rounded-full px-2 py-1 ${isDisabled ? 'bg-ink-200' : 'bg-brand-50'}`}>
+                          <Text className={`font-bold text-[10px] ${isDisabled ? 'text-ink-500' : 'text-brand-700'}`}>{isDisabled ? 'Tidak Tersedia' : 'Pesan ›'}</Text>
                         </View>
                       </View>
                     </View>
                   </Pressable>
-                ))}
+                  );
+                })}
               </View>
             </ScrollView>
           </View>

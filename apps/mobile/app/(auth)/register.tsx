@@ -270,16 +270,12 @@ export default function Register() {
             </Text>
           </Pressable>
 
-          {/* Toggle ke mode lain */}
           <Pressable
             onPress={() => router.replace({ pathname: '/(auth)/register', params: { mode: isFreelancer ? 'customer' : 'freelancer' } })}
             className="mt-3 items-center"
           >
-            <Text className="font-sans text-center text-xs text-ink-400">
-              {isFreelancer ? 'Mau pakai sebagai customer?' : 'Mau jadi mitra cleaner?'}{' '}
-              <Text className={`font-semibold ${theme.linkAccent}`}>
-                {isFreelancer ? 'Daftar sebagai Customer' : 'Daftar sebagai Cleaner'}
-              </Text>
+            <Text className={`font-semibold text-center text-xs ${theme.linkAccent}`}>
+              {isFreelancer ? 'Daftar sebagai Customer' : 'Daftar sebagai Cleaner'}
             </Text>
           </Pressable>
         </View>
