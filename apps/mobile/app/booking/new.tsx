@@ -163,10 +163,11 @@ function NewBooking() {
 
   // Layanan satuan (per-ruangan) - sembunyikan Properti, Ruangan, Fasilitas Lain.
   // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
-  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'ruangan_kosong', 'garasi', 'pekarangan'];
+  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'ruangan_kosong', 'garasi', 'pekarangan', 'vacuum_lantai'];
   const PER_METER_CODES = ['ruko', 'kantor', 'apartemen'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
   const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
+  const isVacuum = category?.code === 'vacuum_lantai';
 
   // Per-meter rates (config-driven)
   const rateRuko      = Number(useConfig('pricing.per_meter_ruko' as any, 6000 as any)) || 6000;
@@ -201,10 +202,11 @@ function NewBooking() {
   // Kalau user uncheck, jangan auto-aktif lagi (useRef guard).
   const deepDefaultedRef = useRef(false);
   useEffect(() => {
-    if (isSimpleService && !deepDefaultedRef.current) {
+    if (isSimpleService && !isVacuum && !deepDefaultedRef.current) {
       setCleaningMode('deep');
       deepDefaultedRef.current = true;
     }
+    if (isVacuum) setCleaningMode('general');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category?.code]);
 
@@ -1310,11 +1312,11 @@ function NewBooking() {
                   JPG / PNG / WEBP · auto compress {`<5MB`}
                 </Text>
 
-                <Label className="mt-4">Jenis Kotoran (pilih beberapa)</Label>
-                <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
+                {!isVacuum && <Label className="mt-4">Jenis Kotoran (pilih beberapa)</Label>}
+                {!isVacuum && <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
                   Pilih semua yang sesuai biar cleaner siap bawa alat & cairan yang tepat.
-                </Text>
-                <View className="gap-1.5">
+                </Text>}
+                {!isVacuum && <View className="gap-1.5">
                   {DIRT_CHARACTERS.map((c) => {
                     const active = dirtChars.has(c);
                     return (
@@ -1338,7 +1340,7 @@ function NewBooking() {
                       </Pressable>
                     );
                   })}
-                </View>
+                </View>}
               </Section>
               )}
 
@@ -1415,7 +1417,7 @@ function NewBooking() {
                 </Section>
               )}
 
-              {!isLargeScale && !isPerMeter && !isPostReno && <Section title="Kondisi Ruangan">
+              {!isLargeScale && !isPerMeter && !isPostReno && !isVacuum && <Section title="Kondisi Ruangan">
                 <Label>Jenis Lantai</Label>
                 <Dropdown
                   options={FLOOR_TYPES as readonly string[]}
