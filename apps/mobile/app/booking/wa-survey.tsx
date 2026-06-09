@@ -176,7 +176,7 @@ export default function WaSurvey() {
               {[
                 '1. Kamu submit form ini',
                 '2. CS hubungi WA (SLA 30 menit jam kerja)',
-                '3. Diskusi kebutuhan & survey on-site (gratis kalau order > Rp 500K)',
+                '3. Diskusi kebutuhan & survey on-site',
                 '4. CS kirim quote ke app, kamu approve & bayar',
                 '5. Cleaner di-assign, flow normal',
               ].map((it) => (

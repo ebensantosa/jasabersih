@@ -142,8 +142,10 @@ function NewBooking() {
   }, [apiAddons]);
 
   const categoryPackages = PACKAGES.filter((p) => p.categoryCode === category?.code);
+  // Initial pkg HARUS dari kategori yang sama. Jangan fallback ke PACKAGES[0] krn bikin pkg dari kategori lain "bocor"
+  // (mis. subscription kosong → kebawa vacuum_lantai).
   const initialPackage =
-    PACKAGES.find((p) => p.id === packageId) ?? categoryPackages[0] ?? PACKAGES[0];
+    PACKAGES.find((p) => p.id === packageId && p.categoryCode === category?.code) ?? categoryPackages[0];
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [useCredit, setUseCredit] = useState(false);
@@ -927,6 +929,13 @@ function NewBooking() {
                         <Text className="font-medium flex-1 text-[12px] leading-5 text-ink-800">{it}</Text>
                       </View>
                     ))}
+                  </View>
+                </Section>
+              )}
+              {(!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length === 0) && (
+                <Section title={`Cakupan Layanan ${category?.name ?? ''}`}>
+                  <View className="items-center py-6">
+                    <Text className="font-medium text-[12px] text-ink-500">Memuat paket layanan...</Text>
                   </View>
                 </Section>
               )}
