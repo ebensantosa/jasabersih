@@ -20,6 +20,7 @@ type BankAccount = {
   verifiedAt: string | null;
 };
 
+// Kode bank pakai Flip standard (lowercase). Lihat: https://docs.flip.id/#operation/getbankinfo
 const BANKS = [
   { code: 'bca', label: 'BCA' },
   { code: 'mandiri', label: 'Mandiri' },
@@ -29,6 +30,36 @@ const BANKS = [
   { code: 'permata', label: 'Permata' },
   { code: 'bsi', label: 'BSI' },
   { code: 'danamon', label: 'Danamon' },
+  { code: 'mega', label: 'Mega' },
+  { code: 'panin', label: 'Panin' },
+  { code: 'ocbc', label: 'OCBC NISP' },
+  { code: 'uob', label: 'UOB' },
+  { code: 'maybank', label: 'Maybank' },
+  { code: 'btn', label: 'BTN' },
+  { code: 'btpn', label: 'BTPN' },
+  { code: 'bca_syr', label: 'BCA Syariah' },
+  { code: 'muamalat', label: 'Muamalat' },
+  { code: 'sinarmas', label: 'Sinarmas' },
+  { code: 'bukopin', label: 'Bukopin' },
+  { code: 'dki', label: 'Bank DKI' },
+  { code: 'jago', label: 'Jago' },
+  { code: 'jenius', label: 'Jenius (BTPN)' },
+  { code: 'seabank', label: 'SeaBank' },
+  { code: 'neo', label: 'Neo Commerce' },
+  { code: 'allo', label: 'Allo Bank' },
+  { code: 'blu', label: 'Blu (BCA Digital)' },
+  { code: 'mestika', label: 'Mestika' },
+  { code: 'jatim', label: 'Bank Jatim' },
+  { code: 'jateng', label: 'Bank Jateng' },
+  { code: 'jabar', label: 'BJB' },
+  { code: 'sumut', label: 'Bank Sumut' },
+  { code: 'kalbar', label: 'Bank Kalbar' },
+  { code: 'sulselbar', label: 'Bank Sulselbar' },
+  { code: 'gopay', label: 'GoPay' },
+  { code: 'ovo', label: 'OVO' },
+  { code: 'dana', label: 'DANA' },
+  { code: 'shopeepay', label: 'ShopeePay' },
+  { code: 'linkaja', label: 'LinkAja' },
 ];
 
 function CleanerBankAccounts() {

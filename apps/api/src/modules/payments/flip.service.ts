@@ -8,6 +8,7 @@ import { PrismaService } from '../../common/prisma.service';
 //   Verify by string-comparing token to the configured validation_token.
 type Creds = {
   baseUrl: string;
+  disbursementBaseUrl: string;
   secretKey: string;
   validationToken: string;
   enabled: boolean;
@@ -57,12 +58,18 @@ export class FlipService {
     const map = new Map<string, unknown>();
     for (const r of rows) map.set(r.key, r.value);
     const isProd = Boolean(map.get('payment.flip_is_production'));
+    // Flip Accept Payment (PWF bills) = v3, Disbursement (bank inquiry + transfer) = v2.
+    // Sandbox semua endpoint pakai big_sandbox_api/v2.
     const baseUrl = isProd
       ? 'https://bigflip.id/api/v3'
+      : 'https://bigflip.id/big_sandbox_api/v2';
+    const disbursementBaseUrl = isProd
+      ? 'https://bigflip.id/api/v2'
       : 'https://bigflip.id/big_sandbox_api/v2';
     const secretKey = String(map.get('payment.flip_secret_key') ?? '');
     const creds: Creds = {
       baseUrl,
+      disbursementBaseUrl,
       secretKey,
       validationToken: String(map.get('payment.flip_validation_token') ?? ''),
       enabled: Boolean(map.get('payment.flip_enabled')),
@@ -232,7 +239,7 @@ export class FlipService {
     form.set('account_number', input.accountNumber);
     form.set('bank_code', input.bankCode.toLowerCase());
     form.set('inquiry_key', `INQ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-    const res = await fetch(`${c.baseUrl}/disbursement/bank-account-inquiry`, {
+    const res = await fetch(`${c.disbursementBaseUrl}/disbursement/bank-account-inquiry`, {
       method: 'POST',
       headers: {
         Authorization: this.authHeader(c.secretKey),
@@ -267,7 +274,7 @@ export class FlipService {
     form.set('amount', String(input.amount));
     form.set('remark', input.remark ?? 'JasaBersih withdrawal');
     form.set('recipient_city', '391'); // default Jakarta; Flip akan validate
-    const res = await fetch(`${c.baseUrl}/disbursement`, {
+    const res = await fetch(`${c.disbursementBaseUrl}/disbursement`, {
       method: 'POST',
       headers: {
         Authorization: this.authHeader(c.secretKey),
