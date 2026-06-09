@@ -832,6 +832,13 @@ function NewBooking() {
                 </Section>
               )}
 
+              {isSimpleService && !pkg && (
+                <Section title={`Detail Layanan · ${category?.name ?? ''}`}>
+                  <View className="items-center py-6">
+                    <Text className="font-medium text-[12px] text-ink-500">Memuat detail layanan...</Text>
+                  </View>
+                </Section>
+              )}
               {isSimpleService && pkg && (
                 <>
                   {/* Kamar mandi: pilih ukuran (kalau ada) */}
@@ -1846,9 +1853,13 @@ function NewBooking() {
                   </Text>
                 </Pressable>
               ) : (
-                <Pressable onPress={next} className="h-12 flex-1 items-center justify-center rounded-2xl bg-brand-600">
+                <Pressable
+                  onPress={next}
+                  disabled={step === 1 && !pkg && !isLargeScale && !isPostReno}
+                  className={`h-12 flex-1 items-center justify-center rounded-2xl ${step === 1 && !pkg && !isLargeScale && !isPostReno ? 'bg-ink-300' : 'bg-brand-600'}`}
+                >
                   <Text className="font-bold text-sm text-white" numberOfLines={1}>
-                    {step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
+                    {step === 1 && !pkg && !isLargeScale && !isPostReno ? 'Memuat...' : step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
                   </Text>
                 </Pressable>
               )}
