@@ -223,6 +223,15 @@ export const POST_RENO_BATHROOM_RATE = 100_000;  // bersih kamar mandi pasca ren
 export const POST_RENO_KITCHEN_FLAT = 150_000;   // dapur pasca reno (degrease)
 export const POST_RENO_MAX_M2 = 300;
 
+// Subscription / Berlangganan Bulanan
+export const SUBSCRIPTION_DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
+// Mapping nama paket → jumlah visit per bulan (untuk validation user pilih cukup hari rutin).
+export const SUBSCRIPTION_VISITS_BY_PKG: { match: RegExp; visits: number }[] = [
+  { match: /basic|3x/i,    visits: 3 },
+  { match: /standard|5x/i, visits: 5 },
+  { match: /premium|6x/i,  visits: 6 },
+];
+
 export const FLOOR_OPTIONS = ['1', '2', '3', '>3'] as const;
 export type FloorOption = (typeof FLOOR_OPTIONS)[number];
 

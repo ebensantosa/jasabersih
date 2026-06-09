@@ -28,6 +28,8 @@ import {
   POST_RENO_MAX_M2,
   POST_RENO_PROPERTY_TYPES,
   POST_RENO_TARGETS,
+  SUBSCRIPTION_DAYS,
+  SUBSCRIPTION_VISITS_BY_PKG,
   PACKAGES as LOCAL_PACKAGES,
   PROPERTY_TYPES,
   ROOM_FACILITIES,
@@ -168,6 +170,13 @@ function NewBooking() {
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
   const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
   const isVacuum = category?.code === 'vacuum_lantai';
+  const isSubscription = category?.code === 'subscription';
+  const [subscriptionDays, setSubscriptionDays] = useState<Set<string>>(new Set(['Senin', 'Kamis']));
+  const subscriptionVisits = useMemo(() => {
+    if (!isSubscription || !pkg) return 0;
+    const match = SUBSCRIPTION_VISITS_BY_PKG.find((r) => r.match.test(pkg.name));
+    return match?.visits ?? 0;
+  }, [isSubscription, pkg]);
 
   // Per-meter rates (config-driven)
   const rateRuko      = Number(useConfig('pricing.per_meter_ruko' as any, 6000 as any)) || 6000;
@@ -533,6 +542,10 @@ function NewBooking() {
       toast.error('Masukin luas area minimal 20 m²');
       return;
     }
+    if (step === 2 && isSubscription && subscriptionDays.size === 0) {
+      toast.error('Pilih minimal 1 hari kunjungan rutin');
+      return;
+    }
     // Skala Besar / Pasca Renovasi over-limit wajib WA quote.
     if (step === 1 && (largeScaleOverLimit || postRenoOverLimit)) {
       router.push({ pathname: '/booking/wa-survey', params: { category: categoryCode } });
@@ -608,6 +621,8 @@ function NewBooking() {
         postRenoTargets: isPostReno ? Array.from(postRenoTargets) : undefined,
         postRenoLevel: isPostReno ? postRenoLevel : undefined,
         postRenoHasKitchen: isPostReno ? postRenoHasKitchen : undefined,
+        subscriptionDays: isSubscription ? Array.from(subscriptionDays) : undefined,
+        subscriptionVisits: isSubscription ? subscriptionVisits : undefined,
         dirtLevel,
         dirtCharacters: Array.from(dirtChars),
         floorType,
@@ -915,7 +930,7 @@ function NewBooking() {
                   </View>
                 </Section>
               )}
-              {!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length > 0 && (
+              {(!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length > 0) && (
                 <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
@@ -971,7 +986,7 @@ function NewBooking() {
                 </Section>
               )}
 
-              {!isSimpleService && !isPerMeter && <Section title="Properti">
+              {!isSimpleService && !isPerMeter && !isSubscription && <Section title="Properti">
                 <Label>Tipe Properti</Label>
                 <Dropdown
                   options={(isLargeScale ? LARGE_SCALE_PROPERTY_TYPES : isPostReno ? POST_RENO_PROPERTY_TYPES : PROPERTY_TYPES) as readonly string[]}
@@ -1081,7 +1096,7 @@ function NewBooking() {
                 )}
               </Section>}
 
-              {!isSimpleService && !isPerMeter && !isLargeScale && !isPostReno && <Section title="Ruangan">
+              {!isSimpleService && !isPerMeter && !isLargeScale && !isPostReno && !isSubscription && <Section title="Ruangan">
                 <View className="flex-row items-center justify-between">
                   <Label className="mb-0">Kamar Tidur</Label>
                   <Stepper value={bedrooms} onChange={setBedrooms} min={0} max={10} />
@@ -1130,7 +1145,7 @@ function NewBooking() {
                 </View>
               </Section>}
 
-              {!isSimpleService && !isPerMeter && !isLargeScale && !isPostReno && <Section title="Perkiraan Luas">
+              {!isSimpleService && !isPerMeter && !isLargeScale && !isPostReno && !isSubscription && <Section title="Perkiraan Luas">
                 <Text className="font-sans -mt-1 mb-3 text-[11px] text-ink-500">
                   Pilih kira-kira ukuran area yang akan dibersihkan. Kalau ragu, lihat contoh di bawah.
                 </Text>
@@ -1261,7 +1276,40 @@ function NewBooking() {
                   </View>
                 </Section>
               )}
-              {!isPostReno && (
+              {isSubscription && (
+                <Section title="Hari Kunjungan Rutin">
+                  <Text className="font-medium mb-3 text-[11px] text-ink-600">
+                    Pilih hari rutin per minggu untuk kunjungan langganan. Total kunjungan otomatis sesuai paket{subscriptionVisits > 0 ? ` (${subscriptionVisits}x / bulan)` : ''}.
+                  </Text>
+                  <View className="gap-1.5">
+                    {SUBSCRIPTION_DAYS.map((d) => {
+                      const active = subscriptionDays.has(d);
+                      return (
+                        <Pressable
+                          key={d}
+                          onPress={() => setSubscriptionDays(toggleSet(subscriptionDays, d))}
+                          className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                        >
+                          <View className={`h-5 w-5 items-center justify-center rounded border-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'}`}>
+                            {active && <Check color="white" size={13} strokeWidth={3} />}
+                          </View>
+                          <Text className={`font-semibold text-sm ${active ? 'text-brand-700' : 'text-ink-800'}`}>{d}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {subscriptionDays.size === 0 && (
+                    <Text className="font-medium mt-2 text-[11px] text-red-600">Pilih minimal 1 hari rutin.</Text>
+                  )}
+                  <View className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                    <Text className="font-bold text-[11px] text-blue-900">ℹ Scope di luar paket = layanan tambahan</Text>
+                    <Text className="font-medium mt-1 text-[11px] leading-4 text-blue-900">
+                      Kalau ada permintaan di luar batasan paket (area lebih luas, deep clean kerak, cuci kasur/sofa, dll), cleaner kirim charge tambahan via app sebelum kerja. Kamu bisa Setujui / Tolak.
+                    </Text>
+                  </View>
+                </Section>
+              )}
+              {!isPostReno && !isSubscription && (
               <Section title="Tingkat Kotor">
                 <View className="flex-row gap-1.5">
                   {DIRT_LEVELS.map((d) => {
@@ -1424,7 +1472,7 @@ function NewBooking() {
                 </Section>
               )}
 
-              {!isLargeScale && !isPerMeter && !isPostReno && !isVacuum && <Section title="Kondisi Ruangan">
+              {!isLargeScale && !isPerMeter && !isPostReno && !isVacuum && !isSubscription && <Section title="Kondisi Ruangan">
                 <Label>Jenis Lantai</Label>
                 <Dropdown
                   options={FLOOR_TYPES as readonly string[]}
@@ -1605,7 +1653,7 @@ function NewBooking() {
                 )}
               </Section>
 
-              {!isSimpleService && <Section title="Upgrade Deep Cleaning (Opsional)">
+              {!isSimpleService && !isSubscription && <Section title="Upgrade Deep Cleaning (Opsional)">
                 <Pressable
                   onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
                   className={`flex-row items-start gap-3 rounded-xl border p-3 ${
