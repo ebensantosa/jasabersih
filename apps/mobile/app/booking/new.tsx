@@ -173,7 +173,7 @@ function NewBooking() {
   const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
   const isVacuum = category?.code === 'vacuum_lantai';
   const isSubscription = category?.code === 'subscription';
-  const [subscriptionDays, setSubscriptionDays] = useState<Set<string>>(new Set(['Senin', 'Kamis']));
+  const [subscriptionDates, setSubscriptionDates] = useState<string[]>([]); // ISO YYYY-MM-DD list
   const subscriptionVisits = useMemo(() => {
     if (!isSubscription || !pkg) return 0;
     const match = SUBSCRIPTION_VISITS_BY_PKG.find((r) => r.match.test(pkg.name));
@@ -544,8 +544,8 @@ function NewBooking() {
       toast.error('Masukin luas area minimal 20 m²');
       return;
     }
-    if (step === 2 && isSubscription && subscriptionDays.size === 0) {
-      toast.error('Pilih minimal 1 hari kunjungan rutin');
+    if (step === 2 && isSubscription && subscriptionVisits > 0 && subscriptionDates.length !== subscriptionVisits) {
+      toast.error(`Pilih tepat ${subscriptionVisits} tanggal kunjungan sesuai paket`);
       return;
     }
     // Skala Besar / Pasca Renovasi over-limit wajib WA quote.
@@ -623,7 +623,7 @@ function NewBooking() {
         postRenoTargets: isPostReno ? Array.from(postRenoTargets) : undefined,
         postRenoLevel: isPostReno ? postRenoLevel : undefined,
         postRenoHasKitchen: isPostReno ? postRenoHasKitchen : undefined,
-        subscriptionDays: isSubscription ? Array.from(subscriptionDays) : undefined,
+        subscriptionDates: isSubscription ? subscriptionDates : undefined,
         subscriptionVisits: isSubscription ? subscriptionVisits : undefined,
         dirtLevel,
         dirtCharacters: Array.from(dirtChars),
@@ -1286,29 +1286,50 @@ function NewBooking() {
                 </Section>
               )}
               {isSubscription && (
-                <Section title="Hari Kunjungan Rutin">
+                <Section title={`Pilih Tanggal Kunjungan ${subscriptionVisits > 0 ? `(${subscriptionDates.length}/${subscriptionVisits})` : ''}`}>
                   <Text className="font-medium mb-3 text-[11px] text-ink-600">
-                    Pilih hari rutin per minggu untuk kunjungan langganan. Total kunjungan otomatis sesuai paket{subscriptionVisits > 0 ? ` (${subscriptionVisits}x / bulan)` : ''}.
+                    {subscriptionVisits > 0
+                      ? `Pilih ${subscriptionVisits} tanggal dalam 30 hari ke depan sesuai paket. Tap tanggal untuk pilih / batal.`
+                      : 'Pilih paket dulu di step sebelumnya biar tau jumlah kunjungan.'}
                   </Text>
-                  <View className="gap-1.5">
-                    {SUBSCRIPTION_DAYS.map((d) => {
-                      const active = subscriptionDays.has(d);
-                      return (
-                        <Pressable
-                          key={d}
-                          onPress={() => setSubscriptionDays(toggleSet(subscriptionDays, d))}
-                          className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                        >
-                          <View className={`h-5 w-5 items-center justify-center rounded border-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'}`}>
-                            {active && <Check color="white" size={13} strokeWidth={3} />}
-                          </View>
-                          <Text className={`font-semibold text-sm ${active ? 'text-brand-700' : 'text-ink-800'}`}>{d}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  {subscriptionDays.size === 0 && (
-                    <Text className="font-medium mt-2 text-[11px] text-red-600">Pilih minimal 1 hari rutin.</Text>
+                  {subscriptionVisits > 0 && (
+                    <>
+                      <View className="flex-row flex-wrap gap-1.5">
+                        {Array.from({ length: 30 }).map((_, i) => {
+                          const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + i + 1);
+                          const iso = d.toISOString().slice(0, 10);
+                          const active = subscriptionDates.includes(iso);
+                          const reachedLimit = subscriptionDates.length >= subscriptionVisits && !active;
+                          const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+                          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                          return (
+                            <Pressable
+                              key={iso}
+                              disabled={reachedLimit}
+                              onPress={() => setSubscriptionDates(active
+                                ? subscriptionDates.filter((x) => x !== iso)
+                                : [...subscriptionDates, iso].sort())}
+                              style={reachedLimit ? { opacity: 0.4 } : undefined}
+                              className={`min-w-[64px] items-center rounded-xl border px-2 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                            >
+                              <Text className={`font-bold text-[10px] ${active ? 'text-white' : 'text-ink-500'}`}>{days[d.getDay()]}</Text>
+                              <Text className={`font-extrabold text-base ${active ? 'text-white' : 'text-ink-900'}`}>{d.getDate()}</Text>
+                              <Text className={`font-medium text-[9px] ${active ? 'text-white' : 'text-ink-500'}`}>{months[d.getMonth()]}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                      {subscriptionDates.length < subscriptionVisits && (
+                        <Text className="font-medium mt-3 text-[11px] text-amber-700">
+                          ⚠ Pilih {subscriptionVisits - subscriptionDates.length} tanggal lagi
+                        </Text>
+                      )}
+                      {subscriptionDates.length === subscriptionVisits && (
+                        <Text className="font-medium mt-3 text-[11px] text-emerald-700">
+                          ✓ {subscriptionVisits} tanggal terpilih
+                        </Text>
+                      )}
+                    </>
                   )}
                   <View className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
                     <Text className="font-bold text-[11px] text-blue-900">ℹ Scope di luar paket = layanan tambahan</Text>
