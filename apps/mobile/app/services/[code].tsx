@@ -81,8 +81,8 @@ export default function ServiceDetail() {
             <View className="mt-4 rounded-2xl bg-amber-50 p-3">
               <Text className="font-semibold text-[11px] text-amber-900">ⓘ Cara kerja</Text>
               <Text className="font-sans mt-1 text-[11px] leading-4 text-amber-900">
-                CS akan tanya detail kondisi, jadwal, &amp; lokasi → kami kirim quote harga gratis →
-                kalau setuju, langsung dijadwalkan. <Text className="font-bold">Survey gratis, tanpa biaya konsultasi.</Text>
+                CS akan tanya detail kondisi, jadwal, &amp; lokasi → kami kirim quote harga →
+                kalau setuju, langsung dijadwalkan.
               </Text>
             </View>
 
@@ -212,7 +212,7 @@ export default function ServiceDetail() {
                 title="Konsultasi via WhatsApp"
                 tagline="Untuk job kompleks"
                 desc="Properti besar, pasca renovasi, atau kebutuhan unik. CS hubungi untuk survey & quote."
-                priceHint="Survey gratis"
+                priceHint={undefined}
                 onPress={() =>
                   router.push({ pathname: '/booking/wa-survey', params: { category: code } })
                 }
