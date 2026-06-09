@@ -8,6 +8,8 @@ import { api } from '../../src/lib/api';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
+import { Dropdown } from '../../src/components/Dropdown';
+import { ToastHost } from '../../src/components/Toast';
 import { safeBack } from '../../src/lib/safeBack';
 
 type BankAccount = {
@@ -219,6 +221,7 @@ function AddBankModal({ visible, onClose, onDone }: { visible: boolean; onClose:
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <ToastHost />
       <Pressable onPress={onClose} className="flex-1 bg-black/50 justify-end">
         <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-3xl p-5 pb-8">
           <View className="flex-row items-center justify-between mb-4">
@@ -229,23 +232,17 @@ function AddBankModal({ visible, onClose, onDone }: { visible: boolean; onClose:
           </View>
 
           <Text className="text-sm font-semibold text-ink-700 mb-2">Bank</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-            <View className="flex-row gap-2">
-              {BANKS.map((b) => (
-                <Pressable
-                  key={b.code}
-                  onPress={() => setBankCode(b.code)}
-                  className={`px-4 py-2 rounded-full border ${
-                    bankCode === b.code ? 'bg-blue-600 border-blue-600' : 'bg-white border-ink-200'
-                  }`}
-                >
-                  <Text className={`text-sm font-semibold ${bankCode === b.code ? 'text-white' : 'text-ink-700'}`}>
-                    {b.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
+          <View className="mb-4">
+            <Dropdown
+              options={BANKS.map((b) => b.label)}
+              value={BANKS.find((b) => b.code === bankCode)?.label ?? ''}
+              onChange={(label) => {
+                const found = BANKS.find((b) => b.label === label);
+                if (found) setBankCode(found.code);
+              }}
+              placeholder="Pilih bank"
+            />
+          </View>
 
           <Text className="text-sm font-semibold text-ink-700 mb-2">Nomor Rekening</Text>
           <TextInput
