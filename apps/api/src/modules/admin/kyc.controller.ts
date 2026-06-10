@@ -125,6 +125,58 @@ export class AdminKycController {
     return { profile: profile[0], documents: docsWithUrl };
   }
 
+  // POST /admin/kyc/bulk-approve — approve banyak cleaner sekaligus.
+  // Body: { userIds: string[] }. Max 50 per request biar gak overload.
+  @Post('bulk-approve')
+  @Roles('super_admin', 'ops')
+  async bulkApprove(
+    @Body() body: { userIds: string[] },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const ids = Array.isArray(body?.userIds) ? body.userIds.filter((x) => typeof x === 'string' && x.length > 0) : [];
+    if (ids.length === 0) throw new BadRequestException('userIds wajib (array)');
+    if (ids.length > 50) throw new BadRequestException('Maksimal 50 cleaner per bulk approve');
+
+    let approved = 0;
+    const errors: { userId: string; error: string }[] = [];
+    for (const userId of ids) {
+      try {
+        await this.prisma.$transaction([
+          this.prisma.$executeRaw`
+            UPDATE cleaner_profiles
+               SET kyc_status = 'approved',
+                   approved_at = NOW(),
+                   approved_by = ${admin.id}::uuid,
+                   rejection_reason = NULL
+             WHERE user_id = ${userId}::uuid
+          `,
+          this.prisma.$executeRaw`
+            UPDATE kyc_documents
+               SET status = 'approved',
+                   verified_at = NOW(),
+                   reviewed_by = ${admin.id}::uuid,
+                   rejected_reason = NULL
+             WHERE user_id = ${userId}::uuid AND status != 'approved'
+          `,
+        ]);
+        approved++;
+        void this.push.send({ userId, channel: 'system', title: 'KYC kamu disetujui ✓', body: 'Selamat! Kamu sudah bisa menerima order sekarang.', data: { type: 'kyc_approved' } }).catch(() => {});
+      } catch (e: any) {
+        errors.push({ userId, error: e?.message ?? 'failed' });
+      }
+    }
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'kyc.bulk_approve',
+      resourceType: 'cleaner',
+      resourceId: null,
+      changes: { count: approved, totalRequested: ids.length, errorCount: errors.length },
+      ipAddress: req.ip ?? null,
+    });
+    return { approved, errors };
+  }
+
   @Post(':userId/approve')
   @Roles('super_admin', 'ops')
   async approve(@Param('userId') userId: string, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {

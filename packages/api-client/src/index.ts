@@ -183,6 +183,8 @@ export function createClient(opts: ClientOptions) {
         request<{ profile: any; documents: any[] }>('GET', `/admin/kyc/${userId}`),
       kycApprove: (userId: string) =>
         request<unknown>('POST', `/admin/kyc/${userId}/approve`),
+      kycBulkApprove: (userIds: string[]) =>
+        request<{ approved: number; errors: { userId: string; error: string }[] }>('POST', '/admin/kyc/bulk-approve', { userIds }),
       kycReject: (userId: string, reason: string) =>
         request<unknown>('POST', `/admin/kyc/${userId}/reject`, { reason }),
       kycRequestRedoc: (userId: string, reason: string) =>

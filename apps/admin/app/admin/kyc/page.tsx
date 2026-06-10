@@ -26,6 +26,32 @@ export default function KycPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Detail | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  function toggleSelect(userId: string) {
+    setSelectedIds((s) => {
+      const next = new Set(s);
+      if (next.has(userId)) next.delete(userId); else next.add(userId);
+      return next;
+    });
+  }
+  function selectAll() {
+    setSelectedIds((s) => s.size === list.length ? new Set() : new Set(list.map((c) => c.user_id)));
+  }
+  async function bulkApprove() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Approve ${selectedIds.size} cleaner sekaligus? Pastikan dokumen mereka udah dicek.`)) return;
+    setBulkBusy(true);
+    try {
+      const r = await api.admin.kycBulkApprove(Array.from(selectedIds));
+      toast.success(`${r.approved} cleaner di-approve. ${r.errors.length > 0 ? `${r.errors.length} gagal.` : ''}`);
+      setSelectedIds(new Set());
+      void load();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Bulk approve gagal');
+    } finally { setBulkBusy(false); }
+  }
   const confirm = useConfirm();
 
   async function deleteCleaner(c: Cleaner) {
@@ -62,7 +88,14 @@ export default function KycPage() {
           <h1 className="text-2xl font-bold text-slate-900">KYC Cleaner</h1>
           <p className="text-sm text-slate-500">Verifikasi dokumen cleaner sebelum aktif terima order.</p>
         </div>
-        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setAddOpen(true)}>Tambah Cleaner</Button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && tab !== 'approved' && (
+            <Button variant="primary" loading={bulkBusy} onClick={bulkApprove}>
+              ✓ Approve {selectedIds.size} terpilih
+            </Button>
+          )}
+          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setAddOpen(true)}>Tambah Cleaner</Button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-2 border-b">
@@ -90,6 +123,15 @@ export default function KycPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
+                <th className="px-4 py-3 w-8">
+                  {tab !== 'approved' && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === list.length && list.length > 0}
+                      onChange={selectAll}
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-3">Nama</th><th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Daftar</th><th className="px-4 py-3">Dokumen</th>
                 <th className="px-4 py-3"></th>
@@ -98,6 +140,15 @@ export default function KycPage() {
             <tbody>
               {list.map((c) => (
                 <tr key={c.user_id} className="border-t hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    {tab !== 'approved' && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.user_id)}
+                        onChange={() => toggleSelect(c.user_id)}
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-900">{c.name ?? '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{c.phone}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(c.joined_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
