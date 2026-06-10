@@ -673,12 +673,86 @@ function AuditTab() {
   const toast = useToast();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  async function load() { setLoading(true); try { setList(await api.admin.auditLog({ limit: 200 })); } catch (e: any) { toast.error(e?.message); } setLoading(false); }
-  useEffect(() => { void load(); }, []);
+  const [actions, setActions] = useState<string[]>([]);
+  const [filters, setFilters] = useState<{ action: string; q: string; from: string; to: string }>({ action: '', q: '', from: '', to: '' });
+
+  async function load() {
+    setLoading(true);
+    try {
+      const params: any = { limit: 200 };
+      if (filters.action) params.action = filters.action;
+      if (filters.q) params.q = filters.q;
+      if (filters.from) params.from = new Date(filters.from).toISOString();
+      if (filters.to) params.to = new Date(filters.to + 'T23:59:59').toISOString();
+      setList(await api.admin.auditLog(params));
+    } catch (e: any) { toast.error(e?.message); }
+    setLoading(false);
+  }
+  useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { void (async () => { try { setActions(await api.admin.auditLogActions()); } catch {} })(); }, []);
+
+  function exportCsv() {
+    if (list.length === 0) { toast.warning('Tidak ada data buat di-export'); return; }
+    const header = ['Waktu', 'Admin Email', 'Admin Nama', 'Role', 'Action', 'Resource Type', 'Resource ID', 'IP', 'Detail'];
+    const rows = list.map((a) => [
+      new Date(a.performedAt).toISOString(),
+      a.adminEmail ?? '',
+      a.adminName ?? '',
+      a.adminRole ?? '',
+      a.action ?? '',
+      a.resourceType ?? '',
+      a.resourceId ?? '',
+      a.ipAddress ?? '',
+      a.changes ? JSON.stringify(a.changes).replace(/"/g, '""') : '',
+    ]);
+    const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c)}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div>
-      <h2 className="mb-3 text-base font-semibold">Audit Log (200 terakhir)</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold">Audit Log</h2>
+        <Button variant="secondary" onClick={exportCsv}>⬇ Export CSV</Button>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-3 rounded-md border bg-white p-3">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+          <div>
+            <label className="mb-1 block text-[10px] font-medium uppercase text-slate-500">Action</label>
+            <select
+              value={filters.action}
+              onChange={(e) => setFilters({ ...filters, action: e.target.value })}
+              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+            >
+              <option value="">Semua action</option>
+              {actions.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-medium uppercase text-slate-500">Dari</label>
+            <input type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs" />
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-medium uppercase text-slate-500">Sampai</label>
+            <input type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs" />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-1 block text-[10px] font-medium uppercase text-slate-500">Cari (admin email / resource ID / detail)</label>
+            <input type="text" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="ketik kata kunci..." className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs" />
+          </div>
+        </div>
+        <div className="mt-2 flex gap-2">
+          <Button variant="primary" onClick={load}>Cari</Button>
+          <Button variant="secondary" onClick={() => { setFilters({ action: '', q: '', from: '', to: '' }); setTimeout(load, 50); }}>Reset</Button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
       ) : (
@@ -692,6 +766,9 @@ function AuditTab() {
               </tr>
             </thead>
             <tbody>
+              {list.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-slate-500">Tidak ada hasil. Coba ubah filter.</td></tr>
+              )}
               {list.map((a) => (
                 <tr key={a.id} className="border-t align-top">
                   <td className="px-4 py-2 text-xs text-slate-500">{new Date(a.performedAt).toLocaleString('id-ID')}</td>

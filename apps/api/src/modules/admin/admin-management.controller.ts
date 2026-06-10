@@ -114,8 +114,17 @@ export class AdminManagementController {
   // Audit log viewer (cross-admin) — super_admin & fraud_analyst only
   @Get('audit-log')
   @Roles('super_admin', 'fraud_analyst')
-  async auditLog(@Query('action') action?: string, @Query('adminId') adminId?: string, @Query('limit') limit?: string) {
+  async auditLog(
+    @Query('action') action?: string,
+    @Query('adminId') adminId?: string,
+    @Query('resourceType') resourceType?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ) {
     const lim = Math.min(Number(limit ?? 100), 500);
+    const search = q ? `%${q.toLowerCase()}%` : null;
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT a.id, a.action, a.resource_type AS "resourceType", a.resource_id AS "resourceId",
              a.changes, a.ip_address AS "ipAddress", a.performed_at AS "performedAt",
@@ -124,8 +133,26 @@ export class AdminManagementController {
         LEFT JOIN admin_users u ON u.id = a.admin_id
        WHERE (${action ?? null}::text IS NULL OR a.action = ${action ?? null})
          AND (${adminId ?? null}::uuid IS NULL OR a.admin_id = ${adminId ?? null}::uuid)
+         AND (${resourceType ?? null}::text IS NULL OR a.resource_type = ${resourceType ?? null})
+         AND (${from ?? null}::text IS NULL OR a.performed_at >= ${from ?? null}::timestamptz)
+         AND (${to ?? null}::text IS NULL OR a.performed_at <= ${to ?? null}::timestamptz)
+         AND (${search}::text IS NULL OR
+              LOWER(a.action) LIKE ${search} OR
+              LOWER(COALESCE(u.email, '')) LIKE ${search} OR
+              LOWER(COALESCE(a.resource_id, '')) LIKE ${search} OR
+              LOWER(COALESCE(CAST(a.changes AS TEXT), '')) LIKE ${search})
        ORDER BY a.performed_at DESC
        LIMIT ${lim}::int
     `;
+  }
+
+  // GET /admin/audit-log/distinct-actions — return distinct action values untuk dropdown filter
+  @Get('audit-log/distinct-actions')
+  @Roles('super_admin', 'fraud_analyst')
+  async auditLogDistinctActions() {
+    const rows = await this.prisma.$queryRaw<{ action: string }[]>`
+      SELECT DISTINCT action FROM admin_audit_log ORDER BY action ASC LIMIT 200
+    `;
+    return rows.map((r) => r.action);
   }
 }

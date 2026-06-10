@@ -218,8 +218,10 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('PATCH', `/admin/admins/${id}`, body),
       deactivateAdmin: (id: string) =>
         request<unknown>('DELETE', `/admin/admins/${id}`),
-      auditLog: (params?: { action?: string; adminId?: string; limit?: number }) =>
+      auditLog: (params?: { action?: string; adminId?: string; resourceType?: string; from?: string; to?: string; q?: string; limit?: number }) =>
         request<any[]>('GET', `/admin/admins/audit-log${qs(params as any)}`),
+      auditLogActions: () =>
+        request<string[]>('GET', `/admin/admins/audit-log/distinct-actions`),
 
       // System config
       commissionTiers: () => request<any[]>('GET', '/admin/config/commission-tiers'),
