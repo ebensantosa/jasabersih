@@ -380,6 +380,19 @@ export function createClient(opts: ClientOptions) {
         request<{ ok: true; amount: number; newBalance: number }>('POST', `/bookings/${id}/tip`, { amount }),
       pay: (id: string) => request<unknown>('POST', `/bookings/${id}/pay`),
     },
+    customerNotes: {
+      listMine: () => request<Array<{ id: string; category: string; content: string; createdAt: string }>>('GET', '/customer/notes'),
+      add: (category: string, content: string) =>
+        request<{ id: string }>('POST', '/customer/notes', { category, content }),
+      remove: (id: string) => request<{ ok: true }>('DELETE', `/customer/notes/${id}`),
+    },
+    cleanerNotes: {
+      listFor: (customerId: string) =>
+        request<Array<{ id: string; source: 'customer' | 'cleaner'; category: string; content: string; authorId: string; createdAt: string }>>('GET', `/cleaner/customer-notes/${customerId}`),
+      add: (customerId: string, category: string, content: string) =>
+        request<{ id: string }>('POST', `/cleaner/customer-notes/${customerId}`, { category, content }),
+      remove: (id: string) => request<{ ok: true }>('DELETE', `/cleaner/customer-notes/${id}`),
+    },
   };
 }
 
