@@ -681,6 +681,87 @@ export class BookingsController {
     return { ok: true, scheduledAt: newDate.toISOString() };
   }
 
+  // POST /bookings/:id/tip — customer kasih tip cleaner pasca-completion via SALDO WALLET.
+  // Instant transfer: ledger entry credit_use customer + tip_received cleaner (CLEARED, langsung cair).
+  // Catatan: tip via payment gateway (kalau saldo tidak cukup) belum diimplementasi - sementara error message arahin ke top-up wallet.
+  @Post(':id/tip')
+  async tipCleaner(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { amount: number },
+  ) {
+    const amount = Math.floor(Number(body?.amount ?? 0));
+    if (!Number.isFinite(amount) || amount < 5000) {
+      throw new BadRequestException('Minimal tip Rp 5.000');
+    }
+    if (amount > 500_000) {
+      throw new BadRequestException('Maksimal tip Rp 500.000');
+    }
+
+    const rows = await this.prisma.$queryRaw<{ status: string; cleaner_id: string | null; tip_given: bigint | null }[]>`
+      SELECT b.status, b.cleaner_id,
+             (SELECT COALESCE(SUM(amount), 0) FROM wallet_ledger_entries
+                WHERE user_id = ${user.id}::uuid
+                  AND account_type = 'credit_use'
+                  AND reference_type = 'tip'
+                  AND reference_id = b.id) AS tip_given
+        FROM bookings b
+       WHERE b.id = ${id}::uuid AND b.customer_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (rows.length === 0) throw new BadRequestException('Pesanan tidak ditemukan');
+    const b = rows[0]!;
+    if (b.status !== 'completed') {
+      throw new BadRequestException('Tip hanya bisa diberikan setelah pesanan selesai.');
+    }
+    if (!b.cleaner_id) throw new BadRequestException('Cleaner pesanan ini tidak ditemukan.');
+    if (Number(b.tip_given) > 0) {
+      throw new BadRequestException('Tip sudah pernah diberikan untuk pesanan ini.');
+    }
+
+    // Hitung saldo customer
+    const bal = await this.prisma.$queryRaw<{ b: number }[]>`
+      SELECT (COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
+            - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0))::bigint AS b
+        FROM wallet_ledger_entries WHERE user_id = ${user.id}::uuid
+    `;
+    const balance = Number(bal[0]?.b ?? 0);
+    if (balance < amount) {
+      throw new BadRequestException({
+        code: 'INSUFFICIENT_BALANCE',
+        message: `Saldo wallet Rp ${balance.toLocaleString('id-ID')} tidak cukup untuk tip Rp ${amount.toLocaleString('id-ID')}. Top-up wallet dulu.`,
+        currentBalance: balance,
+        needed: amount,
+      });
+    }
+
+    // Atomik: debit customer + credit cleaner
+    await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+        VALUES (${user.id}::uuid, 'credit_use', ${amount}::bigint, 'tip', ${id}::uuid,
+                'CLEARED', NOW(), ${`Tip cleaner (booking ${id.slice(0, 8)})`})
+      `,
+      // Pakai account_type 'earnings' supaya saldo cleaner langsung available (sama mekanisme job earnings).
+      // Description prefix 🎁 untuk pembeda visual di ledger.
+      this.prisma.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+        VALUES (${b.cleaner_id}::uuid, 'earnings', ${amount}::bigint, 'tip', ${id}::uuid,
+                'CLEARED', NOW(), ${`🎁 Tip dari customer (booking ${id.slice(0, 8)})`})
+      `,
+    ]);
+
+    // Notif cleaner
+    try {
+      await this.push.sendToUser(b.cleaner_id, {
+        title: '🎉 Kamu Dapat Tip!',
+        body: `Customer kasih tip Rp ${amount.toLocaleString('id-ID')}. Mantap, kerja kamu dihargai!`,
+        data: { type: 'tip.received', bookingId: id, amount: String(amount) },
+      });
+    } catch { /* non-fatal */ }
+
+    return { ok: true, amount, newBalance: balance - amount };
+  }
+
   // POST /bookings/:id/request-reclean — customer minta cleaner balik benerin.
   // Hanya boleh dalam 24 jam setelah completed, max 1x per booking, dan belum ada dispute aktif.
   // Side effect: hapus PENDING wallet entry cleaner (escrow reset), notif cleaner.

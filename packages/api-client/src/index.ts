@@ -368,6 +368,8 @@ export function createClient(opts: ClientOptions) {
       cancel: (id: string) => request<unknown>('POST', `/bookings/${id}/cancel`),
       reschedule: (id: string, scheduledAt: string) =>
         request<{ ok: true; scheduledAt: string }>('POST', `/bookings/${id}/reschedule`, { scheduledAt }),
+      tipCleaner: (id: string, amount: number) =>
+        request<{ ok: true; amount: number; newBalance: number }>('POST', `/bookings/${id}/tip`, { amount }),
       pay: (id: string) => request<unknown>('POST', `/bookings/${id}/pay`),
     },
   };

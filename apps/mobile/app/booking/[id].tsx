@@ -285,6 +285,21 @@ function BookingDetail() {
   }
 
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+  const [tipGiven, setTipGiven] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { api } = await import('../../src/lib/api');
+        const r = await api.get('/customer/wallet');
+        const bal = Number((r.data?.data ?? r.data)?.balance ?? 0);
+        if (mounted) setWalletBalance(bal);
+      } catch { /* ignore */ }
+    })();
+    return () => { mounted = false; };
+  }, [tipGiven]);
   const rescheduleCount = (booking as any)?.rescheduleCount ?? 0;
   const hoursToSchedule = booking?.scheduledAt
     ? (new Date(booking.scheduledAt).getTime() - Date.now()) / 3_600_000
@@ -794,10 +809,27 @@ function BookingDetail() {
             <SafeAreaView edges={['bottom']}>
               <View className="p-4">
                 {hasRated ? (
-                  <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-success/10 py-3.5">
-                    <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
-                    <Text className="font-semibold text-sm text-success">{t('booking.already_rated')}</Text>
-                  </View>
+                  <>
+                    <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-success/10 py-3.5">
+                      <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
+                      <Text className="font-semibold text-sm text-success">{t('booking.already_rated')}</Text>
+                    </View>
+                    {!tipGiven && (
+                      <Pressable
+                        onPress={() => setShowTip(true)}
+                        className="mt-2 flex-row items-center justify-center gap-1.5 rounded-2xl border border-amber-400 bg-amber-50 py-3"
+                      >
+                        <Text className="text-base">🎁</Text>
+                        <Text className="font-bold text-sm text-amber-900">Beri Tip ke Cleaner</Text>
+                      </Pressable>
+                    )}
+                    {tipGiven && (
+                      <View className="mt-2 flex-row items-center justify-center gap-1.5 rounded-2xl bg-amber-50 py-3">
+                        <Text className="text-base">🎁</Text>
+                        <Text className="font-semibold text-sm text-amber-900">Tip {formatRupiah(tipGiven)} terkirim</Text>
+                      </View>
+                    )}
+                  </>
                 ) : (
                   <Pressable
                     onPress={() => setShowRating(true)}
@@ -827,6 +859,65 @@ function BookingDetail() {
         onChange={(d) => void doReschedule(d)}
         onClose={() => setRescheduleOpen(false)}
       />
+
+      <Modal visible={showTip} transparent animationType="fade" onRequestClose={() => setShowTip(false)}>
+        <Pressable onPress={() => setShowTip(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
+          <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
+            <Text className="font-extrabold text-lg text-ink-900">🎁 Beri Tip Cleaner</Text>
+            <Text className="font-medium mt-1 text-[12px] text-ink-600">
+              Apresiasi cleaner yang kerja bagus. Tip akan langsung masuk ke saldo cleaner.
+            </Text>
+            <View className="mt-3 rounded-xl bg-ink-50 p-3">
+              <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">Saldo Wallet Kamu</Text>
+              <Text className="font-extrabold mt-0.5 text-base text-brand-700">{formatRupiah(walletBalance)}</Text>
+            </View>
+            {(() => {
+              const options = [10000, 20000, 50000, 100000];
+              return (
+                <View className="mt-3 flex-row flex-wrap gap-2">
+                  {options.map((amt) => {
+                    const canAfford = walletBalance >= amt;
+                    return (
+                      <Pressable
+                        key={amt}
+                        disabled={!canAfford}
+                        onPress={async () => {
+                          try {
+                            const { api } = await import('../../src/lib/api');
+                            await api.post(`/bookings/${booking?.id}/tip`, { amount: amt });
+                            toast.success(`Tip ${formatRupiah(amt)} terkirim ke cleaner!`);
+                            setTipGiven(amt);
+                            setShowTip(false);
+                          } catch (e: any) {
+                            toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim tip');
+                          }
+                        }}
+                        style={!canAfford ? { opacity: 0.4 } : undefined}
+                        className={`min-w-[80px] items-center rounded-xl border px-3 py-2.5 ${canAfford ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-ink-50'}`}
+                      >
+                        <Text className={`font-extrabold text-[13px] ${canAfford ? 'text-brand-700' : 'text-ink-400'}`}>
+                          {formatRupiah(amt)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              );
+            })()}
+            {walletBalance < 10000 && (
+              <View className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                <Text className="font-bold text-[11px] text-amber-900">Saldo wallet kurang</Text>
+                <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                  Top-up wallet biar bisa kasih tip. Hubungi CS via WA untuk top-up sementara.
+                </Text>
+              </View>
+            )}
+            <Pressable onPress={() => setShowTip(false)} className="mt-4 py-2">
+              <Text className="font-semibold text-center text-xs text-ink-500">Lain Kali</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={showCancelConfirm} transparent animationType="fade" onRequestClose={() => setShowCancelConfirm(false)}>
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
