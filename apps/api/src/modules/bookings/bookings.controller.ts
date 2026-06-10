@@ -670,10 +670,12 @@ export class BookingsController {
     // Notif cleaner kalau sudah ada yang di-assign
     if (b.cleaner_id) {
       try {
-        await this.push.sendToUser(b.cleaner_id, {
+        await this.push.send({
+          userId: b.cleaner_id,
           title: 'Jadwal Berubah',
           body: `Customer pindah jadwal ke ${newDate.toLocaleString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}. Cek detail di app.`,
           data: { type: 'booking.rescheduled', bookingId: id },
+          channel: 'booking',
         });
       } catch { /* non-fatal */ }
     }
@@ -752,10 +754,12 @@ export class BookingsController {
 
     // Notif cleaner
     try {
-      await this.push.sendToUser(b.cleaner_id, {
+      await this.push.send({
+        userId: b.cleaner_id,
         title: '🎉 Kamu Dapat Tip!',
         body: `Customer kasih tip Rp ${amount.toLocaleString('id-ID')}. Mantap, kerja kamu dihargai!`,
         data: { type: 'tip.received', bookingId: id, amount: String(amount) },
+        channel: 'wallet',
       });
     } catch { /* non-fatal */ }
 
