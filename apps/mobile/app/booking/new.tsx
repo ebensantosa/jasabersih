@@ -1407,6 +1407,15 @@ function NewBooking() {
                       Kalau ada permintaan di luar batasan paket (area lebih luas, deep clean kerak, cuci kasur/sofa, dll), cleaner kirim charge tambahan via app sebelum kerja. Kamu bisa Setujui / Tolak.
                     </Text>
                   </View>
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/booking/wa-survey', params: { category: categoryCode } })}
+                    className="mt-2 flex-row items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 p-3"
+                  >
+                    <MessageCircle color="#047857" size={14} strokeWidth={2.4} />
+                    <Text className="font-bold text-[11px] text-emerald-800">
+                      Butuh lebih dari 10x / bulan? Chat WA Admin
+                    </Text>
+                  </Pressable>
                 </Section>
               )}
               {!isPostReno && !isSubscription && (

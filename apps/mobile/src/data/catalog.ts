@@ -230,6 +230,7 @@ export const SUBSCRIPTION_VISITS_BY_PKG: { match: RegExp; visits: number }[] = [
   { match: /basic|3x/i,    visits: 3 },
   { match: /standard|5x/i, visits: 5 },
   { match: /premium|6x/i,  visits: 6 },
+  { match: /ultimate|10x/i, visits: 10 },
 ];
 
 export const FLOOR_OPTIONS = ['1', '2', '3', '>3'] as const;
