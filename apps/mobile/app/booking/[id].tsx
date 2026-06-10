@@ -23,6 +23,7 @@ import { BookingPhotos } from '../../src/components/BookingPhotos';
 import { BookingTimeline } from '../../src/components/BookingTimeline';
 import { DisputeFormModal } from '../../src/components/DisputeFormModal';
 import { RatingFormModal } from '../../src/components/RatingFormModal';
+import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { UpchargeFormModal } from '../../src/components/UpchargeFormModal';
 import { api } from '../../src/lib/api';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
@@ -281,6 +282,30 @@ function BookingDetail() {
       return;
     }
     router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id } });
+  }
+
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const rescheduleCount = (booking as any)?.rescheduleCount ?? 0;
+  const hoursToSchedule = booking?.scheduledAt
+    ? (new Date(booking.scheduledAt).getTime() - Date.now()) / 3_600_000
+    : 0;
+  const canReschedule = booking
+    && rescheduleCount < 1
+    && hoursToSchedule >= 48
+    && !['canceled', 'completed', 'in_progress', 'started'].includes(booking.status);
+
+  async function doReschedule(newDate: Date) {
+    if (!booking) return;
+    try {
+      const { api } = await import('../../src/lib/api');
+      await api.post(`/bookings/${booking.id}/reschedule`, { scheduledAt: newDate.toISOString() });
+      toast.success('Jadwal berhasil dipindah');
+      setRescheduleOpen(false);
+      // Refresh booking
+      if (id) await fetchOne(String(id));
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal pindah jadwal');
+    }
   }
 
   const modeLabel =
@@ -664,6 +689,13 @@ function BookingDetail() {
                       Bayar {formatRupiah(booking.totalPrice)}
                     </Text>
                   </Pressable>
+                  {canReschedule && (
+                    <Pressable onPress={() => setRescheduleOpen(true)} className="mt-2 py-2">
+                      <Text className="font-semibold text-center text-xs text-brand-600">
+                        Pindah Jadwal (gratis, h-2)
+                      </Text>
+                    </Pressable>
+                  )}
                   <Pressable onPress={onCancel} className="mt-2 py-2">
                     <Text className="font-semibold text-center text-xs text-ink-500">
                       {t('booking.cancel')}
@@ -671,27 +703,36 @@ function BookingDetail() {
                   </Pressable>
                 </View>
               ) : (
-                <View className="flex-row gap-2 p-4">
-                  {booking.status === 'matched' ||
-                  booking.status === 'on_the_way' ||
-                  booking.status === 'in_progress' ? (
-                    <Pressable
-                      onPress={() =>
-                        router.push({ pathname: '/chat/[id]', params: { id: booking.id } })
-                      }
-                      className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 px-4 py-3.5"
-                    >
-                      <MessageCircle color="white" size={16} strokeWidth={2.4} />
-                      <Text className="font-bold text-sm text-white">Chat</Text>
-                    </Pressable>
-                  ) : (
-                    <View className="flex-1 items-center justify-center rounded-2xl bg-ink-100 py-3.5">
-                      <Text className="font-medium text-sm text-ink-500">
-                        {booking.pricingMode === 'wa_survey'
-                          ? t('bd.cs_will_wa')
-                          : t('bd.waiting_cleaner')}
+                <View className="p-4">
+                  <View className="flex-row gap-2">
+                    {booking.status === 'matched' ||
+                    booking.status === 'on_the_way' ||
+                    booking.status === 'in_progress' ? (
+                      <Pressable
+                        onPress={() =>
+                          router.push({ pathname: '/chat/[id]', params: { id: booking.id } })
+                        }
+                        className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 px-4 py-3.5"
+                      >
+                        <MessageCircle color="white" size={16} strokeWidth={2.4} />
+                        <Text className="font-bold text-sm text-white">Chat</Text>
+                      </Pressable>
+                    ) : (
+                      <View className="flex-1 items-center justify-center rounded-2xl bg-ink-100 py-3.5">
+                        <Text className="font-medium text-sm text-ink-500">
+                          {booking.pricingMode === 'wa_survey'
+                            ? t('bd.cs_will_wa')
+                            : t('bd.waiting_cleaner')}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {canReschedule && (
+                    <Pressable onPress={() => setRescheduleOpen(true)} className="mt-2 py-2">
+                      <Text className="font-semibold text-center text-xs text-brand-600">
+                        Pindah Jadwal (gratis, h-2)
                       </Text>
-                    </View>
+                    </Pressable>
                   )}
                 </View>
               )}
@@ -779,6 +820,13 @@ function BookingDetail() {
           onSubmitted={() => { setShowUpchargeModal(false); void loadUpcharges(); }}
         />
       )}
+
+      <ScheduleModal
+        visible={rescheduleOpen}
+        value={booking?.scheduledAt ? new Date(booking.scheduledAt) : new Date(Date.now() + 48 * 3600_000)}
+        onChange={(d) => void doReschedule(d)}
+        onClose={() => setRescheduleOpen(false)}
+      />
 
       <Modal visible={showCancelConfirm} transparent animationType="fade" onRequestClose={() => setShowCancelConfirm(false)}>
         <View className="flex-1 items-center justify-center bg-black/50 px-6">

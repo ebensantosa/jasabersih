@@ -615,6 +615,72 @@ export class BookingsController {
     return { ok: true, cancellationFee, refundAmount };
   }
 
+  // POST /bookings/:id/reschedule — customer pindah jadwal sendiri.
+  // Rule: max 1x self-service, h-2 (>=48 jam sebelum scheduled_at), status belum in_progress/completed/canceled.
+  // Reschedule berikutnya / kurang dari 48h harus lewat CS.
+  @Post(':id/reschedule')
+  async reschedule(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { scheduledAt: string },
+  ) {
+    if (!body?.scheduledAt) throw new BadRequestException('scheduledAt wajib');
+    const newDate = new Date(body.scheduledAt);
+    if (Number.isNaN(newDate.getTime())) throw new BadRequestException('Format tanggal tidak valid');
+
+    const rows = await this.prisma.$queryRaw<{
+      status: string; scheduled_at: Date | null; reschedule_count: number; cleaner_id: string | null;
+    }[]>`
+      SELECT status, scheduled_at, COALESCE(reschedule_count, 0)::int AS reschedule_count, cleaner_id
+        FROM bookings WHERE id = ${id}::uuid AND customer_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (rows.length === 0) throw new BadRequestException('Pesanan tidak ditemukan');
+    const b = rows[0]!;
+
+    if (['canceled', 'completed', 'in_progress', 'started'].includes(b.status)) {
+      throw new BadRequestException('Status pesanan tidak bisa di-reschedule. Hubungi CS kalau perlu bantuan.');
+    }
+    if (b.reschedule_count >= 1) {
+      throw new BadRequestException('Pesanan ini sudah pernah dipindah jadwal. Hubungi CS lewat WA untuk perubahan tambahan.');
+    }
+    if (!b.scheduled_at) throw new BadRequestException('Jadwal awal belum di-set');
+
+    const hoursUntilOld = (new Date(b.scheduled_at).getTime() - Date.now()) / 3_600_000;
+    if (hoursUntilOld < 48) {
+      throw new BadRequestException('Reschedule mandiri cuma bisa kalau jadwal masih lebih dari 2 hari (48 jam) lagi. Hubungi CS untuk perubahan mendesak.');
+    }
+
+    const minNewTime = Date.now() + 24 * 3_600_000; // jadwal baru minimal 24 jam dari sekarang
+    if (newDate.getTime() < minNewTime) {
+      throw new BadRequestException('Jadwal baru minimal 24 jam dari sekarang.');
+    }
+    const hour = newDate.getHours();
+    if (hour < 7 || hour > 20) {
+      throw new BadRequestException('Jadwal baru di luar jam operasional (07:00-20:00)');
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE bookings
+         SET scheduled_at = ${newDate}::timestamptz,
+             reschedule_count = COALESCE(reschedule_count, 0) + 1,
+             updated_at = NOW()
+       WHERE id = ${id}::uuid AND customer_id = ${user.id}::uuid
+    `;
+
+    // Notif cleaner kalau sudah ada yang di-assign
+    if (b.cleaner_id) {
+      try {
+        await this.push.sendToUser(b.cleaner_id, {
+          title: 'Jadwal Berubah',
+          body: `Customer pindah jadwal ke ${newDate.toLocaleString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}. Cek detail di app.`,
+          data: { type: 'booking.rescheduled', bookingId: id },
+        });
+      } catch { /* non-fatal */ }
+    }
+
+    return { ok: true, scheduledAt: newDate.toISOString() };
+  }
+
   // POST /bookings/:id/request-reclean — customer minta cleaner balik benerin.
   // Hanya boleh dalam 24 jam setelah completed, max 1x per booking, dan belum ada dispute aktif.
   // Side effect: hapus PENDING wallet entry cleaner (escrow reset), notif cleaner.

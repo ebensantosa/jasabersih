@@ -366,6 +366,8 @@ export function createClient(opts: ClientOptions) {
       list: () => request<unknown[]>('GET', '/bookings'),
       get: (id: string) => request<unknown>('GET', `/bookings/${id}`),
       cancel: (id: string) => request<unknown>('POST', `/bookings/${id}/cancel`),
+      reschedule: (id: string, scheduledAt: string) =>
+        request<{ ok: true; scheduledAt: string }>('POST', `/bookings/${id}/reschedule`, { scheduledAt }),
       pay: (id: string) => request<unknown>('POST', `/bookings/${id}/pay`),
     },
   };
