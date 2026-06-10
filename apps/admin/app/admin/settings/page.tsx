@@ -692,7 +692,7 @@ function AuditTab() {
   useEffect(() => { void (async () => { try { setActions(await api.admin.auditLogActions()); } catch {} })(); }, []);
 
   function exportCsv() {
-    if (list.length === 0) { toast.warning('Tidak ada data buat di-export'); return; }
+    if (list.length === 0) { toast.info('Tidak ada data buat di-export'); return; }
     const header = ['Waktu', 'Admin Email', 'Admin Nama', 'Role', 'Action', 'Resource Type', 'Resource ID', 'IP', 'Detail'];
     const rows = list.map((a) => [
       new Date(a.performedAt).toISOString(),
