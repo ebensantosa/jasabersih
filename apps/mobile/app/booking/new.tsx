@@ -1286,50 +1286,120 @@ function NewBooking() {
                 </Section>
               )}
               {isSubscription && (
-                <Section title={`Pilih Tanggal Kunjungan ${subscriptionVisits > 0 ? `(${subscriptionDates.length}/${subscriptionVisits})` : ''}`}>
-                  <Text className="font-medium mb-3 text-[11px] text-ink-600">
-                    {subscriptionVisits > 0
-                      ? `Pilih ${subscriptionVisits} tanggal dalam 30 hari ke depan sesuai paket. Tap tanggal untuk pilih / batal.`
-                      : 'Pilih paket dulu di step sebelumnya biar tau jumlah kunjungan.'}
-                  </Text>
-                  {subscriptionVisits > 0 && (
+                <Section title="Pilih Tanggal Kunjungan">
+                  {subscriptionVisits > 0 ? (
                     <>
-                      <View className="flex-row flex-wrap gap-1.5">
-                        {Array.from({ length: 30 }).map((_, i) => {
-                          const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + i + 1);
-                          const iso = d.toISOString().slice(0, 10);
-                          const active = subscriptionDates.includes(iso);
-                          const reachedLimit = subscriptionDates.length >= subscriptionVisits && !active;
-                          const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-                          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-                          return (
-                            <Pressable
-                              key={iso}
-                              disabled={reachedLimit}
-                              onPress={() => setSubscriptionDates(active
-                                ? subscriptionDates.filter((x) => x !== iso)
-                                : [...subscriptionDates, iso].sort())}
-                              style={reachedLimit ? { opacity: 0.4 } : undefined}
-                              className={`min-w-[64px] items-center rounded-xl border px-2 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
-                            >
-                              <Text className={`font-bold text-[10px] ${active ? 'text-white' : 'text-ink-500'}`}>{days[d.getDay()]}</Text>
-                              <Text className={`font-extrabold text-base ${active ? 'text-white' : 'text-ink-900'}`}>{d.getDate()}</Text>
-                              <Text className={`font-medium text-[9px] ${active ? 'text-white' : 'text-ink-500'}`}>{months[d.getMonth()]}</Text>
-                            </Pressable>
-                          );
-                        })}
+                      {/* Progress header */}
+                      <View className="mb-3 flex-row items-center justify-between rounded-2xl bg-gradient-to-r from-brand-50 to-emerald-50 p-3" style={{ backgroundColor: '#EFF6FF' }}>
+                        <View className="flex-1">
+                          <Text className="font-bold text-[12px] text-brand-900">Paket {subscriptionVisits}x kunjungan / bulan</Text>
+                          <Text className="font-medium mt-0.5 text-[10px] text-brand-700">
+                            Tap tanggal di kalender untuk pilih / batal
+                          </Text>
+                        </View>
+                        <View className={`items-center rounded-xl px-3 py-1.5 ${subscriptionDates.length === subscriptionVisits ? 'bg-emerald-600' : 'bg-brand-600'}`}>
+                          <Text className="font-extrabold text-lg text-white">{subscriptionDates.length}<Text className="font-medium text-[11px] text-white/80">/{subscriptionVisits}</Text></Text>
+                        </View>
                       </View>
-                      {subscriptionDates.length < subscriptionVisits && (
-                        <Text className="font-medium mt-3 text-[11px] text-amber-700">
-                          ⚠ Pilih {subscriptionVisits - subscriptionDates.length} tanggal lagi
-                        </Text>
-                      )}
-                      {subscriptionDates.length === subscriptionVisits && (
-                        <Text className="font-medium mt-3 text-[11px] text-emerald-700">
-                          ✓ {subscriptionVisits} tanggal terpilih
-                        </Text>
-                      )}
+
+                      {/* Progress bar */}
+                      <View className="mb-4 h-1.5 overflow-hidden rounded-full bg-ink-100">
+                        <View
+                          style={{ width: `${Math.min(100, (subscriptionDates.length / subscriptionVisits) * 100)}%`, backgroundColor: subscriptionDates.length === subscriptionVisits ? '#059669' : '#1D4ED8' }}
+                          className="h-full rounded-full"
+                        />
+                      </View>
+
+                      {/* Calendar grid - month by month */}
+                      {(() => {
+                        const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+                        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        // Group 30 days into months
+                        const monthGroups = new Map<string, Date[]>();
+                        for (let i = 1; i <= 30; i++) {
+                          const d = new Date(today); d.setDate(today.getDate() + i);
+                          const key = `${d.getFullYear()}-${d.getMonth()}`;
+                          if (!monthGroups.has(key)) monthGroups.set(key, []);
+                          monthGroups.get(key)!.push(d);
+                        }
+                        return Array.from(monthGroups.entries()).map(([key, dates]) => {
+                          const first = dates[0]!;
+                          const startOffset = first.getDay(); // 0=Min .. 6=Sab
+                          return (
+                            <View key={key} className="mb-4">
+                              <Text className="font-bold mb-2 text-sm text-ink-900">
+                                {months[first.getMonth()]} {first.getFullYear()}
+                              </Text>
+                              {/* Day-of-week header */}
+                              <View className="flex-row">
+                                {days.map((dn) => (
+                                  <View key={dn} className="flex-1 items-center py-1.5">
+                                    <Text className={`font-bold text-[10px] uppercase tracking-wider ${dn === 'Min' ? 'text-red-500' : 'text-ink-400'}`}>{dn}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                              {/* Date cells */}
+                              <View className="flex-row flex-wrap">
+                                {/* Empty cells before first date */}
+                                {Array.from({ length: startOffset }).map((_, i) => (
+                                  <View key={`empty-${i}`} style={{ width: `${100 / 7}%` }} className="p-0.5" />
+                                ))}
+                                {dates.map((d) => {
+                                  const iso = d.toISOString().slice(0, 10);
+                                  const active = subscriptionDates.includes(iso);
+                                  const reachedLimit = subscriptionDates.length >= subscriptionVisits && !active;
+                                  const isSunday = d.getDay() === 0;
+                                  return (
+                                    <View key={iso} style={{ width: `${100 / 7}%` }} className="p-0.5">
+                                      <Pressable
+                                        disabled={reachedLimit}
+                                        onPress={() => setSubscriptionDates(active
+                                          ? subscriptionDates.filter((x) => x !== iso)
+                                          : [...subscriptionDates, iso].sort())}
+                                        style={reachedLimit ? { opacity: 0.3 } : undefined}
+                                        className={`aspect-square items-center justify-center rounded-xl ${active
+                                          ? 'bg-brand-600'
+                                          : reachedLimit
+                                            ? 'bg-ink-100'
+                                            : 'bg-ink-50'}`}
+                                      >
+                                        <Text className={`font-extrabold text-sm ${active ? 'text-white' : isSunday ? 'text-red-500' : 'text-ink-900'}`}>
+                                          {d.getDate()}
+                                        </Text>
+                                      </Pressable>
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          );
+                        });
+                      })()}
+
+                      {/* Status footer */}
+                      <View className={`flex-row items-center gap-2 rounded-xl p-3 ${subscriptionDates.length === subscriptionVisits ? 'border border-emerald-300 bg-emerald-50' : 'border border-amber-300 bg-amber-50'}`}>
+                        {subscriptionDates.length === subscriptionVisits ? (
+                          <>
+                            <Check color="#059669" size={16} strokeWidth={3} />
+                            <Text className="font-bold flex-1 text-[12px] text-emerald-900">
+                              Mantap! {subscriptionVisits} tanggal kunjungan terpilih
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle color="#B45309" size={16} />
+                            <Text className="font-bold flex-1 text-[12px] text-amber-900">
+                              Pilih {subscriptionVisits - subscriptionDates.length} tanggal lagi untuk lanjut
+                            </Text>
+                          </>
+                        )}
+                      </View>
                     </>
+                  ) : (
+                    <View className="items-center rounded-xl border border-dashed border-ink-300 bg-ink-50 py-8">
+                      <Text className="font-medium text-[12px] text-ink-500">Pilih paket dulu di step sebelumnya</Text>
+                    </View>
                   )}
                   <View className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
                     <Text className="font-bold text-[11px] text-blue-900">ℹ Scope di luar paket = layanan tambahan</Text>
