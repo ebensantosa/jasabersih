@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Eye, Loader2, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
+import { Briefcase, Eye, Loader2, Pencil, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Modal, Input, Switch, Textarea, Button, Badge, useConfirm, usePrompt, useToast } from '../../../components/ui';
@@ -33,6 +33,7 @@ export default function UsersPage() {
   const [q, setQ] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewing, setViewing] = useState<Row | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
   const [walletUser, setWalletUser] = useState<Row | null>(null);
   const [adding, setAdding] = useState(false);
   const confirm = useConfirm();
@@ -203,6 +204,7 @@ export default function UsersPage() {
                     <td className="px-4 py-2 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>
+                        <Button size="sm" variant="secondary" icon={<Pencil size={12} />} onClick={() => setEditing(r)}>Edit</Button>
                         <Button size="sm" variant="secondary" icon={<Wallet size={12} />} onClick={() => setWalletUser(r)}>Saldo</Button>
                         {tab === 'cleaner' && r.photoUrl && (
                           <Button size="sm" variant="ghost" icon={<ShieldOff size={12} />} onClick={() => rejectPhoto(r)}>Tolak Foto</Button>
@@ -219,6 +221,7 @@ export default function UsersPage() {
       </div>
 
       {viewing && <UserDetailModal row={viewing} onClose={() => setViewing(null)} onChanged={() => { setViewing(null); void load(); }} />}
+      {editing && <EditUserModal row={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
       {walletUser && <WalletModal user={walletUser} onClose={() => setWalletUser(null)} />}
       {adding && (
         <AddUserModal
@@ -228,6 +231,80 @@ export default function UsersPage() {
         />
       )}
     </div>
+  );
+}
+
+function EditUserModal({ row, onClose, onSaved }: { row: Row; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [name, setName] = useState(row.name ?? '');
+  const [email, setEmail] = useState(row.email ?? '');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  async function save() {
+    const e: Record<string, string> = {};
+    if (name.trim().length < 2) e.name = 'Nama minimal 2 karakter';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Format email tidak valid';
+    if (password && password.length < 6) e.password = 'Password minimal 6 karakter';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      const patch: { name?: string; email?: string; password?: string } = {};
+      if (name.trim() !== (row.name ?? '')) patch.name = name.trim();
+      if (email.trim() !== (row.email ?? '')) patch.email = email.trim();
+      if (password.length > 0) patch.password = password;
+      if (Object.keys(patch).length === 0) { toast.info('Tidak ada perubahan'); onClose(); return; }
+      await api.admin.updateUserAccount(row.id, patch);
+      toast.success(`Akun ${row.name ?? row.phone} di-update`);
+      onSaved();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal update akun');
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal
+      title={`Edit Akun ${row.name ?? row.phone}`}
+      open={true}
+      onClose={onClose}
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button variant="primary" onClick={save} loading={busy}>Simpan</Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className="rounded border bg-blue-50 p-3 text-[11px] text-blue-900">
+          Edit nama, email, dan reset password user. Nomor HP tidak bisa diubah (kontak primary login). Kosongkan field password kalau gak mau ganti.
+        </div>
+        <Input label="Nama" required value={name} onChange={setName} error={errors.name} placeholder="Nama lengkap" />
+        <Input label="Email" type="email" value={email} onChange={setEmail} error={errors.email} placeholder="email@contoh.com (opsional)" helpText="Kosongkan kalau user gak punya email." />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-700">Reset Password</label>
+          <div className="flex gap-2">
+            <input
+              type={showPwd ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Kosongkan kalau gak ganti"
+              className="flex-1 rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+            />
+            <Button variant="secondary" onClick={() => setShowPwd((v) => !v)}>{showPwd ? 'Sembunyi' : 'Lihat'}</Button>
+          </div>
+          {errors.password && <p className="mt-1 text-[11px] text-red-600">{errors.password}</p>}
+          <p className="mt-1 text-[11px] text-slate-500">Min 6 karakter. User akan diminta login ulang dengan password baru ini.</p>
+        </div>
+        <div className="rounded border bg-slate-50 p-2 text-[11px] text-slate-600">
+          <div><span className="font-semibold">No. HP:</span> {row.phone}</div>
+          <div><span className="font-semibold">ID:</span> {row.id}</div>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

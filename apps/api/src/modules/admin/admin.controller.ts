@@ -259,6 +259,47 @@ export class AdminController {
     return { id: userId, phone, name: body.name, kycStatus, tier };
   }
 
+  // PATCH /admin/users/:id — admin edit name / email / password (customer ATAU cleaner)
+  @Patch('users/:id')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops')
+  async updateUserAccount(
+    @Param('id') id: string,
+    @Body() body: { name?: string; email?: string; password?: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const exists = await this.prisma.$queryRaw<{ id: string }[]>`SELECT id FROM users WHERE id = ${id}::uuid LIMIT 1`;
+    if (exists.length === 0) throw new BadRequestException('User tidak ditemukan');
+
+    if (body.name !== undefined) {
+      const name = body.name.trim();
+      if (name.length < 2) throw new BadRequestException('Nama minimal 2 karakter');
+      await this.prisma.$executeRaw`UPDATE users SET name = ${name}, updated_at = NOW() WHERE id = ${id}::uuid`;
+    }
+    if (body.email !== undefined) {
+      const email = body.email.trim().toLowerCase();
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Format email tidak valid');
+      if (email) {
+        const dup = await this.prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM users WHERE LOWER(email) = ${email} AND id <> ${id}::uuid LIMIT 1
+        `;
+        if (dup.length > 0) throw new BadRequestException('Email ini sudah dipakai user lain');
+      }
+      await this.prisma.$executeRaw`UPDATE users SET email = ${email || null}, updated_at = NOW() WHERE id = ${id}::uuid`;
+    }
+    if (body.password !== undefined && body.password.length > 0) {
+      if (body.password.length < 6) throw new BadRequestException('Password minimal 6 karakter');
+      const hash = await bcrypt.hash(body.password, 12);
+      await this.prisma.$executeRaw`UPDATE users SET password_hash = ${hash}, updated_at = NOW() WHERE id = ${id}::uuid`;
+    }
+    await this.audit.log({
+      adminId: admin.id, action: 'user.update_account', resourceType: 'user', resourceId: id,
+      changes: { name: body.name, email: body.email, passwordChanged: !!body.password }, ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
+  }
+
   // PATCH /admin/cleaners/:id — admin update bringsTools / tier / serviceAreas
   @Patch('cleaners/:id')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)
