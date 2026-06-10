@@ -163,6 +163,34 @@ export default function Bookings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, filter, from, to]);
 
+  async function exportCsv() {
+    try {
+      const r = await api.admin.exportBookingsCsv({
+        status: filter === 'all' || filter === 'needs_manual' ? undefined : filter,
+        from: from || undefined,
+        to: to || undefined,
+      });
+      if (r.items.length === 0) { toast.warning('Tidak ada data untuk di-export'); return; }
+      const headers = ['ID', 'Status', 'Pricing Mode', 'Total (Rp)', 'Scheduled At', 'Paid At', 'Completed At', 'Alamat', 'Customer Nama', 'Customer Phone', 'Customer Email', 'Cleaner Nama', 'Cleaner Phone', 'Service', 'Package', 'Created At'];
+      const rows = r.items.map((b: any) => [
+        b.id, b.status, b.pricingMode, Number(b.total ?? 0),
+        b.scheduledAt ? new Date(b.scheduledAt).toISOString() : '',
+        b.paidAt ? new Date(b.paidAt).toISOString() : '',
+        b.completedAt ? new Date(b.completedAt).toISOString() : '',
+        b.address ?? '', b.customerName ?? '', b.customerPhone ?? '', b.customerEmail ?? '',
+        b.cleanerName ?? '', b.cleanerPhone ?? '', b.service ?? '', b.package ?? '',
+        b.createdAt ? new Date(b.createdAt).toISOString() : '',
+      ]);
+      const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `bookings-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Export ${r.count} booking ke CSV${r.limited ? ' (limit 10rb, persempit filter kalau ada lebih)' : ''}`);
+    } catch (e: any) { toast.error(e?.message ?? 'Export gagal'); }
+  }
+
   async function load() {
     setLoading(true);
     setError(null);
@@ -206,12 +234,20 @@ export default function Bookings() {
           <h1 className="text-2xl font-bold text-slate-900">Pesanan <span className="ml-2 align-middle text-[10px] font-mono text-slate-400">v2</span></h1>
           <p className="text-sm text-slate-500">Manage order, assign cleaner manual, resolve sengketa</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
-        >
-          + Buat Pesanan Manual
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={exportCsv}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            ⬇ Export CSV
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+          >
+            + Buat Pesanan Manual
+          </button>
+        </div>
       </div>
 
       {error === 'offline' && <OfflineCard onRetry={load} />}

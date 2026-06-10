@@ -185,6 +185,10 @@ export function createClient(opts: ClientOptions) {
         request<unknown>('POST', `/admin/kyc/${userId}/approve`),
       kycBulkApprove: (userIds: string[]) =>
         request<{ approved: number; errors: { userId: string; error: string }[] }>('POST', '/admin/kyc/bulk-approve', { userIds }),
+      exportBookingsCsv: (params?: { status?: string; from?: string; to?: string }) =>
+        request<{ items: any[]; count: number; limited: boolean }>('GET', `/admin/bookings/export.csv${qs(params as any)}`),
+      exportPayoutsCsv: (params?: { from?: string; to?: string; status?: string }) =>
+        request<{ items: any[]; count: number; limited: boolean }>('GET', `/admin/payouts/export.csv${qs(params as any)}`),
       kycReject: (userId: string, reason: string) =>
         request<unknown>('POST', `/admin/kyc/${userId}/reject`, { reason }),
       kycRequestRedoc: (userId: string, reason: string) =>

@@ -65,6 +65,71 @@ export class AdminController {
     return { items: rows, total: Number(totalRow[0]?.c ?? 0), limit, offset };
   }
 
+  // GET /admin/bookings/export.csv — export semua booking yg cocok filter ke CSV.
+  // Capped 10k rows untuk safety; user persempit filter kalau lebih.
+  @Get('bookings/export.csv')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'ops', 'finance')
+  async exportBookingsCsv(
+    @Query('status') status?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT
+        b.id, b.status, b.pricing_mode AS "pricingMode",
+        b.total_amount AS total, b.scheduled_at AS "scheduledAt",
+        b.paid_at AS "paidAt", b.completed_at AS "completedAt",
+        b.address_line AS address, b.created_at AS "createdAt",
+        cu.name AS "customerName", cu.phone AS "customerPhone", cu.email AS "customerEmail",
+        cl.name AS "cleanerName", cl.phone AS "cleanerPhone",
+        COALESCE(s.name, sp.name) AS service,
+        p.name AS package
+      FROM bookings b
+      LEFT JOIN users cu ON cu.id = b.customer_id
+      LEFT JOIN users cl ON cl.id = b.cleaner_id
+      LEFT JOIN services s ON s.id = b.service_id
+      LEFT JOIN pricing_packages p ON p.id = b.package_id
+      LEFT JOIN services sp ON sp.id = p.service_id
+      WHERE 1=1
+        AND (${status ?? null}::text IS NULL OR b.status = ${status ?? null})
+        AND (${from ?? null}::date IS NULL OR b.created_at >= ${from ?? null}::date)
+        AND (${to ?? null}::date IS NULL OR b.created_at < (${to ?? null}::date + INTERVAL '1 day'))
+      ORDER BY b.created_at DESC
+      LIMIT 10000
+    `;
+    return { items: rows, count: rows.length, limited: rows.length >= 10000 };
+  }
+
+  // GET /admin/payouts/export.csv — export withdrawal/payout untuk reconciliation finance.
+  @Get('payouts/export.csv')
+  @UseGuards(AdminJwtGuard, AdminRbacGuard)
+  @Roles('super_admin', 'finance')
+  async exportPayoutsCsv(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('status') status?: string,
+  ) {
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT
+        w.id, w.amount, w.fee, w.net_amount AS "netAmount",
+        w.review_status AS "reviewStatus", w.flip_disbursement_id AS "flipId",
+        w.flip_status AS "flipStatus", w.bank_code AS "bankCode",
+        w.account_number AS "accountNumber", w.account_holder_name AS "accountHolderName",
+        w.created_at AS "createdAt", w.completed_at AS "completedAt", w.failed_reason AS "failedReason",
+        u.name AS "cleanerName", u.phone AS "cleanerPhone"
+      FROM withdrawals w
+      LEFT JOIN users u ON u.id = w.user_id
+      WHERE 1=1
+        AND (${from ?? null}::date IS NULL OR w.created_at >= ${from ?? null}::date)
+        AND (${to ?? null}::date IS NULL OR w.created_at < (${to ?? null}::date + INTERVAL '1 day'))
+        AND (${status ?? null}::text IS NULL OR w.review_status = ${status ?? null})
+      ORDER BY w.created_at DESC
+      LIMIT 10000
+    `;
+    return { items: rows, count: rows.length, limited: rows.length >= 10000 };
+  }
+
   @Get('cleaners')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
