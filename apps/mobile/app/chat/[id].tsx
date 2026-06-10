@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { useAuthStore } from '../../src/stores/auth';
+import { useModeStore } from '../../src/stores/mode';
 import { useBookingsStore } from '../../src/stores/bookings';
 
 // Decode JWT (no verify, just extract `sub` claim) to get current user id.
@@ -35,7 +36,26 @@ function decodeJwtSub(token: string | undefined): string | null {
 import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
 
-const QUICK_REPLIES = ['Sudah sampai?', 'Pakai pintu samping', 'Terima kasih', 'Tolong hati-hati'];
+// Quick replies dibedain by role - context cleaner vs customer beda
+const QUICK_REPLIES_CLEANER = [
+  '📍 Saya sudah di lokasi',
+  '🚗 OTW, 10 menit lagi',
+  '⏰ Maaf telat 5 menit',
+  '🚪 Tolong bukain pintu',
+  '🧴 Stok cairan habis, beli dulu boleh?',
+  '🏠 Boleh masuk lewat samping?',
+  '✓ Pekerjaan selesai',
+  '🙏 Terima kasih',
+];
+const QUICK_REPLIES_CUSTOMER = [
+  'Sudah sampai?',
+  'Pakai pintu samping',
+  'Kunci di kotak meteran',
+  'Hati-hati ada hewan',
+  'Tolong fokus area X dulu',
+  'Tolong telpon dulu',
+  'Terima kasih',
+];
 
 function Chat() {
   const router = useRouter();
@@ -251,7 +271,7 @@ function Chat() {
         {/* Quick replies */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-12">
           <View className="flex-row gap-2 px-4 py-2">
-            {QUICK_REPLIES.map((q) => (
+            {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => (
               <Pressable key={q} onPress={() => handleSend(q)} className="rounded-full border border-brand-200 bg-white px-3 py-1.5">
                 <Text className="font-medium text-xs text-brand-700">{q}</Text>
               </Pressable>
