@@ -102,6 +102,16 @@ export class CleanerWalletController {
        WHERE user_id = ${user.id}::uuid AND review_status = 'pending'
     `;
 
+    // Tip insights: total tip bulan ini + bulan lalu + count
+    const tipRows = await this.prisma.$queryRaw<{ month_total: number; month_count: number; prev_total: number }[]>`
+      SELECT
+        COALESCE(SUM(CASE WHEN reference_type = 'tip' AND date_trunc('month', created_at) = date_trunc('month', NOW()) THEN amount ELSE 0 END), 0)::bigint AS month_total,
+        COUNT(CASE WHEN reference_type = 'tip' AND date_trunc('month', created_at) = date_trunc('month', NOW()) THEN 1 END)::int AS month_count,
+        COALESCE(SUM(CASE WHEN reference_type = 'tip' AND date_trunc('month', created_at) = date_trunc('month', NOW() - INTERVAL '1 month') THEN amount ELSE 0 END), 0)::bigint AS prev_total
+      FROM wallet_ledger_entries
+      WHERE user_id = ${user.id}::uuid AND account_type = 'earnings'
+    `;
+
     return {
       balance,
       earnings,
@@ -109,6 +119,11 @@ export class CleanerWalletController {
       withdrawn,
       pendingWithdrawalAmount: Number(pendingRows[0]?.amount ?? 0),
       pendingWithdrawalCount: Number(pendingRows[0]?.count ?? 0),
+      tipInsights: {
+        monthTotal: Number(tipRows[0]?.month_total ?? 0),
+        monthCount: Number(tipRows[0]?.month_count ?? 0),
+        prevMonthTotal: Number(tipRows[0]?.prev_total ?? 0),
+      },
       ledger,
     };
   }

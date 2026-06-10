@@ -26,6 +26,7 @@ function CleanerWallet() {
   const pending = useCleanerWalletStore((s) => s.pendingTotal());
 
   const [escrowPending, setEscrowPending] = useState(0);
+  const [tipInsights, setTipInsights] = useState<{ monthTotal: number; monthCount: number; prevMonthTotal: number }>({ monthTotal: 0, monthCount: 0, prevMonthTotal: 0 });
   useEffect(() => {
     void (async () => {
       try {
@@ -33,6 +34,11 @@ function CleanerWallet() {
         const r = await api.get('/cleaner/wallet');
         const d = r.data?.data ?? r.data;
         setEscrowPending(Number(d?.earningsPending ?? 0));
+        if (d?.tipInsights) setTipInsights({
+          monthTotal: Number(d.tipInsights.monthTotal ?? 0),
+          monthCount: Number(d.tipInsights.monthCount ?? 0),
+          prevMonthTotal: Number(d.tipInsights.prevMonthTotal ?? 0),
+        });
       } catch { /* ignore */ }
     })();
   }, []);
@@ -117,6 +123,32 @@ function CleanerWallet() {
             </View>
             <Text className="text-blue-600 font-bold">›</Text>
           </Pressable>
+
+          {/* Tip Insights — motivasi cleaner */}
+          {tipInsights.monthCount > 0 && (() => {
+            const diff = tipInsights.monthTotal - tipInsights.prevMonthTotal;
+            const pct = tipInsights.prevMonthTotal > 0 ? Math.round((diff / tipInsights.prevMonthTotal) * 100) : 0;
+            const avgTip = tipInsights.monthCount > 0 ? Math.round(tipInsights.monthTotal / tipInsights.monthCount) : 0;
+            const monthName = new Date().toLocaleDateString('id-ID', { month: 'long' });
+            return (
+              <View className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-base">🎁</Text>
+                  <Text className="font-bold text-[12px] uppercase tracking-wider text-amber-900">Tip {monthName}</Text>
+                </View>
+                <Text className="font-extrabold mt-1 text-2xl text-amber-900">{formatRupiah(tipInsights.monthTotal)}</Text>
+                <View className="mt-1 flex-row items-center gap-3">
+                  <Text className="font-medium text-[11px] text-amber-700">{tipInsights.monthCount} tip dari customer</Text>
+                  {avgTip > 0 && <Text className="font-medium text-[11px] text-amber-700">· Avg {formatRupiah(avgTip)}</Text>}
+                </View>
+                {tipInsights.prevMonthTotal > 0 && (
+                  <Text className={`font-bold mt-2 text-[11px] ${diff >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {diff >= 0 ? '↑' : '↓'} {Math.abs(pct)}% vs bulan lalu ({formatRupiah(tipInsights.prevMonthTotal)})
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
 
           {/* Stats */}
           <View className="mt-3 flex-row gap-2">
