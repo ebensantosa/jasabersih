@@ -497,11 +497,15 @@ function NewBooking() {
     [selectedAddons],
   );
   // basePrice sudah include deepSurcharge (via applyCleanMode). Surcharge lain = additive di atasnya.
+  // Subscription: addon dikali jumlah kunjungan (paket bulanan = layanan tambahan per visit).
+  const subscriptionAddonTotal = isSubscription && subscriptionVisits > 0 ? addonTotal * subscriptionVisits : addonTotal;
   const subtotal = isLargeScale
     ? largeScaleTargetTotal + addonTotal
     : isPostReno
       ? postRenoTotal + addonTotal
-      : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
+      : isSubscription
+        ? basePrice + subscriptionAddonTotal
+        : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherChecking, setVoucherChecking] = useState(false);
@@ -1645,9 +1649,18 @@ function NewBooking() {
               </Section>}
 
               <Section title="Add-on (Opsional)">
+                {isSubscription && subscriptionVisits > 0 && (
+                  <View className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                    <Text className="font-bold text-[11px] text-blue-900">ℹ Add-on dihitung per kunjungan</Text>
+                    <Text className="font-medium mt-1 text-[11px] leading-4 text-blue-900">
+                      Harga add-on otomatis dikali {subscriptionVisits}x sesuai paket (1 add-on jalan di tiap kunjungan).
+                    </Text>
+                  </View>
+                )}
                 <View className="gap-2">
                   {ADDONS.map((a) => {
                     const active = selectedAddons.has(a.code);
+                    const lineTotal = isSubscription && subscriptionVisits > 0 ? a.price * subscriptionVisits : a.price;
                     return (
                       <Pressable
                         key={a.code}
@@ -1666,6 +1679,9 @@ function NewBooking() {
                             {a.unit ? (
                               <Text className="font-sans text-[10px] text-ink-500"> {a.unit}</Text>
                             ) : null}
+                            {isSubscription && subscriptionVisits > 0 && (
+                              <Text className="font-bold text-[10px] text-ink-500"> x {subscriptionVisits} = {formatRupiah(lineTotal)}</Text>
+                            )}
                           </Text>
                         </View>
                         <View
