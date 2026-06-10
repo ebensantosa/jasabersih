@@ -180,6 +180,27 @@ export class CleanerJobsController {
   }
 
   // HTTP fallback untuk accept (kalau socket ga konek). Atomic, race-safe.
+  // POST /cleaner/jobs/:id/refuse — log alasan cleaner tolak job offer
+  // Untuk fraud detection (cleaner sama selalu tolak customer X = suspect side-deal)
+  // + tuning matching algorithm (60% tolak "jauh" = perlu adjust radius).
+  @Post(':id/refuse')
+  async refuse(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { reasonCode: string; note?: string },
+  ) {
+    const code = (body?.reasonCode ?? '').trim();
+    const allowed = ['off', 'jauh', 'bentrok', 'service_unfamiliar', 'customer_issue', 'other'];
+    if (!allowed.includes(code)) throw new BadRequestException('Reason code tidak valid');
+    const note = (body?.note ?? '').trim().slice(0, 500);
+
+    await this.prisma.$executeRaw`
+      INSERT INTO job_offer_refusals (cleaner_id, booking_id, reason_code, reason_note)
+      VALUES (${user.id}::uuid, ${id}::uuid, ${code}, ${note || null})
+    `;
+    return { ok: true };
+  }
+
   @Post(':id/accept')
   async accept(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any; is_available: boolean | null }[]>`

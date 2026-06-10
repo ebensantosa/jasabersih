@@ -90,10 +90,23 @@ export function IncomingJobModal() {
   // Hanya show kalau cleaner mode + logged in + ada incoming
   const visible = !!tokens && mode === 'freelancer' && !!incoming;
 
-  function reject(id: string) {
+  const [refuseModalOpen, setRefuseModalOpen] = useState(false);
+  function openRefuse() {
+    setRefuseModalOpen(true);
+  }
+  async function submitRefuse(reasonCode: string) {
+    if (!incoming) return;
     if (tickRef.current) clearInterval(tickRef.current);
-    setDismissedIds((d) => new Set(d).add(id));
+    setRefuseModalOpen(false);
+    setDismissedIds((d) => new Set(d).add(incoming.id));
+    try {
+      const { api } = await import('../lib/api');
+      await api.post(`/cleaner/jobs/${incoming.id}/refuse`, { reasonCode });
+    } catch { /* non-fatal, dismiss tetap jalan */ }
     toast.info('Job dilewati. Akan di-offer ke cleaner lain.');
+  }
+  function reject(id: string) {
+    openRefuse();
   }
 
   function accept(id: string) {
@@ -289,6 +302,36 @@ export function IncomingJobModal() {
           </SafeAreaView>
         </View>
       </View>
+
+      <Modal visible={refuseModalOpen} transparent animationType="fade" onRequestClose={() => setRefuseModalOpen(false)}>
+        <Pressable onPress={() => setRefuseModalOpen(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
+          <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
+            <Text className="font-extrabold text-base text-ink-900">Kenapa Tolak Job?</Text>
+            <Text className="font-medium mt-1 text-[12px] text-ink-600">Bantu kami biar offer berikutnya lebih cocok untuk kamu.</Text>
+            <View className="mt-3 gap-2">
+              {[
+                { code: 'off', label: 'Lagi off / istirahat' },
+                { code: 'jauh', label: 'Lokasi terlalu jauh' },
+                { code: 'bentrok', label: 'Jam-nya bentrok job lain' },
+                { code: 'service_unfamiliar', label: 'Service ini kurang saya kuasai' },
+                { code: 'customer_issue', label: 'Customer pernah bermasalah' },
+                { code: 'other', label: 'Lainnya' },
+              ].map((r) => (
+                <Pressable
+                  key={r.code}
+                  onPress={() => void submitRefuse(r.code)}
+                  className="rounded-xl border border-ink-200 bg-white px-3 py-3"
+                >
+                  <Text className="font-semibold text-sm text-ink-800">{r.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable onPress={() => setRefuseModalOpen(false)} className="mt-3 py-2">
+              <Text className="font-semibold text-center text-xs text-ink-500">Batal</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
