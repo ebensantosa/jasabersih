@@ -41,7 +41,12 @@ export default function KycPage() {
   }
   async function bulkApprove() {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Approve ${selectedIds.size} cleaner sekaligus? Pastikan dokumen mereka udah dicek.`)) return;
+    const ok = await confirm({
+      title: `Bulk Approve ${selectedIds.size} cleaner?`,
+      message: 'Pastikan semua dokumen mereka udah dicek. Tindakan ini tidak bisa di-undo via UI (harus reject manual satu-satu).',
+      confirmLabel: 'Ya, Approve Semua',
+    });
+    if (!ok) return;
     setBulkBusy(true);
     try {
       const r = await api.admin.kycBulkApprove(Array.from(selectedIds));
