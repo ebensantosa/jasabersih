@@ -982,7 +982,7 @@ function NewBooking() {
                           )}
                           {note && (
                             <View className="mt-2 rounded bg-amber-50 px-2 py-1">
-                              <Text className="font-sans text-[10px] text-amber-800">â“˜ {note}</Text>
+                              <Text className="font-sans text-[10px] text-amber-800">ℹ {note}</Text>
                             </View>
                           )}
                           {p.scope && includes.length === 0 && (

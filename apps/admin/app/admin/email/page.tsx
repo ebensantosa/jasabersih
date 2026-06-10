@@ -71,7 +71,7 @@ export default function EmailPage() {
       <p className="text-sm text-slate-500">Konfigurasi email transaksional via Resend — OTP, notifikasi booking, password reset.</p>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuat...</div>
       ) : (
         <div className="mt-6 max-w-2xl space-y-4">
           <div className="rounded-md border bg-blue-50 p-3 text-xs text-blue-900">
@@ -103,7 +103,7 @@ export default function EmailPage() {
                     {showKey ? 'Sembunyikan' : 'Tampilkan'}
                   </Button>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-500">Disimpan di app_config (DB) â€” bisa diubah tanpa restart server.</p>
+                <p className="mt-1 text-[11px] text-slate-500">Disimpan di app_config (DB) - bisa diubah tanpa restart server.</p>
               </div>
               <Input
                 label="From Address"

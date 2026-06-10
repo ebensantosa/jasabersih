@@ -74,7 +74,7 @@ function CleanerWallet() {
               )}
               {pending > 0 && (
                 <Text className="font-medium mt-1 text-[11px] text-amber-200">
-                  â³ {formatRupiah(pending)} dalam proses penarikan
+                  ⏳ {formatRupiah(pending)} dalam proses penarikan
                 </Text>
               )}
             </View>
