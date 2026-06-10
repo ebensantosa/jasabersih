@@ -11,11 +11,10 @@ import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { safeBack } from '../../src/lib/safeBack';
 
-type DocType = 'ktp' | 'selfie_ktp' | 'bank_book';
+type DocType = 'ktp' | 'bank_book';
 
 const DOC_INFO: Record<DocType, { label: string; hint: string }> = {
   ktp: { label: 'Foto KTP', hint: 'Foto KTP jelas, semua sisi terlihat, tidak buram' },
-  selfie_ktp: { label: 'Selfie + KTP', hint: 'Foto selfie sambil memegang KTP di sebelah wajah' },
   bank_book: { label: 'Buku Tabungan', hint: 'Halaman pertama buku tabungan (nama + no rekening jelas)' },
 };
 
@@ -148,7 +147,7 @@ function CleanerKycScreen() {
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             <StatusBanner status={status?.kycStatus ?? 'pending'} reason={status?.rejectionReason ?? null} />
 
-            {(['ktp', 'selfie_ktp', 'bank_book'] as DocType[]).map((t) => {
+            {(['ktp', 'bank_book'] as DocType[]).map((t) => {
               const doc = docByType(t);
               const info = DOC_INFO[t];
               const isUploading = uploading === t;
@@ -236,9 +235,9 @@ function CleanerKycScreen() {
 
             {/* Submit button - enabled hanya kalau 3 doc terupload + status masih pending */}
             {(() => {
-              const uploadedCount = (['ktp', 'selfie_ktp', 'bank_book'] as DocType[])
+              const uploadedCount = (['ktp', 'bank_book'] as DocType[])
                 .filter((t) => docByType(t)).length;
-              const canSubmit = uploadedCount === 3 && status?.kycStatus === 'pending';
+              const canSubmit = uploadedCount === 2 && status?.kycStatus === 'pending';
               const alreadyReview = status?.kycStatus === 'under_review';
               if (alreadyReview) return null;
               return (

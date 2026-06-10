@@ -7,6 +7,9 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { StorageService } from '../storage/storage.service';
 
+// Selfie+KTP dihapus dari requirement - cukup KTP + buku tabungan.
+// `selfie_ktp` masih diterima sebagai value valid biar dokumen historis lama gak bermasalah,
+// tapi gak masuk hitungan submit (lihat /submit di bawah).
 const ALLOWED_DOC_TYPES = ['ktp', 'selfie_ktp', 'bank_book'] as const;
 type DocType = typeof ALLOWED_DOC_TYPES[number];
 
@@ -128,10 +131,10 @@ export class CleanerKycController {
     const counts = await this.prisma.$queryRaw<{ uploaded: number }[]>`
       SELECT COUNT(DISTINCT doc_type)::int AS uploaded
         FROM kyc_documents
-       WHERE user_id = ${user.id}::uuid AND doc_type IN ('ktp', 'selfie_ktp', 'bank_book')
+       WHERE user_id = ${user.id}::uuid AND doc_type IN ('ktp', 'bank_book')
     `;
-    if ((counts[0]?.uploaded ?? 0) < 3) {
-      throw new BadRequestException({ code: 'KYC_INCOMPLETE', message: 'Lengkapi semua 3 dokumen sebelum submit.' });
+    if ((counts[0]?.uploaded ?? 0) < 2) {
+      throw new BadRequestException({ code: 'KYC_INCOMPLETE', message: 'Lengkapi KTP & Buku Tabungan sebelum submit.' });
     }
     const profile = await this.prisma.$queryRaw<{ kyc_status: string }[]>`
       SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
