@@ -118,54 +118,54 @@ export type AddOnItem = {
 
 export const ADDONS: AddOnItem[] = [
   // Vacuum Lantai
-  { code: 'vacuum_mop_lantai',  name: 'Vacuum & Mop Lantai',      price: 65_000,  durationMin: 45, unit: '/ruangan', icon: Sparkles,  group: 'Vakum Kasur' },
+  { code: 'vacuum_mop_lantai',  name: 'Vacuum + Pel Lantai',                  price: 65_000,  durationMin: 45, unit: 'per ruangan',          icon: Sparkles,  group: 'Lantai & Kasur' },
 
-  // Vakum Kasur
-  { code: 'vakum_kasur_single', name: 'Vakum Kasur Single Bed',   price: 45_000,  durationMin: 20, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
-  { code: 'vakum_kasur_queen',  name: 'Vakum Kasur Queen Bed',    price: 60_000,  durationMin: 25, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
-  { code: 'vakum_kasur_master', name: 'Vakum Kasur Master Bed',   price: 75_000,  durationMin: 30, unit: '/kasur',   icon: BedDouble, group: 'Vakum Kasur' },
+  // Vakum Kasur (sedot debu kasur)
+  { code: 'vakum_kasur_single', name: 'Sedot Debu Kasur Single (90×200)',     price: 45_000,  durationMin: 20, unit: 'per kasur',            icon: BedDouble, group: 'Lantai & Kasur' },
+  { code: 'vakum_kasur_queen',  name: 'Sedot Debu Kasur Queen (160×200)',     price: 60_000,  durationMin: 25, unit: 'per kasur',            icon: BedDouble, group: 'Lantai & Kasur' },
+  { code: 'vakum_kasur_master', name: 'Sedot Debu Kasur King (180×200)',      price: 75_000,  durationMin: 30, unit: 'per kasur',            icon: BedDouble, group: 'Lantai & Kasur' },
 
   // Bak Mandi / Bathtub
-  { code: 'bathtub_general',    name: 'Bak Mandi / Bathtub (General)',    price: 30_000, durationMin: 20, unit: '/unit', icon: Bath, group: 'Bak Mandi / Bathtub' },
-  { code: 'bathtub_deep',       name: 'Bak Mandi / Bathtub (Deep Clean)', price: 50_000, durationMin: 40, unit: '/unit', icon: Bath, group: 'Bak Mandi / Bathtub' },
+  { code: 'bathtub_general',    name: 'Bersihin Bak Mandi (Standar)',         price: 30_000, durationMin: 20, unit: 'per bak',              icon: Bath, group: 'Kamar Mandi' },
+  { code: 'bathtub_deep',       name: 'Bersihin Bak Mandi (Deep - kerak tebal)', price: 50_000, durationMin: 40, unit: 'per bak',            icon: Bath, group: 'Kamar Mandi' },
 
-  // Hydro Vacuum Kasur
-  { code: 'hydro_100x200',      name: 'Hydro Vacuum Kasur 100×200', price: 250_000, durationMin: 60, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_120x200',      name: 'Hydro Vacuum Kasur 120×200', price: 270_000, durationMin: 60, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_140x200',      name: 'Hydro Vacuum Kasur 140×200', price: 290_000, durationMin: 75, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_160x200',      name: 'Hydro Vacuum Kasur 160×200', price: 310_000, durationMin: 75, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_180x200',      name: 'Hydro Vacuum Kasur 180×200', price: 330_000, durationMin: 90, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_200x200',      name: 'Hydro Vacuum Kasur 200×200', price: 350_000, durationMin: 90, unit: '/kasur',    icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_bantal',       name: 'Hydro Vacuum Bantal / Guling', price: 70_000, durationMin: 20, unit: '/pcs',     icon: Sparkles, group: 'Hydro Vacuum Kasur' },
-  { code: 'hydro_sofa',         name: 'Hydro Vacuum Sofa',          price: 80_000,  durationMin: 30, unit: '/dudukan',  icon: Sofa,     group: 'Hydro Vacuum Kasur' },
+  // Cuci Kasur Hydro (lebih dalam: cairan, hisap, kering)
+  { code: 'hydro_100x200',      name: 'Cuci Kasur (100×200) - Single Kecil',  price: 250_000, durationMin: 60, unit: 'per kasur',            icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_120x200',      name: 'Cuci Kasur (120×200) - Single Besar',  price: 270_000, durationMin: 60, unit: 'per kasur',            icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_140x200',      name: 'Cuci Kasur (140×200) - Full',          price: 290_000, durationMin: 75, unit: 'per kasur',            icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_160x200',      name: 'Cuci Kasur (160×200) - Queen',         price: 310_000, durationMin: 75, unit: 'per kasur',            icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_180x200',      name: 'Cuci Kasur (180×200) - King',          price: 330_000, durationMin: 90, unit: 'per kasur',            icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_200x200',      name: 'Cuci Kasur (200×200) - Super King',    price: 350_000, durationMin: 90, unit: 'per kasur',            icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_bantal',       name: 'Cuci Bantal / Guling',                 price: 70_000, durationMin: 20, unit: 'per buah',             icon: Sparkles, group: 'Cuci Kasur (Hydro)' },
+  { code: 'hydro_sofa',         name: 'Cuci Sofa (Hydro)',                    price: 80_000,  durationMin: 30, unit: 'per tempat duduk',     icon: Sofa,     group: 'Cuci Kasur (Hydro)' },
 
   // Dapur & Peralatan
-  { code: 'cuci_piring',        name: 'Cuci Piring',                 price: 30_000, durationMin: 20, unit: '/sink (max 20 pcs)', icon: ChefHat,      group: 'Dapur & Peralatan' },
-  { code: 'cuci_alat_masak',    name: 'Cuci Peralatan Masak',        price: 40_000, durationMin: 25, unit: '/max 10 pcs',        icon: ChefHat,      group: 'Dapur & Peralatan' },
-  { code: 'kulkas',             name: 'Bersihkan Kulkas (dalam+luar)', price: 75_000, durationMin: 40, unit: '',                 icon: Refrigerator, group: 'Dapur & Peralatan' },
-  { code: 'kompor',             name: 'Bersihkan Kompor Gas (+grill)', price: 50_000, durationMin: 30, unit: '',                 icon: ChefHat,      group: 'Dapur & Peralatan' },
-  { code: 'microwave_oven',     name: 'Bersihkan Microwave / Oven',  price: 50_000, durationMin: 25, unit: '/dalam+luar',        icon: ChefHat,      group: 'Dapur & Peralatan' },
-  { code: 'hood_exhaust',       name: 'Bersihkan Hood / Exhaust Fan', price: 65_000, durationMin: 35, unit: '/unit',             icon: Wind,         group: 'Dapur & Peralatan' },
-  { code: 'dispenser',          name: 'Bersihkan Dispenser',         price: 25_000, durationMin: 15, unit: '/luar+area bawah',   icon: Refrigerator, group: 'Dapur & Peralatan' },
+  { code: 'cuci_piring',        name: 'Cuci Piring (max 20 buah)',            price: 30_000, durationMin: 20, unit: 'sekali kerja',          icon: ChefHat,      group: 'Dapur' },
+  { code: 'cuci_alat_masak',    name: 'Cuci Alat Masak (max 10 buah)',        price: 40_000, durationMin: 25, unit: 'sekali kerja',          icon: ChefHat,      group: 'Dapur' },
+  { code: 'kulkas',             name: 'Bersihin Kulkas (dalam + luar)',       price: 75_000, durationMin: 40, unit: 'per kulkas',           icon: Refrigerator, group: 'Dapur' },
+  { code: 'kompor',             name: 'Bersihin Kompor + Grill',              price: 50_000, durationMin: 30, unit: 'per kompor',           icon: ChefHat,      group: 'Dapur' },
+  { code: 'microwave_oven',     name: 'Bersihin Microwave / Oven',            price: 50_000, durationMin: 25, unit: 'per unit',             icon: ChefHat,      group: 'Dapur' },
+  { code: 'hood_exhaust',       name: 'Bersihin Hood / Cooker Hood',          price: 65_000, durationMin: 35, unit: 'per unit',             icon: Wind,         group: 'Dapur' },
+  { code: 'dispenser',          name: 'Bersihin Dispenser Air',               price: 25_000, durationMin: 15, unit: 'per dispenser',        icon: Refrigerator, group: 'Dapur' },
 
   // Kamar Mandi Ekstra
-  { code: 'sikat_keramik',      name: 'Sikat Keramik Dinding',       price: 30_000, durationMin: 20, unit: '/m²',     icon: Bath, group: 'Kamar Mandi Ekstra' },
-  { code: 'shower_head',        name: 'Bersihkan Shower Head',       price: 25_000, durationMin: 15, unit: '/unit',   icon: Bath, group: 'Kamar Mandi Ekstra' },
-  { code: 'poles_kaca_shower',  name: 'Poles Kaca Shower / Cermin',  price: 25_000, durationMin: 15, unit: '/unit',   icon: Sparkles, group: 'Kamar Mandi Ekstra' },
-  { code: 'saluran_air',        name: 'Bersihkan Saluran Air',       price: 25_000, durationMin: 15, unit: '/lubang', icon: Wind, group: 'Kamar Mandi Ekstra' },
+  { code: 'sikat_keramik',      name: 'Sikat Keramik Dinding KM',             price: 30_000, durationMin: 20, unit: 'per m²',               icon: Bath,     group: 'Kamar Mandi' },
+  { code: 'shower_head',        name: 'Bersihin Shower (kepala shower)',      price: 25_000, durationMin: 15, unit: 'per shower',           icon: Bath,     group: 'Kamar Mandi' },
+  { code: 'poles_kaca_shower',  name: 'Poles Kaca Shower / Cermin',           price: 25_000, durationMin: 15, unit: 'per kaca',             icon: Sparkles, group: 'Kamar Mandi' },
+  { code: 'saluran_air',        name: 'Bersihin Saluran Pembuangan Air',      price: 25_000, durationMin: 15, unit: 'per saluran',          icon: Wind,     group: 'Kamar Mandi' },
 
   // Furniture & Kaca
-  { code: 'lap_kaca_jendela',   name: 'Lap Kaca Jendela',            price: 15_000, durationMin: 10, unit: '/daun',    icon: Wind,  group: 'Furniture & Kaca' },
-  { code: 'cuci_sofa_kering',   name: 'Cuci Sofa Dry Clean',         price: 50_000, durationMin: 25, unit: '/dudukan', icon: Sofa,  group: 'Furniture & Kaca' },
-  { code: 'cuci_sofa_wet',      name: 'Cuci Sofa Wet Clean',         price: 90_000, durationMin: 35, unit: '/dudukan', icon: Sofa,  group: 'Furniture & Kaca' },
-  { code: 'lemari_kayu',        name: 'Lap / Poles Lemari Kayu',     price: 40_000, durationMin: 30, unit: '/dalam+luar', icon: Home, group: 'Furniture & Kaca' },
-  { code: 'angkut_furniture',   name: 'Angkut / Pindah Furniture',   price: 30_000, durationMin: 15, unit: '/item',    icon: Hammer, group: 'Furniture & Kaca' },
+  { code: 'lap_kaca_jendela',   name: 'Lap Kaca Jendela',                     price: 15_000, durationMin: 10, unit: 'per panel jendela',    icon: Wind,  group: 'Furniture & Kaca' },
+  { code: 'cuci_sofa_kering',   name: 'Cuci Sofa Kering (Dry Clean)',         price: 50_000, durationMin: 25, unit: 'per tempat duduk',     icon: Sofa,  group: 'Furniture & Kaca' },
+  { code: 'cuci_sofa_wet',      name: 'Cuci Sofa Basah (Wet Clean - lebih bersih)', price: 90_000, durationMin: 35, unit: 'per tempat duduk', icon: Sofa,  group: 'Furniture & Kaca' },
+  { code: 'lemari_kayu',        name: 'Lap + Poles Lemari Kayu',              price: 40_000, durationMin: 30, unit: 'per lemari',           icon: Home,  group: 'Furniture & Kaca' },
+  { code: 'angkut_furniture',   name: 'Angkat / Pindahin Furniture',          price: 30_000, durationMin: 15, unit: 'per furniture',        icon: Hammer, group: 'Furniture & Kaca' },
 
   // Sampah & Pembuangan
-  { code: 'sampah',             name: 'Buang Sampah / Trashbag',     price: 50_000, durationMin: 20, unit: '/1x buang', icon: Snowflake, group: 'Sampah & Pembuangan' },
+  { code: 'sampah',             name: 'Buang Sampah ke TPS (1x)',             price: 50_000, durationMin: 20, unit: 'sekali angkut',        icon: Snowflake, group: 'Sampah' },
 
   // Decluttering
-  { code: 'decluttering',       name: 'Rapikan & Sortir Barang',     price: 75_000, durationMin: 60, unit: '/jam',     icon: Shirt, group: 'Decluttering' },
+  { code: 'decluttering',       name: 'Rapikan + Sortir Barang',              price: 75_000, durationMin: 60, unit: 'per jam',              icon: Shirt, group: 'Decluttering' },
 ];
 
 // ============ FORM OPTIONS ============
