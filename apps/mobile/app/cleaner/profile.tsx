@@ -220,6 +220,21 @@ function CleanerProfileScreen() {
                 <Text className="font-sans mt-1 text-[11px] text-amber-900">Wajib agar bisa menerima order & menarik saldo.</Text>
               </Pressable>
             )}
+
+            <Pressable
+              onPress={() => router.push('/cleaner/calendar')}
+              className="mt-3 flex-row items-center gap-3 rounded-2xl bg-white p-4"
+              style={{ elevation: 2 }}
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
+                <Text className="text-base">📅</Text>
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-sm text-ink-900">Kalender Jadwal</Text>
+                <Text className="font-medium mt-0.5 text-[11px] text-ink-500">Liat semua job kamu per bulan</Text>
+              </View>
+              <Text className="font-bold text-base text-brand-600">›</Text>
+            </Pressable>
           </ScrollView>
         )}
       </SafeAreaView>

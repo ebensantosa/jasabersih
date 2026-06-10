@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -176,6 +176,36 @@ export class CleanerJobsController {
        WHERE b.cleaner_id = ${user.id}::uuid
          AND b.status IN ('matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started')
        ORDER BY b.scheduled_at ASC LIMIT 50
+    `;
+  }
+
+  // GET /cleaner/jobs/calendar?month=YYYY-MM — daftar jobs yg di-assign cleaner di bulan tertentu
+  // untuk render kalender bulanan
+  @Get('calendar')
+  async calendar(@CurrentUser() user: AuthenticatedUser, @Query('month') monthStr?: string) {
+    // Format YYYY-MM. Default = bulan ini.
+    const today = new Date();
+    const month = monthStr && /^\d{4}-\d{2}$/.test(monthStr)
+      ? monthStr
+      : `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const [yy, mm] = month.split('-').map((s) => Number(s));
+    const start = new Date(Date.UTC(yy!, mm! - 1, 1));
+    const end = new Date(Date.UTC(yy!, mm!, 1));
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT b.id, b.status, b.scheduled_at AS "scheduledAt",
+             b.cleaner_payout AS "cleanerPayout",
+             b.address_line AS "addressLine",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
+             u.name AS "customerName"
+        FROM bookings b
+        LEFT JOIN services s ON s.id = b.service_id
+        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN users u ON u.id = b.customer_id
+       WHERE b.cleaner_id = ${user.id}::uuid
+         AND b.scheduled_at >= ${start}::timestamptz
+         AND b.scheduled_at < ${end}::timestamptz
+         AND b.status NOT IN ('canceled', 'rejected')
+       ORDER BY b.scheduled_at ASC
     `;
   }
 
