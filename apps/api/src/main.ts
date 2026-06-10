@@ -67,6 +67,13 @@ async function bootstrap() {
   const doc = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, doc);
 
+  // Security fail-safe: gak boleh production + AUTH_DEV_MODE=true bareng (bocorin OTP plaintext).
+  if (process.env.NODE_ENV === 'production' && process.env.AUTH_DEV_MODE === 'true') {
+    // eslint-disable-next-line no-console
+    console.error('[api][FATAL] AUTH_DEV_MODE=true tidak boleh aktif di production. Refusing to start.');
+    process.exit(1);
+  }
+
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
   // eslint-disable-next-line no-console

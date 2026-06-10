@@ -63,8 +63,9 @@ export class AuthService {
       const result = await this.otp.sendViaEmail(email, otp);
       emailSent = result.ok;
     }
-    // Sampai SMS gateway aktif: expose devOtp di response saat AUTH_DEV_MODE=true ATAU kalau email gagal terkirim
-    const devMode = process.env.AUTH_DEV_MODE === 'true';
+    // Sampai SMS gateway aktif: expose devOtp di response saat AUTH_DEV_MODE=true.
+    // HARD GUARD: gak boleh aktif di production walau env flag accidentally set TRUE.
+    const devMode = process.env.AUTH_DEV_MODE === 'true' && process.env.NODE_ENV !== 'production';
     return {
       phone,
       expiresInSeconds: PENDING_TTL_MIN * 60,
@@ -254,7 +255,7 @@ export class AuthService {
     let emailSent = false;
     const result = await this.otp.sendViaEmail(user.email, otp);
     emailSent = result.ok;
-    const devMode = process.env.AUTH_DEV_MODE === 'true';
+    const devMode = process.env.AUTH_DEV_MODE === 'true' && process.env.NODE_ENV !== 'production';
     return { ok: true, emailSent, ...(devMode ? { devOtp: otp } : {}) };
   }
 

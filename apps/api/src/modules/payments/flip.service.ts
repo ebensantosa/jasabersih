@@ -74,7 +74,8 @@ export class FlipService {
       validationToken: String(map.get('payment.flip_validation_token') ?? ''),
       enabled: Boolean(map.get('payment.flip_enabled')),
     };
-    this.log.log(`Flip creds loaded: mode=${isProd ? 'production' : 'sandbox'} enabled=${creds.enabled} secret_first10=${secretKey.slice(0, 10)} secret_len=${secretKey.length}`);
+    // Jangan log secret value/prefix/length — semua itu bocor di log shipping.
+    this.log.log(`Flip creds loaded: mode=${isProd ? 'production' : 'sandbox'} enabled=${creds.enabled} hasKey=${!!secretKey}`);
     this.cached = creds;
     this.cachedAt = Date.now();
     return creds;
