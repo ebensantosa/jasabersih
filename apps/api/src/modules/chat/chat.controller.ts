@@ -34,7 +34,7 @@ export class ChatController {
       LEFT JOIN pricing_packages pp ON pp.id = b.package_id
       WHERE (b.customer_id = ${req.user.id}::uuid OR b.cleaner_id = ${req.user.id}::uuid)
         AND b.cleaner_id IS NOT NULL
-        AND b.status IN ('matched', 'on_the_way', 'in_progress', 'completed')
+        AND b.status IN ('matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started', 'completed')
         AND (b.completed_at IS NULL OR b.completed_at > NOW() - INTERVAL '24 hours')
         AND EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id)
       ORDER BY "lastTimestamp" DESC NULLS LAST

@@ -116,7 +116,7 @@ export class AdminUsersController {
     // Auto-cancel pending bookings of banned user (as customer or cleaner)
     await this.prisma.$executeRaw`
       UPDATE bookings
-         SET status = 'cancelled',
+         SET status = 'canceled',
              canceled_at = NOW(),
              cancellation_reason = 'admin_ban',
              cancelled_by = ${admin.id}::uuid

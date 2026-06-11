@@ -132,10 +132,11 @@ export class RatingsController {
         review = COALESCE(${body.review ?? null}::text, review)
       WHERE id = ${r.id}::uuid
     `;
-    // Recompute aggregate
+    // Recompute aggregate — termasuk rating_count (dulu cuma avg, count jadi stale kalau di-edit)
     await this.prisma.$executeRaw`
       UPDATE cleaner_profiles cp
-         SET rating_avg = (SELECT ROUND(AVG(rating)::numeric, 2) FROM ratings WHERE ratee_id = ${r.ratee_id}::uuid)
+         SET rating_avg = (SELECT ROUND(AVG(rating)::numeric, 2) FROM ratings WHERE ratee_id = ${r.ratee_id}::uuid),
+             rating_count = (SELECT COUNT(*)::int FROM ratings WHERE ratee_id = ${r.ratee_id}::uuid)
        WHERE cp.user_id = ${r.ratee_id}::uuid
     `;
     return { ok: true };

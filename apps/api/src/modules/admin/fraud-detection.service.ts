@@ -40,7 +40,7 @@ export class FraudDetectionService {
       WITH stats AS (
         SELECT cleaner_id,
                COUNT(*)::int AS total,
-               SUM(CASE WHEN status = 'cancelled' AND cancellation_reason NOT IN ('admin_ban', 'customer_cancel') THEN 1 ELSE 0 END)::int AS cancelled
+               SUM(CASE WHEN status = 'canceled' AND cancellation_reason NOT IN ('admin_ban', 'customer_cancel') THEN 1 ELSE 0 END)::int AS cancelled
           FROM bookings
          WHERE cleaner_id IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
          GROUP BY cleaner_id HAVING COUNT(*) >= 5

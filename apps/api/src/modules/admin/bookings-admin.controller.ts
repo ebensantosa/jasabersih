@@ -264,7 +264,7 @@ export class AdminBookingsController {
 
     await this.prisma.$executeRaw`
       UPDATE bookings
-         SET status = 'cancelled',
+         SET status = 'canceled',
              canceled_at = NOW(),
              cancellation_reason = ${body.reason},
              cancelled_by = ${admin.id}::uuid

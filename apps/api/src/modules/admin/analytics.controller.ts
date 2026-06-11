@@ -115,7 +115,8 @@ export class AdminAnalyticsController {
     // Funnel calculation (last 30 days)
     const totalOrders30d = bookingByStatus.reduce((s, x) => s + Number(x.count), 0);
     const completedCount = Number(bookingByStatus.find((x) => x.status === 'completed')?.count ?? 0);
-    const cancelledCount = Number(bookingByStatus.find((x) => x.status === 'cancelled' || x.status === 'canceled')?.count ?? 0);
+    // Setelah migration 20260611100000 normalize → semua 'canceled'. Workaround dual-check dihapus.
+    const cancelledCount = Number(bookingByStatus.find((x) => x.status === 'canceled')?.count ?? 0);
 
     return {
       today: todayStats[0] ?? { orders: 0, gmv: 0, revenue: 0 },
