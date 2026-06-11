@@ -142,120 +142,122 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
             </Pressable>
           </View>
 
-          <View className="mb-2 flex-row items-center justify-between">
-            <Text className="font-semibold text-xs text-ink-600">Tanggal</Text>
-            {/* Tombol custom date - prominent di kanan biar gampang ditemuin */}
-            <Pressable
-              onPress={() => setShowDatePicker(true)}
-              className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${isCustomDate ? 'bg-brand-600' : 'bg-brand-50'}`}
-            >
-              <Calendar color={isCustomDate ? 'white' : '#1D4ED8'} size={12} />
-              <Text className={`font-bold text-[11px] ${isCustomDate ? 'text-white' : 'text-brand-700'}`}>
-                {isCustomDate ? fmtDateLabel(selectedDate).slice(0, 12) : 'Bulan Depan / Lainnya'}
-              </Text>
-            </Pressable>
+          {/* STEP 1: TANGGAL */}
+          <View className="mb-1 flex-row items-center gap-2">
+            <View className="h-5 w-5 items-center justify-center rounded-full bg-brand-600">
+              <Text className="font-extrabold text-[10px] text-white">1</Text>
+            </View>
+            <Text className="font-extrabold text-sm text-ink-900">Pilih Tanggal</Text>
           </View>
+          <Text className="font-medium mb-2 ml-7 text-[11px] text-ink-500">
+            {isCustomDate ? `📅 ${fmtDateLabel(selectedDate)}` : `${fmtDateLabel(selectedDate)}`}
+          </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-2 pr-4">
-              {quickDates.map((d, i) => {
+              {quickDates.slice(0, 7).map((d, i) => {
                 const active = quickIdx === i;
                 return (
                   <Pressable
                     key={i}
                     onPress={() => pickDate(d.date)}
-                    className={`min-w-[72px] items-center rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                    className={`min-w-[68px] items-center rounded-xl border px-3 py-2.5 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
                   >
-                    <Text className={`font-bold text-xs ${active ? 'text-brand-700' : 'text-ink-900'}`}>{d.label}</Text>
-                    <Text className={`mt-0.5 text-[10px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>{d.sub}</Text>
+                    <Text className={`font-bold text-[11px] ${active ? 'text-white' : 'text-ink-900'}`}>{d.label}</Text>
+                    <Text className={`mt-0.5 text-[10px] ${active ? 'text-white/85' : 'text-ink-500'}`}>{d.sub}</Text>
                   </Pressable>
                 );
               })}
+              {/* Tombol "Tanggal lain" terlihat jelas sebagai opsi 8 */}
+              <Pressable
+                onPress={() => setShowDatePicker(true)}
+                className={`min-w-[68px] items-center justify-center rounded-xl border-2 border-dashed px-3 py-2.5 ${isCustomDate ? 'border-brand-600 bg-brand-50' : 'border-brand-400 bg-white'}`}
+              >
+                <Calendar color="#1D4ED8" size={16} />
+                <Text className="font-bold mt-0.5 text-[10px] text-brand-700">{isCustomDate ? 'Ubah' : 'Tanggal'}</Text>
+                <Text className="font-medium text-[9px] text-brand-600">{isCustomDate ? `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}` : 'Lainnya'}</Text>
+              </Pressable>
             </View>
           </ScrollView>
-          {isCustomDate && (
-            <View className="mt-2 self-start rounded-full bg-brand-50 px-3 py-1">
-              <Text className="font-bold text-[11px] text-brand-700">📅 {fmtDateLabel(selectedDate)}</Text>
+
+          {/* STEP 2: JAM */}
+          <View className="mt-5 mb-1 flex-row items-center gap-2">
+            <View className="h-5 w-5 items-center justify-center rounded-full bg-brand-600">
+              <Text className="font-extrabold text-[10px] text-white">2</Text>
             </View>
-          )}
+            <Text className="font-extrabold text-sm text-ink-900">Pilih Jam</Text>
+          </View>
+          <Text className="font-medium mb-2 ml-7 text-[11px] text-ink-500">
+            {useNowTime ? `Sekarang (${String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getHours()).padStart(2, '0')}:${String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getMinutes()).padStart(2, '0')})`
+              : customTime ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}`
+              : timeSlot}
+          </Text>
 
           {allTodayPast ? (
-            <View className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-              <Text className="font-bold text-sm text-amber-900">Operasional hari ini sudah tutup</Text>
+            <View className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <Text className="font-bold text-sm text-amber-900">⏰ Operasional hari ini sudah tutup</Text>
               <Text className="font-medium mt-1 text-[11px] text-amber-800">
-                Operasional 07:00-20:00. Pilih tanggal lain untuk lihat slot tersedia.
+                Pilih tanggal lain di langkah 1 untuk lihat jam yang tersedia.
               </Text>
             </View>
           ) : isToday && !nowInOps ? (
-            <View className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-              <Text className="font-bold text-sm text-amber-900">Di luar jam operasional</Text>
+            <View className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <Text className="font-bold text-sm text-amber-900">⏰ Di luar jam operasional</Text>
               <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
-                Jam operasional 07:00-20:00. Pesanan hari ini sudah tidak bisa dijadwalkan. Pilih tanggal lain.
+                Jam operasional 07:00-20:00. Pesanan untuk hari ini sudah tidak bisa.
               </Text>
             </View>
           ) : (
             <>
-              <View className="mt-4 mb-2 flex-row items-center justify-between">
-                <Text className="font-semibold text-xs text-ink-600">Jam</Text>
-                {/* Tombol custom time - prominent biar discoverable */}
+              {/* "Sekarang" CTA besar kalau valid */}
+              {nowInOps && (
+                <Pressable
+                  onPress={() => { setUseNowTime(true); setCustomTime(null); }}
+                  className={`mb-3 flex-row items-center justify-between rounded-xl border-2 p-3 ${useNowTime && isToday ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
+                >
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-base">⚡</Text>
+                    <View>
+                      <Text className={`font-extrabold text-sm ${useNowTime && isToday ? 'text-white' : 'text-emerald-800'}`}>
+                        Sekarang (1 jam lagi)
+                      </Text>
+                      <Text className={`font-medium text-[11px] ${useNowTime && isToday ? 'text-white/85' : 'text-emerald-700'}`}>
+                        Cleaner langsung berangkat
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className={`font-extrabold text-sm ${useNowTime && isToday ? 'text-white' : 'text-emerald-700'}`}>
+                    {String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getHours()).padStart(2, '0')}:{String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getMinutes()).padStart(2, '0')}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Quick time slots - render HANYA yg valid (gak ada past slots greyed) */}
+              <Text className="font-semibold mb-2 text-[11px] text-ink-500">Atau pilih jam berikut:</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {TIME_SLOTS.filter(isSlotValid).map((t) => {
+                  const active = !customTime && timeSlot === t && !useNowTime;
+                  return (
+                    <Pressable
+                      key={t}
+                      onPress={() => { setUseNowTime(false); setTimeSlot(t); setCustomTime(null); }}
+                      className={`rounded-lg border-2 px-3 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                    >
+                      <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>{t}</Text>
+                    </Pressable>
+                  );
+                })}
+                {/* Tombol jam spesifik */}
                 <Pressable
                   onPress={() => setShowTimePicker(true)}
-                  className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${customTime ? 'bg-brand-600' : 'bg-brand-50'}`}
+                  className={`flex-row items-center gap-1 rounded-lg border-2 border-dashed px-3 py-2 ${customTime ? 'border-brand-600 bg-brand-50' : 'border-brand-400 bg-white'}`}
                 >
-                  <Clock color={customTime ? 'white' : '#1D4ED8'} size={12} />
-                  <Text className={`font-bold text-[11px] ${customTime ? 'text-white' : 'text-brand-700'}`}>
-                    {customTime ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}` : 'Pilih Jam Bebas'}
+                  <Clock color="#1D4ED8" size={12} />
+                  <Text className="font-bold text-xs text-brand-700">
+                    {customTime ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}` : 'Jam Spesifik'}
                   </Text>
                 </Pressable>
               </View>
-              <View className="flex-row flex-wrap gap-2">
-                {(() => {
-                  const out: React.ReactNode[] = [];
-                  TIME_SLOTS.forEach((t, idx) => {
-                    if (idx === firstValidIdx) {
-                      const clamped = clampToOps(new Date(Date.now() + 60 * 60 * 1000));
-                      const label = `${String(clamped.getHours()).padStart(2, '0')}:${String(clamped.getMinutes()).padStart(2, '0')}`;
-                      out.push(
-                        <Pressable
-                          key="now"
-                          onPress={() => { setUseNowTime(true); setCustomTime(null); }}
-                          className={`rounded-lg border-2 px-3 py-2 ${useNowTime && isToday ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
-                        >
-                          <Text className={`font-extrabold text-xs ${useNowTime && isToday ? 'text-white' : 'text-emerald-700'}`}>
-                            Sekarang ({label})
-                          </Text>
-                        </Pressable>,
-                      );
-                    }
-                    const disabled = !isSlotValid(t);
-                    const active = !customTime && timeSlot === t && !useNowTime && !disabled;
-                    out.push(
-                      <Pressable
-                        key={t}
-                        disabled={disabled}
-                        onPress={() => { setUseNowTime(false); setTimeSlot(t); setCustomTime(null); }}
-                        style={disabled ? { opacity: 0.4 } : undefined}
-                        className={`rounded-lg border-2 px-3 py-2 ${
-                          disabled
-                            ? 'border-ink-200 bg-ink-100'
-                            : active
-                            ? 'border-brand-600 bg-brand-50'
-                            : 'border-ink-200 bg-white'
-                        }`}
-                      >
-                        <Text
-                          className={`font-bold text-xs ${
-                            disabled ? 'text-ink-400 line-through' : active ? 'text-brand-700' : 'text-ink-800'
-                          }`}
-                        >
-                          {t}
-                        </Text>
-                      </Pressable>,
-                    );
-                  });
-                  return out;
-                })()}
-              </View>
-              <Text className="mt-3 text-[10px] text-ink-500">Operasional 07:00-20:00 · Min 1 jam dari sekarang · Tap "Jam Lain" untuk pilih jam custom</Text>
+              <Text className="mt-3 text-[10px] text-ink-400">Operasional 07:00-20:00 · Min 1 jam dari sekarang</Text>
             </>
           )}
 
