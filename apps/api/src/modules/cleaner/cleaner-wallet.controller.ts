@@ -70,18 +70,20 @@ export class CleanerWalletController {
   // GET /v1/cleaner/wallet — saldo + ledger 20 entry terakhir
   @Get('wallet')
   async wallet(@CurrentUser() user: AuthenticatedUser) {
-    const balanceRows = await this.prisma.$queryRaw<{ earnings_cleared: number | null; earnings_pending: number | null; withdrawn: number | null }[]>`
+    const balanceRows = await this.prisma.$queryRaw<{ earnings_cleared: number | null; earnings_pending: number | null; withdrawn: number | null; admin_debited: number | null }[]>`
       SELECT
         COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS earnings_cleared,
         COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'PENDING' THEN amount ELSE 0 END), 0) AS earnings_pending,
-        COALESCE(SUM(CASE WHEN account_type = 'withdrawal' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS withdrawn
+        COALESCE(SUM(CASE WHEN account_type = 'withdrawal' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS withdrawn,
+        COALESCE(SUM(CASE WHEN account_type = 'admin_debit' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS admin_debited
       FROM wallet_ledger_entries
       WHERE user_id = ${user.id}::uuid
     `;
     const earningsCleared = Number(balanceRows[0]?.earnings_cleared ?? 0);
     const earningsPending = Number(balanceRows[0]?.earnings_pending ?? 0);
     const withdrawn = Number(balanceRows[0]?.withdrawn ?? 0);
-    const balance = earningsCleared - withdrawn; // saldo cair-able
+    const adminDebited = Number(balanceRows[0]?.admin_debited ?? 0);
+    const balance = earningsCleared - withdrawn - adminDebited; // saldo cair-able
     const earnings = earningsCleared + earningsPending; // total all-time (untuk back-compat)
 
     const ledger = await this.prisma.$queryRaw<Record<string, unknown>[]>`
@@ -214,17 +216,19 @@ export class CleanerWalletController {
 
       // PENTING: cuma earnings dengan status='CLEARED' yang bisa ditarik.
       // PENDING earnings = masih escrow 24h / nunggu customer confirm.
-      const bal = await tx.$queryRaw<{ available: number | null; pending: number | null; withdrawn: number | null }[]>`
+      const bal = await tx.$queryRaw<{ available: number | null; pending: number | null; withdrawn: number | null; admin_debited: number | null }[]>`
         SELECT
           COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS available,
           COALESCE(SUM(CASE WHEN account_type = 'earnings' AND status = 'PENDING' THEN amount ELSE 0 END), 0) AS pending,
-          COALESCE(SUM(CASE WHEN account_type = 'withdrawal' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS withdrawn
+          COALESCE(SUM(CASE WHEN account_type = 'withdrawal' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS withdrawn,
+          COALESCE(SUM(CASE WHEN account_type = 'admin_debit' AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS admin_debited
         FROM wallet_ledger_entries WHERE user_id = ${user.id}::uuid
       `;
       const available = Number(bal[0]?.available ?? 0);
       const pending = Number(bal[0]?.pending ?? 0);
       const withdrawn = Number(bal[0]?.withdrawn ?? 0);
-      const balance = available - withdrawn; // yang siap dicairkan
+      const adminDebited = Number(bal[0]?.admin_debited ?? 0);
+      const balance = available - withdrawn - adminDebited; // yang siap dicairkan
 
       if (balance < body.amount) {
         const msg = pending > 0

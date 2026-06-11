@@ -14,13 +14,15 @@ export class CustomerWalletController {
   constructor(private readonly prisma: PrismaService) {}
 
   // GET /v1/customer/wallet — saldo refund-credit + history.
-  // Saldo = SUM(refund_credit + topup CLEARED) - SUM(credit_use + withdrawal PENDING/CLEARED)
+  // Saldo = SUM(refund_credit + topup CLEARED) - SUM(credit_use + withdrawal + admin_debit PENDING/CLEARED)
+  // PENTING: admin_debit WAJIB ikut dikurangin biar saldo sync dgn admin view (sebelumnya bug — admin
+  // kurangin saldo tapi customer view stale).
   @Get('wallet')
   async wallet(@CurrentUser() user: AuthenticatedUser) {
     const rows = await this.prisma.$queryRaw<{ credit_in: number | null; credit_out: number | null }[]>`
       SELECT
         COALESCE(SUM(CASE WHEN account_type IN ('refund_credit', 'topup') AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS credit_in,
-        COALESCE(SUM(CASE WHEN account_type IN ('credit_use', 'withdrawal') AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS credit_out
+        COALESCE(SUM(CASE WHEN account_type IN ('credit_use', 'withdrawal', 'admin_debit') AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS credit_out
       FROM wallet_ledger_entries
       WHERE user_id = ${user.id}::uuid
     `;
@@ -34,7 +36,7 @@ export class CustomerWalletController {
              status, description, created_at AS "createdAt", cleared_at AS "clearedAt"
         FROM wallet_ledger_entries
        WHERE user_id = ${user.id}::uuid
-         AND account_type IN ('refund_credit', 'topup', 'credit_use', 'withdrawal')
+         AND account_type IN ('refund_credit', 'topup', 'credit_use', 'withdrawal', 'admin_debit')
        ORDER BY created_at DESC
        LIMIT 20
     `;
@@ -62,7 +64,7 @@ export class CustomerWalletController {
              status, description, created_at AS "createdAt", cleared_at AS "clearedAt"
         FROM wallet_ledger_entries
        WHERE user_id = ${user.id}::uuid
-         AND account_type IN ('refund_credit', 'topup', 'credit_use', 'withdrawal')
+         AND account_type IN ('refund_credit', 'topup', 'credit_use', 'withdrawal', 'admin_debit')
        ORDER BY created_at DESC
        LIMIT ${limit}::int OFFSET ${offset}::int
     `;

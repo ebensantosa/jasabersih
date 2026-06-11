@@ -403,6 +403,66 @@ function BookingDetail() {
             </View>
           </View>
 
+          {/* Action banner — kasih tau customer apa yang harus dilakuin sekarang */}
+          {!isCleaner && booking.status === 'pending_payment' && (
+            <Pressable
+              onPress={onPay}
+              className="mx-4 mt-3 flex-row items-center gap-3 rounded-2xl border-2 border-brand-400 bg-brand-50 p-4"
+            >
+              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-brand-600">
+                <Text className="text-xl">💳</Text>
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-sm text-brand-900">Selesain Pembayaran Dulu</Text>
+                <Text className="font-medium mt-0.5 text-[11px] leading-4 text-brand-800">
+                  Bayar {formatRupiah(booking.totalPrice)} biar pesanan kamu langsung dicariin cleaner.
+                </Text>
+              </View>
+              <Text className="font-bold text-base text-brand-700">›</Text>
+            </Pressable>
+          )}
+          {!isCleaner && booking.status === 'completed' && !hasRated && (
+            <View className="mx-4 mt-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base">✓</Text>
+                <Text className="font-bold text-sm text-emerald-900">Pesanan Selesai</Text>
+              </View>
+              <Text className="font-medium mt-1 text-[11px] leading-4 text-emerald-800">
+                Cleaner sudah selesai. Kasih rating supaya saldo cleaner cair (auto-release 24 jam kalau gak rating).
+              </Text>
+            </View>
+          )}
+          {!isCleaner && booking.status === 'searching' && (
+            <View className="mx-4 mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3">
+              <Text className="font-medium text-[11px] leading-4 text-blue-900">
+                ℹ Sabar ya, kami lagi cariin cleaner terbaik di area kamu. Notifikasi muncul saat ada yang ambil.
+              </Text>
+            </View>
+          )}
+          {!isCleaner && booking.status === 'matched' && (
+            <View className="mx-4 mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3">
+              <Text className="font-medium text-[11px] leading-4 text-blue-900">
+                ℹ Cleaner ditemukan! Dia akan datang sesuai jadwal. Chat di app kalau perlu komunikasi.
+              </Text>
+            </View>
+          )}
+          {!isCleaner && (booking.status === 'on_the_way' || booking.status === 'cleaner_otw') && (
+            <View className="mx-4 mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3">
+              <Text className="font-bold text-[11px] text-blue-900">🚗 Cleaner sedang dalam perjalanan</Text>
+              <Text className="font-medium mt-0.5 text-[11px] leading-4 text-blue-800">
+                Siapkan akses ke lokasi & catatan kalau ada. Pantau di chat untuk update.
+              </Text>
+            </View>
+          )}
+          {!isCleaner && booking.status === 'in_progress' && (
+            <View className="mx-4 mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3">
+              <Text className="font-bold text-[11px] text-blue-900">🧹 Pekerjaan sedang berlangsung</Text>
+              <Text className="font-medium mt-0.5 text-[11px] leading-4 text-blue-800">
+                Tunggu cleaner selesai. Kalau ada masalah selama kerja, chat langsung di app.
+              </Text>
+            </View>
+          )}
+
           {/* Foto Pekerjaan - cleaner: taruh di atas biar gak kelewat upload before/after */}
           {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">

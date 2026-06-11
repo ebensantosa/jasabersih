@@ -369,7 +369,7 @@ export class BookingsController {
     if (body?.useCredit) {
       const bal = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
         `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
-              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
+              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
            FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
         user.id,
       );
@@ -723,7 +723,7 @@ export class BookingsController {
     // Hitung saldo customer
     const bal = await this.prisma.$queryRaw<{ b: number }[]>`
       SELECT (COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
-            - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0))::bigint AS b
+            - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0))::bigint AS b
         FROM wallet_ledger_entries WHERE user_id = ${user.id}::uuid
     `;
     const balance = Number(bal[0]?.b ?? 0);
