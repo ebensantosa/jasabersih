@@ -174,6 +174,8 @@ function NewBooking() {
   const isVacuum = category?.code === 'vacuum_lantai';
   const isSubscription = category?.code === 'subscription';
   const [subscriptionDates, setSubscriptionDates] = useState<string[]>([]); // ISO YYYY-MM-DD list
+  // Month offset untuk calendar nav (0 = bulan ini, 1 = bulan depan, dst). Max 5 (6 bulan ke depan).
+  const [subscriptionMonthOffset, setSubscriptionMonthOffset] = useState<number>(0);
   const subscriptionVisits = useMemo(() => {
     if (!isSubscription || !pkg) return 0;
     const match = SUBSCRIPTION_VISITS_BY_PKG.find((r) => r.match.test(pkg.name));
@@ -1314,71 +1316,105 @@ function NewBooking() {
                         />
                       </View>
 
-                      {/* Calendar grid - month by month */}
+                      {/* Month navigator: bisa scroll ke 6 bulan ke depan, tapi span first→last picked ≤ 30 hari */}
                       {(() => {
                         const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
                         const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                         const today = new Date(); today.setHours(0, 0, 0, 0);
-                        // Group 30 days into months
-                        const monthGroups = new Map<string, Date[]>();
-                        for (let i = 1; i <= 30; i++) {
-                          const d = new Date(today); d.setDate(today.getDate() + i);
-                          const key = `${d.getFullYear()}-${d.getMonth()}`;
-                          if (!monthGroups.has(key)) monthGroups.set(key, []);
-                          monthGroups.get(key)!.push(d);
+                        const view = new Date(today.getFullYear(), today.getMonth() + subscriptionMonthOffset, 1);
+                        const firstOfMonth = new Date(view.getFullYear(), view.getMonth(), 1);
+                        const lastOfMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0);
+                        const startOffset = firstOfMonth.getDay();
+                        const cells: (Date | null)[] = [];
+                        for (let i = 0; i < startOffset; i++) cells.push(null);
+                        for (let d = 1; d <= lastOfMonth.getDate(); d++) cells.push(new Date(view.getFullYear(), view.getMonth(), d));
+
+                        // Compute span constraint: from min picked date to max picked date ≤ 30 days
+                        const SPAN_DAYS = 30;
+                        const sorted = [...subscriptionDates].sort();
+                        const minPicked = sorted[0] ?? null;
+                        const maxPicked = sorted[sorted.length - 1] ?? null;
+                        function wouldExceedSpan(iso: string): boolean {
+                          if (!minPicked) return false;
+                          const newMin = iso < minPicked ? iso : minPicked;
+                          const newMax = iso > (maxPicked ?? iso) ? iso : (maxPicked ?? iso);
+                          const days = Math.round((new Date(newMax).getTime() - new Date(newMin).getTime()) / 86400000);
+                          return days > SPAN_DAYS - 1;
                         }
-                        return Array.from(monthGroups.entries()).map(([key, dates]) => {
-                          const first = dates[0]!;
-                          const startOffset = first.getDay(); // 0=Min .. 6=Sab
-                          return (
-                            <View key={key} className="mb-4">
-                              <Text className="font-bold mb-2 text-sm text-ink-900">
-                                {months[first.getMonth()]} {first.getFullYear()}
-                              </Text>
-                              {/* Day-of-week header */}
-                              <View className="flex-row">
-                                {days.map((dn) => (
-                                  <View key={dn} className="flex-1 items-center py-1.5">
-                                    <Text className={`font-bold text-[10px] uppercase tracking-wider ${dn === 'Min' ? 'text-red-500' : 'text-ink-400'}`}>{dn}</Text>
-                                  </View>
-                                ))}
-                              </View>
-                              {/* Date cells */}
-                              <View className="flex-row flex-wrap">
-                                {/* Empty cells before first date */}
-                                {Array.from({ length: startOffset }).map((_, i) => (
-                                  <View key={`empty-${i}`} style={{ width: `${100 / 7}%` }} className="p-0.5" />
-                                ))}
-                                {dates.map((d) => {
-                                  const iso = d.toISOString().slice(0, 10);
-                                  const active = subscriptionDates.includes(iso);
-                                  const reachedLimit = subscriptionDates.length >= subscriptionVisits && !active;
-                                  const isSunday = d.getDay() === 0;
-                                  return (
-                                    <View key={iso} style={{ width: `${100 / 7}%` }} className="p-0.5">
-                                      <Pressable
-                                        disabled={reachedLimit}
-                                        onPress={() => setSubscriptionDates(active
-                                          ? subscriptionDates.filter((x) => x !== iso)
-                                          : [...subscriptionDates, iso].sort())}
-                                        style={reachedLimit ? { opacity: 0.3 } : undefined}
-                                        className={`aspect-square items-center justify-center rounded-xl ${active
-                                          ? 'bg-brand-600'
-                                          : reachedLimit
-                                            ? 'bg-ink-100'
-                                            : 'bg-ink-50'}`}
-                                      >
-                                        <Text className={`font-extrabold text-sm ${active ? 'text-white' : isSunday ? 'text-red-500' : 'text-ink-900'}`}>
-                                          {d.getDate()}
-                                        </Text>
-                                      </Pressable>
-                                    </View>
-                                  );
-                                })}
-                              </View>
+
+                        return (
+                          <View>
+                            <View className="mb-3 flex-row items-center justify-between rounded-xl bg-ink-50 p-2">
+                              <Pressable
+                                onPress={() => setSubscriptionMonthOffset(Math.max(0, subscriptionMonthOffset - 1))}
+                                disabled={subscriptionMonthOffset === 0}
+                                style={{ opacity: subscriptionMonthOffset === 0 ? 0.3 : 1 }}
+                                className="h-8 w-8 items-center justify-center rounded-full bg-white"
+                              >
+                                <Text className="font-bold text-ink-700">‹</Text>
+                              </Pressable>
+                              <Text className="font-bold text-sm text-ink-900">{months[view.getMonth()]} {view.getFullYear()}</Text>
+                              <Pressable
+                                onPress={() => setSubscriptionMonthOffset(Math.min(5, subscriptionMonthOffset + 1))}
+                                disabled={subscriptionMonthOffset === 5}
+                                style={{ opacity: subscriptionMonthOffset === 5 ? 0.3 : 1 }}
+                                className="h-8 w-8 items-center justify-center rounded-full bg-white"
+                              >
+                                <Text className="font-bold text-ink-700">›</Text>
+                              </Pressable>
                             </View>
-                          );
-                        });
+
+                            {/* Day-of-week header */}
+                            <View className="flex-row">
+                              {days.map((dn) => (
+                                <View key={dn} className="flex-1 items-center py-1.5">
+                                  <Text className={`font-bold text-[10px] uppercase tracking-wider ${dn === 'Min' ? 'text-red-500' : 'text-ink-400'}`}>{dn}</Text>
+                                </View>
+                              ))}
+                            </View>
+
+                            {/* Date cells */}
+                            <View className="flex-row flex-wrap">
+                              {cells.map((d, i) => {
+                                if (!d) return <View key={`empty-${i}`} style={{ width: `${100 / 7}%` }} className="p-0.5" />;
+                                const dNorm = new Date(d); dNorm.setHours(0, 0, 0, 0);
+                                const iso = dNorm.toISOString().slice(0, 10);
+                                const isPast = dNorm.getTime() < today.getTime();
+                                const active = subscriptionDates.includes(iso);
+                                const reachedLimit = subscriptionDates.length >= subscriptionVisits && !active;
+                                const exceedsSpan = !active && wouldExceedSpan(iso);
+                                const disabled = isPast || reachedLimit || exceedsSpan;
+                                const isSunday = d.getDay() === 0;
+                                return (
+                                  <View key={iso} style={{ width: `${100 / 7}%` }} className="p-0.5">
+                                    <Pressable
+                                      disabled={disabled}
+                                      onPress={() => setSubscriptionDates(active
+                                        ? subscriptionDates.filter((x) => x !== iso)
+                                        : [...subscriptionDates, iso].sort())}
+                                      style={disabled ? { opacity: isPast ? 0.2 : exceedsSpan ? 0.25 : 0.3 } : undefined}
+                                      className={`aspect-square items-center justify-center rounded-xl ${active
+                                        ? 'bg-brand-600'
+                                        : disabled
+                                          ? 'bg-ink-100'
+                                          : 'bg-ink-50'}`}
+                                    >
+                                      <Text className={`font-extrabold text-sm ${active ? 'text-white' : isSunday ? 'text-red-500' : 'text-ink-900'}`}>
+                                        {d.getDate()}
+                                      </Text>
+                                    </Pressable>
+                                  </View>
+                                );
+                              })}
+                            </View>
+
+                            {minPicked && (
+                              <Text className="font-medium mt-2 text-[10px] text-ink-500">
+                                Rentang max 30 hari. Sudah pilih {sorted.length > 1 ? `${sorted[0]} → ${sorted[sorted.length - 1]}` : sorted[0]}
+                              </Text>
+                            )}
+                          </View>
+                        );
                       })()}
 
                       {/* Status footer */}
