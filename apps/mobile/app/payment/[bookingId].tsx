@@ -86,6 +86,15 @@ function PaymentScreen() {
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
+  // Kalau user back dari VA detail (direct → null), stop polling.
+  // Tanpa ini interval terus jalan walau user udah balik ke method picker → API call infinite.
+  useEffect(() => {
+    if (!direct && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, [direct]);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -119,6 +128,8 @@ function PaymentScreen() {
 
   async function pickMethod(senderBank: string, senderBankType: DirectResult['senderBankType']) {
     if (!bookingId) return;
+    // Clear interval lama (kalau user pilih method baru tanpa back dulu)
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     setPickingCode(senderBank);
     setCreating(true);
     try {
