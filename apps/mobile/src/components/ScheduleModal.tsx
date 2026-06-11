@@ -162,7 +162,19 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
             </Pressable>
           </View>
 
-          <Text className="font-semibold mb-2 text-xs text-ink-600">Tanggal</Text>
+          <View className="mb-2 flex-row items-center justify-between">
+            <Text className="font-semibold text-xs text-ink-600">Tanggal</Text>
+            {/* Tombol custom date - prominent di kanan biar gampang ditemuin */}
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${isCustomDate ? 'bg-brand-600' : 'bg-brand-50'}`}
+            >
+              <Calendar color={isCustomDate ? 'white' : '#1D4ED8'} size={12} />
+              <Text className={`font-bold text-[11px] ${isCustomDate ? 'text-white' : 'text-brand-700'}`}>
+                {isCustomDate ? fmtDateLabel(selectedDate).slice(0, 12) : 'Pilih Tanggal'}
+              </Text>
+            </Pressable>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-2 pr-4">
               {quickDates.map((d, i) => {
@@ -178,20 +190,12 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
                   </Pressable>
                 );
               })}
-              {/* Tombol pilih tanggal bebas */}
-              <Pressable
-                onPress={() => setShowDatePicker(true)}
-                className={`min-w-[72px] items-center justify-center rounded-xl border-2 border-dashed px-3 py-2.5 ${isCustomDate ? 'border-brand-600 bg-brand-50' : 'border-ink-300 bg-white'}`}
-              >
-                <Calendar color={isCustomDate ? '#1D4ED8' : '#64748B'} size={18} />
-                <Text className={`font-bold mt-0.5 text-[10px] ${isCustomDate ? 'text-brand-700' : 'text-ink-600'}`}>
-                  {isCustomDate ? 'Custom' : 'Tanggal Lain'}
-                </Text>
-              </Pressable>
             </View>
           </ScrollView>
           {isCustomDate && (
-            <Text className="font-medium mt-2 text-[11px] text-brand-700">📅 {fmtDateLabel(selectedDate)}</Text>
+            <View className="mt-2 self-start rounded-full bg-brand-50 px-3 py-1">
+              <Text className="font-bold text-[11px] text-brand-700">📅 {fmtDateLabel(selectedDate)}</Text>
+            </View>
           )}
 
           {allTodayPast ? (
@@ -210,7 +214,19 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
             </View>
           ) : (
             <>
-              <Text className="font-semibold mt-4 mb-2 text-xs text-ink-600">Jam</Text>
+              <View className="mt-4 mb-2 flex-row items-center justify-between">
+                <Text className="font-semibold text-xs text-ink-600">Jam</Text>
+                {/* Tombol custom time - prominent biar discoverable */}
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${customTime ? 'bg-brand-600' : 'bg-brand-50'}`}
+                >
+                  <Clock color={customTime ? 'white' : '#1D4ED8'} size={12} />
+                  <Text className={`font-bold text-[11px] ${customTime ? 'text-white' : 'text-brand-700'}`}>
+                    {customTime ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}` : 'Pilih Jam Bebas'}
+                  </Text>
+                </Pressable>
+              </View>
               <View className="flex-row flex-wrap gap-2">
                 {(() => {
                   const out: React.ReactNode[] = [];
@@ -256,20 +272,6 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
                       </Pressable>,
                     );
                   });
-                  // Tombol custom time
-                  const customActive = !!customTime;
-                  out.push(
-                    <Pressable
-                      key="custom"
-                      onPress={() => setShowTimePicker(true)}
-                      className={`flex-row items-center gap-1 rounded-lg border-2 border-dashed px-3 py-2 ${customActive ? 'border-brand-600 bg-brand-50' : 'border-ink-300 bg-white'}`}
-                    >
-                      <Clock color={customActive ? '#1D4ED8' : '#64748B'} size={14} />
-                      <Text className={`font-bold text-xs ${customActive ? 'text-brand-700' : 'text-ink-600'}`}>
-                        {customActive ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}` : 'Jam Lain'}
-                      </Text>
-                    </Pressable>,
-                  );
                   return out;
                 })()}
               </View>
