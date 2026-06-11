@@ -139,7 +139,7 @@ export class AdminController {
     @Query('limit') limitStr?: string,
   ) {
     // Whitelist status terhadap nilai enum yang valid (mencegah SQL injection via status).
-    const VALID_STATUS = new Set(['active', 'pending', 'approved', 'rejected', 'suspended']);
+    const VALID_STATUS = new Set(['active', 'pending', 'approved', 'rejected', 'suspended', 'banned']);
     const safeStatus = status && VALID_STATUS.has(status) ? status : null;
     // Query string: dipakai sebagai parameter LIKE (bukan template), aman.
     const safeQ = (q ?? '').trim().slice(0, 50);
@@ -162,7 +162,9 @@ export class AdminController {
         AND (
           $1::text IS NULL
           OR ($1 = 'active' AND u.status = 'active' AND cp.kyc_status = 'approved')
-          OR ($1 <> 'active' AND cp.kyc_status = $1)
+          OR ($1 = 'banned' AND u.status = 'banned')
+          OR ($1 = 'suspended' AND u.status = 'suspended')
+          OR ($1 NOT IN ('active', 'banned', 'suspended') AND cp.kyc_status = $1)
         )
         AND ($2::text IS NULL OR u.name ILIKE $2 OR u.phone ILIKE $2)
       ORDER BY u.created_at DESC
@@ -525,23 +527,9 @@ export class AdminController {
     return { ok: true };
   }
 
-  @Get('users')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
-  @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
-  async listUsers() {
-    const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
-      SELECT
-        u.id, u.name, u.email, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
-        u.is_customer AS "isCustomer",
-        u.is_freelancer AS "isFreelancer",
-        (SELECT COUNT(*) FROM bookings WHERE customer_id = u.id) AS "totalOrders"
-      FROM users u
-      WHERE u.is_customer = TRUE AND u.deleted_at IS NULL
-      ORDER BY u.created_at DESC
-      LIMIT 100
-    `);
-    return rows;
-  }
+  // NOTE: GET /admin/users sekarang di-handle oleh AdminUsersController (users-admin.controller.ts)
+  // yang punya filter q/status/role + photoUrl + strikes. Endpoint duplicate di sini sebelumnya
+  // bayangin filter-nya sehingga UI Banned filter gak jalan. Dihapus.
 
   @Patch('bookings/:id/assign')
   @UseGuards(AdminJwtGuard, AdminRbacGuard)

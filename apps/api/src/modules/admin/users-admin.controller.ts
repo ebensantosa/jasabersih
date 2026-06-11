@@ -22,7 +22,7 @@ export class AdminUsersController {
     const search = q && q.trim().length > 0 ? `%${q.trim()}%` : null;
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT
-        u.id, u.name, u.email, u.phone, u.created_at AS "joinedAt",
+        u.id, u.name, u.email, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         u.is_customer AS "isCustomer", u.is_freelancer AS "isFreelancer",
         u.status, u.suspended_until AS "suspendedUntil", u.suspend_reason AS "suspendReason",
         (SELECT COUNT(*) FROM bookings WHERE customer_id = u.id) AS "totalOrders",
