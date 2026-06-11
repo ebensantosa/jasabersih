@@ -389,10 +389,11 @@ function InlineTimePicker({ initialHour, initialMinute, onPick, onClose }: {
   initialHour: number; initialMinute: number;
   onPick: (h: number, m: number) => void; onClose: () => void;
 }) {
-  const [h, setH] = useState(initialHour);
-  const [m, setM] = useState(initialMinute);
   const HOURS = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR + 1 }, (_, i) => OPS_START_HOUR + i);
-  const MINUTES = [0, 15, 30, 45];
+  // Step 5 menit (00, 05, 10, ..., 55) - granular biar customer bisa pilih jam spesifik
+  const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+  const [h, setH] = useState(initialHour);
+  const [m, setM] = useState(() => MINUTES.reduce((closest, curr) => Math.abs(curr - initialMinute) < Math.abs(closest - initialMinute) ? curr : closest, MINUTES[0]!));
 
   function adjustH(delta: number) {
     const idx = HOURS.indexOf(h);
