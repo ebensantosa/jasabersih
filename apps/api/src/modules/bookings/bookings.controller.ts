@@ -326,9 +326,16 @@ export class BookingsController {
           INSERT INTO voucher_usage (voucher_id, user_id, booking_id, discount_amount)
           VALUES (${voucherId}::uuid, ${user.id}::uuid, ${bookingId}::uuid, ${voucherDiscount})
         `;
-        await this.prisma.$executeRaw`
-          UPDATE vouchers SET used_count = used_count + 1 WHERE id = ${voucherId}::uuid
+        // Atomic quota guard: increment HANYA kalau still di bawah quota.
+        // Kalau race bikin used_count >= total_quota di antara check awal & sini, UPDATE return 0 rows.
+        const inc = await this.prisma.$executeRaw`
+          UPDATE vouchers SET used_count = used_count + 1
+           WHERE id = ${voucherId}::uuid
+             AND (total_quota IS NULL OR used_count < total_quota)
         `;
+        if (Number(inc) === 0) {
+          throw new BadRequestException({ code: 'VOUCHER_QUOTA_EXHAUSTED', message: 'Quota voucher sudah habis (race condition).' });
+        }
         // Log phone-level (anti multi-akun abuse).
         const phoneRow = await this.prisma.$queryRaw<{ phone: string | null }[]>`
           SELECT phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
@@ -736,7 +743,10 @@ export class BookingsController {
       });
     }
 
-    // Atomik: debit customer + credit cleaner
+    // Atomik: debit customer + credit cleaner.
+    // Migration 20260611200000 udah pasang unique index (user_id, reference_id) WHERE reference_type='tip'
+    // jadi double-tap concurrent akan kena unique violation, di-catch sebagai error 4xx.
+    try {
     await this.prisma.$transaction([
       this.prisma.$executeRaw`
         INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
@@ -751,6 +761,13 @@ export class BookingsController {
                 'CLEARED', NOW(), ${`🎁 Tip dari customer (booking ${id.slice(0, 8)})`})
       `,
     ]);
+    } catch (e: any) {
+      // Unique violation = double-tap. Treat sebagai already-paid.
+      if (String(e?.message ?? '').includes('uniq_tip_per_booking') || String(e?.code ?? '') === '23505') {
+        throw new BadRequestException('Tip sudah pernah diberikan untuk pesanan ini.');
+      }
+      throw e;
+    }
 
     // Notif cleaner
     try {

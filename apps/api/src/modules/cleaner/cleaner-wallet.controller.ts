@@ -265,7 +265,18 @@ export class CleanerWalletController {
         throw new BadRequestException(`Setelah dipotong fee Flip Rp ${flipFee.toLocaleString('id-ID')}, sisa Rp ${transferAmount.toLocaleString('id-ID')} di bawah minimum transfer Flip (Rp 10.000). Tambah jumlah penarikan.`);
       }
 
-      const idempKey = `WD-${user.id.slice(0, 8)}-${Date.now()}`;
+      // Pre-check: tolak kalau cleaner punya withdrawal pending (anti double-tap + anti race).
+      const pendingExists = await tx.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM withdrawals
+         WHERE user_id = ${user.id}::uuid
+           AND review_status = 'pending'
+      `;
+      if (Number(pendingExists[0]?.c ?? 0) > 0) {
+        throw new BadRequestException('Kamu masih punya pengajuan tarik dana yang menunggu diproses. Tunggu sampai selesai sebelum ajukan baru.');
+      }
+      // Idempotency key window 1 menit per user (kalau client double-tap < 60s, key sama → unique violation)
+      const minuteBucket = Math.floor(Date.now() / 60_000);
+      const idempKey = `WD-${user.id.slice(0, 8)}-${minuteBucket}`;
       const inserted = await tx.$queryRaw<{ id: string }[]>`
         INSERT INTO withdrawals (
           user_id, amount, fee, destination_type, destination_bank_code, destination_account_number,

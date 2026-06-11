@@ -64,8 +64,11 @@ async function bootstrap() {
     .setVersion('0.1.0')
     .addBearerAuth()
     .build();
-  const doc = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, doc);
+  // Swagger /docs HANYA di non-production - biar shape endpoint gak ke-leak ke publik
+  if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
+    const doc = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, doc);
+  }
 
   // Security fail-safe: gak boleh production + AUTH_DEV_MODE=true bareng (bocorin OTP plaintext).
   if (process.env.NODE_ENV === 'production' && process.env.AUTH_DEV_MODE === 'true') {
