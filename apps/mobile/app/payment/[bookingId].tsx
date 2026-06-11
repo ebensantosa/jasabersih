@@ -325,9 +325,24 @@ function MethodPicker({
   const getMessage = (code: string) => bankHealth[code]?.message ?? '';
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-      {walletBalance > 0 && (
-        <View>
-          <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Saldo Saya</Text>
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Saldo Saya</Text>
+        {walletBalance === 0 ? (
+          <View className="flex-row items-center gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4" style={{ opacity: 0.6 }}>
+            <View className="h-12 w-14 items-center justify-center rounded-xl bg-ink-200">
+              <WalletIcon color="#94A3B8" size={20} />
+            </View>
+            <View className="flex-1">
+              <Text className="font-bold text-sm text-ink-500">Pakai Saldo (Rp 0)</Text>
+              <Text className="font-medium mt-0.5 text-[11px] text-ink-400">
+                Saldo kosong - top-up dulu atau bayar via metode di bawah
+              </Text>
+            </View>
+            <View className="h-5 w-5 items-center justify-center rounded-full border-2 border-ink-300 bg-ink-100" />
+          </View>
+        ) : null}
+        {walletBalance > 0 && (
+          <>
           {fullSaldo ? (
             <Pressable
               disabled={disabled}
@@ -380,8 +395,9 @@ function MethodPicker({
               </View>
             </View>
           )}
-        </View>
-      )}
+          </>
+        )}
+      </View>
 
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS (rekomendasi)</Text>
