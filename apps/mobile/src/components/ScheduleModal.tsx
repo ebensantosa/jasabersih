@@ -383,7 +383,8 @@ function InlineDatePicker({ value, minDate, maxDate, onPick, onClose }: {
   );
 }
 
-// Cross-platform inline time picker - chip grid 15-min steps
+// Cross-platform wheel-style time picker (iOS-like 3-column spinner).
+// 24-hour format dgn jam 07-20 (ops hours), menit 0/15/30/45.
 function InlineTimePicker({ initialHour, initialMinute, onPick, onClose }: {
   initialHour: number; initialMinute: number;
   onPick: (h: number, m: number) => void; onClose: () => void;
@@ -392,52 +393,77 @@ function InlineTimePicker({ initialHour, initialMinute, onPick, onClose }: {
   const [m, setM] = useState(initialMinute);
   const HOURS = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR + 1 }, (_, i) => OPS_START_HOUR + i);
   const MINUTES = [0, 15, 30, 45];
+
+  function adjustH(delta: number) {
+    const idx = HOURS.indexOf(h);
+    const next = HOURS[Math.max(0, Math.min(HOURS.length - 1, idx + delta))];
+    if (next !== undefined) setH(next);
+  }
+  function adjustM(delta: number) {
+    const idx = MINUTES.indexOf(m);
+    const next = MINUTES[Math.max(0, Math.min(MINUTES.length - 1, idx + delta))];
+    if (next !== undefined) setM(next);
+  }
+
+  function Column({ values, current, format }: { values: number[]; current: number; format: (v: number) => string }) {
+    const idx = values.indexOf(current);
+    const prev2 = idx >= 2 ? values[idx - 2] : null;
+    const prev1 = idx >= 1 ? values[idx - 1] : null;
+    const next1 = idx < values.length - 1 ? values[idx + 1] : null;
+    const next2 = idx < values.length - 2 ? values[idx + 2] : null;
+    return (
+      <View className="items-center" style={{ width: 64 }}>
+        <Text className="font-medium text-base text-ink-200" style={{ height: 28 }}>{prev2 != null ? format(prev2) : ''}</Text>
+        <Text className="font-medium text-base text-ink-300" style={{ height: 28 }}>{prev1 != null ? format(prev1) : ''}</Text>
+        <View className="items-center justify-center rounded-xl border border-ink-200 bg-white" style={{ height: 40, width: 64 }}>
+          <Text className="font-extrabold text-lg text-ink-900">{format(current)}</Text>
+        </View>
+        <Text className="font-medium text-base text-ink-300" style={{ height: 28 }}>{next1 != null ? format(next1) : ''}</Text>
+        <Text className="font-medium text-base text-ink-200" style={{ height: 28 }}>{next2 != null ? format(next2) : ''}</Text>
+      </View>
+    );
+  }
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 16 }}>
-        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, maxWidth: 360, alignSelf: 'center', width: '100%' }}>
-          <Text className="font-extrabold mb-3 text-center text-base text-ink-900">
-            Pilih Jam: {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
-          </Text>
-          <Text className="font-semibold mb-2 text-xs text-ink-600">Jam</Text>
-          <View className="flex-row flex-wrap gap-1.5">
-            {HOURS.map((hh) => {
-              const active = h === hh;
-              return (
-                <Pressable
-                  key={hh}
-                  onPress={() => setH(hh)}
-                  className={`rounded-lg border px-3 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
-                >
-                  <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>{String(hh).padStart(2, '0')}</Text>
-                </Pressable>
-              );
-            })}
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, alignSelf: 'center' }}>
+          <Text className="font-semibold mb-4 text-center text-sm text-ink-700">Pilih Jam</Text>
+          <View className="flex-row items-center justify-center gap-2">
+            {/* HOUR column */}
+            <View className="items-center">
+              <Pressable onPress={() => adjustH(-1)} disabled={HOURS.indexOf(h) === 0} style={{ opacity: HOURS.indexOf(h) === 0 ? 0.25 : 1 }} className="h-7 items-center justify-center">
+                <Text className="font-bold text-base text-ink-500">▲</Text>
+              </Pressable>
+              <Column values={HOURS} current={h} format={(v) => String(v).padStart(2, '0')} />
+              <Pressable onPress={() => adjustH(1)} disabled={HOURS.indexOf(h) === HOURS.length - 1} style={{ opacity: HOURS.indexOf(h) === HOURS.length - 1 ? 0.25 : 1 }} className="h-7 items-center justify-center">
+                <Text className="font-bold text-base text-ink-500">▼</Text>
+              </Pressable>
+            </View>
+
+            <Text className="font-extrabold text-xl text-ink-700" style={{ paddingTop: 12 }}>:</Text>
+
+            {/* MINUTE column */}
+            <View className="items-center">
+              <Pressable onPress={() => adjustM(-1)} disabled={MINUTES.indexOf(m) === 0} style={{ opacity: MINUTES.indexOf(m) === 0 ? 0.25 : 1 }} className="h-7 items-center justify-center">
+                <Text className="font-bold text-base text-ink-500">▲</Text>
+              </Pressable>
+              <Column values={MINUTES} current={m} format={(v) => String(v).padStart(2, '0')} />
+              <Pressable onPress={() => adjustM(1)} disabled={MINUTES.indexOf(m) === MINUTES.length - 1} style={{ opacity: MINUTES.indexOf(m) === MINUTES.length - 1 ? 0.25 : 1 }} className="h-7 items-center justify-center">
+                <Text className="font-bold text-base text-ink-500">▼</Text>
+              </Pressable>
+            </View>
           </View>
-          <Text className="font-semibold mt-3 mb-2 text-xs text-ink-600">Menit</Text>
-          <View className="flex-row gap-1.5">
-            {MINUTES.map((mm) => {
-              const active = m === mm;
-              return (
-                <Pressable
-                  key={mm}
-                  onPress={() => setM(mm)}
-                  className={`flex-1 items-center rounded-lg border py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
-                >
-                  <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>{String(mm).padStart(2, '0')}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View className="mt-4 flex-row gap-2">
-            <Pressable onPress={onClose} className="h-11 flex-1 items-center justify-center rounded-2xl border border-ink-300">
-              <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+
+          <View className="mt-6 flex-row items-center justify-end gap-4">
+            <Pressable onPress={onClose} className="px-3 py-2">
+              <Text className="font-semibold text-sm text-ink-600">Batal</Text>
             </Pressable>
             <Pressable
               onPress={() => onPick(h, m)}
-              className="h-11 flex-1 items-center justify-center rounded-2xl bg-brand-600"
+              className="rounded-lg bg-brand-600 px-4 py-2"
             >
-              <Text className="font-bold text-sm text-white">Pakai Jam Ini</Text>
+              <Text className="font-bold text-sm text-white">Simpan</Text>
             </Pressable>
           </View>
         </Pressable>
