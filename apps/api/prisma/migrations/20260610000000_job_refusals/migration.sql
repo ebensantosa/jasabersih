@@ -1,8 +1,10 @@
 -- Track alasan cleaner tolak job offer untuk fraud signal & matching algorithm tuning.
+-- NOTE: booking_id TIDAK pakai FK karena bookings is partitioned (PG limitation: FK to partitioned table not supported).
+-- App-level cleanup acceptable.
 CREATE TABLE IF NOT EXISTS job_offer_refusals (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   cleaner_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  booking_id  UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  booking_id  UUID NOT NULL,
   reason_code VARCHAR(50) NOT NULL,
   reason_note TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()

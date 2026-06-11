@@ -743,27 +743,30 @@ export class BookingsController {
       });
     }
 
-    // Atomik: debit customer + credit cleaner.
-    // Migration 20260611200000 udah pasang unique index (user_id, reference_id) WHERE reference_type='tip'
-    // jadi double-tap concurrent akan kena unique violation, di-catch sebagai error 4xx.
+    // Atomik: insert tip_dedup (PK customer+booking) → kalau race, second akan kena unique violation.
+    // Lalu debit customer + credit cleaner di transaction yg sama.
     try {
-    await this.prisma.$transaction([
-      this.prisma.$executeRaw`
-        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-        VALUES (${user.id}::uuid, 'credit_use', ${amount}::bigint, 'tip', ${id}::uuid,
-                'CLEARED', NOW(), ${`Tip cleaner (booking ${id.slice(0, 8)})`})
-      `,
-      // Pakai account_type 'earnings' supaya saldo cleaner langsung available (sama mekanisme job earnings).
-      // Description prefix 🎁 untuk pembeda visual di ledger.
-      this.prisma.$executeRaw`
-        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-        VALUES (${b.cleaner_id}::uuid, 'earnings', ${amount}::bigint, 'tip', ${id}::uuid,
-                'CLEARED', NOW(), ${`🎁 Tip dari customer (booking ${id.slice(0, 8)})`})
-      `,
-    ]);
+      await this.prisma.$transaction([
+        this.prisma.$executeRaw`
+          INSERT INTO tip_dedup (customer_id, booking_id, amount)
+          VALUES (${user.id}::uuid, ${id}::uuid, ${amount}::bigint)
+        `,
+        this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${user.id}::uuid, 'credit_use', ${amount}::bigint, 'tip', ${id}::uuid,
+                  'CLEARED', NOW(), ${`Tip cleaner (booking ${id.slice(0, 8)})`})
+        `,
+        // Pakai account_type 'earnings' supaya saldo cleaner langsung available (sama mekanisme job earnings).
+        // Description prefix 🎁 untuk pembeda visual di ledger.
+        this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${b.cleaner_id}::uuid, 'earnings', ${amount}::bigint, 'tip', ${id}::uuid,
+                  'CLEARED', NOW(), ${`🎁 Tip dari customer (booking ${id.slice(0, 8)})`})
+        `,
+      ]);
     } catch (e: any) {
-      // Unique violation = double-tap. Treat sebagai already-paid.
-      if (String(e?.message ?? '').includes('uniq_tip_per_booking') || String(e?.code ?? '') === '23505') {
+      // Unique violation di tip_dedup = double-tap. Treat sebagai already-paid.
+      if (String(e?.message ?? '').includes('tip_dedup_pkey') || String(e?.code ?? '') === '23505') {
         throw new BadRequestException('Tip sudah pernah diberikan untuk pesanan ini.');
       }
       throw e;
