@@ -1,7 +1,6 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Calendar, Clock } from 'lucide-react-native';
+import { Calendar, ChevronLeft, ChevronRight, Clock } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 /**
  * Bottom-sheet modal untuk pilih tanggal & jam booking.
@@ -111,25 +110,6 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
   function pickDate(d: Date) {
     const n = new Date(d); n.setHours(0, 0, 0, 0);
     setSelectedDate(n);
-    setUseNowTime(false);
-  }
-
-  function onPickerChange(_: any, d?: Date) {
-    if (Platform.OS !== 'ios') setShowDatePicker(false);
-    if (!d) return;
-    pickDate(d);
-  }
-
-  function onTimePickerChange(_: any, d?: Date) {
-    if (Platform.OS !== 'ios') setShowTimePicker(false);
-    if (!d) return;
-    let h = d.getHours();
-    let m = d.getMinutes();
-    // Clamp to ops hours
-    if (h < OPS_START_HOUR) { h = OPS_START_HOUR; m = 0; }
-    if (h > OPS_END_HOUR) { h = OPS_END_HOUR; m = 0; }
-    setCustomTime({ h, m });
-    setTimeSlot(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
     setUseNowTime(false);
   }
 
@@ -289,32 +269,179 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
         </Pressable>
       </Pressable>
 
-      {/* Native date picker */}
+      {/* Date picker — inline calendar untuk semua platform (native picker gak jalan di web) */}
       {showDatePicker && (
-        <DateTimePicker
+        <InlineDatePicker
           value={selectedDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          minimumDate={todayStart}
-          maximumDate={maxDate}
-          onChange={onPickerChange}
+          minDate={todayStart}
+          maxDate={maxDate}
+          onPick={(d) => { pickDate(d); setShowDatePicker(false); }}
+          onClose={() => setShowDatePicker(false)}
         />
       )}
-      {/* Native time picker */}
+      {/* Time picker — slot grid 15-min, cross-platform */}
       {showTimePicker && (
-        <DateTimePicker
-          value={(() => {
-            const d = new Date(selectedDate);
-            if (customTime) d.setHours(customTime.h, customTime.m);
-            else { const [h, m] = timeSlot.split(':').map(Number); d.setHours(h!, m!); }
-            return d;
-          })()}
-          mode="time"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          is24Hour
-          onChange={onTimePickerChange}
+        <InlineTimePicker
+          initialHour={customTime?.h ?? Number(timeSlot.split(':')[0])}
+          initialMinute={customTime?.m ?? Number(timeSlot.split(':')[1])}
+          onPick={(h, m) => {
+            setCustomTime({ h, m });
+            setTimeSlot(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+            setUseNowTime(false);
+            setShowTimePicker(false);
+          }}
+          onClose={() => setShowTimePicker(false)}
         />
       )}
+    </Modal>
+  );
+}
+
+// Cross-platform inline date picker (month calendar grid)
+function InlineDatePicker({ value, minDate, maxDate, onPick, onClose }: {
+  value: Date; minDate: Date; maxDate: Date;
+  onPick: (d: Date) => void; onClose: () => void;
+}) {
+  const [view, setView] = useState(() => new Date(value.getFullYear(), value.getMonth(), 1));
+  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const firstOfMonth = new Date(view.getFullYear(), view.getMonth(), 1);
+  const lastOfMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0);
+  const startOffset = firstOfMonth.getDay();
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= lastOfMonth.getDate(); d++) cells.push(new Date(view.getFullYear(), view.getMonth(), d));
+
+  function canGoPrev() {
+    const prev = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+    return prev.getTime() >= new Date(minDate.getFullYear(), minDate.getMonth(), 1).getTime();
+  }
+  function canGoNext() {
+    const next = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+    return next.getTime() <= new Date(maxDate.getFullYear(), maxDate.getMonth(), 1).getTime();
+  }
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 16 }}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, maxWidth: 380, alignSelf: 'center', width: '100%' }}>
+          <View className="mb-3 flex-row items-center justify-between">
+            <Pressable
+              onPress={() => canGoPrev() && setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}
+              disabled={!canGoPrev()}
+              style={{ opacity: canGoPrev() ? 1 : 0.3 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-ink-100"
+            >
+              <ChevronLeft color="#475569" size={18} />
+            </Pressable>
+            <Text className="font-extrabold text-base text-ink-900">{months[view.getMonth()]} {view.getFullYear()}</Text>
+            <Pressable
+              onPress={() => canGoNext() && setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}
+              disabled={!canGoNext()}
+              style={{ opacity: canGoNext() ? 1 : 0.3 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-ink-100"
+            >
+              <ChevronRight color="#475569" size={18} />
+            </Pressable>
+          </View>
+          <View className="flex-row">
+            {days.map((dn, i) => (
+              <View key={dn} className="flex-1 items-center py-1.5">
+                <Text className={`font-bold text-[10px] uppercase tracking-wider ${i === 0 ? 'text-red-500' : 'text-ink-400'}`}>{dn}</Text>
+              </View>
+            ))}
+          </View>
+          <View className="flex-row flex-wrap">
+            {cells.map((d, i) => {
+              if (!d) return <View key={`e-${i}`} style={{ width: `${100 / 7}%` }} className="p-0.5" />;
+              const dNorm = new Date(d); dNorm.setHours(0, 0, 0, 0);
+              const isPast = dNorm.getTime() < minDate.getTime();
+              const isAfter = dNorm.getTime() > maxDate.getTime();
+              const disabled = isPast || isAfter;
+              const isSelected = dNorm.getTime() === new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+              const isSunday = d.getDay() === 0;
+              return (
+                <View key={d.toISOString()} style={{ width: `${100 / 7}%` }} className="p-0.5">
+                  <Pressable
+                    disabled={disabled}
+                    onPress={() => onPick(dNorm)}
+                    style={disabled ? { opacity: 0.25 } : undefined}
+                    className={`aspect-square items-center justify-center rounded-xl ${isSelected ? 'bg-brand-600' : disabled ? 'bg-ink-100' : 'bg-ink-50'}`}
+                  >
+                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-white' : isSunday ? 'text-red-500' : 'text-ink-900'}`}>{d.getDate()}</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+          <Pressable onPress={onClose} className="mt-3 py-2">
+            <Text className="font-semibold text-center text-xs text-ink-500">Tutup</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// Cross-platform inline time picker - chip grid 15-min steps
+function InlineTimePicker({ initialHour, initialMinute, onPick, onClose }: {
+  initialHour: number; initialMinute: number;
+  onPick: (h: number, m: number) => void; onClose: () => void;
+}) {
+  const [h, setH] = useState(initialHour);
+  const [m, setM] = useState(initialMinute);
+  const HOURS = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR + 1 }, (_, i) => OPS_START_HOUR + i);
+  const MINUTES = [0, 15, 30, 45];
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 16 }}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, maxWidth: 360, alignSelf: 'center', width: '100%' }}>
+          <Text className="font-extrabold mb-3 text-center text-base text-ink-900">
+            Pilih Jam: {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+          </Text>
+          <Text className="font-semibold mb-2 text-xs text-ink-600">Jam</Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {HOURS.map((hh) => {
+              const active = h === hh;
+              return (
+                <Pressable
+                  key={hh}
+                  onPress={() => setH(hh)}
+                  className={`rounded-lg border px-3 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                >
+                  <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>{String(hh).padStart(2, '0')}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text className="font-semibold mt-3 mb-2 text-xs text-ink-600">Menit</Text>
+          <View className="flex-row gap-1.5">
+            {MINUTES.map((mm) => {
+              const active = m === mm;
+              return (
+                <Pressable
+                  key={mm}
+                  onPress={() => setM(mm)}
+                  className={`flex-1 items-center rounded-lg border py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
+                >
+                  <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>{String(mm).padStart(2, '0')}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View className="mt-4 flex-row gap-2">
+            <Pressable onPress={onClose} className="h-11 flex-1 items-center justify-center rounded-2xl border border-ink-300">
+              <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onPick(h, m)}
+              className="h-11 flex-1 items-center justify-center rounded-2xl bg-brand-600"
+            >
+              <Text className="font-bold text-sm text-white">Pakai Jam Ini</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
