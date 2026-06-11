@@ -171,7 +171,7 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
             >
               <Calendar color={isCustomDate ? 'white' : '#1D4ED8'} size={12} />
               <Text className={`font-bold text-[11px] ${isCustomDate ? 'text-white' : 'text-brand-700'}`}>
-                {isCustomDate ? fmtDateLabel(selectedDate).slice(0, 12) : 'Pilih Tanggal'}
+                {isCustomDate ? fmtDateLabel(selectedDate).slice(0, 12) : 'Bulan Depan / Lainnya'}
               </Text>
             </Pressable>
           </View>

@@ -1300,7 +1300,7 @@ function NewBooking() {
                         <View className="flex-1">
                           <Text className="font-bold text-[12px] text-brand-900">Paket {subscriptionVisits}x kunjungan / bulan</Text>
                           <Text className="font-medium mt-0.5 text-[10px] text-brand-700">
-                            Tap tanggal di kalender untuk pilih / batal
+                            Tap tanggal · gunakan ‹ › untuk pilih bulan depan
                           </Text>
                         </View>
                         <View className={`items-center rounded-xl px-3 py-1.5 ${subscriptionDates.length === subscriptionVisits ? 'bg-emerald-600' : 'bg-brand-600'}`}>
@@ -1344,23 +1344,32 @@ function NewBooking() {
 
                         return (
                           <View>
-                            <View className="mb-3 flex-row items-center justify-between rounded-xl bg-ink-50 p-2">
+                            <View className="mb-3 flex-row items-center justify-between rounded-xl border border-brand-200 bg-brand-50 p-2">
                               <Pressable
                                 onPress={() => setSubscriptionMonthOffset(Math.max(0, subscriptionMonthOffset - 1))}
                                 disabled={subscriptionMonthOffset === 0}
                                 style={{ opacity: subscriptionMonthOffset === 0 ? 0.3 : 1 }}
-                                className="h-8 w-8 items-center justify-center rounded-full bg-white"
+                                className="h-9 w-12 flex-row items-center justify-center gap-1 rounded-lg bg-white"
                               >
-                                <Text className="font-bold text-ink-700">‹</Text>
+                                <Text className="font-extrabold text-base text-brand-700">‹</Text>
+                                <Text className="font-bold text-[10px] text-brand-700">Prev</Text>
                               </Pressable>
-                              <Text className="font-bold text-sm text-ink-900">{months[view.getMonth()]} {view.getFullYear()}</Text>
+                              <View className="items-center">
+                                <Text className="font-extrabold text-sm text-brand-900">{months[view.getMonth()]} {view.getFullYear()}</Text>
+                                {subscriptionMonthOffset > 0 && (
+                                  <Text className="font-medium text-[10px] text-brand-600">
+                                    {subscriptionMonthOffset === 1 ? 'Bulan Depan' : `${subscriptionMonthOffset} Bulan ke Depan`}
+                                  </Text>
+                                )}
+                              </View>
                               <Pressable
                                 onPress={() => setSubscriptionMonthOffset(Math.min(5, subscriptionMonthOffset + 1))}
                                 disabled={subscriptionMonthOffset === 5}
                                 style={{ opacity: subscriptionMonthOffset === 5 ? 0.3 : 1 }}
-                                className="h-8 w-8 items-center justify-center rounded-full bg-white"
+                                className="h-9 w-12 flex-row items-center justify-center gap-1 rounded-lg bg-white"
                               >
-                                <Text className="font-bold text-ink-700">›</Text>
+                                <Text className="font-bold text-[10px] text-brand-700">Next</Text>
+                                <Text className="font-extrabold text-base text-brand-700">›</Text>
                               </Pressable>
                             </View>
 
