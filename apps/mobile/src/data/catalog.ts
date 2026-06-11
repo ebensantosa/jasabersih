@@ -244,6 +244,7 @@ export const DIRT_LEVELS: { level: 1 | 2 | 3 | 4 | 5; label: string; desc: strin
   { level: 3, label: 'Sangat Kotor', desc: 'Lama tidak dibersihkan / pasca renovasi · foto wajib', multiplier: 1.4 },
 ];
 
+// Jenis kotoran — bukan sampah (sampah masuk add-on "Buang Sampah ke TPS")
 export const DIRT_CHARACTERS = [
   'Debu',
   'Noda cair',
@@ -252,7 +253,6 @@ export const DIRT_CHARACTERS = [
   'Jamur / lumut',
   'Sisa renovasi',
   'Bulu hewan',
-  'Sampah menumpuk',
 ] as const;
 
 export const FLOOR_TYPES = ['Keramik', 'Marmer', 'Kayu', 'Vinyl', 'Karpet', 'Beton ekspos'] as const;
