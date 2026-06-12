@@ -33,7 +33,9 @@ export type BookingStatus =
   | 'in_progress'
   | 'completed'
   | 'canceled'
-  | 'wa_survey_pending'; // menunggu CS contact untuk WA Survey
+  | 'wa_survey_pending' // menunggu CS contact untuk WA Survey
+  | 'subscription_parent' // parent subscription booking - liat child untuk detail per visit
+  | 'scheduled_future'; // child subscription visit yg belum jadwalnya (h-1 baru wake up via cron)
 
 export type ChatMessage = {
   id: string;
@@ -379,6 +381,8 @@ export const STATUS_LABEL: Record<BookingStatus, string> = {
   completed: 'Selesai',
   canceled: 'Dibatalkan',
   wa_survey_pending: 'Menunggu CS Hubungi',
+  subscription_parent: 'Paket Langganan',
+  scheduled_future: 'Terjadwal',
 };
 
 export const STATUS_COLOR: Record<BookingStatus, { bg: string; fg: string }> = {
@@ -390,4 +394,6 @@ export const STATUS_COLOR: Record<BookingStatus, { bg: string; fg: string }> = {
   completed: { bg: '#D1FAE5', fg: '#047857' },
   canceled: { bg: '#FEE2E2', fg: '#B91C1C' },
   wa_survey_pending: { bg: '#FEF3C7', fg: '#B45309' },
+  subscription_parent: { bg: '#EDE9FE', fg: '#5B21B6' }, // ungu, beda dari status biasa
+  scheduled_future: { bg: '#F1F5F9', fg: '#475569' },
 };

@@ -75,19 +75,48 @@ export class BookingsController {
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser) {
+    // Subscription: hide individual child visits dari list utama, customer cuma liat parent.
+    // Parent subscription tampil dgn aggregate info (X dari N visit selesai).
     return this.prisma.$queryRawUnsafe(
       `SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.total_amount AS total,
               b.scheduled_at AS "scheduledAt", b.address_line AS address, b.created_at AS "createdAt",
               s.name AS "serviceName", s.icon_url AS "serviceIcon",
               pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId",
-              cl.photo_url AS "cleanerPhotoUrl"
+              cl.photo_url AS "cleanerPhotoUrl",
+              b.subscription_total_visits AS "subscriptionTotalVisits",
+              (SELECT COUNT(*)::int FROM bookings c WHERE c.parent_booking_id = b.id AND c.status = 'completed') AS "subscriptionCompletedVisits"
        FROM bookings b
        LEFT JOIN services s ON s.id = b.service_id
        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
        LEFT JOIN users cl ON cl.id = b.cleaner_id
        WHERE b.customer_id = $1::uuid
+         AND b.parent_booking_id IS NULL  -- hide child visits, cuma list parent + non-subscription
        ORDER BY b.created_at DESC LIMIT 50`,
       user.id,
+    );
+  }
+
+  // GET /bookings/:id/subscription-visits — list semua child visits dari parent subscription
+  @Get(':id/subscription-visits')
+  async subscriptionVisits(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const owns = await this.prisma.$queryRaw<{ customer_id: string }[]>`
+      SELECT customer_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (!owns[0] || owns[0].customer_id !== user.id) {
+      throw new BadRequestException('Bukan booking kamu');
+    }
+    return this.prisma.$queryRawUnsafe(
+      `SELECT b.id, b.status, b.scheduled_at AS "scheduledAt",
+              b.subscription_visit_index AS "visitIndex",
+              b.subscription_total_visits AS "visitTotal",
+              b.cleaner_id AS "cleanerId",
+              cl.name AS "cleanerName", cl.photo_url AS "cleanerPhotoUrl",
+              b.completed_at AS "completedAt", b.matched_at AS "matchedAt"
+       FROM bookings b
+       LEFT JOIN users cl ON cl.id = b.cleaner_id
+       WHERE b.parent_booking_id = $1::uuid
+       ORDER BY b.subscription_visit_index ASC`,
+      id,
     );
   }
 
@@ -396,8 +425,130 @@ export class BookingsController {
        WHERE id = $1::uuid AND customer_id = $2::uuid AND status = 'pending_payment'`,
       id, user.id,
     );
-    void this.jobs.broadcastIncomingJob(id).catch(() => {});
+
+    // Materialize subscription children. Return true kalau memang subscription.
+    const materialized = await this.materializeSubscriptionChildren(id, user.id);
+    if (materialized) {
+      // Parent subscription → set ke status special 'subscription_parent' (gak di-broadcast),
+      // cleaner cuma dapat offer dari child bookings (visit 1 langsung, visit 2+ via cron H-1).
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE bookings SET status = 'subscription_parent' WHERE id = $1::uuid`,
+        id,
+      );
+      // Broadcast cuma untuk child visit pertama (yg statusnya 'searching')
+      const firstChild = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM bookings
+         WHERE parent_booking_id = ${id}::uuid AND status = 'searching'
+         ORDER BY subscription_visit_index ASC LIMIT 1
+      `;
+      if (firstChild[0]) void this.jobs.broadcastIncomingJob(firstChild[0].id).catch(() => {});
+    } else {
+      void this.jobs.broadcastIncomingJob(id).catch(() => {});
+    }
     return { ok: true };
+  }
+
+  // Untuk subscription: parent booking yg baru paid → bikin N child booking (1 per visit).
+  // Visit pertama langsung 'searching', visit 2-N 'scheduled_future' (cron akan wake up h-1).
+  // Return true kalau memang subscription dan child berhasil dibikin.
+  private async materializeSubscriptionChildren(parentId: string, customerId: string): Promise<boolean> {
+    const parent = await this.prisma.$queryRaw<{
+      service_id: string | null;
+      package_id: string | null;
+      pricing_mode: string;
+      form_snapshot: any;
+      address_line: string;
+      location: any;
+      customer_notes: string | null;
+      total_amount: bigint;
+      base_amount: bigint;
+      voucher_id: string | null;
+      voucher_discount: bigint;
+    }[]>`
+      SELECT service_id, package_id, pricing_mode, form_snapshot,
+             address_line, location, customer_notes,
+             total_amount, base_amount, voucher_id, voucher_discount
+        FROM bookings WHERE id = ${parentId}::uuid LIMIT 1
+    `;
+    if (parent.length === 0) return false;
+    const p = parent[0]!;
+    const dates: string[] | undefined = p.form_snapshot?.subscriptionDates;
+    if (!Array.isArray(dates) || dates.length === 0) return false;
+
+    // Cek service code = 'subscription'. Kalau bukan subscription, skip.
+    const svc = await this.prisma.$queryRaw<{ code: string }[]>`
+      SELECT code FROM services WHERE id = ${p.service_id}::uuid LIMIT 1
+    `;
+    if (svc[0]?.code !== 'subscription') return false;
+
+    const sortedDates = [...dates].sort();
+    const totalVisits = sortedDates.length;
+    // Distribute total amount evenly per visit (rounding handled by floor + remainder ke visit pertama)
+    const totalAmount = Number(p.total_amount);
+    const baseAmount = Number(p.base_amount);
+    const perVisitTotal = Math.floor(totalAmount / totalVisits);
+    const perVisitBase = Math.floor(baseAmount / totalVisits);
+    const remainderTotal = totalAmount - perVisitTotal * totalVisits;
+    const remainderBase = baseAmount - perVisitBase * totalVisits;
+
+    // Bikin child bookings: visit-1 status='searching' (langsung broadcast), visit 2+ 'scheduled_future'
+    for (let i = 0; i < totalVisits; i++) {
+      const dateIso = sortedDates[i]!;
+      const visitIndex = i + 1;
+      // Default scheduled time = 09:00 di tanggal visit. Customer bisa request reschedule per visit.
+      const scheduledAt = `${dateIso}T09:00:00.000Z`;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const visitDate = new Date(dateIso); visitDate.setHours(0, 0, 0, 0);
+      const isFirst = i === 0;
+      const isToday = visitDate.getTime() === today.getTime();
+      const isFutureVisit = visitDate.getTime() > today.getTime();
+      const initialStatus = (isFirst || isToday) ? 'searching' : (isFutureVisit ? 'scheduled_future' : 'searching');
+      const childTotalAmt = perVisitTotal + (isFirst ? remainderTotal : 0);
+      const childBaseAmt = perVisitBase + (isFirst ? remainderBase : 0);
+      const childFormSnapshot = {
+        ...(p.form_snapshot ?? {}),
+        // Override: child gak punya array subscriptionDates (hindari nested rendering)
+        subscriptionDates: undefined,
+        // Tag visit info
+        subscriptionVisitOf: visitIndex,
+        subscriptionVisitTotal: totalVisits,
+        parentBookingId: parentId,
+      };
+
+      await this.prisma.$executeRawUnsafe(
+        `INSERT INTO bookings (
+          customer_id, service_id, package_id, pricing_mode, status, form_snapshot,
+          scheduled_at, address_line, location, customer_notes,
+          base_amount, total_amount, voucher_id, voucher_discount,
+          parent_booking_id, subscription_visit_index, subscription_total_visits,
+          paid_at
+        ) VALUES (
+          $1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb,
+          $7::timestamptz, $8, $9, $10,
+          $11::bigint, $12::bigint, $13::uuid, $14::bigint,
+          $15::uuid, $16::int, $17::int,
+          NOW()
+        )`,
+        customerId,
+        p.service_id,
+        p.package_id,
+        p.pricing_mode,
+        initialStatus,
+        JSON.stringify(childFormSnapshot),
+        scheduledAt,
+        p.address_line,
+        p.location,
+        p.customer_notes,
+        childBaseAmt,
+        childTotalAmt,
+        p.voucher_id,
+        Number(p.voucher_discount),
+        parentId,
+        visitIndex,
+        totalVisits,
+      );
+    }
+    return true;
   }
 
   // Customer konfirmasi terima — skip cooling-off 24h, langsung release escrow ke cleaner

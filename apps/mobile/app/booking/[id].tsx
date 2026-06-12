@@ -90,6 +90,7 @@ function BookingDetail() {
   const [advancing, setAdvancing] = useState(false);
   const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
   const [showUpchargeModal, setShowUpchargeModal] = useState(false);
+  const [subscriptionVisits, setSubscriptionVisits] = useState<Array<{ id: string; status: string; scheduledAt: string; visitIndex: number; visitTotal: number; cleanerName: string | null; completedAt: string | null }> | null>(null);
 
   async function loadUpcharges() {
     if (!id || id.startsWith('bk_')) return;
@@ -99,6 +100,17 @@ function BookingDetail() {
     } catch { /* silent */ }
   }
   useEffect(() => { void loadUpcharges(); }, [id]);
+
+  // Fetch subscription child visits kalau parent
+  async function loadSubscriptionVisits() {
+    if (!id || id.startsWith('bk_')) return;
+    try {
+      const r = await api.get(`/bookings/${id}/subscription-visits`);
+      const list = (r.data?.data ?? r.data ?? []) as any[];
+      if (list.length > 0) setSubscriptionVisits(list as any);
+    } catch { /* silent - not a subscription parent */ }
+  }
+  useEffect(() => { void loadSubscriptionVisits(); }, [id]);
 
   async function approveUpcharge(upchargeId: string) {
     try {
@@ -572,58 +584,64 @@ function BookingDetail() {
             )}
           </View>
 
-          {/* Subscription schedule overview - tampil semua tanggal kunjungan biar cleaner & customer paham */}
-          {booking.formSnapshot?.subscriptionDates && Array.isArray(booking.formSnapshot.subscriptionDates) && booking.formSnapshot.subscriptionDates.length > 0 && (
+          {/* Subscription parent — list child visits dengan status live + link per visit */}
+          {subscriptionVisits && subscriptionVisits.length > 0 && (
             <View className="mx-4 mt-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-4">
               <View className="flex-row items-center gap-2">
                 <Text className="text-base">📅</Text>
                 <Text className="font-extrabold text-sm text-brand-900">
-                  Jadwal Langganan ({booking.formSnapshot.subscriptionDates.length}x Kunjungan)
+                  Jadwal Langganan ({subscriptionVisits.filter((v) => v.status === 'completed').length}/{subscriptionVisits.length} Selesai)
                 </Text>
               </View>
               <Text className="font-medium mt-1 text-[11px] text-brand-800">
-                {isCleaner
-                  ? 'Customer udah pilih semua tanggal langganan. Kamu akan dapat job offer terpisah untuk tiap visit.'
-                  : 'Semua tanggal kunjungan yang kamu pilih. Cleaner akan datang tiap tanggal ini.'}
+                Tap visit untuk detail. Tiap visit punya foto + rating sendiri.
               </Text>
               <View className="mt-3 gap-1.5">
-                {(booking.formSnapshot.subscriptionDates as string[]).sort().map((iso, i) => {
-                  const d = new Date(iso);
+                {subscriptionVisits.map((v) => {
+                  const d = new Date(v.scheduledAt);
                   const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
                   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-                  const isToday = (() => {
-                    const t = new Date(); t.setHours(0, 0, 0, 0);
-                    const dn = new Date(d); dn.setHours(0, 0, 0, 0);
-                    return t.getTime() === dn.getTime();
-                  })();
-                  const isPast = (() => {
-                    const t = new Date(); t.setHours(0, 0, 0, 0);
-                    const dn = new Date(d); dn.setHours(0, 0, 0, 0);
-                    return dn.getTime() < t.getTime();
+                  const t = new Date(); t.setHours(0, 0, 0, 0);
+                  const dn = new Date(d); dn.setHours(0, 0, 0, 0);
+                  const isToday = t.getTime() === dn.getTime();
+                  const statusBadge = (() => {
+                    switch (v.status) {
+                      case 'completed': return { label: '✓ Selesai', bg: '#D1FAE5', fg: '#047857' };
+                      case 'in_progress': return { label: 'Lagi Dikerjain', bg: '#DBEAFE', fg: '#1D4ED8' };
+                      case 'on_the_way': case 'cleaner_otw': return { label: 'Cleaner OTW', bg: '#DBEAFE', fg: '#1D4ED8' };
+                      case 'matched': return { label: 'Cleaner Siap', bg: '#D1FAE5', fg: '#047857' };
+                      case 'searching': return { label: 'Cari Cleaner', bg: '#FEF3C7', fg: '#B45309' };
+                      case 'scheduled_future': return { label: 'Terjadwal', bg: '#F1F5F9', fg: '#475569' };
+                      case 'canceled': return { label: 'Dibatalkan', bg: '#FEE2E2', fg: '#B91C1C' };
+                      default: return { label: v.status, bg: '#F1F5F9', fg: '#475569' };
+                    }
                   })();
                   return (
-                    <View
-                      key={iso}
-                      className={`flex-row items-center justify-between rounded-xl px-3 py-2 ${isToday ? 'border border-emerald-400 bg-emerald-50' : isPast ? 'bg-ink-100' : 'bg-white'}`}
-                      style={isPast ? { opacity: 0.6 } : undefined}
+                    <Pressable
+                      key={v.id}
+                      onPress={() => router.push({ pathname: '/booking/[id]', params: { id: v.id } })}
+                      className={`flex-row items-center justify-between rounded-xl px-3 py-2.5 ${isToday ? 'border-2 border-emerald-400 bg-emerald-50' : 'bg-white'}`}
                     >
-                      <View className="flex-row items-center gap-2">
-                        <View className={`h-6 w-6 items-center justify-center rounded-full ${isToday ? 'bg-emerald-600' : isPast ? 'bg-ink-300' : 'bg-brand-600'}`}>
-                          <Text className="font-extrabold text-[10px] text-white">{i + 1}</Text>
+                      <View className="flex-1 flex-row items-center gap-2">
+                        <View className={`h-7 w-7 items-center justify-center rounded-full ${isToday ? 'bg-emerald-600' : 'bg-brand-600'}`}>
+                          <Text className="font-extrabold text-[11px] text-white">{v.visitIndex}</Text>
                         </View>
-                        <Text className={`font-semibold text-sm ${isPast ? 'text-ink-500' : 'text-ink-900'}`}>
-                          {days[d.getDay()]}, {d.getDate()} {months[d.getMonth()]} {d.getFullYear()}
+                        <View className="flex-1">
+                          <Text className="font-semibold text-sm text-ink-900">
+                            {days[d.getDay()]}, {d.getDate()} {months[d.getMonth()]}
+                          </Text>
+                          {v.cleanerName && (
+                            <Text className="font-medium text-[10px] text-ink-500">Cleaner: {v.cleanerName}</Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={{ backgroundColor: statusBadge.bg }} className="rounded-full px-2 py-1">
+                        <Text style={{ color: statusBadge.fg }} className="font-bold text-[9px] uppercase tracking-wider">
+                          {statusBadge.label}
                         </Text>
                       </View>
-                      {isToday && (
-                        <View className="rounded-full bg-emerald-600 px-2 py-0.5">
-                          <Text className="font-bold text-[9px] uppercase tracking-wider text-white">Hari Ini</Text>
-                        </View>
-                      )}
-                      {isPast && !isToday && (
-                        <Text className="font-bold text-[9px] uppercase tracking-wider text-ink-400">✓ Selesai</Text>
-                      )}
-                    </View>
+                      <Text className="font-bold ml-2 text-base text-brand-700">›</Text>
+                    </Pressable>
                   );
                 })}
               </View>

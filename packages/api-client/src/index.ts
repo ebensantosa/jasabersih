@@ -379,6 +379,8 @@ export function createClient(opts: ClientOptions) {
       tipCleaner: (id: string, amount: number) =>
         request<{ ok: true; amount: number; newBalance: number }>('POST', `/bookings/${id}/tip`, { amount }),
       pay: (id: string) => request<unknown>('POST', `/bookings/${id}/pay`),
+      subscriptionVisits: (id: string) =>
+        request<Array<{ id: string; status: string; scheduledAt: string; visitIndex: number; visitTotal: number; cleanerId: string | null; cleanerName: string | null; cleanerPhotoUrl: string | null; completedAt: string | null; matchedAt: string | null }>>('GET', `/bookings/${id}/subscription-visits`),
     },
     customerNotes: {
       listMine: () => request<Array<{ id: string; category: string; content: string; createdAt: string }>>('GET', '/customer/notes'),
