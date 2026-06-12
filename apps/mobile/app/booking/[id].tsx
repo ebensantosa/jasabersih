@@ -572,6 +572,64 @@ function BookingDetail() {
             )}
           </View>
 
+          {/* Subscription schedule overview - tampil semua tanggal kunjungan biar cleaner & customer paham */}
+          {booking.formSnapshot?.subscriptionDates && Array.isArray(booking.formSnapshot.subscriptionDates) && booking.formSnapshot.subscriptionDates.length > 0 && (
+            <View className="mx-4 mt-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-4">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base">📅</Text>
+                <Text className="font-extrabold text-sm text-brand-900">
+                  Jadwal Langganan ({booking.formSnapshot.subscriptionDates.length}x Kunjungan)
+                </Text>
+              </View>
+              <Text className="font-medium mt-1 text-[11px] text-brand-800">
+                {isCleaner
+                  ? 'Customer udah pilih semua tanggal langganan. Kamu akan dapat job offer terpisah untuk tiap visit.'
+                  : 'Semua tanggal kunjungan yang kamu pilih. Cleaner akan datang tiap tanggal ini.'}
+              </Text>
+              <View className="mt-3 gap-1.5">
+                {(booking.formSnapshot.subscriptionDates as string[]).sort().map((iso, i) => {
+                  const d = new Date(iso);
+                  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                  const isToday = (() => {
+                    const t = new Date(); t.setHours(0, 0, 0, 0);
+                    const dn = new Date(d); dn.setHours(0, 0, 0, 0);
+                    return t.getTime() === dn.getTime();
+                  })();
+                  const isPast = (() => {
+                    const t = new Date(); t.setHours(0, 0, 0, 0);
+                    const dn = new Date(d); dn.setHours(0, 0, 0, 0);
+                    return dn.getTime() < t.getTime();
+                  })();
+                  return (
+                    <View
+                      key={iso}
+                      className={`flex-row items-center justify-between rounded-xl px-3 py-2 ${isToday ? 'border border-emerald-400 bg-emerald-50' : isPast ? 'bg-ink-100' : 'bg-white'}`}
+                      style={isPast ? { opacity: 0.6 } : undefined}
+                    >
+                      <View className="flex-row items-center gap-2">
+                        <View className={`h-6 w-6 items-center justify-center rounded-full ${isToday ? 'bg-emerald-600' : isPast ? 'bg-ink-300' : 'bg-brand-600'}`}>
+                          <Text className="font-extrabold text-[10px] text-white">{i + 1}</Text>
+                        </View>
+                        <Text className={`font-semibold text-sm ${isPast ? 'text-ink-500' : 'text-ink-900'}`}>
+                          {days[d.getDay()]}, {d.getDate()} {months[d.getMonth()]} {d.getFullYear()}
+                        </Text>
+                      </View>
+                      {isToday && (
+                        <View className="rounded-full bg-emerald-600 px-2 py-0.5">
+                          <Text className="font-bold text-[9px] uppercase tracking-wider text-white">Hari Ini</Text>
+                        </View>
+                      )}
+                      {isPast && !isToday && (
+                        <Text className="font-bold text-[9px] uppercase tracking-wider text-ink-400">✓ Selesai</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {booking.formSnapshot && booking.pricingMode === 'package' && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
