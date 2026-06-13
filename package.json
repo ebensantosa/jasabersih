@@ -2,14 +2,11 @@
   "name": "jasabersih",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.33.2",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "services/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
