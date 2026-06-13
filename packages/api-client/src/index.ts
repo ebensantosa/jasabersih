@@ -352,6 +352,16 @@ export function createClient(opts: ClientOptions) {
       broadcastSend: (body: { title: string; body: string; audience: string; ctaLink?: string }) =>
         request<{ audienceSize: number; sent: number; failed: number }>('POST', '/admin/broadcast/send', body),
       broadcastHistory: () => request<any[]>('GET', '/admin/broadcast/history'),
+      broadcastSchedule: (body: { title: string; body: string; audience: string; ctaLink?: string; scheduledAt: string }) =>
+        request<{ id: string; ok: true }>('POST', '/admin/broadcast/schedule', body),
+      broadcastListScheduled: () => request<any[]>('GET', '/admin/broadcast/scheduled'),
+      broadcastCancelScheduled: (id: string) =>
+        request<{ ok: true }>('POST', `/admin/broadcast/scheduled/${id}/cancel`),
+      broadcastListTemplates: () => request<any[]>('GET', '/admin/broadcast/templates'),
+      broadcastCreateTemplate: (body: { name: string; title: string; body: string; audience: string; ctaLink?: string; category?: string }) =>
+        request<{ id: string; ok: true }>('POST', '/admin/broadcast/templates', body),
+      broadcastUseTemplate: (id: string) => request<{ ok: true }>('POST', `/admin/broadcast/templates/${id}/use`),
+      broadcastDeleteTemplate: (id: string) => request<{ ok: true }>('DELETE', `/admin/broadcast/templates/${id}`),
 
       // Chat audit
       chatBookings: (params?: { q?: string; hasBlocked?: boolean }) =>
