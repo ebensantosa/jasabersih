@@ -2062,7 +2062,17 @@ function NewBooking() {
               </Pressable>
               {((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1 ? (
                 <Pressable
-                  onPress={() => router.push({ pathname: '/booking/wa-survey', params: { category: categoryCode } })}
+                  onPress={() => router.push({
+                    pathname: '/booking/wa-survey',
+                    params: {
+                      category: categoryCode,
+                      workers: String(workers),
+                      areaM2: String(areaM2),
+                      propertyType,
+                      bedrooms: String(bedrooms),
+                      bathrooms: String(bathrooms),
+                    },
+                  })}
                   className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-success"
                 >
                   <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />

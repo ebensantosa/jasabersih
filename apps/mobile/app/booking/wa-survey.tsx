@@ -16,7 +16,9 @@ import { safeBack } from '../../src/lib/safeBack';
 
 export default function WaSurvey() {
   const router = useRouter();
-  const { category: categoryCode } = useLocalSearchParams<{ category?: string }>();
+  const { category: categoryCode, workers, areaM2, propertyType, bedrooms, bathrooms } = useLocalSearchParams<{
+    category?: string; workers?: string; areaM2?: string; propertyType?: string; bedrooms?: string; bathrooms?: string;
+  }>();
   const tokens = useAuthStore((s) => s.tokens);
   const create = useBookingsStore((s) => s.create);
 
@@ -24,7 +26,16 @@ export default function WaSurvey() {
 
   const savedLocation = useLocationStore((s) => s.current);
   const [phone, setPhone] = useState('');
-  const [description, setDescription] = useState('');
+  // Prefill description dengan context dari form sebelumnya (workers, area, dll) biar CS gak nanya ulang
+  const [description, setDescription] = useState(() => {
+    const parts: string[] = [];
+    if (workers && Number(workers) > 1) parts.push(`Butuh ${workers} petugas cleaner`);
+    if (areaM2) parts.push(`Luas area ${areaM2} m²`);
+    if (propertyType) parts.push(`Tipe: ${propertyType}`);
+    if (bedrooms && Number(bedrooms) > 0) parts.push(`${bedrooms} kamar tidur`);
+    if (bathrooms && Number(bathrooms) > 0) parts.push(`${bathrooms} kamar mandi`);
+    return parts.length > 0 ? parts.join(' · ') + '. ' : '';
+  });
   const [address, setAddress] = useState(savedLocation?.address ?? '');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     savedLocation ? { lat: savedLocation.lat, lng: savedLocation.lng } : null,
