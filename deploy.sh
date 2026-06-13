@@ -45,7 +45,7 @@ echo "   ✓ .next OK"
 echo ""
 echo "♻️  [5/5] Restart PM2 services..."
 pm2 restart jasabersih-api jasabersih-admin --update-env
-sleep 3
+sleep 5
 
 echo ""
 echo "📊 Status:"
@@ -53,11 +53,23 @@ pm2 list
 
 echo ""
 echo "🔍 API health check..."
-if curl -sf -o /dev/null --max-time 5 http://localhost:5000/docs; then
+# Endpoint /docs gak dipakai di production (guarded by NODE_ENV).
+# Pakai endpoint publik /v1/app/content + retry biar gak false-alarm pas API masih bootstrap.
+HEALTH_OK=0
+for i in 1 2 3 4 5; do
+  if curl -sf -o /dev/null --max-time 5 http://localhost:5000/v1/app/content; then
+    HEALTH_OK=1
+    break
+  fi
+  echo "   ⏳ API belum respond (attempt $i/5), retry 3 detik..."
+  sleep 3
+done
+
+if [ $HEALTH_OK -eq 1 ]; then
   echo "   ✓ API responding at :5000"
 else
-  echo "   ❌ API tidak respond! Cek log:"
-  pm2 logs jasabersih-api --lines 10 --nostream
+  echo "   ❌ API tidak respond setelah 5x retry! Cek log:"
+  pm2 logs jasabersih-api --lines 15 --nostream
   exit 1
 fi
 
