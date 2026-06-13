@@ -106,7 +106,7 @@ export default function BroadcastPage() {
   }
 
   async function deleteTemplate(id: string, name: string) {
-    const ok = await confirm({ title: `Hapus template "${name}"?`, confirmLabel: 'Hapus', variant: 'danger' });
+    const ok = await confirm({ title: `Hapus template "${name}"?`, message: 'Template gak bisa di-restore. Yakin?', confirmLabel: 'Hapus', variant: 'danger' });
     if (!ok) return;
     try { await api.admin.broadcastDeleteTemplate(id); toast.success('Hapus'); void loadTemplates(); }
     catch (e: any) { toast.error(e?.message ?? 'Gagal'); }
