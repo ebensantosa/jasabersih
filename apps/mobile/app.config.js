@@ -39,6 +39,11 @@ module.exports = {
     userInterfaceStyle: 'automatic',
     newArchEnabled: false,
     icon: './assets/icon.png',
+    splash: {
+      image: './assets/splash-logo.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.jasabersih.app',
@@ -51,9 +56,23 @@ module.exports = {
       versionCode: 15,
       edgeToEdgeEnabled: false,
       icon: './assets/icon.png',
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#ffffff',
+      },
       googleServicesFile: './google-services.json',
     },
-    plugins: SHOULD_USE_FIREBASE ? [...basePlugins, ...firebasePlugins] : basePlugins,
+    plugins: [
+      ...(SHOULD_USE_FIREBASE ? [...basePlugins, ...firebasePlugins] : basePlugins),
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash-logo.png',
+          resizeMode: 'contain',
+          backgroundColor: '#ffffff',
+        },
+      ],
+    ],
     experiments: { typedRoutes: false },
     extra: {
       apiBaseUrl: 'https://api.jasabersih.com/v1',

@@ -1,4 +1,5 @@
 import '../global.css';
+import 'react-native-gesture-handler';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -9,6 +10,8 @@ import {
 } from '@expo-google-fonts/inter';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { StatusBar } from 'expo-status-bar';
@@ -168,18 +171,24 @@ export default function RootLayout() {
   // boleh render karena akan crash kalau ada navigation call sebelum siap.
   if (!fontsLoaded) {
     return (
-      <ErrorBoundary>
-        <QueryProvider>
-          <SplashOverlay visible />
-        </QueryProvider>
-      </ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <QueryProvider>
+              <SplashOverlay visible />
+            </QueryProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <QueryProvider>
-        <StatusBar style="light" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <QueryProvider>
+            <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F8FAFC' } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
@@ -222,7 +231,9 @@ export default function RootLayout() {
         <SuspendedOverlay />
         <CleanerLockOverlay />
         <SplashOverlay visible={splashVisible} />
-      </QueryProvider>
-    </ErrorBoundary>
+          </QueryProvider>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
