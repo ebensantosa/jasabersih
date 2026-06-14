@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,9 +32,10 @@ function ChatsScreen() {
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
 
-  useEffect(() => {
-    if (!tokens) router.replace('/(auth)/login');
-  }, [tokens]);
+  // Synchronous redirect kalau gak login - cegah blank screen flash
+  if (!tokens) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   const fetchChats = useCallback(async () => {
     if (!tokens) return;

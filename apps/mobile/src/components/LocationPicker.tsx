@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { Crosshair, MapPin, Search, X } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -101,6 +101,67 @@ async function searchPlace(q: string): Promise<{ lat: number; lng: number; name:
   }
 }
 
+type MapHandle = { setView: (lat: number, lng: number) => void };
+
+// Map di-isolate ke komponen sendiri + React.memo supaya parent re-render
+// (lat/lng/address state changes) GAK trigger re-render iframe/WebView.
+// Itu yg bikin flicker tiles tiap kali user geser peta.
+const MapView = memo(
+  forwardRef<MapHandle, { html: string; onMove: (lat: number, lng: number) => void }>(
+    function MapView({ html, onMove }, ref) {
+      const webRef = useRef<WebView>(null);
+      const iframeRef = useRef<HTMLIFrameElement | null>(null);
+      const source = useMemo(() => ({ html }), [html]);
+
+      useImperativeHandle(ref, () => ({
+        setView(lat, lng) {
+          if (Platform.OS === 'web' && iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(
+              JSON.stringify({ type: 'setView', lat, lng, zoom: 16 }),
+              '*',
+            );
+          } else {
+            webRef.current?.injectJavaScript(`window._setView(${lat}, ${lng}); true;`);
+          }
+        },
+      }), []);
+
+      useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        const handler = (e: MessageEvent): void => {
+          try {
+            const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+            if (d?.type === 'moveend' && typeof d.lat === 'number') onMove(d.lat, d.lng);
+          } catch {}
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+      }, [onMove]);
+
+      const onWebMessage = useCallback((e: WebViewMessageEvent): void => {
+        try {
+          const d = JSON.parse(e.nativeEvent.data);
+          if (d.type === 'moveend') onMove(d.lat, d.lng);
+        } catch {}
+      }, [onMove]);
+
+      if (Platform.OS === 'web') {
+        // @ts-ignore iframe is web-only
+        return <iframe ref={iframeRef} srcDoc={html} style={{ width: '100%', height: '100%', border: 0 }} />;
+      }
+      return (
+        <WebView
+          ref={webRef}
+          originWhitelist={['*']}
+          source={source}
+          onMessage={onWebMessage}
+          style={{ flex: 1 }}
+        />
+      );
+    },
+  ),
+);
+
 export function LocationPicker({
   visible,
   initial,
@@ -125,8 +186,7 @@ export function LocationPicker({
   const [resolving, setResolving] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [results, setResults] = useState<{ lat: number; lng: number; name: string }[]>([]);
-  const webRef = useRef<WebView>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const mapRef = useRef<MapHandle>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reqSeqRef = useRef(0);
 
@@ -147,50 +207,22 @@ export function LocationPicker({
     };
   }, [lat, lng, visible]);
 
-  // Web: handle postMessage from iframe
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !visible) return;
-    const handler = (e: MessageEvent): void => {
-      try {
-        const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (d?.type === 'moveend' && typeof d.lat === 'number') {
-          setLat(d.lat);
-          setLng(d.lng);
-        }
-      } catch {}
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [visible]);
-
-  function onWebViewMessage(e: WebViewMessageEvent): void {
-    try {
-      const d = JSON.parse(e.nativeEvent.data);
-      if (d.type === 'moveend') {
-        setLat(d.lat);
-        setLng(d.lng);
-      }
-    } catch {}
-  }
+  const onMove = useCallback((newLat: number, newLng: number) => {
+    setLat(newLat);
+    setLng(newLng);
+  }, []);
 
   function setMapView(newLat: number, newLng: number): void {
     setLat(newLat);
     setLng(newLng);
-    if (Platform.OS === 'web' && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ type: 'setView', lat: newLat, lng: newLng, zoom: 16 }),
-        '*',
-      );
-    } else {
-      webRef.current?.injectJavaScript(`window._setView(${newLat}, ${newLng}); true;`);
-    }
+    mapRef.current?.setView(newLat, newLng);
   }
 
   async function useCurrent(): Promise<void> {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        toast.warning('Izin lokasi ditolak. Aktifkan di Setting → App → JasaBersih → Permissions → Location.');
+        toast.info('Izin lokasi ditolak. Aktifkan di Setting → App → JasaBersih → Permissions → Location.');
         return;
       }
       toast.info('Mencari lokasi GPS...');
@@ -291,22 +323,7 @@ export function LocationPicker({
 
       {/* Map */}
       <View className="flex-1">
-        {Platform.OS === 'web' ? (
-          // @ts-ignore iframe is web-only
-          <iframe
-            ref={iframeRef}
-            srcDoc={initialHtml}
-            style={{ width: '100%', height: '100%', border: 0 }}
-          />
-        ) : (
-          <WebView
-            ref={webRef}
-            originWhitelist={['*']}
-            source={{ html: initialHtml }}
-            onMessage={onWebViewMessage}
-            style={{ flex: 1 }}
-          />
-        )}
+        <MapView ref={mapRef} html={initialHtml} onMove={onMove} />
 
         <Pressable
           onPress={useCurrent}
