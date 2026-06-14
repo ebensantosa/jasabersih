@@ -20,18 +20,17 @@ export class NotificationsController {
     @Body() body: { token: string; deviceId: string; platform?: string; deviceFingerprint?: string },
   ) {
     if (!body?.token || !body?.deviceId) throw new BadRequestException('token & deviceId wajib.');
+    // Migration 20260614000000 pasang unique partial index (user_id, fcm_token) WHERE fcm_token IS NOT NULL.
+    // Upsert: kalau sama user+token udah ada → update last_active_at saja.
     await this.prisma.$executeRaw`
       INSERT INTO user_devices (user_id, device_id, fcm_token, platform, device_fingerprint, last_active_at)
       VALUES (${user.id}::uuid, ${body.deviceId}, ${body.token}, ${body.platform ?? null}, ${body.deviceFingerprint ?? null}, NOW())
-      ON CONFLICT DO NOTHING
-    `;
-    // Update token kalau device sudah ada
-    await this.prisma.$executeRaw`
-      UPDATE user_devices
-         SET fcm_token = ${body.token}, last_active_at = NOW(),
-             platform = COALESCE(${body.platform ?? null}, platform),
-             device_fingerprint = COALESCE(${body.deviceFingerprint ?? null}, device_fingerprint)
-       WHERE user_id = ${user.id}::uuid AND device_id = ${body.deviceId}
+      ON CONFLICT (user_id, fcm_token) WHERE fcm_token IS NOT NULL
+      DO UPDATE SET
+        last_active_at = NOW(),
+        device_id = EXCLUDED.device_id,
+        platform = COALESCE(EXCLUDED.platform, user_devices.platform),
+        device_fingerprint = COALESCE(EXCLUDED.device_fingerprint, user_devices.device_fingerprint)
     `;
     return { ok: true };
   }
