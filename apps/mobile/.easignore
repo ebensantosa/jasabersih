@@ -1,0 +1,21 @@
+# Files yg EAS Build TIDAK perlu upload ke cloud (semua diff dari .gitignore yg perlu tambahan).
+# Rule: pattern sama dengan gitignore. EAS otomatis exclude file yg gitignored, tapi ini explicit
+# untuk file rahasia + besar.
+
+# Firebase Admin SDK service account JSON (SECRET!)
+*firebase-adminsdk*.json
+*-firebase-adminsdk-*.json
+
+# Test artifacts
+__tests__/
+*.test.ts
+*.test.tsx
+coverage/
+
+# Build cache
+.expo/
+expo-env.d.ts
+
+# IDE
+.vscode/
+.idea/
