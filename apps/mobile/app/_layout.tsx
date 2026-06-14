@@ -69,9 +69,23 @@ export default function RootLayout() {
 
   // Tahan SplashOverlay sebentar biar transisi smooth (no flash).
   const [splashHold, setSplashHold] = useState(true);
+  // Visible diagnostic - kalau ada error startup, tampilin di layar (bukan silent blank)
+  const [startupError, setStartupError] = useState<string | null>(null);
+
   useEffect(() => {
     const t = setTimeout(() => setSplashHold(false), 800);
     return () => clearTimeout(t);
+  }, []);
+
+  // Global error capture - catch unhandled rejection & errorUtils dari Hermes
+  useEffect(() => {
+    const orig = (globalThis as any).ErrorUtils?.getGlobalHandler?.();
+    (globalThis as any).ErrorUtils?.setGlobalHandler?.((err: any, isFatal: boolean) => {
+      const msg = `${isFatal ? 'FATAL' : 'ERROR'}: ${err?.message ?? String(err)}\n${(err?.stack ?? '').slice(0, 500)}`;
+      setStartupError(msg);
+      orig?.(err, isFatal);
+    });
+    return () => { (globalThis as any).ErrorUtils?.setGlobalHandler?.(orig); };
   }, []);
 
   useEffect(() => {
@@ -169,6 +183,27 @@ export default function RootLayout() {
 
   // Saat fonts belum siap, render minimal tree (cuma SplashOverlay) - Stack belum
   // boleh render karena akan crash kalau ada navigation call sebelum siap.
+  // Kalau ada error startup, render visible fallback - jangan blank
+  if (startupError) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FEF2F2' }}>
+        <View style={{ flex: 1, padding: 24, paddingTop: 80, justifyContent: 'flex-start' }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#B91C1C', marginBottom: 8 }}>
+            ⚠ Aplikasi gagal startup
+          </Text>
+          <Text style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 16 }}>
+            Screenshot pesan di bawah & kirim ke admin developer:
+          </Text>
+          <View style={{ backgroundColor: 'white', padding: 12, borderRadius: 8 }}>
+            <Text style={{ fontSize: 11, color: '#1F2937', fontFamily: 'monospace' }}>
+              {startupError}
+            </Text>
+          </View>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
   if (!fontsLoaded) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>

@@ -4,3 +4,8 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# Native prebuild folders (managed workflow - regen by EAS dari app.config.js)
+android/
+ios/
+.expo/
