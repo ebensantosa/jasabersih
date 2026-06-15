@@ -207,6 +207,22 @@ export class AdminDisputesController {
       `;
     }
 
+    // CLEAR escrow earnings cleaner langsung setelah dispute resolved.
+    // Sebelumnya pending entries nunggu cron 15-menitan -> cleaner liat saldo
+    // masih pending walau dispute udh resolved. Sekarang flip PENDING -> CLEARED
+    // utk booking yg disengketakan ini (skip kalau action=warranty_redo_approved
+    // yg sengaja reverse earning).
+    if (dispute.booking_id && body.action !== 'warranty_redo_approved') {
+      await this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries
+           SET status = 'CLEARED', cleared_at = NOW()
+         WHERE status = 'PENDING'
+           AND account_type = 'earnings'
+           AND reference_type = 'booking'
+           AND reference_id = ${dispute.booking_id}::uuid
+      `;
+    }
+
     await this.audit.log({
       adminId: admin.id,
       action: 'dispute.resolve',

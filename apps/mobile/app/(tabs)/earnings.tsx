@@ -110,6 +110,24 @@ function EarningsScreen() {
           </LinearGradient>
         </Pressable>
 
+        {/* Riwayat Job - shortcut ke tab Pesanan (sudah filter by cleaner) */}
+        <Pressable
+          onPress={() => router.push('/(tabs)/bookings')}
+          className="mx-4 mt-3 flex-row items-center gap-3 rounded-2xl bg-white p-3"
+          style={{ elevation: 1 }}
+        >
+          <View className="h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
+            <Award color="#1D4ED8" size={18} strokeWidth={2.2} />
+          </View>
+          <View className="flex-1">
+            <Text className="font-bold text-sm text-ink-900">Riwayat Job</Text>
+            <Text className="font-medium text-[11px] text-ink-500">
+              Lihat semua {completedJobs} job yg pernah kamu kerjain
+            </Text>
+          </View>
+          <Text className="font-bold text-base text-brand-600">›</Text>
+        </Pressable>
+
         <View className="mx-4 mt-3 flex-row gap-2">
           <View className="flex-1 rounded-2xl bg-white p-3">
             <View className="flex-row items-center gap-1">
