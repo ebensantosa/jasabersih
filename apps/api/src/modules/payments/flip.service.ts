@@ -265,7 +265,8 @@ export class FlipService {
   async getAcceptPaymentStatus(linkId: string | number): Promise<any> {
     const c = await this.getCreds();
     if (!c.enabled || !c.secretKey) return null;
-    const res = await fetch(`${c.acceptPaymentBaseUrl ?? c.disbursementBaseUrl.replace('/disbursement', '')}/bill/${encodeURIComponent(String(linkId))}`, {
+    // Accept Payment GET bill status. Flip API endpoint: GET /pwf/{link_id}.
+    const res = await fetch(`${c.baseUrl}/pwf/${encodeURIComponent(String(linkId))}`, {
       method: 'GET',
       headers: { Authorization: this.authHeader(c.secretKey) },
     });

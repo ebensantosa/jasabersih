@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
@@ -32,7 +32,8 @@ export class PaymentSyncService {
     private readonly push: PushService,
   ) {}
 
-  @Cron(CronExpression.EVERY_3_MINUTES)
+  // Every 3 minutes (CronExpression.EVERY_3_MINUTES gak ada di nestjs/schedule).
+  @Cron('*/3 * * * *')
   async syncPending(): Promise<void> {
     const pending = await this.prisma.$queryRaw<{ id: string; booking_id: string; user_id: string; amount: number; provider: string | null; flip_bill_id: string | null; tripay_merchant_ref: string | null }[]>`
       SELECT id, booking_id, user_id, amount,
