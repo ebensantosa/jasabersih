@@ -103,16 +103,23 @@ export class CleanerJobsController {
   // (don't block onboarding cleaners who haven't set their coverage yet).
   @Get('available')
   async available(@CurrentUser() user: AuthenticatedUser) {
-    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any; brings_tools: boolean | null }[]>`
-      SELECT kyc_status, service_areas, brings_tools
+    const profile = await this.prisma.$queryRaw<{ kyc_status: string | null; service_areas: any; brings_tools: boolean | null; is_available: boolean | null }[]>`
+      SELECT kyc_status, service_areas, brings_tools, is_available
         FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
     if (profile[0]?.kyc_status !== 'approved') return [];
+    // Cleaner WAJIB online sebelum bisa lihat list job. Gak ada gunanya
+    // browse job kalau offline (gak akan dpt notif baru, dan tap accept
+    // toh ditolak di endpoint /accept).
+    if (!profile[0]?.is_available) return [];
 
     const rawAreas = profile[0]?.service_areas;
     const areas: string[] = Array.isArray(rawAreas)
       ? rawAreas.filter((a) => typeof a === 'string' && a.trim().length > 0)
       : [];
+    // Areas kosong = belum pilih kota kerja -> jangan kasih liat job. Cegah
+    // cleaner asal accept job di luar kota dan bikin masalah ke customer.
+    if (areas.length === 0) return [];
 
     // NOTE: kolom total_amount sengaja TIDAK di-expose ke cleaner.
     // Compute estimated cleaner_payout on-the-fly via commission_tiers
@@ -129,13 +136,15 @@ export class CleanerJobsController {
       return Math.round(total * pct / 100);
     }
 
-    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null }[]>`
+    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null; formSnapshot: any; customerNotes: string | null }[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
              COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
-             s.icon_url AS "serviceIconUrl"
+             s.icon_url AS "serviceIconUrl",
+             b.form_snapshot AS "formSnapshot",
+             b.customer_notes AS "customerNotes"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id

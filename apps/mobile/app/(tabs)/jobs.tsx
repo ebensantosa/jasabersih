@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck, Bell, Briefcase, Calendar, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -22,6 +23,8 @@ type AvailableJob = {
   scheduledAt: string;
   cleanerPayout: number | null;
   serviceName: string | null;
+  formSnapshot?: any;
+  customerNotes?: string | null;
 };
 
 type ActiveJob = {
@@ -56,6 +59,8 @@ function JobsScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // Track per-job accept in-flight supaya double-tap gak bikin race ke server
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  // Job detail modal sebelum cleaner accept - tampilin formSnapshot + foto kondisi
+  const [previewJob, setPreviewJob] = useState<AvailableJob | null>(null);
   const bringsTools = useCleanerStore((s) => s.bringsTools);
 
   // Sync online state + service areas dari server.
@@ -295,7 +300,7 @@ function JobsScreen() {
               // Cleaner cuma lihat bagiannya - totalAmount tidak di-expose dari backend.
               const earning = b.cleanerPayout ?? 0;
               return (
-                <View key={b.id} className="rounded-2xl bg-white p-3">
+                <Pressable key={b.id} onPress={() => setPreviewJob(b)} className="rounded-2xl bg-white p-3">
                   <View className="flex-row items-start justify-between gap-2">
                     <View className="flex-1">
                       <Text className="font-semibold text-sm text-ink-900">{b.serviceName ?? 'Layanan'}</Text>
@@ -331,29 +336,43 @@ function JobsScreen() {
                       </View>
                     </View>
                     <Pressable
-                      onPress={() => accept(b.id)}
-                      disabled={acceptingId !== null}
-                      className={`flex-row items-center gap-1 rounded-xl bg-brand-600 px-4 py-2 ${acceptingId !== null ? 'opacity-50' : ''}`}
+                      onPress={(e) => { e.stopPropagation(); setPreviewJob(b); }}
+                      className="flex-row items-center gap-1 rounded-xl bg-brand-600 px-4 py-2"
                     >
-                      {acceptingId === b.id ? (
-                        <>
-                          <ActivityIndicator size="small" color="white" />
-                          <Text className="font-bold text-xs text-white">Mengambil…</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Text className="font-bold text-xs text-white">Ambil Job</Text>
-                          <ChevronRight color="white" size={14} strokeWidth={2.4} />
-                        </>
-                      )}
+                      <Text className="font-bold text-xs text-white">Lihat Detail</Text>
+                      <ChevronRight color="white" size={14} strokeWidth={2.4} />
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
         )}
       </ScrollView>
+
+      {/* Job detail modal sebelum cleaner accept - tampilin formSnapshot + foto kondisi */}
+      <Modal visible={!!previewJob} transparent animationType="slide" onRequestClose={() => setPreviewJob(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' }}>
+            <View className="self-center my-2 h-1 w-10 rounded-full bg-ink-200" />
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+              {previewJob && <JobDetailContent job={previewJob} />}
+            </ScrollView>
+            <View className="border-t border-ink-100 p-3 flex-row gap-2">
+              <Pressable onPress={() => setPreviewJob(null)} className="flex-1 items-center rounded-xl border border-ink-300 py-3">
+                <Text className="font-semibold text-sm text-ink-700">Tutup</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { const j = previewJob; setPreviewJob(null); if (j) accept(j.id); }}
+                disabled={acceptingId !== null}
+                className={`flex-1 items-center rounded-xl bg-brand-600 py-3 ${acceptingId !== null ? 'opacity-50' : ''}`}
+              >
+                <Text className="font-bold text-sm text-white">{acceptingId ? 'Mengambil…' : 'Ambil Job'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showPhotoModal} transparent animationType="fade" onRequestClose={() => setShowPhotoModal(false)}>
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
@@ -387,6 +406,72 @@ function JobsScreen() {
   );
 }
 
+
+function JobDetailContent({ job }: { job: AvailableJob }) {
+  const s = job.formSnapshot ?? {};
+  const photos: string[] = Array.isArray(s.conditionPhotos) ? s.conditionPhotos : [];
+  return (
+    <View className="gap-3">
+      <View>
+        <Text className="font-extrabold text-xl text-ink-900">{job.serviceName ?? 'Layanan'}</Text>
+        <Text className="font-medium mt-0.5 text-[11px] text-brand-600">
+          {job.pricingMode === 'package' ? 'Paket Tetap' : job.pricingMode === 'hourly' ? 'Per Jam' : job.pricingMode}
+        </Text>
+      </View>
+
+      <View className="rounded-xl bg-ink-50 p-3 gap-2">
+        <DetailRow label="Jadwal" value={formatScheduleWithTz(job.scheduledAt, job.addressLine)} />
+        <DetailRow label="Alamat" value={job.addressLine} />
+        {job.cleanerPayout != null && (
+          <DetailRow label="Bagian kamu" value={formatRupiah(Number(job.cleanerPayout))} bold />
+        )}
+      </View>
+
+      {(s.propertyType || s.bedrooms || s.bathrooms || s.areaM2 || s.dirtLevel) && (
+        <View className="rounded-xl border border-ink-200 p-3">
+          <Text className="font-bold text-xs text-ink-700 mb-2">Detail Properti</Text>
+          <View className="gap-1.5">
+            {s.propertyType && <DetailRow label="Tipe" value={String(s.propertyType)} />}
+            {(s.bedrooms || s.bathrooms) && <DetailRow label="Kamar" value={`${s.bedrooms ?? 0} tidur · ${s.bathrooms ?? 0} mandi`} />}
+            {s.areaM2 && <DetailRow label="Luas" value={`${s.areaM2} m²`} />}
+            {s.dirtLevel && <DetailRow label="Tingkat Kotor" value={`Skala ${s.dirtLevel}`} />}
+            {s.floorType && <DetailRow label="Lantai" value={String(s.floorType)} />}
+            {s.hasPet && <DetailRow label="Hewan" value={String(s.petNote || 'Ada')} />}
+          </View>
+        </View>
+      )}
+
+      {(s.notes || job.customerNotes) && (
+        <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <Text className="font-bold text-xs text-amber-900 mb-1">Catatan Customer</Text>
+          <Text className="font-sans text-[12px] leading-4 text-amber-900">{s.notes || job.customerNotes}</Text>
+        </View>
+      )}
+
+      {photos.length > 0 && (
+        <View>
+          <Text className="font-bold text-xs text-ink-700 mb-2">Foto Kondisi Lapangan</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-2">
+              {photos.map((url, i) => (
+                <ExpoImage key={i} source={{ uri: url }} style={{ width: 110, height: 110, borderRadius: 12 }} contentFit="cover" />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function DetailRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <View className="flex-row items-start gap-2">
+      <Text className="font-medium text-[11px] text-ink-500" style={{ width: 90 }}>{label}</Text>
+      <Text className={`flex-1 text-[12px] ${bold ? 'font-bold text-ink-900' : 'font-sans text-ink-800'}`}>{value}</Text>
+    </View>
+  );
+}
 
 function NotifBell() {
   const router = useRouter();
