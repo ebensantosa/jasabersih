@@ -23,10 +23,10 @@ export default function WalletPage() {
   useEffect(() => { void load(); }, [tab]);
 
   async function approveViaAuto(w: any) {
-    if (!confirm(`Trigger auto-disburse Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${w.destinationBankCode?.toUpperCase()} ${w.destinationAccountNumber}?\n\nRekening harus sudah verified.`)) return;
+    if (!confirm(`Retry auto-disburse via Flip - Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${(w.bankCode ?? '—').toUpperCase()} ${w.accountNumber ?? '—'} a/n ${w.accountName ?? '—'}?\n\nPakai hanya kalau yakin Flip udh recover dari error sebelumnya.`)) return;
     try {
       await api.admin.approveWithdrawalViaFlip(w.id);
-      toast.success('Transfer sedang diproses. Status auto-update via callback.');
+      toast.success('Retry trigger Flip. Status auto-update via callback.');
       void load();
     } catch (e: any) { toast.error(e?.message ?? 'Gagal trigger transfer otomatis.'); }
   }
@@ -34,7 +34,12 @@ export default function WalletPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Wallet & Withdrawal</h1>
-      <p className="text-sm text-slate-500">Review penarikan dana cleaner. Approve = transfer manual sudah dilakukan.</p>
+      <p className="text-sm text-slate-500">
+        Cleaner submit -&gt; otomatis transfer via Flip. Yg masuk tab <b>Pending</b> = Flip gagal /
+        belum verified / butuh review. Admin proses manual via bank/wallet sendiri, lalu klik
+        <b>Manual</b> (input ref transfer). Tombol <b>Retry Flip</b> hanya kalau yakin masalah Flip
+        udh recover.
+      </p>
 
       <div className="mt-4 flex gap-1 border-b">
         {(['pending', 'approved', 'rejected'] as Tab[]).map((t) => (
@@ -94,9 +99,19 @@ export default function WalletPage() {
                     {tab === 'rejected' && <td className="px-4 py-3 text-xs text-red-700">{w.reviewNote ?? w.failureReason ?? '—'}</td>}
                     {tab === 'pending' && (
                       <td className="px-4 py-3 text-right space-x-1">
-                        <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)}>Auto</Button>
-                        <Button size="sm" variant="success" onClick={() => setApproving(w)} icon={<Check size={12} />}>Manual</Button>
+                        {/* Manual = action utama (admin transfer sendiri lalu mark approved).
+                            Retry Flip = hidden behind ellipsis, jarang dipakai. */}
+                        <Button size="sm" variant="success" onClick={() => setApproving(w)} icon={<Check size={12} />}>Manual Approve</Button>
                         <Button size="sm" variant="ghost" onClick={() => setRejecting(w)} icon={<X size={12} />}>Reject</Button>
+                        <details className="inline-block">
+                          <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-700 select-none ml-2">···</summary>
+                          <div className="absolute right-4 mt-1 rounded border bg-white p-2 shadow-md z-10">
+                            <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)}>Retry Flip</Button>
+                            <p className="mt-1 text-[10px] text-slate-500 max-w-[180px]">
+                              Coba auto-disburse via Flip lagi. Hanya kalau yakin Flip udh recover.
+                            </p>
+                          </div>
+                        </details>
                       </td>
                     )}
                   </tr>
