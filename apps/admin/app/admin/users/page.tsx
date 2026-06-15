@@ -187,8 +187,8 @@ export default function UsersPage() {
                           <button
                             onClick={async () => {
                               try {
-                                await api.admin.updateCleaner(r.id, { bringsTools: !r.bringsTools });
-                                toast.success(r.bringsTools ? 'Set ke Tanpa Alat' : 'Set ke Bawa Alat');
+                                await api.admin.updateCleaner(r.id, { bringsTools: !(r.bringsTools ?? false) });
+                                toast.success((r.bringsTools ?? false) ? 'Set ke Tanpa Alat' : 'Set ke Bawa Alat');
                                 void load();
                               } catch (e: any) { toast.error(e?.message ?? 'Gagal update'); }
                             }}

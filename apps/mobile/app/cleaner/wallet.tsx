@@ -9,7 +9,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
@@ -27,21 +27,25 @@ function CleanerWallet() {
 
   const [escrowPending, setEscrowPending] = useState(0);
   const [tipInsights, setTipInsights] = useState<{ monthTotal: number; monthCount: number; prevMonthTotal: number }>({ monthTotal: 0, monthCount: 0, prevMonthTotal: 0 });
-  useEffect(() => {
-    void (async () => {
-      try {
-        const { api } = await import('../../src/lib/api');
-        const r = await api.get('/cleaner/wallet');
-        const d = r.data?.data ?? r.data;
-        setEscrowPending(Number(d?.earningsPending ?? 0));
-        if (d?.tipInsights) setTipInsights({
-          monthTotal: Number(d.tipInsights.monthTotal ?? 0),
-          monthCount: Number(d.tipInsights.monthCount ?? 0),
-          prevMonthTotal: Number(d.tipInsights.prevMonthTotal ?? 0),
-        });
-      } catch { /* ignore */ }
-    })();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+  const syncFromApi = useCleanerWalletStore((s) => s.syncFromApi);
+
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      const { api } = await import('../../src/lib/api');
+      const r = await api.get('/cleaner/wallet');
+      const d = r.data?.data ?? r.data;
+      setEscrowPending(Number(d?.earningsPending ?? 0));
+      if (d?.tipInsights) setTipInsights({
+        monthTotal: Number(d.tipInsights.monthTotal ?? 0),
+        monthCount: Number(d.tipInsights.monthCount ?? 0),
+        prevMonthTotal: Number(d.tipInsights.prevMonthTotal ?? 0),
+      });
+      if (syncFromApi) await syncFromApi();
+    } catch { /* ignore */ } finally { setRefreshing(false); }
+  }
+  useEffect(() => { void refresh(); }, []);
 
   const totalEarning = entries
     .filter((e) => e.type === 'earning')
@@ -87,7 +91,11 @@ function CleanerWallet() {
           </SafeAreaView>
         </LinearGradient>
 
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} style={{ marginTop: -55 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          style={{ marginTop: -55 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
+        >
           {/* CTA Tarik */}
           <Pressable
             onPress={tryWithdraw}

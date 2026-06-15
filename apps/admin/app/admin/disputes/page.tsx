@@ -74,7 +74,11 @@ export default function DisputesPage() {
               </thead>
               <tbody>
                 {list.map((d) => (
-                  <tr key={d.id} className="border-t hover:bg-slate-50">
+                  <tr
+                    key={d.id}
+                    className="border-t hover:bg-blue-50 cursor-pointer"
+                    onClick={() => openDetail(d.id)}
+                  >
                     <td className="px-4 py-2"><Badge>{d.type}</Badge></td>
                     <td className="px-4 py-2"><div className="font-medium">{d.raisedByName ?? '—'}</div><div className="text-xs text-slate-500">{d.raisedByPhone}</div></td>
                     <td className="px-4 py-2"><div className="font-medium">{d.subjectName ?? '—'}</div><div className="text-xs text-slate-500">{d.subjectPhone}</div></td>
@@ -82,7 +86,7 @@ export default function DisputesPage() {
                     <td className="px-4 py-2"><Badge variant={d.priority === 'urgent' ? 'red' : d.priority === 'high' ? 'amber' : 'slate'}>{d.priority}</Badge></td>
                     <td className="px-4 py-2 text-xs text-slate-500">{new Date(d.createdAt).toLocaleString('id-ID')}</td>
                     <td className="px-4 py-2 text-xs">{d.slaDueAt ? <SlaBadge dueAt={d.slaDueAt} /> : <span className="text-slate-400">—</span>}</td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button size="sm" variant="secondary" onClick={() => openDetail(d.id)}>Detail</Button>
                       {tab === 'open' && <Button size="sm" variant="primary" onClick={() => takeOver(d.id)}>Take Over</Button>}
                     </td>
