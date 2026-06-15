@@ -22,6 +22,7 @@ export type AppConfig = Partial<{
   'feature.max_addresses': number;
   'hero.subtitle': string;
   'hero.cta_label': string;
+  'safety.chat_banner': string;
 }> & Record<string, unknown>;
 
 export type Banner = { id: string; title: string; subtitle: string | null; imageUrl: string; linkUrl: string | null; placement: string; sortOrder: number };

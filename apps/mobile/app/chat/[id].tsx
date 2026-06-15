@@ -67,13 +67,17 @@ function Chat() {
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
-  // Mark-read saat buka chat - clear badge
+  // Mark-read tiap kali ada pesan baru ditujukan ke saya yg belum dibaca.
+  // Sebelumnya cuma jalan saat mount -> pesan masuk SAAT chat udh kebuka gak
+  // ke-mark read di server, jadi pengirim liat centang abu terus.
   useEffect(() => {
     if (!id) return;
+    const hasUnreadForMe = messages.some((m) => m.recipientId === myUserId && !m.readAt);
+    if (!hasUnreadForMe) return;
     import('../../src/lib/api').then(({ api }) => {
       api.post(`/chat/booking/${id}/read`).catch(() => {});
     });
-  }, [id]);
+  }, [id, messages, myUserId]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -528,9 +532,9 @@ function Bubble({
 // app_config key 'safety.chat_banner' (set di admin > App Settings).
 function SafetyBanner({ onReport }: { onReport: () => void }) {
   const text = useConfig(
-    'safety.chat_banner' as any,
+    'safety.chat_banner',
     'Dilarang share no HP, WA, transfer bank di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app - dapat voucher Rp 50.000.',
-  ) as string;
+  );
   return (
     <View className="flex-row items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">
       <ShieldAlert color="#92400E" size={14} />

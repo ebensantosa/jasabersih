@@ -152,7 +152,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     }
 
-    const block = detectBlockReason(body.content);
+    // Image message: content = R2 URL (e.g. pub-xxx.r2.dev/chat/...). Pattern
+    // external_url akan match URL apapun yg bukan jasabersih.com -> false
+    // positive blokir SEMUA foto. Skip pattern check khusus image (presign
+    // sudah validasi participant + content-type whitelist di REST endpoint).
+    const block = body.messageType === 'image' ? null : detectBlockReason(body.content);
     const status = block ? 'blocked' : 'sent';
 
     const inserted = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
