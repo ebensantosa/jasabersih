@@ -50,6 +50,7 @@ function JobsScreen() {
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(false);
   const cleanerAreas = useCleanerStore((s) => s.serviceAreas);
+  const setAreas = useCleanerStore((s) => s.setAreas);
   const noAreaPicked = cleanerAreas.length === 0;
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -57,13 +58,20 @@ function JobsScreen() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const bringsTools = useCleanerStore((s) => s.bringsTools);
 
-  // Sync initial online state dari server
+  // Sync online state + service areas dari server.
+  // Penting: kalau cleaner reinstall app / ganti HP, local store kosong tapi
+  // areas masih ada di server -> harus rehydrate biar gak disuruh pilih ulang.
   useEffect(() => {
     api.get('/cleaner/profile').then((r) => {
       const d = r.data?.data ?? r.data;
       setOnline(!!d?.isAvailable);
+      const serverAreas = Array.isArray(d?.serviceAreas) ? d.serviceAreas.filter((a: any) => typeof a === 'string') : [];
+      // Server is source of truth: kalau local & server beda, server yang menang.
+      const localAreas = useCleanerStore.getState().serviceAreas;
+      const same = serverAreas.length === localAreas.length && serverAreas.every((a: string) => localAreas.includes(a));
+      if (!same) setAreas(serverAreas);
     }).catch(() => {});
-  }, []);
+  }, [setAreas]);
 
   async function load() {
     setLoading(true);
