@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronRight, ClipboardList, Send, ShieldAlert, AlertCircle,
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -73,6 +74,9 @@ function Chat() {
     });
   }, [id]);
   const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  // Track quick-reply yg lagi dikirim, supaya chip kasih feedback visual + ga bisa di-tap ulang
+  const [pendingQuick, setPendingQuick] = useState<string | null>(null);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
@@ -143,19 +147,35 @@ function Chat() {
     );
   }
 
-  async function handleSend(content: string) {
+  async function handleSend(content: string, opts?: { fromQuick?: string }) {
     if (!content.trim()) return;
-    const res = await send(content);
-    if (!res.ok) {
-      toast.error(res.error ?? 'Gagal kirim');
-      return;
-    }
-    if (res.blocked) {
-      setBlockWarning(res.userMessage ?? 'Pesan ditolak - dilarang share kontak / link / tawaran di luar app.');
+    if (sending) return; // anti double-tap composer
+    if (opts?.fromQuick && pendingQuick) return; // anti double-tap quick reply
+
+    // Optimistic clear / lock: feedback instan supaya user gak tap berkali2
+    if (opts?.fromQuick) {
+      setPendingQuick(opts.fromQuick);
+    } else {
       setText('');
-      return;
+      setSending(true);
     }
-    setText('');
+
+    try {
+      const res = await send(content);
+      if (!res.ok) {
+        toast.error(res.error ?? 'Gagal kirim');
+        // Rollback composer text supaya user bisa retry
+        if (!opts?.fromQuick) setText(content);
+        return;
+      }
+      if (res.blocked) {
+        setBlockWarning(res.userMessage ?? 'Pesan ditolak - dilarang share kontak / link / tawaran di luar app.');
+        return;
+      }
+    } finally {
+      if (opts?.fromQuick) setPendingQuick(null);
+      else setSending(false);
+    }
   }
 
   function onChangeText(v: string) {
@@ -271,11 +291,27 @@ function Chat() {
         {/* Quick replies */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-12">
           <View className="flex-row gap-2 px-4 py-2">
-            {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => (
-              <Pressable key={q} onPress={() => handleSend(q)} className="rounded-full border border-brand-200 bg-white px-3 py-1.5">
-                <Text className="font-medium text-xs text-brand-700">{q}</Text>
-              </Pressable>
-            ))}
+            {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => {
+              const isSending = pendingQuick === q;
+              const isLocked = pendingQuick !== null && !isSending;
+              return (
+                <Pressable
+                  key={q}
+                  onPress={() => handleSend(q, { fromQuick: q })}
+                  disabled={pendingQuick !== null}
+                  className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
+                    isSending
+                      ? 'border-brand-600 bg-brand-600'
+                      : isLocked
+                        ? 'border-ink-200 bg-ink-50 opacity-50'
+                        : 'border-brand-200 bg-white'
+                  }`}
+                >
+                  {isSending && <ActivityIndicator size="small" color="white" />}
+                  <Text className={`font-medium text-xs ${isSending ? 'text-white' : 'text-brand-700'}`}>{q}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </ScrollView>
 
@@ -294,10 +330,12 @@ function Chat() {
             />
             <Pressable
               onPress={() => handleSend(text)}
-              disabled={!text.trim() || status !== 'connected'}
+              disabled={!text.trim() || status !== 'connected' || sending}
               className="h-11 w-11 items-center justify-center rounded-full bg-brand-600 disabled:opacity-50"
             >
-              <Send color="white" size={18} strokeWidth={2.4} />
+              {sending
+                ? <ActivityIndicator size="small" color="white" />
+                : <Send color="white" size={18} strokeWidth={2.4} />}
             </Pressable>
           </View>
           <Text className="font-sans px-4 pb-1 text-center text-[10px] text-ink-400">

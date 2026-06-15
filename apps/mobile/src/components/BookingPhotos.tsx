@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera } from 'lucide-react-native';
+import { Camera, Lock } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -23,7 +23,14 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   }
   useEffect(() => { void load(); }, [bookingId]);
 
+  const beforePhotosCount = photos.filter((p) => p.photoType === 'before').length;
+
   async function pickAndUpload(type: 'before' | 'after' | 'damage') {
+    // Guard: after harus setelah before (urutan flow yg benar)
+    if (type === 'after' && beforePhotosCount === 0) {
+      toast.warning('Upload foto SEBELUM dulu, baru bisa upload foto SESUDAH.');
+      return;
+    }
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,16 +67,21 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
     } finally { setUploading(null); }
   }
 
-  const canUpload = isCleaner && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
+  // Upload baru aktif saat cleaner sudah MULAI kerja (in_progress) atau sudah completed.
+  // Saat matched/on_the_way (otw), tombol di-hide karena cleaner belum di lokasi -
+  // foto before harusnya diambil di tempat saat mulai kerja, bukan sebelum berangkat.
+  const canUpload = isCleaner && ['in_progress', 'completed'].includes(status);
   const beforePhotos = photos.filter((p) => p.photoType === 'before');
   const afterPhotos = photos.filter((p) => p.photoType === 'after');
   const damagePhotos = photos.filter((p) => p.photoType === 'damage');
 
   if (!canUpload && photos.length === 0) return null;
 
-  // Hint contextual untuk cleaner: foto required sebelum advance status
-  const needBefore = isCleaner && ['matched', 'on_the_way'].includes(status) && beforePhotos.length === 0;
-  const needAfter = isCleaner && status === 'in_progress' && afterPhotos.length === 0;
+  // Hint contextual untuk cleaner
+  const needBefore = isCleaner && status === 'in_progress' && beforePhotos.length === 0;
+  const needAfter = isCleaner && status === 'in_progress' && beforePhotos.length > 0 && afterPhotos.length === 0;
+  // After locked sampai before ada minimal 1
+  const afterLocked = isCleaner && status === 'in_progress' && beforePhotos.length === 0;
 
   return (
     <View className="rounded-2xl bg-white p-4">
@@ -77,17 +89,17 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
 
       {needBefore && (
         <View className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
-          <Text className="font-bold text-[11px] text-amber-900">⚠ Wajib upload foto SEBELUM</Text>
+          <Text className="font-bold text-[11px] text-amber-900">Step 1: Upload foto SEBELUM</Text>
           <Text className="font-sans mt-0.5 text-[10px] leading-4 text-amber-800">
-            Upload minimal 1 foto kondisi area sebelum mulai kerja. Sistem akan blokir tombol "Mulai Kerja" sampai foto ter-upload.
+            Foto kondisi area sebelum dibersihkan (minimal 1). Tombol "Sesudah" akan terbuka setelah upload "Sebelum".
           </Text>
         </View>
       )}
       {needAfter && (
         <View className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
-          <Text className="font-bold text-[11px] text-emerald-900">📸 Foto SESUDAH dibutuhkan</Text>
+          <Text className="font-bold text-[11px] text-emerald-900">Step 2: Upload foto SESUDAH</Text>
           <Text className="font-sans mt-0.5 text-[10px] leading-4 text-emerald-800">
-            Untuk tandai job selesai, upload minimal 1 foto kondisi area setelah dibersihkan sebagai bukti.
+            Foto hasil pekerjaan sebagai bukti job selesai (minimal 1). Wajib sebelum tandai "Selesai".
           </Text>
         </View>
       )}
@@ -103,7 +115,7 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
       {canUpload && (
         <View className="mt-3 flex-row gap-2 border-t border-ink-100 pt-3">
           <UploadBtn label="Sebelum" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} />
-          <UploadBtn label="Sesudah" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} />
+          <UploadBtn label="Sesudah" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} locked={afterLocked} />
           <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" />
         </View>
       )}
@@ -126,21 +138,31 @@ function PhotoRow({ label, photos }: { label: string; photos: Photo[] }) {
   );
 }
 
-function UploadBtn({ label, loading, onPress, variant }: { label: string; loading: boolean; onPress: () => void; variant?: 'warning' | 'primary' }) {
-  const cls = variant === 'warning'
-    ? 'bg-amber-50 border-amber-200'
-    : variant === 'primary'
-      ? 'bg-brand-600 border-brand-700'
-      : 'bg-brand-50 border-brand-200';
-  const fg = variant === 'warning' ? 'text-amber-700' : variant === 'primary' ? 'text-white' : 'text-brand-700';
-  const iconColor = variant === 'warning' ? '#B45309' : variant === 'primary' ? '#FFFFFF' : '#1D4ED8';
+function UploadBtn({ label, loading, onPress, variant, locked }: { label: string; loading: boolean; onPress: () => void; variant?: 'warning' | 'primary'; locked?: boolean }) {
+  const cls = locked
+    ? 'bg-ink-100 border-ink-200'
+    : variant === 'warning'
+      ? 'bg-amber-50 border-amber-200'
+      : variant === 'primary'
+        ? 'bg-brand-600 border-brand-700'
+        : 'bg-brand-50 border-brand-200';
+  const fg = locked
+    ? 'text-ink-400'
+    : variant === 'warning' ? 'text-amber-700' : variant === 'primary' ? 'text-white' : 'text-brand-700';
+  const iconColor = locked
+    ? '#94A3B8'
+    : variant === 'warning' ? '#B45309' : variant === 'primary' ? '#FFFFFF' : '#1D4ED8';
   return (
     <Pressable
       onPress={onPress}
-      disabled={loading}
+      disabled={loading || locked}
       className={`flex-1 flex-row items-center justify-center gap-1 rounded-xl border ${cls} px-3 py-2.5 ${loading ? 'opacity-50' : ''}`}
     >
-      {loading ? <ActivityIndicator size="small" color={variant === 'primary' ? 'white' : undefined} /> : <Camera size={14} color={iconColor} />}
+      {loading
+        ? <ActivityIndicator size="small" color={variant === 'primary' ? 'white' : undefined} />
+        : locked
+          ? <Lock size={12} color={iconColor} />
+          : <Camera size={14} color={iconColor} />}
       <Text className={`font-semibold text-xs ${fg}`}>{label}</Text>
     </Pressable>
   );

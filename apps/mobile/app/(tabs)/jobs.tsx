@@ -53,6 +53,8 @@ function JobsScreen() {
   const noAreaPicked = cleanerAreas.length === 0;
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Track per-job accept in-flight supaya double-tap gak bikin race ke server
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const bringsTools = useCleanerStore((s) => s.bringsTools);
 
   // Sync initial online state dari server
@@ -137,22 +139,37 @@ function JobsScreen() {
   }
 
   async function accept(id: string) {
+    // Guard 1: in-flight check supaya tap dua kali cepat = 1 request aja
+    if (acceptingId) return;
     if (!online) {
       toast.warning('Aktifkan mode Online dulu sebelum ambil job.');
       return;
     }
+    // Guard 2: optimistic remove from list jadi kalau ada cleaner lain yg lagi liat,
+    // mereka gak tap job yg sama dlm window kecil.
+    setAcceptingId(id);
+    setAvailable((prev) => prev.filter((j) => j.id !== id));
     try {
       await api.post(`/cleaner/jobs/${id}/accept`);
       toast.success('Job berhasil diambil!');
       try {
         const { Track } = await import('../../src/lib/analytics');
         Track.jobAccepted(id);
-      } catch {}
-      void load();
+      } catch { /* analytics non-fatal */ }
+      // Refresh dulu supaya booking detail bisa baca dari store baru
+      await load();
+      // Navigate setelah store fresh - hindari crash di booking/[id] kalau record blm ke-load
       router.push({ pathname: '/booking/[id]', params: { id } });
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal accept');
-      void load();
+      const code = e?.response?.status;
+      const msg = e?.response?.data?.error?.message
+        ?? e?.response?.data?.message
+        ?? (code === 400 ? 'Job sudah diambil cleaner lain.' : 'Gagal ambil job. Coba lagi.');
+      toast.error(msg);
+      // Rollback: refresh available supaya UI sync sama server (job yg gagal di-ambil balik muncul)
+      await load();
+    } finally {
+      setAcceptingId(null);
     }
   }
 
@@ -307,10 +324,20 @@ function JobsScreen() {
                     </View>
                     <Pressable
                       onPress={() => accept(b.id)}
-                      className="flex-row items-center gap-1 rounded-xl bg-brand-600 px-4 py-2"
+                      disabled={acceptingId !== null}
+                      className={`flex-row items-center gap-1 rounded-xl bg-brand-600 px-4 py-2 ${acceptingId !== null ? 'opacity-50' : ''}`}
                     >
-                      <Text className="font-bold text-xs text-white">Ambil Job</Text>
-                      <ChevronRight color="white" size={14} strokeWidth={2.4} />
+                      {acceptingId === b.id ? (
+                        <>
+                          <ActivityIndicator size="small" color="white" />
+                          <Text className="font-bold text-xs text-white">Mengambil…</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text className="font-bold text-xs text-white">Ambil Job</Text>
+                          <ChevronRight color="white" size={14} strokeWidth={2.4} />
+                        </>
+                      )}
                     </Pressable>
                   </View>
                 </View>
