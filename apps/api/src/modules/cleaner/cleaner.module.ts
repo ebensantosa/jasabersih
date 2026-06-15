@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ReferralModule } from '../referral/referral.module';
 import { StorageModule } from '../storage/storage.module';
 import { CleanerBankAccountsController } from './cleaner-bank-accounts.controller';
 import { CleanerJobsController } from './cleaner-jobs.controller';
@@ -14,7 +15,7 @@ import { CleanerScheduleController } from './cleaner-schedule.controller';
 import { WalletClearService } from './wallet-clear.service';
 
 @Module({
-  imports: [AuthModule, StorageModule, NotificationsModule, PaymentsModule],
+  imports: [AuthModule, StorageModule, NotificationsModule, PaymentsModule, ReferralModule],
   controllers: [CleanerKycController, CleanerWalletController, CleanerProfileController, CleanerPublicController, CleanerJobsController, CleanerScheduleController, CleanerBankAccountsController],
   providers: [WalletClearService, CleanerInactivityService],
 })

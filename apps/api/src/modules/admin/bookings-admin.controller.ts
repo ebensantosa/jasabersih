@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
+import { ReferralPayoutService } from '../referral/referral-payout.service';
 import { StorageService } from '../storage/storage.service';
 
 @ApiTags('admin-bookings')
@@ -18,6 +19,7 @@ export class AdminBookingsController {
     private readonly audit: AdminAuditService,
     private readonly push: PushService,
     private readonly storage: StorageService,
+    private readonly referralPayout: ReferralPayoutService,
   ) {}
 
   // Admin manual create booking — biasanya untuk customer yg order via WA/telp,
@@ -337,47 +339,9 @@ export class AdminBookingsController {
       ] : []),
     ]);
 
-    // Referral reward: kalau customer ini di-refer dan ini job pertama dia yang completed
-    if (booking?.customer_id) {
-      const refRows = await this.prisma.$queryRaw<{ id: string; referrer_id: string; status: string }[]>`
-        SELECT id, referrer_id, status FROM referrals
-         WHERE referred_id = ${booking.customer_id}::uuid AND status = 'pending' LIMIT 1
-      `;
-      const referral = refRows[0];
-      if (referral) {
-        // Read bonus + enabled flag dari app_config (admin-editable)
-        const cfgRows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
-          SELECT key, value FROM app_config WHERE key IN ('referral.bonus_amount', 'referral.enabled', 'referral.min_order_amount')
-        `;
-        const enabled = cfgRows.find((c) => c.key === 'referral.enabled')?.value !== false;
-        const REFERRAL_BONUS = Number(cfgRows.find((c) => c.key === 'referral.bonus_amount')?.value ?? 25000);
-        const minOrder = Number(cfgRows.find((c) => c.key === 'referral.min_order_amount')?.value ?? 0);
-
-        if (enabled && REFERRAL_BONUS > 0 && Number(booking.total_amount ?? 0) >= minOrder) {
-          await this.prisma.$transaction([
-            this.prisma.$executeRaw`
-              UPDATE referrals SET status = 'qualified', qualified_at = NOW(), bonus_amount = ${REFERRAL_BONUS}::bigint
-                WHERE id = ${referral.id}::uuid
-            `,
-            this.prisma.$executeRaw`
-              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-              VALUES (${referral.referrer_id}::uuid, 'earnings', ${REFERRAL_BONUS}::bigint, 'referral', ${referral.id}::uuid,
-                      'CLEARED', NOW(), 'Bonus referral')
-            `,
-            this.prisma.$executeRaw`
-              UPDATE referral_codes SET total_referrals = total_referrals + 1, total_paid = total_paid + ${REFERRAL_BONUS}::bigint
-                WHERE user_id = ${referral.referrer_id}::uuid
-            `,
-          ]);
-          void this.push.send({
-            userId: referral.referrer_id, channel: 'wallet',
-            title: 'Bonus referral masuk! 🎉',
-            body: `Rp ${REFERRAL_BONUS.toLocaleString('id-ID')} masuk wallet kamu — teman pakai kode referralmu order pertama.`,
-            data: { type: 'referral_bonus' },
-          }).catch(() => {});
-        }
-      }
-    }
+    // Referral commission (NEW model): 5% recurring tiap order completed dari
+    // customer yg di-refer. Logic + idempotency di ReferralPayoutService.
+    await this.referralPayout.payoutForCompletedBooking(id);
 
     // Push notif (fire-and-forget)
     if (booking?.customer_id) {

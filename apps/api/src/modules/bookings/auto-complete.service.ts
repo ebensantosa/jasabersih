@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
+import { ReferralPayoutService } from '../referral/referral-payout.service';
 
 // Auto-complete booking yang stuck in_progress > 4 jam.
 // Cleaner kemungkinan lupa tap "Selesai" atau koneksi terputus → uang stuck.
@@ -15,6 +16,7 @@ export class AutoCompleteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly referralPayout: ReferralPayoutService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_MINUTES)
@@ -54,6 +56,8 @@ export class AutoCompleteService {
           data: { type: 'auto_completed', bookingId: b.id },
         }).catch(() => {});
       }
+      // Referral 5% commission (recurring per order).
+      await this.referralPayout.payoutForCompletedBooking(b.id);
     }
   }
 }

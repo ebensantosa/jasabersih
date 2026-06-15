@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
+import { ReferralPayoutService } from '../referral/referral-payout.service';
 import { StorageService } from '../storage/storage.service';
 
 @ApiTags('cleaner-jobs')
@@ -19,6 +20,7 @@ export class CleanerJobsController {
     private readonly jobs: JobsGateway,
     private readonly push: PushService,
     private readonly storage: StorageService,
+    private readonly referralPayout: ReferralPayoutService,
   ) {}
 
   // Generate signed PUT URL untuk upload foto before/after ke R2 public bucket
@@ -473,44 +475,9 @@ export class CleanerJobsController {
          WHERE id = ${id}::uuid AND reclean_status = 'accepted'
       `;
 
-      // Referral: kalau ini booking yang dipake referral, qualify referrer + payout bonus.
-      const refRows = await this.prisma.$queryRaw<{ id: string; referrer_id: string; status: string }[]>`
-        SELECT id, referrer_id, status FROM referrals WHERE first_booking_id = ${id}::uuid LIMIT 1
-      `;
-      const ref = refRows[0];
-      if (ref && ref.status === 'pending') {
-        const cfg = await this.prisma.$queryRaw<{ value: any }[]>`
-          SELECT value FROM app_config WHERE key = 'referral.referrer_bonus_idr' LIMIT 1
-        `;
-        const v = cfg[0]?.value;
-        const bonus = (() => {
-          if (v == null) return 25000;
-          const n = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
-          return Number.isFinite(n) && n > 0 ? n : 25000;
-        })();
-        await this.prisma.$executeRaw`
-          UPDATE referrals
-             SET status = 'paid', qualified_at = NOW(), paid_at = NOW(), bonus_amount = ${bonus}::bigint
-           WHERE id = ${ref.id}::uuid AND status = 'pending'
-        `;
-        await this.prisma.$executeRaw`
-          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-          VALUES (${ref.referrer_id}::uuid, 'refund_credit', ${bonus}::bigint, 'referral_bonus', ${ref.id}::uuid,
-                  'CLEARED', NOW(), 'Bonus referral — temanmu selesai booking pertama')
-        `;
-        await this.prisma.$executeRaw`
-          UPDATE referral_codes
-             SET total_referrals = total_referrals + 1,
-                 total_paid = total_paid + ${bonus}::bigint
-           WHERE user_id = ${ref.referrer_id}::uuid
-        `;
-        void this.push.send({
-          userId: ref.referrer_id, channel: 'wallet',
-          title: 'Bonus referral cair 🎁',
-          body: `Temanmu menyelesaikan booking pertama. Bonus Rp ${bonus.toLocaleString('id-ID')} masuk saldo.`,
-          data: { type: 'referral_payout', amount: bonus },
-        }).catch(() => {});
-      }
+      // Referral commission (NEW model): 5% recurring tiap order completed.
+      // Idempotency + admin config (referral.commission_pct) di ReferralPayoutService.
+      await this.referralPayout.payoutForCompletedBooking(id);
       // Notify customer to rate
       if (booking?.customer_id) {
         void this.push.send({
