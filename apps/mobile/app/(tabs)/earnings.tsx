@@ -105,41 +105,46 @@ function EarningsScreen() {
         style={{ marginTop: -70 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
       >
-        {/* Saldo card floating - overlap ke hero dgn shadow tebal supaya
-            jelas keliatan flying. Background transparan dgn tint biru-emerald
-            tipis biar menyatu warna gradient di belakangnya. */}
-        <View
+        {/* Saldo card floating - 1 gradient card, balance dominan, action chevron
+            di pojok. Tap area = full card. Gak ada lagi white pill numpuk. */}
+        <Pressable
+          onPress={() => router.push('/cleaner/wallet')}
           className="mx-4 overflow-hidden rounded-3xl"
           style={{
             elevation: 12,
             shadowColor: '#0B2A6F',
-            shadowOpacity: 0.25,
-            shadowRadius: 18,
-            shadowOffset: { width: 0, height: 8 },
-            backgroundColor: '#FFFFFF',
+            shadowOpacity: 0.28,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 10 },
           }}
         >
-          <Pressable onPress={() => router.push('/cleaner/wallet')}>
-            {/* Section atas: gradient match hero (biru -> emerald -> teal) */}
-            <LinearGradient
-              colors={['#1E3A8A', '#047857']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 22 }}
-            >
-              <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-              <Text className="font-semibold text-[11px] tracking-wide text-white/85">Saldo Bisa Ditarik</Text>
-              <Text className="font-extrabold mt-2 text-[28px] text-white" style={{ letterSpacing: -0.6 }}>
-                {formatRupiah(balance)}
-              </Text>
-            </LinearGradient>
-            {/* Section bawah: putih bersih, tombol Tarik Saldo */}
-            <View className="flex-row items-center justify-center gap-1.5 bg-white py-4">
-              <ArrowDownToLine color="#1D4ED8" size={16} strokeWidth={2.4} />
-              <Text className="font-bold text-sm text-brand-700">Tarik Saldo</Text>
+          <LinearGradient
+            colors={['#1E3A8A', '#047857']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ paddingHorizontal: 22, paddingVertical: 22 }}
+          >
+            <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+            <View pointerEvents="none" style={{ position: 'absolute', bottom: -30, left: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1">
+                <Text className="font-semibold text-[11px] tracking-wider text-white/80">SALDO BISA DITARIK</Text>
+                <Text className="font-extrabold mt-2 text-[30px] leading-9 text-white" style={{ letterSpacing: -0.6 }}>
+                  {formatRupiah(balance)}
+                </Text>
+              </View>
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-white/15">
+                <ArrowDownToLine color="white" size={18} strokeWidth={2.4} />
+              </View>
             </View>
-          </Pressable>
-        </View>
+
+            <View className="mt-4 self-start flex-row items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
+              <Text className="font-bold text-[11px] text-white">Tap untuk Tarik Saldo</Text>
+              <Text className="font-bold text-white">›</Text>
+            </View>
+          </LinearGradient>
+        </Pressable>
 
         {/* Riwayat Job - shortcut ke tab Pesanan (sudah filter by cleaner) */}
         <Pressable
