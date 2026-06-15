@@ -1,35 +1,38 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, Phone } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, Mail, Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '../../src/components/BrandLogo';
-import { validatePassword } from '../../src/components/Field';
+import { Field, validateEmail, validatePassword } from '../../src/components/Field';
+import { useT } from '../../src/lib/i18n';
 import { login } from '../../src/lib/devAuth';
 import { useAuthStore } from '../../src/stores/auth';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { useModeStore } from '../../src/stores/mode';
-import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
+import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
 
 export default function Login() {
   const router = useRouter();
+  const t = useT();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
   const setCleanerName = useCleanerStore((s) => s.setName);
   const fetchUser = useUserStore((s) => s.fetch);
 
   const [loginAs, setLoginAs] = useState<'customer' | 'freelancer'>('customer');
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ identifier?: string | null; password?: string | null }>({});
-  const [touched, setTouched] = useState<{ identifier?: boolean; password?: boolean }>({});
+  const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
 
+  // Accept email OR Indonesian phone (08.../+62.../62...)
   function validateIdentifier(v: string): string | null {
     const x = v.trim();
     if (!x) return 'Email atau No. HP wajib diisi';
@@ -39,15 +42,11 @@ export default function Login() {
     return null;
   }
 
-  const idTrim = identifier.trim();
-  const looksLikePhone = /^[\d+]/.test(idTrim);
-  const IdIcon = looksLikePhone ? Phone : Mail;
-
   function validate(): boolean {
-    const e = { identifier: validateIdentifier(identifier), password: validatePassword(password, 6) };
+    const e = { email: validateIdentifier(email), password: validatePassword(password, 6) };
     setErrors(e);
-    setTouched({ identifier: true, password: true });
-    return !e.identifier && !e.password;
+    setTouched({ email: true, password: true });
+    return !e.email && !e.password;
   }
 
   async function onLogin() {
@@ -57,7 +56,8 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const result = await login(identifier, password);
+      const result = await login(email, password);
+      // Validate role matches selected toggle
       if (result.user.mode !== loginAs) {
         const want = loginAs === 'customer' ? 'Customer' : 'Cleaner';
         const actual = result.user.mode === 'customer' ? 'Customer' : 'Cleaner';
@@ -67,14 +67,20 @@ export default function Login() {
       }
       setTokens(result.tokens);
       setMode(result.user.mode);
+      // Fetch full profile from /auth/me - populates name/phone/email/photo for Profile tab
       void fetchUser();
       if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
+      // Toast 'Selamat datang' hanya untuk customer.
+      // Cleaner: skip - KYC gate akan show context yang lebih relevant
       if (result.user.mode === 'customer') {
         toast.success(`Selamat datang, ${result.user.name}`);
       }
+      // Cleaner: jangan ke (tabs) dulu - CleanerLockOverlay handle routing
+      // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
       router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : '/(tabs)');
     } catch (e) {
       const raw = (e as Error).message ?? 'Login gagal';
+      // Map pesan teknis backend ke pesan ramah user.
       let userMsg = raw;
       const lc = raw.toLowerCase();
       if (lc.includes('invalid') || lc.includes('wrong') || lc.includes('salah') || lc.includes('credential') || lc.includes('401') || lc.includes('not found')) {
@@ -86,143 +92,82 @@ export default function Login() {
       } else if (lc.includes('suspend') || lc.includes('blocked') || lc.includes('disabled')) {
         userMsg = 'Akun kamu di-suspend. Hubungi customer service.';
       }
-      setErrors({ identifier: ' ', password: ' ' });
+      // Cuma red border di dua field - pesan asli di toast. Hindari duplikasi text.
+      setErrors({ email: ' ', password: ' ' });
       toast.error(userMsg);
     } finally {
       setLoading(false);
     }
   }
 
-  const idError = touched.identifier ? errors.identifier : null;
-  const pwError = touched.password ? errors.password : null;
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
-    >
-      {/* Slim gradient strip - aksen halus di atas, bukan hero block besar */}
-      <LinearGradient
-        colors={['#1E3A8A', '#047857', '#0E7490']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ height: 4 }}
-      />
+    <View className="flex-1 bg-white">
+      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 260 }}>
+        <SafeAreaView edges={['top']}>
+          <View className="flex-row items-center px-3 py-2">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
+              <ArrowLeft color="white" size={22} />
+            </Pressable>
+          </View>
+          <View className="px-6 pt-2 pb-6">
+            <BrandLogo size={56} showName />
+            <Text className="font-bold mt-4 text-3xl text-white">{t('login.welcome_emoji')}</Text>
+            <Text className="font-sans mt-1 text-sm text-white/85">{t('login.subtitle')}</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-      <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF' }}>
-        <View className="flex-row items-center px-2 py-2">
-          <Pressable
-            onPress={() => safeBack()}
-            className="h-11 w-11 items-center justify-center rounded-full"
-          >
-            <ArrowLeft color="#0F172A" size={22} />
-          </Pressable>
-        </View>
-      </SafeAreaView>
-
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 24 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header brand */}
-        <View className="mt-4 mb-8">
-          <BrandLogo size={44} showName />
-          <Text
-            className="font-extrabold mt-7 text-ink-900"
-            style={{ fontSize: 26, lineHeight: 32, letterSpacing: -0.6 }}
-          >
-            Masuk ke akunmu
-          </Text>
-          <Text className="font-medium mt-2 text-sm text-ink-500" style={{ lineHeight: 20 }}>
-            Lanjut pesan layanan bersih atau terima job sebagai mitra.
-          </Text>
-        </View>
-
-        {/* Role segmented toggle - minimal underline style */}
-        <View className="mb-7 flex-row border-b border-ink-200">
-          {([
-            { key: 'customer', label: 'Customer' },
-            { key: 'freelancer', label: 'Cleaner' },
-          ] as const).map((r) => {
-            const active = loginAs === r.key;
-            return (
-              <Pressable
-                key={r.key}
-                onPress={() => setLoginAs(r.key)}
-                className="flex-1 items-center pb-3"
-              >
-                <Text className={`font-bold text-sm ${active ? 'text-ink-900' : 'text-ink-400'}`}>
-                  {r.label}
-                </Text>
-                {active && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      bottom: -1,
-                      left: 0,
-                      right: 0,
-                      height: 2,
-                      backgroundColor: '#1D4ED8',
-                      borderRadius: 1,
-                    }}
-                  />
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Form fields */}
-        <View className="gap-5">
-          {/* Identifier */}
-          <View>
-            <Text className="font-semibold mb-2 text-[12px] text-ink-700">Email atau No. HP</Text>
-            <View
-              className={`flex-row items-center gap-2.5 rounded-xl border bg-white ${
-                idError && idError.trim() ? 'border-red-400' : 'border-ink-200'
-              }`}
-              style={{ paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 14 : 10 }}
-            >
-              <IdIcon color="#94A3B8" size={18} strokeWidth={2} />
+      <ScrollView className="flex-1 -mt-6" contentContainerStyle={{ paddingBottom: 40 }}>
+        <View className="mx-4 rounded-2xl bg-white p-5 shadow-sm" style={{ elevation: 6 }}>
+          <View className="mb-4 flex-row rounded-xl bg-ink-100 p-1">
+            {([
+              { key: 'customer', label: 'Customer', desc: 'Pesan layanan bersih' },
+              { key: 'freelancer', label: 'Cleaner', desc: 'Mitra cleaner' },
+            ] as const).map((r) => {
+              const active = loginAs === r.key;
+              return (
+                <Pressable
+                  key={r.key}
+                  onPress={() => setLoginAs(r.key)}
+                  className={`flex-1 items-center rounded-lg py-2 ${active ? 'bg-white shadow-sm' : ''}`}
+                  style={active ? { elevation: 2 } : undefined}
+                >
+                  <Text className={`font-bold text-[13px] ${active ? 'text-brand-700' : 'text-ink-500'}`}>{r.label}</Text>
+                  <Text className={`font-sans text-[10px] ${active ? 'text-ink-600' : 'text-ink-400'}`}>{r.desc}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View className="mb-3 rounded-lg bg-blue-50 p-2.5">
+            <Text className="font-sans text-[11px] text-blue-900">
+              {loginAs === 'customer'
+                ? 'Login sebagai Customer untuk pesan layanan, lihat history, & kelola alamat.'
+                : 'Login sebagai Cleaner untuk terima job, kelola jadwal, & dompet payout.'}
+            </Text>
+          </View>
+          <View className="gap-4">
+            <Field label="Email atau No. HP" required error={touched.email ? errors.email : null}>
+              <Mail color="#94A3B8" size={18} />
               <TextInput
-                value={identifier}
+                value={email}
                 onChangeText={(v) => {
-                  setIdentifier(v);
-                  if (touched.identifier) setErrors({ ...errors, identifier: validateIdentifier(v) });
+                  setEmail(v);
+                  if (touched.email) setErrors({ ...errors, email: validateIdentifier(v) });
                 }}
                 onBlur={() => {
-                  setTouched({ ...touched, identifier: true });
-                  setErrors({ ...errors, identifier: validateIdentifier(identifier) });
+                  setTouched({ ...touched, email: true });
+                  setErrors({ ...errors, email: validateIdentifier(email) });
                 }}
                 placeholder="kamu@email.com atau 08123456789"
                 placeholderTextColor="#94A3B8"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="font-sans flex-1 text-[14px] text-ink-900"
+                className="font-sans flex-1 text-sm text-ink-900"
               />
-            </View>
-            {idError && idError.trim() && (
-              <Text className="font-medium mt-1.5 text-[11px] text-red-600">{idError}</Text>
-            )}
-          </View>
+            </Field>
 
-          {/* Password */}
-          <View>
-            <View className="mb-2 flex-row items-center justify-between">
-              <Text className="font-semibold text-[12px] text-ink-700">Password</Text>
-              <Pressable onPress={() => router.push('/(auth)/forgot-password')} hitSlop={8}>
-                <Text className="font-bold text-[12px] text-brand-600">Lupa password?</Text>
-              </Pressable>
-            </View>
-            <View
-              className={`flex-row items-center gap-2.5 rounded-xl border bg-white ${
-                pwError && pwError.trim() ? 'border-red-400' : 'border-ink-200'
-              }`}
-              style={{ paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 14 : 10 }}
-            >
-              <Lock color="#94A3B8" size={18} strokeWidth={2} />
+            <Field label="Password" required error={touched.password ? errors.password : null}>
               <TextInput
                 value={password}
                 onChangeText={(v) => {
@@ -233,58 +178,46 @@ export default function Login() {
                   setTouched({ ...touched, password: true });
                   setErrors({ ...errors, password: validatePassword(password, 6) });
                 }}
-                placeholder="Masukin password kamu"
+                placeholder="••••••••"
                 placeholderTextColor="#94A3B8"
                 secureTextEntry={!showPwd}
-                autoCapitalize="none"
-                className="font-sans flex-1 text-[14px] text-ink-900"
+                className="font-sans flex-1 text-sm text-ink-900"
               />
-              <Pressable onPress={() => setShowPwd((v) => !v)} hitSlop={8}>
-                {showPwd ? <EyeOff color="#94A3B8" size={18} strokeWidth={2} /> : <Eye color="#94A3B8" size={18} strokeWidth={2} />}
+              <Pressable onPress={() => setShowPwd((v) => !v)}>
+                {showPwd ? <EyeOff color="#94A3B8" size={18} /> : <Eye color="#94A3B8" size={18} />}
               </Pressable>
-            </View>
-            {pwError && pwError.trim() && (
-              <Text className="font-medium mt-1.5 text-[11px] text-red-600">{pwError}</Text>
-            )}
+            </Field>
+
+            <Pressable className="self-end" onPress={() => router.push('/(auth)/forgot-password')}>
+              <Text className="font-semibold text-xs text-brand-600">Lupa password?</Text>
+            </Pressable>
           </View>
-        </View>
 
-        {/* Primary CTA */}
-        <Pressable
-          onPress={onLogin}
-          disabled={loading}
-          className={`mt-8 items-center rounded-xl py-4 ${loading ? 'bg-brand-400' : 'bg-brand-600'}`}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <Text className="font-bold text-[15px] text-white">Masuk</Text>
-          )}
-        </Pressable>
-
-        {/* Footer link */}
-        <Pressable
-          onPress={() => loginAs === 'freelancer'
-            ? router.replace('/(auth)/cleaner-onboarding')
-            : router.replace({ pathname: '/(auth)/register', params: { mode: 'customer' } })}
-          className="mt-6"
-        >
-          <Text className="text-center text-[13px] text-ink-500">
-            Belum punya akun?{' '}
-            <Text className="font-bold text-brand-600">
-              {loginAs === 'freelancer' ? 'Daftar Jadi Mitra' : 'Daftar di sini'}
+          <Pressable
+            onPress={onLogin}
+            disabled={loading}
+            className="mt-2 rounded-2xl bg-brand-600 py-4 disabled:opacity-50"
+          >
+            <Text className="font-bold text-center text-sm text-white">
+              {loading ? t('login.signing_in') : t('auth.login')}
             </Text>
-          </Text>
-        </Pressable>
+          </Pressable>
 
-        {/* T&C kecil di paling bawah */}
-        <Text className="mt-10 text-center text-[10px] leading-4 text-ink-400">
-          Dengan masuk, kamu setuju dengan{' '}
-          <Text className="font-semibold text-ink-600">Syarat & Ketentuan</Text>
-          {' '}dan{' '}
-          <Text className="font-semibold text-ink-600">Kebijakan Privasi</Text>
-        </Text>
+          <Pressable
+            onPress={() => loginAs === 'freelancer'
+              ? router.replace('/(auth)/cleaner-onboarding')
+              : router.replace({ pathname: '/(auth)/register', params: { mode: 'customer' } })}
+            className="mt-3"
+          >
+            <Text className="font-sans text-center text-sm text-ink-500">
+              {loginAs === 'freelancer' ? 'Belum jadi mitra? ' : t('login.no_account') + ' '}
+              <Text className="font-semibold text-brand-600">
+                {loginAs === 'freelancer' ? 'Daftar Jadi Mitra' : t('login.signup_link')}
+              </Text>
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
