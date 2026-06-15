@@ -13,10 +13,11 @@ import { CleanerWalletController } from './cleaner-wallet.controller';
 import { CleanerInactivityService } from './cleaner-inactivity.service';
 import { CleanerScheduleController } from './cleaner-schedule.controller';
 import { WalletClearService } from './wallet-clear.service';
+import { WithdrawalSyncService } from './withdrawal-sync.service';
 
 @Module({
   imports: [AuthModule, StorageModule, NotificationsModule, PaymentsModule, ReferralModule],
   controllers: [CleanerKycController, CleanerWalletController, CleanerProfileController, CleanerPublicController, CleanerJobsController, CleanerScheduleController, CleanerBankAccountsController],
-  providers: [WalletClearService, CleanerInactivityService],
+  providers: [WalletClearService, CleanerInactivityService, WithdrawalSyncService],
 })
 export class CleanerModule {}

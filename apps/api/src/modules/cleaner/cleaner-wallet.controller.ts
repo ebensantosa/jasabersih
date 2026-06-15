@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Logger, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Logger, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
@@ -145,6 +145,48 @@ export class CleanerWalletController {
        ORDER BY created_at DESC
        LIMIT ${limit}::int OFFSET ${offset}::int
     `;
+  }
+
+  // Manual sync status withdrawal langsung dari Flip - dipake mobile sebagai
+  // pull-to-refresh. Polling juga jalan via cron tiap 5 menit, ini supaya
+  // user gak nunggu cron + dapat status segera.
+  @Post('withdrawal/:id/sync')
+  async syncWithdrawalStatus(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRaw<{ id: string; user_id: string; amount: number; status: string; flip_disbursement_id: string | null }[]>`
+      SELECT id, user_id, amount, status, flip_disbursement_id
+        FROM withdrawals WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid LIMIT 1
+    `;
+    const w = rows[0];
+    if (!w) throw new NotFoundException('Withdrawal tidak ditemukan.');
+    if (!w.flip_disbursement_id) return { ok: false, status: w.status, message: 'Belum ada Flip ID (masih pending review admin).' };
+    if (w.status !== 'processing' && w.status !== 'pending') {
+      return { ok: true, status: w.status, message: 'Status sudah final.' };
+    }
+    const result = await this.flip.getDisbursementStatus(w.flip_disbursement_id);
+    if (!result) return { ok: false, status: w.status, message: 'Gagal cek status Flip. Coba lagi nanti.' };
+    const statusRaw = String(result?.status ?? '').toUpperCase();
+    const next = statusRaw === 'DONE' ? 'completed'
+      : statusRaw === 'CANCELLED' ? 'canceled'
+      : statusRaw === 'FAILED' ? 'failed'
+      : null;
+    if (!next) return { ok: true, status: w.status, message: `Flip masih ${statusRaw}.` };
+    // Update + clear hold (atomic via WHERE clause supaya gak race dgn webhook/cron)
+    await this.prisma.$executeRaw`
+      UPDATE withdrawals SET status = ${next}, callback_payload = ${JSON.stringify({ ...result, _source: 'manual-sync' })}::jsonb,
+             processed_at = CASE WHEN ${next} = 'completed' THEN NOW() ELSE processed_at END
+       WHERE id = ${w.id}::uuid AND status IN ('processing', 'pending')
+    `;
+    await this.prisma.$executeRaw`
+      UPDATE wallet_ledger_entries SET status = 'CLEARED', cleared_at = NOW()
+       WHERE reference_type = 'withdrawal' AND reference_id = ${w.id}::uuid AND status = 'PENDING'
+    `;
+    if (next === 'failed' || next === 'canceled') {
+      await this.prisma.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
+        VALUES (${w.user_id}::uuid, 'withdrawal', ${-w.amount}::bigint, 'withdrawal_reverse', ${w.id}::uuid, 'CLEARED', 'Reverse: manual sync ' || ${next})
+      `;
+    }
+    return { ok: true, status: next };
   }
 
   @Get('withdrawals')

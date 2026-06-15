@@ -258,6 +258,25 @@ export class FlipService {
 
   // POST /disbursement — create transfer keluar.
   // idempotencyKey wajib unik (kalau Flip nerima dua call dengan key sama, balikin transaksi pertama, gak duplicate).
+  /**
+   * GET status disbursement by Flip ID. Dipakai cron sync supaya
+   * pending withdrawals auto-update walau Flip callback gagal/telat.
+   */
+  async getDisbursementStatus(flipId: string): Promise<any> {
+    const c = await this.getCreds();
+    if (!c.enabled || !c.secretKey) return null;
+    const res = await fetch(`${c.disbursementBaseUrl}/get-disbursement?id=${encodeURIComponent(flipId)}`, {
+      method: 'GET',
+      headers: { Authorization: this.authHeader(c.secretKey) },
+    });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      this.log.warn(`flip get-disbursement failed id=${flipId} status=${res.status}: ${JSON.stringify(json)}`);
+      return null;
+    }
+    return json;
+  }
+
   async createDisbursement(input: {
     amount: number;
     bankCode: string;
