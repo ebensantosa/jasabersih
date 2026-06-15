@@ -39,9 +39,9 @@ export default function EarningsRoute() {
 function EarningsScreen() {
   const router = useRouter();
   const cleanerName = useCleanerStore((s) => s.name);
-  const localBalance = useCleanerWalletStore((s) => s.balance());
-  const serverBalance = useCleanerWalletStore((s) => s.serverBalance);
-  const balance = serverBalance > 0 ? serverBalance : localBalance;
+  // Pakai effectiveBalance (server-authoritative dgn fallback) supaya konsisten
+  // dgn halaman wallet & withdraw.
+  const balance = useCleanerWalletStore((s) => s.effectiveBalance());
   const entries = useCleanerWalletStore((s) => s.entries);
   const syncWallet = useCleanerWalletStore((s) => s.syncFromApi);
 

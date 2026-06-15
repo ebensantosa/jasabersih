@@ -37,8 +37,10 @@ type State = {
   entries: WalletEntry[];
   hydrated: boolean;
   hydrate: () => void;
-  /** Total saldo yang bisa ditarik (sum amount where type != withdrawal_pending) */
+  /** Total saldo yang bisa ditarik (sum amount where type != withdrawal_pending) - LOCAL only */
   balance: () => number;
+  /** Server-authoritative balance dengan fallback ke local. PAKAI INI di UI. */
+  effectiveBalance: () => number;
   /** Total saldo termasuk pending */
   pendingTotal: () => number;
   addEarning: (bookingId: string, totalPrice: number, bringsTools: boolean, description: string) => void;
@@ -148,6 +150,27 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
       if (e.type === 'withdrawal_pending') return s; // belum di-debit
       return s + e.amount;
     }, 0),
+  /**
+   * Authoritative balance: pakai serverBalance kalau sudah sync, fallback ke
+   * local sum. Dipakai semua screen yg display saldo (earnings, wallet,
+   * withdraw) supaya angka konsisten lintas halaman.
+   * NB: server balance bisa 0 legitimately (cleaner baru), jadi cek pakai
+   * flag `synced` (entries.length > 0 atau serverBalance > 0) bukan cuma
+   * serverBalance > 0.
+   */
+  effectiveBalance: () => {
+    const s = get();
+    // Synced berarti pernah sukses fetch /cleaner/wallet (ada ledger entries
+    // atau server balance pernah > 0). Server selalu authoritative kalau
+    // sudah sync, walaupun balance=0.
+    const synced = s.entries.length > 0 || s.serverBalance > 0;
+    if (synced) return s.serverBalance;
+    // Belum sync (offline / cold start): fallback local sum.
+    return s.entries.reduce((acc, e) => {
+      if (e.type === 'withdrawal_pending') return acc;
+      return acc + e.amount;
+    }, 0);
+  },
   pendingTotal: () =>
     get()
       .entries.filter((e) => e.type === 'withdrawal_pending')

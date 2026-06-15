@@ -22,7 +22,10 @@ import { safeBack } from '../../src/lib/safeBack';
 function CleanerWallet() {
   const router = useRouter();
   const entries = useCleanerWalletStore((s) => s.entries);
-  const balance = useCleanerWalletStore((s) => s.balance());
+  // Pakai effectiveBalance (server-authoritative) supaya konsisten dgn
+  // earnings tab & withdraw page. Sebelumnya cuma balance() local -> angka
+  // beda dari halaman lain.
+  const balance = useCleanerWalletStore((s) => s.effectiveBalance());
   const pending = useCleanerWalletStore((s) => s.pendingTotal());
 
   const [escrowPending, setEscrowPending] = useState(0);

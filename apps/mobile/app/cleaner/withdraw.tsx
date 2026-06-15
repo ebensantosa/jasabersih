@@ -36,10 +36,9 @@ const QUICK_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
 
 function Withdraw() {
   const router = useRouter();
-  // Prefer server-side balance (authoritative). Fallback to local sum.
-  const serverBalance = useCleanerWalletStore((s) => s.serverBalance);
-  const localBalance = useCleanerWalletStore((s) => s.balance());
-  const balance = serverBalance > 0 ? serverBalance : localBalance;
+  // Pakai effectiveBalance - server authoritative kalau sudah sync, fallback
+  // ke local. Konsisten dgn earnings tab & wallet page.
+  const balance = useCleanerWalletStore((s) => s.effectiveBalance());
   const requestWithdrawalApi = useCleanerWalletStore((s) => s.requestWithdrawalApi);
   const addWithdrawal = useCleanerWalletStore((s) => s.addWithdrawal);
   const [submitting, setSubmitting] = useState(false);
