@@ -82,23 +82,21 @@ function Withdraw() {
   const receive = Math.max(0, amount - fee);
 
   function submit() {
-    const useVerified = !!selectedBankAccountId;
-    const e = useVerified
-      ? { amount: amount < MIN_WITHDRAW ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}` : amount > balance ? 'Jumlah melebihi saldo' : null }
-      : {
-          account: validateMinLength(account, 6, 'Nomor rekening'),
-          accountName: validateMinLength(accountName, 2, 'Nama pemilik'),
-          amount: amount < MIN_WITHDRAW ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}` : amount > balance ? 'Jumlah melebihi saldo' : null,
-        };
+    // WAJIB pakai rekening verified - manual input dihapus.
+    // Hindari redundan ngetik (user udh tambah rekening + verifikasi nama, masa
+    // ngetik lagi pas tarik) + cegah typo nominal rekening salah kirim ke org lain.
+    if (!selectedBankAccountId) {
+      toast.error('Pilih rekening tersimpan dulu. Kalau belum ada, tambah di "Kelola Rekening".');
+      return;
+    }
+    const e = { amount: amount < MIN_WITHDRAW ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}` : amount > balance ? 'Jumlah melebihi saldo' : null };
     setErrors(e);
-    if (e.amount || (!useVerified && (e.account || e.accountName))) {
-      toast.error('Lengkapi data yang masih kosong/salah');
+    if (e.amount) {
+      toast.error('Lengkapi jumlah yang ingin ditarik');
       return;
     }
     setSubmitting(true);
-    const destination = useVerified
-      ? { bankAccountId: selectedBankAccountId! }
-      : { bankCode: method.label, accountNumber: account, accountName };
+    const destination = { bankAccountId: selectedBankAccountId };
     requestWithdrawalApi(amount, destination)
       .then((res) => {
         addWithdrawal(amount, {
@@ -173,12 +171,6 @@ function Withdraw() {
                   );
                 })}
                 <Pressable
-                  onPress={() => setSelectedBankAccountId(null)}
-                  className={`p-3 rounded-xl border border-dashed ${selectedBankAccountId === null ? 'bg-amber-50 border-amber-500' : 'border-ink-300'}`}
-                >
-                  <Text className="text-xs font-semibold text-center text-ink-700">+ Pakai rekening lain (transfer manual, perlu approval admin)</Text>
-                </Pressable>
-                <Pressable
                   onPress={() => router.push('/cleaner/bank-accounts')}
                   className="mt-2 flex-row items-center justify-center gap-1 py-2"
                 >
@@ -206,8 +198,8 @@ function Withdraw() {
             </View>
           )}
 
-          {/* Pilih metode (legacy fallback - kalau gak pilih dari verified, akan masuk admin queue) */}
-          {selectedBankAccountId === null && (
+          {/* Manual bank input disabled - cleaner harus pilih rekening verified. */}
+          {false && selectedBankAccountId === null && (
           <>
           <Section title="Pilih Tujuan">
             <Text className="font-semibold mb-2 text-[10px] uppercase tracking-wider text-ink-500">
