@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, ClipboardList, Send, ShieldAlert, AlertCircle, Star } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Send, ShieldAlert, Star } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -75,6 +75,8 @@ function Chat() {
   }, [id]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   // Track quick-reply yg lagi dikirim, supaya chip kasih feedback visual + ga bisa di-tap ulang
   const [pendingQuick, setPendingQuick] = useState<string | null>(null);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
@@ -184,6 +186,51 @@ function Chat() {
     setTyping(v.length > 0);
   }
 
+  async function pickAndSendPhoto() {
+    if (uploadingPhoto) return;
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!lib.granted) {
+        toast.warning('Butuh akses galeri untuk kirim foto.');
+        return;
+      }
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+        allowsEditing: false,
+      });
+      if (picked.canceled || !picked.assets?.[0]) return;
+      const asset = picked.assets[0];
+
+      setUploadingPhoto(true);
+      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
+      const compressed = await compressImage(asset.uri);
+      if (compressed.oversize) {
+        toast.error(`Foto terlalu besar (${formatBytes(compressed.size)}). Coba foto lain.`);
+        return;
+      }
+
+      const { api } = await import('../../src/lib/api');
+      const presign = await api.post(`/chat/booking/${id}/image-upload-url`, { contentType: 'image/jpeg' });
+      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
+
+      const blob = await (await fetch(compressed.uri)).blob();
+      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      if (!up.ok) throw new Error('Upload ke storage gagal');
+
+      // Kirim sebagai chat message dgn messageType='image'. Content = URL (utk
+      // backward compat sama backend yg validate content non-empty).
+      void send(publicUrl, { messageType: 'image', attachmentUrl: publicUrl }).then((res) => {
+        if (!res.ok) toast.error(res.error ?? 'Gagal kirim foto');
+      });
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal kirim foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -278,7 +325,15 @@ function Chat() {
               <Text className="font-sans text-[11px] text-ink-600">Mulai percakapan</Text>
             </View>
           ) : messages.map((m) => (
-            <Bubble key={m.id} isMe={m.senderId === myUserId} text={m.content} time={new Date(m.createdAt).getTime()} />
+            <Bubble
+              key={m.id}
+              isMe={m.senderId === myUserId}
+              text={m.content}
+              time={new Date(m.createdAt).getTime()}
+              messageType={m.messageType}
+              attachmentUrl={m.attachmentUrl}
+              onImagePress={(url) => setPreviewPhoto(url)}
+            />
           ))}
         </ScrollView>
 
@@ -316,6 +371,15 @@ function Chat() {
         {/* Composer */}
         <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
           <View className="flex-row items-center gap-2 px-3 py-2">
+            <Pressable
+              onPress={pickAndSendPhoto}
+              disabled={uploadingPhoto || status !== 'connected'}
+              className="h-11 w-11 items-center justify-center rounded-full bg-ink-100 disabled:opacity-50"
+            >
+              {uploadingPhoto
+                ? <ActivityIndicator size="small" color="#1D4ED8" />
+                : <Camera color="#1D4ED8" size={20} strokeWidth={2.2} />}
+            </Pressable>
             <TextInput
               value={text}
               onChangeText={onChangeText}
@@ -341,20 +405,60 @@ function Chat() {
           </Text>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {previewPhoto && (
+        <Pressable
+          onPress={() => setPreviewPhoto(null)}
+          style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <Image
+            source={{ uri: previewPhoto }}
+            style={{ width: '100%', height: '85%' }}
+            contentFit="contain"
+          />
+          <Text className="font-medium mt-3 text-xs text-white/70">Tap di mana saja untuk tutup</Text>
+        </Pressable>
+      )}
     </>
   );
 }
 
-function Bubble({ isMe, text, time }: { isMe: boolean; text: string; time: number }) {
+function Bubble({
+  isMe,
+  text,
+  time,
+  messageType,
+  attachmentUrl,
+  onImagePress,
+}: {
+  isMe: boolean;
+  text: string;
+  time: number;
+  messageType?: string;
+  attachmentUrl?: string | null;
+  onImagePress?: (url: string) => void;
+}) {
   const t = new Date(time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const isImage = messageType === 'image' && (attachmentUrl || text);
+  const imageUrl = attachmentUrl ?? text;
   return (
     <View className={isMe ? 'items-end' : 'items-start'}>
-      <View
-        className={`max-w-[80%] rounded-2xl px-3 py-2 ${isMe ? 'bg-brand-600' : 'bg-white'}`}
-        style={isMe ? {} : { borderWidth: 1, borderColor: '#E2E8F0' }}
-      >
-        <Text className={`font-sans text-sm ${isMe ? 'text-white' : 'text-ink-800'}`}>{text}</Text>
-      </View>
+      {isImage ? (
+        <Pressable onPress={() => onImagePress?.(imageUrl)}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: 220, height: 220, borderRadius: 16 }}
+            contentFit="cover"
+          />
+        </Pressable>
+      ) : (
+        <View
+          className={`max-w-[80%] rounded-2xl px-3 py-2 ${isMe ? 'bg-brand-600' : 'bg-white'}`}
+          style={isMe ? {} : { borderWidth: 1, borderColor: '#E2E8F0' }}
+        >
+          <Text className={`font-sans text-sm ${isMe ? 'text-white' : 'text-ink-800'}`}>{text}</Text>
+        </View>
+      )}
       <Text className="font-sans mx-1 mt-0.5 text-[10px] text-ink-400">{t}</Text>
     </View>
   );

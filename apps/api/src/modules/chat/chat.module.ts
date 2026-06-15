@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
 import { AuthModule } from '../auth/auth.module';
+import { StorageModule } from '../storage/storage.module';
 
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatRetentionService } from './chat-retention.service';
 
 @Module({
-  imports: [AuthModule, JwtModule.register({})],
+  imports: [AuthModule, JwtModule.register({}), StorageModule],
   controllers: [ChatController],
   providers: [ChatGateway, ChatRetentionService],
 })

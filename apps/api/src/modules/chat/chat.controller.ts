@@ -1,17 +1,44 @@
-import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { PrismaService } from '../../common/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { StorageService } from '../storage/storage.service';
 
 @ApiTags('chat')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
+
+  // Presign upload URL untuk foto chat. Cuma participant booking yg boleh.
+  @Post('booking/:id/image-upload-url')
+  async imageUploadUrl(
+    @Param('id') id: string,
+    @Body() body: { contentType: string },
+    @Req() req: Request & { user: AuthenticatedUser },
+  ) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(body?.contentType)) throw new BadRequestException('contentType invalid (JPG/PNG/WebP).');
+    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null }[]>`
+      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new NotFoundException('booking not found');
+    if (b.customer_id !== req.user.id && b.cleaner_id !== req.user.id) {
+      throw new ForbiddenException('not a participant');
+    }
+    const presign = await this.storage.createUploadUrl({
+      bucket: 'public',
+      keyPrefix: `chat/${id}/${req.user.id}`,
+      contentType: body.contentType,
+      expiresInSec: 300,
+    });
+    return { ...presign, publicUrl: this.storage.getPublicUrl(presign.key) };
+  }
 
   // List conversation per user — auto-pick partner (cleaner kalau user customer, customer kalau user cleaner)
   // Skip booking yang status 'completed' lebih dari 24 jam (chat sudah ke-prune)
@@ -25,7 +52,7 @@ export class ChatController {
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.id ELSE cu.id END AS "partnerId",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.name ELSE cu.name END AS "partnerName",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.photo_url ELSE cu.photo_url END AS "partnerPhotoUrl",
-        (SELECT content FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastMessage",
+        (SELECT CASE WHEN message_type = 'image' THEN '📷 Foto' ELSE content END FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastMessage",
         (SELECT created_at FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastTimestamp",
         (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND recipient_id = ${req.user.id}::uuid AND status = 'sent' AND read_at IS NULL) AS "unread"
       FROM bookings b

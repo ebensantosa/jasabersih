@@ -201,10 +201,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           return s?.data?.userId === recipientId;
         });
         if (!recipientOnline) {
+          const pushBody = body.messageType === 'image'
+            ? '📷 Mengirim foto'
+            : body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content;
           void this.push.send({
             userId: recipientId,
             title: 'Pesan baru',
-            body: body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content,
+            body: pushBody,
             channel: 'chat',
             data: { type: 'chat', bookingId: body.bookingId },
           }).catch(() => {});
