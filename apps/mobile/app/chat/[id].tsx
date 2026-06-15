@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Send, ShieldAlert, Star } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -76,6 +76,7 @@ function Chat() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   // Track quick-reply yg lagi dikirim, supaya chip kasih feedback visual + ga bisa di-tap ulang
   const [pendingQuick, setPendingQuick] = useState<string | null>(null);
@@ -186,20 +187,34 @@ function Chat() {
     setTyping(v.length > 0);
   }
 
-  async function pickAndSendPhoto() {
+  async function pickAndSendPhoto(source: 'camera' | 'gallery') {
     if (uploadingPhoto) return;
     try {
       const ImagePicker = await import('expo-image-picker');
-      const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!lib.granted) {
-        toast.warning('Butuh akses galeri untuk kirim foto.');
-        return;
+      let picked: ImagePicker.ImagePickerResult;
+      if (source === 'camera') {
+        const cam = await ImagePicker.requestCameraPermissionsAsync();
+        if (!cam.granted) {
+          toast.warning('Butuh akses kamera. Aktifkan di Settings.');
+          return;
+        }
+        picked = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 1,
+          allowsEditing: false,
+        });
+      } else {
+        const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!lib.granted) {
+          toast.warning('Butuh akses galeri untuk kirim foto.');
+          return;
+        }
+        picked = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 1,
+          allowsEditing: false,
+        });
       }
-      const picked = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 1,
-        allowsEditing: false,
-      });
       if (picked.canceled || !picked.assets?.[0]) return;
       const asset = picked.assets[0];
 
@@ -372,7 +387,7 @@ function Chat() {
         <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
           <View className="flex-row items-center gap-2 px-3 py-2">
             <Pressable
-              onPress={pickAndSendPhoto}
+              onPress={() => setPhotoSheetOpen(true)}
               disabled={uploadingPhoto || status !== 'connected'}
               className="h-11 w-11 items-center justify-center rounded-full bg-ink-100 disabled:opacity-50"
             >
@@ -405,6 +420,52 @@ function Chat() {
           </Text>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {photoSheetOpen && (
+        <Pressable
+          onPress={() => setPhotoSheetOpen(false)}
+          style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <SafeAreaView edges={['bottom']} className="bg-white">
+              <View className="px-5 pt-4 pb-2">
+                <View className="self-center mb-3 h-1 w-10 rounded-full bg-ink-200" />
+                <View className="mb-3 flex-row items-center justify-between">
+                  <Text className="font-bold text-base text-ink-900">Kirim Foto</Text>
+                  <Pressable onPress={() => setPhotoSheetOpen(false)} className="h-8 w-8 items-center justify-center">
+                    <X color="#64748B" size={18} />
+                  </Pressable>
+                </View>
+                <View className="flex-row gap-3">
+                  <Pressable
+                    onPress={() => { setPhotoSheetOpen(false); void pickAndSendPhoto('camera'); }}
+                    className="flex-1 items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-4"
+                  >
+                    <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-600">
+                      <Camera color="white" size={22} strokeWidth={2.2} />
+                    </View>
+                    <Text className="font-bold text-sm text-brand-700">Kamera</Text>
+                    <Text className="font-sans text-center text-[10px] text-ink-500">Ambil foto langsung</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => { setPhotoSheetOpen(false); void pickAndSendPhoto('gallery'); }}
+                    className="flex-1 items-center gap-2 rounded-2xl border border-ink-200 bg-white p-4"
+                  >
+                    <View className="h-12 w-12 items-center justify-center rounded-full bg-ink-200">
+                      <ImageIcon color="#1D4ED8" size={22} strokeWidth={2.2} />
+                    </View>
+                    <Text className="font-bold text-sm text-ink-900">Galeri</Text>
+                    <Text className="font-sans text-center text-[10px] text-ink-500">Pilih dari foto tersimpan</Text>
+                  </Pressable>
+                </View>
+                <Text className="font-medium mt-3 text-center text-[10px] text-ink-400">
+                  Foto akan otomatis di-kompres supaya hemat kuota
+                </Text>
+              </View>
+            </SafeAreaView>
+          </Pressable>
+        </Pressable>
+      )}
 
       {previewPhoto && (
         <Pressable
