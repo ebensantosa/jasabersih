@@ -70,11 +70,11 @@ function CleanerWallet() {
           colors={['#1E3A8A', '#047857', '#0E7490']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ paddingBottom: 80 }}
+          style={{ paddingBottom: 18 }}
         >
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
           <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-          <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+          <View pointerEvents="none" style={{ position: 'absolute', bottom: -10, left: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
           <SafeAreaView edges={['top']}>
             <View className="flex-row items-center px-3 py-2">
               <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
@@ -103,10 +103,9 @@ function CleanerWallet() {
 
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          style={{ marginTop: -60 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
         >
-          {/* CTA Tarik - floating dgn shadow, overlap hero */}
+          {/* CTA Tarik - tidak overlap hero, shadow tebal untuk efek lifted */}
           <Pressable
             onPress={tryWithdraw}
             className="overflow-hidden rounded-3xl"
