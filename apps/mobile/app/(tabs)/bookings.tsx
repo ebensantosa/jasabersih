@@ -21,8 +21,8 @@ export default function Bookings() {
   const syncFromApi = useBookingsStore((s) => s.syncFromApi);
   const syncing = useBookingsStore((s) => s.syncing);
 
-  // Refresh on focus
-  useFocusEffect(useCallback(() => { void syncFromApi(); }, [syncFromApi]));
+  // Refresh on focus - skip kalau belum login (sync bakal 401 + Redirect tetep jalan di bawah)
+  useFocusEffect(useCallback(() => { if (tokens) void syncFromApi(); }, [syncFromApi, tokens]));
   // Cleaner mode: hanya job yang di-assign ke cleaner ini
   // Customer mode: semua booking customer
   const list =
