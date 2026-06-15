@@ -2,6 +2,10 @@
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // 'class' strategy - app belum support dark theme tapi NativeWind perlu
+  // explicit 'class' biar gak throw 'Cannot manually set color scheme, as
+  // dark mode is type media' di web saat StyleSheet.setFlag dipanggil.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
