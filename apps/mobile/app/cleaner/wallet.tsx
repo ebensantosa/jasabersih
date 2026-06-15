@@ -66,7 +66,15 @@ function CleanerWallet() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-ink-50">
-        <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingBottom: 70 }}>
+        <LinearGradient
+          colors={['#1E3A8A', '#047857', '#0E7490']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ paddingBottom: 70 }}
+        >
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          <View pointerEvents="none" style={{ position: 'absolute', bottom: 20, left: -40, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.06)' }} />
           <SafeAreaView edges={['top']}>
             <View className="flex-row items-center px-3 py-2">
               <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
