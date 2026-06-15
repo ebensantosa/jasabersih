@@ -227,11 +227,9 @@ function BookingDetail() {
     );
   }
 
-  const color = STATUS_COLOR[booking.status];
-  const timeline = isCleaner
-    ? TIMELINE_CLEANER
-    : booking.pricingMode === 'wa_survey' ? TIMELINE_WA : TIMELINE_PACKAGE;
-  const currentIdx = timeline.findIndex((t) => t.status === booking.status);
+  // Fallback color kalau status tidak dikenal (defensive — prevent crash kalau
+  // backend kirim status baru yg belum di-map).
+  const color = STATUS_COLOR[booking.status] ?? { bg: '#F1F5F9', fg: '#475569' };
 
   // Live searching countdown derivations (cheap, no hooks)
   const elapsedSec = booking.status === 'searching' ? Math.floor((now - booking.createdAt) / 1000) : 0;
@@ -418,7 +416,7 @@ function BookingDetail() {
               style={{ backgroundColor: color.bg }}
             >
               <Text className="font-semibold text-xs" style={{ color: color.fg }}>
-                {STATUS_LABEL[booking.status]}
+                {STATUS_LABEL[booking.status] ?? booking.status}
               </Text>
             </View>
           </View>
@@ -525,48 +523,9 @@ function BookingDetail() {
             </View>
           )}
 
-          {booking.status !== 'canceled' && (
-            <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-              <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
-                Status Pesanan
-              </Text>
-              {timeline.map((t, i) => {
-                const done = i <= currentIdx;
-                const active = i === currentIdx;
-                return (
-                  <View key={t.status} className="flex-row gap-3">
-                    <View className="items-center">
-                      <View
-                        className={`h-7 w-7 items-center justify-center rounded-full ${
-                          done ? 'bg-brand-600' : 'bg-ink-200'
-                        }`}
-                      >
-                        {done ? (
-                          <Check color="white" size={14} strokeWidth={3} />
-                        ) : (
-                          <View className="h-2 w-2 rounded-full bg-ink-400" />
-                        )}
-                      </View>
-                      {i < timeline.length - 1 && (
-                        <View className={`my-1 h-6 w-0.5 ${done ? 'bg-brand-600' : 'bg-ink-200'}`} />
-                      )}
-                    </View>
-                    <Text
-                      className={`pt-1 ${
-                        active
-                          ? 'font-bold text-sm text-brand-700'
-                          : done
-                            ? 'font-semibold text-sm text-ink-800'
-                            : 'font-sans text-sm text-ink-400'
-                      }`}
-                    >
-                      {t.label}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+          {/* Status stepper di-hapus - timeline ada di komponen
+              BookingTimeline (server-driven, auto-refresh on status change).
+              Hindari dua source yg bisa kelihatan out-of-sync. */}
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">

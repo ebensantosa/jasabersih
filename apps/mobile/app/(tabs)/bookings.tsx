@@ -82,7 +82,7 @@ export default function Bookings() {
           refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void syncFromApi()} />}
         >
           {list.map((b) => {
-            const c = STATUS_COLOR[b.status];
+            const c = STATUS_COLOR[b.status] ?? { bg: '#F1F5F9', fg: '#475569' };
             return (
               <Pressable
                 key={b.id}
@@ -110,7 +110,7 @@ export default function Bookings() {
                       style={{ backgroundColor: c.bg }}
                     >
                       <Text className="font-semibold text-[10px]" style={{ color: c.fg }}>
-                        {STATUS_LABEL[b.status]}
+                        {STATUS_LABEL[b.status] ?? b.status}
                       </Text>
                     </View>
                     <Text className="font-bold text-xs text-brand-600">
