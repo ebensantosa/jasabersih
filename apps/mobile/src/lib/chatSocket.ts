@@ -38,6 +38,7 @@ export type ChatMessage = {
   content: string;
   attachmentUrl: string | null;
   createdAt: string;
+  readAt?: string | null;
 };
 
 export type SendResult = { ok: boolean; messageId?: string; blocked?: boolean; blockReason?: string; userMessage?: string; error?: string };

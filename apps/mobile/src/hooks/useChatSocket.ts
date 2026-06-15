@@ -22,7 +22,7 @@ export function useChatSocket(bookingId: string | undefined) {
         if (!cancelled) setMessages(items.map((m) => ({
           id: m.id, bookingId, senderId: m.senderId, recipientId: m.recipientId,
           messageType: m.messageType, content: m.content, attachmentUrl: m.attachmentUrl,
-          createdAt: m.createdAt,
+          createdAt: m.createdAt, readAt: m.readAt ?? null,
         })));
       } catch {
         // silent - connection still works
@@ -53,6 +53,15 @@ export function useChatSocket(bookingId: string | undefined) {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       typingTimerRef.current = setTimeout(() => setOtherTyping(false), 3000);
     }
+    function onRead(payload: { bookingId: string; readerId: string; readAt: string }) {
+      if (payload.bookingId !== bookingId) return;
+      // Mark semua pesan yg dikirim ke readerId (sebagai recipient) jadi read.
+      setMessages((prev) => prev.map((m) =>
+        m.recipientId === payload.readerId && !m.readAt
+          ? { ...m, readAt: payload.readAt }
+          : m,
+      ));
+    }
 
     if (socket.connected) onConnect();
     socket.on('connect', onConnect);
@@ -60,6 +69,7 @@ export function useChatSocket(bookingId: string | undefined) {
     socket.on('connect_error', onConnectError);
     socket.on('message', onMessage);
     socket.on('typing', onTyping);
+    socket.on('read', onRead);
 
     return () => {
       socket.emit('leave', { bookingId });
@@ -68,6 +78,7 @@ export function useChatSocket(bookingId: string | undefined) {
       socket.off('connect_error', onConnectError);
       socket.off('message', onMessage);
       socket.off('typing', onTyping);
+      socket.off('read', onRead);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, [bookingId]);

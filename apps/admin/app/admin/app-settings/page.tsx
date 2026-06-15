@@ -25,6 +25,7 @@ const HINT: Record<string, string> = {
   'feature.max_addresses': 'Max alamat tersimpan per user.',
   'hero.subtitle': 'Subtitle di home hero.',
   'hero.cta_label': 'CTA button label di hero.',
+  'safety.chat_banner': 'Teks peringatan di banner kuning chat. Edit utk update reward/kalimat peringatan share kontak luar app.',
   'home.cta_image_url': 'Gambar/GIF icon di card "Bersih Full Custom" di home. Recommended ukuran 112×112 atau persegi. Support GIF animated.',
   'home.cta_animated': 'Aktifkan animasi pulse di tombol panah CTA (true/false).',
   'app.play_store_url': 'URL Google Play Store (https://play.google.com/store/apps/details?id=...). Dipakai di referral landing & banner download.',

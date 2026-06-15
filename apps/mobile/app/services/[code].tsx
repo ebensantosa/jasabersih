@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Clock, Wallet } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -124,10 +124,10 @@ export default function ServiceDetail() {
               colors={['rgba(0,0,0,0.5)', 'transparent']}
               style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 90 }}
             />
-            {/* Bottom gradient untuk text overlay */}
+            {/* Bottom gradient (blue-green, samain dgn home hero) untuk text overlay */}
             <LinearGradient
-              colors={['transparent', 'rgba(11,42,111,0.7)']}
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 }}
+              colors={['transparent', 'rgba(30,58,138,0.55)', 'rgba(4,120,87,0.75)']}
+              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 }}
             />
 
             {/* Top action bar */}
@@ -150,7 +150,11 @@ export default function ServiceDetail() {
                   style={{ backgroundColor: category.iconBg }}
                   className="h-9 w-9 items-center justify-center rounded-xl"
                 >
-                  <category.icon color={category.iconColor} size={18} strokeWidth={2.2} />
+                  {category.customIconUrl ? (
+                    <Image source={{ uri: category.customIconUrl }} style={{ width: 22, height: 22 }} contentFit="contain" />
+                  ) : (
+                    <category.icon color={category.iconColor} size={18} strokeWidth={2.2} />
+                  )}
                 </View>
                 <View className="flex-1">
                   <Text className="font-bold text-xl text-white" numberOfLines={1}>
@@ -188,8 +192,14 @@ export default function ServiceDetail() {
 
             <View className="mt-4 gap-2.5" style={category.isActive === false ? { opacity: 0.5 } : undefined} pointerEvents={category.isActive === false ? 'none' : 'auto'}>
               <ModeCard
-                renderIcon={() => <Wallet color="#1D4ED8" size={26} strokeWidth={2.2} />}
-                iconBg="#DBEAFE"
+                renderIcon={() =>
+                  category.customIconUrl ? (
+                    <Image source={{ uri: category.customIconUrl }} style={{ width: 26, height: 26 }} contentFit="contain" />
+                  ) : (
+                    <category.icon color={category.iconColor} size={26} strokeWidth={2.2} />
+                  )
+                }
+                iconBg={category.iconBg}
                 title="Per Ruangan"
                 tagline="Harga tetap"
                 tag="Paling Populer"

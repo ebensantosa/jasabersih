@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, Check, CheckCheck, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -20,6 +20,7 @@ import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { useBookingsStore } from '../../src/stores/bookings';
+import { useConfig } from '../../src/stores/appContent';
 
 // Decode JWT (no verify, just extract `sub` claim) to get current user id.
 function decodeJwtSub(token: string | undefined): string | null {
@@ -318,21 +319,9 @@ function Chat() {
           </Pressable>
         )}
 
-        {/* Safety banner + Report button */}
-        <View className="flex-row items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">
-          <ShieldAlert color="#92400E" size={14} />
-          <View className="flex-1">
-            <Text className="font-sans text-[11px] text-amber-900">
-              Dilarang share <Text className="font-bold">no HP, WA, transfer bank</Text> di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app - dapat <Text className="font-bold">voucher Rp 50.000</Text>.
-            </Text>
-            <Pressable
-              onPress={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })}
-              className="mt-1.5 self-start rounded-md bg-amber-200 px-2 py-1"
-            >
-              <Text className="font-bold text-[10px] text-amber-900">🚩 Lapor Cleaner</Text>
-            </Pressable>
-          </View>
-        </View>
+        {/* Safety banner + Report button. Teks bisa diubah admin via app_config
+            key 'safety.chat_banner' (fallback ke default kalau gak ke-set). */}
+        <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />
 
         <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ padding: 16, gap: 8 }} showsVerticalScrollIndicator={false}>
           {messages.length === 0 ? (
@@ -347,6 +336,7 @@ function Chat() {
               time={new Date(m.createdAt).getTime()}
               messageType={m.messageType}
               attachmentUrl={m.attachmentUrl}
+              readAt={m.readAt}
               onImagePress={(url) => setPreviewPhoto(url)}
             />
           ))}
@@ -490,6 +480,7 @@ function Bubble({
   time,
   messageType,
   attachmentUrl,
+  readAt,
   onImagePress,
 }: {
   isMe: boolean;
@@ -497,6 +488,7 @@ function Bubble({
   time: number;
   messageType?: string;
   attachmentUrl?: string | null;
+  readAt?: string | null;
   onImagePress?: (url: string) => void;
 }) {
   const t = new Date(time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -520,7 +512,34 @@ function Bubble({
           <Text className={`font-sans text-sm ${isMe ? 'text-white' : 'text-ink-800'}`}>{text}</Text>
         </View>
       )}
-      <Text className="font-sans mx-1 mt-0.5 text-[10px] text-ink-400">{t}</Text>
+      <View className="mx-1 mt-0.5 flex-row items-center gap-1">
+        <Text className="font-sans text-[10px] text-ink-400">{t}</Text>
+        {isMe && (
+          readAt
+            ? <CheckCheck color="#1D4ED8" size={12} strokeWidth={2.4} />
+            : <Check color="#94A3B8" size={12} strokeWidth={2.4} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+// Banner peringatan share kontak. Teks default + bisa override via
+// app_config key 'safety.chat_banner' (set di admin > App Settings).
+function SafetyBanner({ onReport }: { onReport: () => void }) {
+  const text = useConfig(
+    'safety.chat_banner' as any,
+    'Dilarang share no HP, WA, transfer bank di chat. Lapor cleaner yang nanya nomor pribadi atau ajak transfer luar app - dapat voucher Rp 50.000.',
+  ) as string;
+  return (
+    <View className="flex-row items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">
+      <ShieldAlert color="#92400E" size={14} />
+      <View className="flex-1">
+        <Text className="font-sans text-[11px] text-amber-900">{text}</Text>
+        <Pressable onPress={onReport} className="mt-1.5 self-start rounded-md bg-amber-200 px-2 py-1">
+          <Text className="font-bold text-[10px] text-amber-900">🚩 Lapor Cleaner</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

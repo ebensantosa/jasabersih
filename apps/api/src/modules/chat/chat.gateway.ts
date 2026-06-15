@@ -229,6 +229,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!body?.bookingId) return;
     client.to(roomName(body.bookingId)).emit('typing', { userId: client.data.userId, typing: !!body.typing });
   }
+
+  // Called dari ChatController.markRead() utk push real-time read receipt ke sender.
+  broadcastRead(bookingId: string, readerId: string): void {
+    this.server.to(roomName(bookingId)).emit('read', { bookingId, readerId, readAt: new Date().toISOString() });
+  }
 }
 
 function roomName(bookingId: string): string {

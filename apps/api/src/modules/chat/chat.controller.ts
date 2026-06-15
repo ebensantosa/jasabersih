@@ -6,13 +6,18 @@ import { PrismaService } from '../../common/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { StorageService } from '../storage/storage.service';
+import { ChatGateway } from './chat.gateway';
 
 @ApiTags('chat')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+    private readonly gateway: ChatGateway,
+  ) {}
 
   // Presign upload URL untuk foto chat. Cuma participant booking yg boleh.
   @Post('booking/:id/image-upload-url')
@@ -93,6 +98,9 @@ export class ChatController {
          AND recipient_id = ${req.user.id}::uuid
          AND read_at IS NULL
     `;
+    // Broadcast 'read' event ke room booking supaya sender bisa langsung update
+    // checkmark jadi double-check biru (real-time read receipt).
+    this.gateway.broadcastRead(id, req.user.id);
     return { ok: true };
   }
 
@@ -117,7 +125,7 @@ export class ChatController {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, sender_id AS "senderId", recipient_id AS "recipientId",
              message_type AS "messageType", content, attachment_url AS "attachmentUrl",
-             status, created_at AS "createdAt"
+             status, created_at AS "createdAt", read_at AS "readAt"
         FROM chat_messages
        WHERE booking_id = ${id}::uuid
          AND status != 'blocked'
