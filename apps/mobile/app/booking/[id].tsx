@@ -767,7 +767,7 @@ function BookingDetail() {
 
           {!booking.id.startsWith('bk_') && booking.status !== 'searching' && (
             <View className="mx-4 mt-3">
-              <BookingTimeline bookingId={booking.id} />
+              <BookingTimeline bookingId={booking.id} status={booking.status} />
             </View>
           )}
 

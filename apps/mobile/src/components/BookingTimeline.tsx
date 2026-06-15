@@ -28,17 +28,21 @@ function fmt(t: string | null): string {
   return new Date(t).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export function BookingTimeline({ bookingId }: { bookingId: string }) {
+export function BookingTimeline({ bookingId, status }: { bookingId: string; status?: string }) {
   const [data, setData] = useState<ServerBooking | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Re-fetch tiap status berubah supaya timeline sinkron dgn UI stepper di atasnya.
+  // Sebelumnya cuma fetch sekali per mount -> kalau cleaner advance status,
+  // timeline masih nampilin state lama sampai user back+masuk lagi.
   useEffect(() => {
     if (bookingId.startsWith('bk_')) { setLoading(false); return; }
+    setLoading(true);
     api.get(`/bookings/${bookingId}`)
       .then((r) => setData((r.data?.data ?? r.data) as ServerBooking))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [bookingId]);
+  }, [bookingId, status]);
 
   if (loading) {
     return <View className="items-center py-4"><ActivityIndicator size="small" color="#94A3B8" /></View>;
