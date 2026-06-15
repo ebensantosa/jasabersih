@@ -11,7 +11,7 @@ export default function SuspendedScreen() {
   const router = useRouter();
   const { reason, until, kind } = useLocalSearchParams<{ reason?: string; until?: string; kind?: 'suspended' | 'banned' | 'deleted' }>();
   const logout = useAuthStore((s) => s.logout);
-  const waNumber = useConfig('contact.whatsapp', '6281234567890');
+  const waNumber = useConfig('contact.whatsapp', '6285124363374');
   const csEmail = useConfig('contact.email', 'cs@jasabersih.com');
 
   const isBanned = kind === 'banned';

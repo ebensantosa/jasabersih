@@ -192,9 +192,17 @@ function BookingDetail() {
   // Saat booking belum ada di store + bukan local stub: kasih kesempatan
   // fetchOne (~1-2 detik). Tanpa loading state, user kena flash "tidak ditemukan"
   // walau sebenarnya lagi loading dari server.
+  // Loading state explicit (not timer) supaya gak race di slow network.
   const [fetchTriedAt, setFetchTriedAt] = useState(0);
   useEffect(() => { setFetchTriedAt(Date.now()); }, [id]);
-  const stillFetching = !booking && id && !id.startsWith('bk_') && (Date.now() - fetchTriedAt < 4000);
+  // Retry fetchOne sekali kalau masih kosong setelah 3 detik (kasus accept job
+  // -> store blm sync padahal server udh oke).
+  useEffect(() => {
+    if (booking || !id || id.startsWith('bk_')) return;
+    const t = setTimeout(() => { if (!useBookingsStore.getState().list.find((b) => b.id === id)) void fetchOne(id); }, 3000);
+    return () => clearTimeout(t);
+  }, [id, booking, fetchOne]);
+  const stillFetching = !booking && id && !id.startsWith('bk_') && (Date.now() - fetchTriedAt < 10000);
 
   if (!booking) {
     return (

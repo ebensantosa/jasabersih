@@ -698,7 +698,7 @@ function NewBooking() {
         </Pressable>
         <Pressable
           onPress={() => {
-            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6281234567890';
+            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
             const msg = encodeURIComponent(
               `Halo admin JasaBersih, saya mau konsultasi booking di area ${userLoc?.shortLabel ?? 'lokasi saya'} (di luar coverage). Bisa tolong dibantu?`,
             );

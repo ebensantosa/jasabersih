@@ -21,6 +21,7 @@ import { View } from 'react-native';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { IncomingJobModal } from '../src/components/IncomingJobModal';
 import { PopupRenderer } from '../src/components/PopupRenderer';
+import { OfflineBanner } from '../src/components/OfflineBanner';
 import { SuspendedOverlay } from '../src/components/SuspendedOverlay';
 import { CleanerLockOverlay } from '../src/components/CleanerLockOverlay';
 import { SplashOverlay } from '../src/components/SplashOverlay';
@@ -259,6 +260,7 @@ export default function RootLayout() {
         <Stack.Screen name="addresses/edit" />
       </Stack>
         <ToastHost />
+        <OfflineBanner />
         <UpdatePromptHost />
         <IncomingJobModal />
         <RealtimeJobModal />

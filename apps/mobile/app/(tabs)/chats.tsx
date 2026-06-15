@@ -3,7 +3,7 @@ import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthGate } from '../../src/components/AuthGate';
@@ -64,7 +64,10 @@ function ChatsScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchChats} tintColor="#1D4ED8" />}
+      >
         {/* Safety reminder */}
         <View className="mb-3 flex-row items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
           <ShieldCheck color="#B45309" size={16} strokeWidth={2.4} />

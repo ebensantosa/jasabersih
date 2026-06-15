@@ -2,12 +2,15 @@ import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Clock, Mail, MessageCircle, ShieldAlert, ShieldX, Trash2 } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { api } from '../lib/api';
 import { useConfig } from '../stores/appContent';
 import { useAuthStore } from '../stores/auth';
 import { useSuspendedStore } from '../stores/suspended';
+import { toast } from '../stores/ui';
 
 export function SuspendedOverlay() {
   const router = useRouter();
@@ -16,10 +19,30 @@ export function SuspendedOverlay() {
   const until = useSuspendedStore((s) => s.until);
   const clear = useSuspendedStore((s) => s.clear);
   const logout = useAuthStore((s) => s.logout);
-  const waNumber = useConfig('contact.whatsapp', '6281234567890');
+  const waNumber = useConfig('contact.whatsapp', '6285124363374');
   const csEmail = useConfig('contact.email', 'cs@jasabersih.com');
 
   const visible = !!kind;
+
+  // Auto-unsuspend realtime: poll /auth/me tiap 15s saat suspended/banned.
+  // Kalau admin udh unsuspend di server, request akan return 200 -> auto
+  // clear overlay tanpa perlu user logout/login lagi.
+  // Skip kalau 'deleted' (permanent, ga bakal balik).
+  useEffect(() => {
+    if (!visible || kind === 'deleted') return;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        await api.get('/auth/me');
+        if (cancelled) return;
+        // Sukses = admin udh unsuspend. Clear overlay + toast.
+        clear();
+        toast.success('Akun kamu sudah aktif kembali!');
+      } catch { /* still suspended, retry next tick */ }
+    };
+    const interval = setInterval(check, 15_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [visible, kind, clear]);
 
   if (!visible) return null;
 

@@ -232,7 +232,7 @@ export function Security() {
 
 export function Help() {
   const router = useRouter();
-  const csWaNumber = useConfig('contact.whatsapp', '6281234567890');
+  const csWaNumber = useConfig('contact.whatsapp', '6285124363374');
   return (
     <>
       <View className="rounded-2xl bg-brand-50 p-4">

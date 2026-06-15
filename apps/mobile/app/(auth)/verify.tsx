@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/stores/auth';
+import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
 
@@ -32,6 +33,7 @@ export default function Verify() {
     referralCode?: string;
   }>();
   const setTokens = useAuthStore((s) => s.setTokens);
+  const setMode = useModeStore((s) => s.setMode);
 
   const [otp, setOtp] = useState(devOtp ?? '');
   const [referralCode, setReferralCode] = useState(referralCodeParam ?? '');
@@ -64,8 +66,13 @@ export default function Verify() {
         ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
       });
       setTokens(res.data?.data ?? res.data);
+      // Sync mode store dgn role yg dipilih saat register, supaya post-verify
+      // navigate ke tab yg benar (cleaner -> /jobs, customer -> /home).
+      // Tanpa ini, cleaner stuck di home tab customer = keliatan blank.
+      const targetMode = modeParam === 'freelancer' ? 'freelancer' : 'customer';
+      setMode(targetMode);
       toast.success(`Selamat datang, ${nameParam ?? 'Pengguna'}!`);
-      router.replace('/(tabs)');
+      router.replace(targetMode === 'freelancer' ? '/(tabs)/jobs' : '/(tabs)');
     } catch (e: any) {
       const msg = e?.response?.data?.error?.message ?? (e as Error).message ?? 'Verifikasi gagal';
       toast.error(msg);

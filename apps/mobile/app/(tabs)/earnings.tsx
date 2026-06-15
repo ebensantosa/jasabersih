@@ -11,7 +11,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react-native';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
@@ -47,16 +47,21 @@ function EarningsScreen() {
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardMe, setLeaderboardMe] = useState<LeaderboardMe>({ rank: null, jobs: 0, earnings: 0 });
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Refresh wallet + leaderboard on tab focus
-  useFocusEffect(useCallback(() => {
-    void syncWallet();
-    api.get('/cleaner/leaderboard').then((r) => {
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await syncWallet();
+      const r = await api.get('/cleaner/leaderboard');
       const d = r.data?.data ?? r.data;
       setLeaderboard(Array.isArray(d?.top) ? d.top : []);
       if (d?.me) setLeaderboardMe(d.me);
-    }).catch(() => {});
-  }, [syncWallet]));
+    } catch { /* silent */ } finally { setRefreshing(false); }
+  }, [syncWallet]);
+
+  // Refresh wallet + leaderboard on tab focus
+  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
   const list = useBookingsStore((s) => s.list);
 
   const now = new Date();
@@ -88,6 +93,7 @@ function EarningsScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         style={{ marginTop: -45 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
       >
         <Pressable
           onPress={() => router.push('/cleaner/wallet')}

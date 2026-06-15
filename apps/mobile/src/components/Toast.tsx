@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, Modal, Text, View } from 'react-native';
 
 import { useUIStore, type ToastKind } from '../stores/ui';
 
@@ -34,28 +34,34 @@ export function ToastHost() {
   const c = COLORS[t.kind];
   const Icon = c.icon;
 
+  // Wrap di Modal (transparent + statusBarTranslucent) supaya toast nampil di
+  // native layer paling atas - di atas semua Modal lain (konfirmasi, sheet,
+  // dll). Tanpa ini toast keimpit di bawah Modal apapun karena RN Modal
+  // adalah window layer terpisah dari React tree.
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 60,
-        left: 16,
-        right: 16,
-        zIndex: 9999,
-        opacity,
-        transform: [{ translateY }],
-      }}
-    >
-      <View
-        className="flex-row items-center gap-2 rounded-2xl px-4 py-3"
-        style={{ backgroundColor: c.bg, elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10 }}
+    <Modal transparent statusBarTranslucent animationType="none" visible={true} onRequestClose={() => {}}>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 60,
+          left: 16,
+          right: 16,
+          zIndex: 9999,
+          opacity,
+          transform: [{ translateY }],
+        }}
       >
-        <Icon color={c.fg} size={18} strokeWidth={2.4} />
-        <Text className="font-semibold flex-1 text-sm" style={{ color: c.fg }}>
-          {t.message}
-        </Text>
-      </View>
-    </Animated.View>
+        <View
+          className="flex-row items-center gap-2 rounded-2xl px-4 py-3"
+          style={{ backgroundColor: c.bg, elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10 }}
+        >
+          <Icon color={c.fg} size={18} strokeWidth={2.4} />
+          <Text className="font-semibold flex-1 text-sm" style={{ color: c.fg }}>
+            {t.message}
+          </Text>
+        </View>
+      </Animated.View>
+    </Modal>
   );
 }
