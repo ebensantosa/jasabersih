@@ -85,7 +85,7 @@ function BookingsTab() {
             <tbody>
               {list.map((b) => (
                 <tr key={b.bookingId} className="border-t hover:bg-slate-50">
-                  <td className="px-4 py-2 font-mono text-xs">{b.bookingId.slice(0, 8)}…<div className="text-[10px] text-slate-500">{b.bookingStatus}</div></td>
+                  <td className="px-4 py-2 font-mono text-xs">{b.bookingId?.slice(0, 8) ?? '—'}…<div className="text-[10px] text-slate-500">{b.bookingStatus}</div></td>
                   <td className="px-4 py-2"><div className="font-medium">{b.customerName ?? '—'}</div><div className="text-xs text-slate-500">{b.customerPhone}</div></td>
                   <td className="px-4 py-2"><div className="font-medium">{b.cleanerName ?? '—'}</div><div className="text-xs text-slate-500">{b.cleanerPhone ?? '—'}</div></td>
                   <td className="px-4 py-2 text-xs">{b.serviceName ?? '—'}</td>

@@ -705,8 +705,8 @@ function AssignModal({
     const q = search.trim().toLowerCase();
     if (!q) return cleaners;
     return cleaners.filter((c) =>
-      c.name.toLowerCase().includes(q) ||
-      c.id.toLowerCase().includes(q) ||
+      (c.name ?? '').toLowerCase().includes(q) ||
+      (c.id ?? '').toLowerCase().includes(q) ||
       (c.phone ?? '').toLowerCase().includes(q),
     );
   }, [cleaners, search]);
@@ -806,7 +806,7 @@ function AssignModal({
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-semibold">{c.name}</span>
-                <span className="font-mono text-[10px] text-slate-400">#{c.id.slice(0, 8)}</span>
+                <span className="font-mono text-[10px] text-slate-400">#{c.id?.slice(0, 8) ?? '—'}</span>
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
                 {c.rating != null && <span>⭐ {Number(c.rating).toFixed(1)}</span>}
