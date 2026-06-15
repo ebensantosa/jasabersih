@@ -231,17 +231,21 @@ function BookingDetail() {
   // backend kirim status baru yg belum di-map).
   const color = STATUS_COLOR[booking.status] ?? { bg: '#F1F5F9', fg: '#475569' };
 
-  // Live searching countdown derivations (cheap, no hooks)
-  const elapsedSec = booking.status === 'searching' ? Math.floor((now - booking.createdAt) / 1000) : 0;
+  // Live searching countdown derivations. PENTING: guard NaN.
+  // booking.createdAt bisa undefined kalau sync incomplete -> elapsedSec=NaN ->
+  // turunannya semua NaN -> CSS width: NaN% crash RN.
+  const safeCreatedAt = Number.isFinite(booking.createdAt) ? booking.createdAt : now;
+  const elapsedSec = booking.status === 'searching' ? Math.max(0, Math.floor((now - safeCreatedAt) / 1000)) : 0;
   const remainingSec = Math.max(0, SEARCH_TIMEOUT_SEC - elapsedSec);
   const minLeft = Math.floor(remainingSec / 60);
   const secLeft = remainingSec % 60;
   const searchTimeout = booking.status === 'searching' && remainingSec === 0;
 
-  // Free cancel window countdown (10s setelah bayar)
-  const paidElapsedSec = booking.paidAt ? Math.floor((now - booking.paidAt) / 1000) : 0;
+  // Free cancel window countdown (10s setelah bayar). Guard NaN juga.
+  const safePaidAt = Number.isFinite(booking.paidAt) ? booking.paidAt : 0;
+  const paidElapsedSec = safePaidAt ? Math.max(0, Math.floor((now - safePaidAt) / 1000)) : 0;
   const freeCancelLeft = Math.max(0, FREE_CANCEL_WINDOW_SEC - paidElapsedSec);
-  const inFreeCancelWindow = booking.paidAt && freeCancelLeft > 0;
+  const inFreeCancelWindow = !!safePaidAt && freeCancelLeft > 0;
 
   // Policy cancel: 10s dari paidAt = gratis, lewat itu kena 25%.
   // (Production: window 5 menit, sesuai PRD `08-wallet-and-withdrawal.md`)

@@ -26,11 +26,14 @@ type Props = {
  * - Slow rotate (8s loop) - barely consumes CPU
  */
 export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo }: Props) {
-  const remainingSec = Math.max(0, timeoutSec - elapsedSec);
+  // Defense in depth: guard NaN/Infinity propagation ke style width yg bikin crash.
+  const safeElapsed = Number.isFinite(elapsedSec) ? Math.max(0, elapsedSec) : 0;
+  const safeTimeout = Number.isFinite(timeoutSec) && timeoutSec > 0 ? timeoutSec : 15 * 60;
+  const remainingSec = Math.max(0, safeTimeout - safeElapsed);
   const minLeft = Math.floor(remainingSec / 60);
   const secLeft = remainingSec % 60;
-  const elapsedMin = Math.floor(elapsedSec / 60);
-  const progressPct = Math.min(100, (elapsedSec / timeoutSec) * 100);
+  const elapsedMin = Math.floor(safeElapsed / 60);
+  const progressPct = Math.max(0, Math.min(100, (safeElapsed / safeTimeout) * 100));
   const statusMsg = [...STATUS_MESSAGES].reverse().find((s) => elapsedMin >= s.min)?.text ?? STATUS_MESSAGES[0].text;
 
   const pulse1 = useRef(new Animated.Value(0)).current;
@@ -115,7 +118,7 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
               Sudah berlalu
             </Text>
             <Text style={{ color: 'white', fontSize: 18, fontFamily: 'Inter_800ExtraBold', marginTop: 2 }}>
-              {elapsedMin}m {elapsedSec % 60}s
+              {elapsedMin}m {safeElapsed % 60}s
             </Text>
           </View>
         </View>
