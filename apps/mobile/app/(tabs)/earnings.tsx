@@ -78,17 +78,16 @@ function EarningsScreen() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      {/* Hero gradient lebih tinggi - jadi background floating untuk saldo card */}
+      {/* Hero compact - cuma title + bulan. No overlap, card di bawah. */}
       <LinearGradient
         colors={['#1E3A8A', '#047857', '#0E7490']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ paddingBottom: 90 }}
+        style={{ paddingBottom: 18 }}
       >
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-        <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-        <View pointerEvents="none" style={{ position: 'absolute', top: 30, left: -50, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' }} />
-        <View pointerEvents="none" style={{ position: 'absolute', top: 80, right: 60, width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: -10, left: -30, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
             <Text className="font-extrabold text-xl text-white" style={{ letterSpacing: -0.3 }}>Pendapatan</Text>
@@ -100,29 +99,28 @@ function EarningsScreen() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
-        style={{ marginTop: -70 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
       >
-        {/* Saldo card floating - 1 gradient card, balance dominan, action chevron
-            di pojok. Tap area = full card. Gak ada lagi white pill numpuk. */}
+        {/* Saldo card - posisinya di bawah hero penuh, gak ada overlap.
+            Shadow tebal kasih kesan flying. */}
         <Pressable
           onPress={() => router.push('/cleaner/wallet')}
           className="mx-4 overflow-hidden rounded-3xl"
           style={{
-            elevation: 12,
+            elevation: 10,
             shadowColor: '#0B2A6F',
-            shadowOpacity: 0.28,
-            shadowRadius: 20,
-            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.22,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 6 },
           }}
         >
           <LinearGradient
             colors={['#1E3A8A', '#047857']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={{ paddingHorizontal: 22, paddingVertical: 22 }}
+            style={{ paddingHorizontal: 22, paddingTop: 20, paddingBottom: 20 }}
           >
             <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.08)' }} />
             <View pointerEvents="none" style={{ position: 'absolute', bottom: -30, left: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
@@ -139,8 +137,8 @@ function EarningsScreen() {
               </View>
             </View>
 
-            <View className="mt-4 self-start flex-row items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
-              <Text className="font-bold text-[11px] text-white">Tap untuk Tarik Saldo</Text>
+            <View className="mt-3 self-start flex-row items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5">
+              <Text className="font-bold text-[11px] text-white">Tarik Saldo</Text>
               <Text className="font-bold text-white">›</Text>
             </View>
           </LinearGradient>
