@@ -36,7 +36,7 @@ module.exports = {
     version: '1.3.3',
     scheme: 'jasabersih',
     orientation: 'default',
-    userInterfaceStyle: 'automatic',
+    userInterfaceStyle: 'light',
     newArchEnabled: true,
     icon: './assets/icon.png',
     splash: {
