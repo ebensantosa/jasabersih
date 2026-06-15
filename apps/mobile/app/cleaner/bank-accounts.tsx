@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, Plus, Smartphone, Star, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -122,23 +122,35 @@ function CleanerBankAccounts() {
     }
   }
 
+  async function doRemove(acc: BankAccount) {
+    try {
+      await api.delete(`/cleaner/bank-accounts/${acc.id}`);
+      toast.success('Rekening dihapus');
+      void load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal hapus');
+    }
+  }
+
   async function remove(acc: BankAccount) {
-    Alert.alert('Hapus rekening?', `${acc.bankCode.toUpperCase()} ${acc.accountNumber}`, [
-      { text: 'Batal' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/cleaner/bank-accounts/${acc.id}`);
-            toast.success('Rekening dihapus');
-            void load();
-          } catch (e: any) {
-            toast.error(e?.response?.data?.error?.message ?? 'Gagal hapus');
-          }
-        },
-      },
-    ]);
+    const isEwallet = EWALLET_CODES.has(acc.bankCode);
+    const label = `${isEwallet ? 'e-wallet' : 'rekening'} ${acc.bankCode.toUpperCase()} ${acc.accountNumber}`;
+    // Alert.alert RN gak jalan di web build. Pakai window.confirm di web,
+    // Alert di native. Memastikan delete bisa di-trigger di semua platform.
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(`Hapus ${label}?`)) {
+        await doRemove(acc);
+      }
+      return;
+    }
+    Alert.alert(
+      `Hapus ${isEwallet ? 'E-Wallet' : 'Rekening'}?`,
+      `${acc.bankCode.toUpperCase()} - ${acc.accountNumber}\n${acc.accountHolderName}`,
+      [
+        { text: 'Batal' },
+        { text: 'Hapus', style: 'destructive', onPress: () => void doRemove(acc) },
+      ],
+    );
   }
 
   return (
