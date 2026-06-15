@@ -269,12 +269,29 @@ export class FlipService {
     const c = await this.getCreds();
     if (!c.enabled) throw new BadRequestException('Layanan pembayaran belum di-enable. Cek App Settings.');
     if (!c.secretKey) throw new BadRequestException('Kredensial pembayaran kosong. Cek App Settings.');
+    const bankCode = input.bankCode.toLowerCase();
+    const ewallets = new Set(['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja']);
+    const isEwallet = ewallets.has(bankCode);
+
+    // Normalize account number untuk e-wallet -> harus format 628xxx (Flip
+    // requirement). User mungkin input 08xxx atau +628xxx.
+    let accountNumber = input.accountNumber.trim();
+    if (isEwallet) {
+      accountNumber = accountNumber.replace(/\D/g, '');
+      if (accountNumber.startsWith('0')) accountNumber = '62' + accountNumber.slice(1);
+      else if (accountNumber.startsWith('8')) accountNumber = '62' + accountNumber;
+    }
+
     const form = new URLSearchParams();
-    form.set('account_number', input.accountNumber);
-    form.set('bank_code', input.bankCode.toLowerCase());
+    form.set('account_number', accountNumber);
+    form.set('bank_code', bankCode);
     form.set('amount', String(input.amount));
     form.set('remark', input.remark ?? 'JasaBersih withdrawal');
-    form.set('recipient_city', '391'); // default Jakarta; Flip akan validate
+    // recipient_city cuma diperlukan untuk bank, e-wallet gak butuh.
+    if (!isEwallet) form.set('recipient_city', '391');
+    // Beneficiary name required Flip utk semua disbursement, terutama e-wallet.
+    form.set('beneficiary_name', input.accountHolderName);
+
     const res = await fetch(`${c.disbursementBaseUrl}/disbursement`, {
       method: 'POST',
       headers: {
@@ -286,8 +303,19 @@ export class FlipService {
     });
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
-      this.log.error(`flip disbursement failed (status=${res.status}): ${JSON.stringify(json)}`);
-      throw new BadRequestException(json?.message ?? `Transfer gagal (${res.status})`);
+      this.log.error(`flip disbursement failed (status=${res.status}, bank=${bankCode}): ${JSON.stringify(json)}`);
+      // Surfacing Flip error message yg lebih detail ke user
+      const flipMsg = json?.message ?? json?.error ?? json?.errors?.[0]?.message;
+      if (flipMsg) {
+        throw new BadRequestException(`${flipMsg} (Flip)`);
+      }
+      // Common 422 = merchant belum enable e-wallet disbursement di Flip dashboard
+      if (res.status === 422 && isEwallet) {
+        throw new BadRequestException(
+          `Disbursement ke ${bankCode.toUpperCase()} belum aktif di akun Flip. Admin perlu enable e-wallet disbursement di Flip dashboard (Settings -> Disbursement -> E-wallet) atau pakai bank biasa dulu.`,
+        );
+      }
+      throw new BadRequestException(`Transfer gagal (${res.status}). Cek log server utk detail Flip response.`);
     }
     return json; // contains: id, status ("PENDING"|"DONE"|"FAILED"|"CANCELLED"), timestamp, etc.
   }
