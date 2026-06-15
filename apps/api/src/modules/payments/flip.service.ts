@@ -286,7 +286,11 @@ export class FlipService {
     form.set('account_number', accountNumber);
     form.set('bank_code', bankCode);
     form.set('amount', String(input.amount));
-    form.set('remark', input.remark ?? 'JasaBersih withdrawal');
+    // Flip limit remark max 18 char. 'JasaBersih withdrawal' = 21 (reject).
+    // Truncate input.remark + fallback ke 'JasaBersih Tarik' (16 char).
+    const remarkRaw = input.remark ?? 'JasaBersih Tarik';
+    const remark = remarkRaw.slice(0, 18);
+    form.set('remark', remark);
     // recipient_city cuma diperlukan untuk bank, e-wallet gak butuh.
     if (!isEwallet) form.set('recipient_city', '391');
     // Beneficiary name required Flip utk semua disbursement, terutama e-wallet.

@@ -354,7 +354,8 @@ export class CleanerWalletController {
           bankCode: ba[0]!.bank_code,
           accountNumber: ba[0]!.account_number,
           accountHolderName: ba[0]!.account_holder_name,
-          remark: 'JasaBersih withdrawal',
+          // Flip limit remark max 18 char. 'JasaBersih withdrawal' (21) = reject.
+          remark: 'JasaBersih Tarik',
           idempotencyKey: wd[0]!.flip_idempotency_key,
         });
         const flipId = String(result?.id ?? '');
