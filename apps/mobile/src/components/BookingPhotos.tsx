@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Lock } from 'lucide-react-native';
+import { Camera, Download, Lock, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
 import { toast } from '../stores/ui';
@@ -13,6 +13,10 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [uploading, setUploading] = useState<'before' | 'after' | 'damage' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState<string | null>(null);
+  // Damage requires reason text - input modal before pick photo.
+  const [damageReason, setDamageReason] = useState('');
+  const [damageInputOpen, setDamageInputOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -29,6 +33,11 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
     // Guard: after harus setelah before (urutan flow yg benar)
     if (type === 'after' && beforePhotosCount === 0) {
       toast.warning('Upload foto SEBELUM dulu, baru bisa upload foto SESUDAH.');
+      return;
+    }
+    // Damage: wajib isi deskripsi alasan dulu sebelum pick foto.
+    if (type === 'damage' && damageReason.trim().length < 10) {
+      setDamageInputOpen(true);
       return;
     }
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -54,8 +63,13 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
       const blob = await fileRes.blob();
       const putRes = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'content-type': 'image/jpeg' } });
       if (!putRes.ok) throw new Error(`Upload gagal (HTTP ${putRes.status}). Cek koneksi.`);
-      await api.post(`/cleaner/jobs/${bookingId}/photos`, { photoType: type, storagePath: key });
+      await api.post(`/cleaner/jobs/${bookingId}/photos`, {
+        photoType: type,
+        storagePath: key,
+        ...(type === 'damage' ? { description: damageReason.trim() } : {}),
+      });
       toast.success(`Foto ${type === 'before' ? 'sebelum' : type === 'after' ? 'sesudah' : 'kerusakan'} ter-upload (${formatBytes(compressed.size)})`);
+      if (type === 'damage') setDamageReason('');
       void load();
     } catch (e: any) {
       const status = e?.response?.status;
@@ -104,9 +118,26 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
         </View>
       )}
 
-      {beforePhotos.length > 0 && <PhotoRow label="Sebelum" photos={beforePhotos} />}
-      {afterPhotos.length > 0 && <PhotoRow label="Sesudah" photos={afterPhotos} />}
-      {damagePhotos.length > 0 && <PhotoRow label="Kerusakan" photos={damagePhotos} />}
+      {beforePhotos.length > 0 && <PhotoRow label="Sebelum" photos={beforePhotos} onPress={setPreview} />}
+      {afterPhotos.length > 0 && <PhotoRow label="Sesudah" photos={afterPhotos} onPress={setPreview} />}
+      {damagePhotos.length > 0 && <PhotoRow label="Kerusakan" photos={damagePhotos} onPress={setPreview} />}
+
+      {preview && <PhotoPreviewModal url={preview} onClose={() => setPreview(null)} />}
+      {damageInputOpen && (
+        <DamageReasonModal
+          value={damageReason}
+          onChange={setDamageReason}
+          onCancel={() => { setDamageReason(''); setDamageInputOpen(false); }}
+          onConfirm={() => {
+            if (damageReason.trim().length < 10) {
+              toast.warning('Min 10 karakter');
+              return;
+            }
+            setDamageInputOpen(false);
+            void pickAndUpload('damage');
+          }}
+        />
+      )}
 
       {photos.length === 0 && !canUpload && !loading && (
         <Text className="font-sans text-center text-xs text-ink-500">Belum ada foto.</Text>
@@ -123,18 +154,92 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   );
 }
 
-function PhotoRow({ label, photos }: { label: string; photos: Photo[] }) {
+function PhotoRow({ label, photos, onPress }: { label: string; photos: Photo[]; onPress: (url: string) => void }) {
   return (
     <View className="mb-3">
       <Text className="font-semibold mb-1 text-[11px] uppercase tracking-wider text-ink-500">{label} ({photos.length})</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className="flex-row gap-2">
           {photos.map((p) => (
-            <Image key={p.id} source={{ uri: p.url }} style={{ width: 100, height: 100, borderRadius: 8 }} contentFit="cover" />
+            <Pressable key={p.id} onPress={() => onPress(p.url)}>
+              <Image source={{ uri: p.url }} style={{ width: 100, height: 100, borderRadius: 8 }} contentFit="cover" />
+            </Pressable>
           ))}
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+// Fullscreen preview + download button. Pakai expo-file-system + MediaLibrary
+// supaya foto bisa di-save ke gallery user.
+function PhotoPreviewModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const [downloading, setDownloading] = useState(false);
+  async function download() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const Linking = await import('expo-linking');
+      await Linking.openURL(url);
+      toast.success('Buka di browser - tahan & pilih "Simpan gambar"');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal buka foto');
+    } finally {
+      setDownloading(false);
+    }
+  }
+  return (
+    <Modal transparent statusBarTranslucent visible animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' }}>
+        <Image source={{ uri: url }} style={{ width: '95%', height: '75%' }} contentFit="contain" />
+        <View className="absolute bottom-12 flex-row gap-3">
+          <Pressable onPress={download} disabled={downloading} className="flex-row items-center gap-2 rounded-full bg-white px-4 py-2.5">
+            {downloading ? <ActivityIndicator size="small" color="#1D4ED8" /> : <Download color="#1D4ED8" size={16} strokeWidth={2.4} />}
+            <Text className="font-bold text-sm text-brand-700">{downloading ? 'Menyimpan…' : 'Simpan ke Galeri'}</Text>
+          </Pressable>
+          <Pressable onPress={onClose} className="h-11 w-11 items-center justify-center rounded-full bg-white/20">
+            <X color="white" size={20} />
+          </Pressable>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// Modal input deskripsi kerusakan. Wajib min 10 char sebelum bisa pick foto.
+function DamageReasonModal({ value, onChange, onCancel, onConfirm }: {
+  value: string; onChange: (v: string) => void; onCancel: () => void; onConfirm: () => void;
+}) {
+  return (
+    <Modal transparent statusBarTranslucent visible animationType="fade" onRequestClose={onCancel}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <View className="w-full rounded-2xl bg-white p-5">
+          <Text className="font-bold text-base text-ink-900">Deskripsi Kerusakan</Text>
+          <Text className="font-sans mt-1 text-[12px] text-ink-600">
+            Jelaskan apa yang rusak / hilang & kondisinya. Foto saja gak cukup untuk admin review sengketa.
+          </Text>
+          <TextInput
+            value={value}
+            onChangeText={onChange}
+            multiline
+            textAlignVertical="top"
+            placeholder="Contoh: vas keramik di meja ruang tamu terjatuh saat angkat karpet, bagian leher pecah. Tidak ada barang lain yang rusak."
+            placeholderTextColor="#94A3B8"
+            className="font-sans mt-3 rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-900"
+            style={{ minHeight: 110 }}
+          />
+          <Text className="font-medium mt-1 text-[10px] text-ink-400">{value.length} / min 10 karakter</Text>
+          <View className="mt-4 flex-row gap-2">
+            <Pressable onPress={onCancel} className="flex-1 items-center rounded-xl border border-ink-300 py-3">
+              <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+            </Pressable>
+            <Pressable onPress={onConfirm} className="flex-1 items-center rounded-xl bg-brand-600 py-3">
+              <Text className="font-bold text-sm text-white">Lanjut Pilih Foto</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 

@@ -107,16 +107,24 @@ function ReportCleanerScreen() {
           </View>
 
           <View className="rounded-2xl bg-white p-4">
-            <Text className="font-bold mb-2 text-sm text-ink-900">Catatan / Detail</Text>
+            <Text className="font-bold mb-1 text-sm text-ink-900">Detail Kronologi</Text>
+            <Text className="font-sans mb-2 text-[11px] leading-4 text-ink-500">
+              Format yang disarankan (isi sebanyak yang kamu tahu):
+              {'\n'}{'•'} Kapan kejadian terjadi
+              {'\n'}{'•'} Apa yang dikatakan cleaner / customer
+              {'\n'}{'•'} Apa yang kamu lakukan / minta
+              {'\n'}{'•'} Bukti pendukung (screenshot/foto kalau ada)
+            </Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="Jelaskan apa yang terjadi (opsional, makin lengkap makin gampang di-verify)"
+              placeholder={'{Kronologi singkat}\n\nWaktu: ...\nLokasi: ...\nKejadian: ...\nBukti: ...'}
               multiline
-              numberOfLines={4}
-              className="rounded-xl border border-ink-200 bg-white px-3 py-2.5 font-sans text-sm text-ink-900"
-              style={{ minHeight: 100, textAlignVertical: 'top' }}
+              numberOfLines={6}
+              className="rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 font-sans text-sm text-ink-900"
+              style={{ minHeight: 140, textAlignVertical: 'top' }}
             />
+            <Text className="font-medium mt-1 text-[10px] text-ink-400">{description.length} karakter</Text>
           </View>
 
           <Pressable

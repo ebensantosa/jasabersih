@@ -48,9 +48,14 @@ export class CleanerJobsController {
   async addPhoto(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { photoType: 'before' | 'after' | 'damage'; storagePath: string },
+    @Body() body: { photoType: 'before' | 'after' | 'damage'; storagePath: string; description?: string },
   ) {
     if (!body?.storagePath) throw new BadRequestException('storagePath wajib.');
+    // Damage WAJIB punya deskripsi alasan (min 10 char). Foto aja gak cukup
+    // konteks utk admin/customer review sengketa.
+    if (body.photoType === 'damage' && (!body.description || body.description.trim().length < 10)) {
+      throw new BadRequestException('Deskripsi kerusakan wajib (min 10 karakter).');
+    }
     const owns = await this.prisma.$queryRaw<{ id: string; status: string }[]>`
       SELECT id, status FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
     `;
@@ -59,8 +64,8 @@ export class CleanerJobsController {
       throw new BadRequestException('Tidak bisa upload foto di status ini.');
     }
     await this.prisma.$executeRaw`
-      INSERT INTO booking_photos (booking_id, photo_type, uploaded_by, storage_path)
-      VALUES (${id}::uuid, ${body.photoType}, ${user.id}::uuid, ${body.storagePath})
+      INSERT INTO booking_photos (booking_id, photo_type, uploaded_by, storage_path, description)
+      VALUES (${id}::uuid, ${body.photoType}, ${user.id}::uuid, ${body.storagePath}, ${body.description ?? null})
     `;
     // Quick lookup column (untuk validasi require_after_photo / before_photo).
     if (body.photoType === 'before' || body.photoType === 'after') {
@@ -129,7 +134,7 @@ export class CleanerJobsController {
              b.scheduled_at AS "scheduledAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              s.icon_url AS "serviceIconUrl"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
@@ -166,7 +171,7 @@ export class CleanerJobsController {
       SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              pp.name AS "packageName",
              u.name AS "customerName"
         FROM bookings b
@@ -195,7 +200,7 @@ export class CleanerJobsController {
       SELECT b.id, b.status, b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
              b.address_line AS "addressLine",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              u.name AS "customerName"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
