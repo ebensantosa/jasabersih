@@ -329,7 +329,12 @@ export default function Home() {
                 <Text className="font-semibold text-[12px] text-brand-600">Lihat semua ›</Text>
               </Pressable>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ overflow: 'visible' }}
+              contentContainerStyle={{ paddingVertical: 8 }}
+            >
               <View className="flex-row gap-3 px-4">
                 {BUNDLE_SERVICES.map((s, idx) => {
                   const isDisabled = s.isActive === false;
