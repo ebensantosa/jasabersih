@@ -577,16 +577,30 @@ export class PaymentsController {
     });
   }
 
-  // List active payment channels (public — for picker UI)
+  // List active payment channels (public — for picker UI).
+  // Admin bisa nge-disable channel tertentu via app_config:
+  //   key='payment.disabled_methods', value=["BCAVA","BRIVA",...] (JSON array)
+  // Pakai saat bank/wallet partner lagi error / maintenance.
   @Get('channels')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async channels() {
     const all = await this.tripay.listChannels();
-    return all.filter((c) => c.active).map((c) => ({
-      code: c.code, name: c.name, group: c.group, type: c.type,
-      iconUrl: c.icon_url, fee: c.total_fee,
-    }));
+    const cfg = await this.prisma.$queryRaw<{ value: any }[]>`
+      SELECT value FROM app_config WHERE key = 'payment.disabled_methods' LIMIT 1
+    `;
+    let disabled: string[] = [];
+    const v = cfg[0]?.value;
+    if (Array.isArray(v)) disabled = v.filter((x: unknown) => typeof x === 'string').map((s) => String(s).toUpperCase());
+    else if (typeof v === 'string') {
+      try { const arr = JSON.parse(v); if (Array.isArray(arr)) disabled = arr.map((s: any) => String(s).toUpperCase()); } catch {}
+    }
+    return all
+      .filter((c) => c.active && !disabled.includes(String(c.code).toUpperCase()))
+      .map((c) => ({
+        code: c.code, name: c.name, group: c.group, type: c.type,
+        iconUrl: c.icon_url, fee: c.total_fee,
+      }));
   }
 
   // Create payment for a booking. Returns Tripay payment URL/instructions.
