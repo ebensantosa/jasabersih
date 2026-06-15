@@ -22,8 +22,10 @@ type BankAccount = {
   verifiedAt: string | null;
 };
 
-// Kode bank + e-wallet pakai Flip standard (lowercase).
+// Bank + e-wallet pakai Flip code standard (lowercase).
+// Coverage: konvensional besar, syariah, BPD regional, digital bank, e-wallet.
 const BANKS = [
+  // Bank konvensional besar (paling populer)
   { code: 'bca', label: 'BCA' },
   { code: 'mandiri', label: 'Mandiri' },
   { code: 'bni', label: 'BNI' },
@@ -34,12 +36,49 @@ const BANKS = [
   { code: 'danamon', label: 'Danamon' },
   { code: 'mega', label: 'Mega' },
   { code: 'btn', label: 'BTN' },
+  { code: 'panin', label: 'Panin' },
+  { code: 'ocbc', label: 'OCBC NISP' },
+  { code: 'uob', label: 'UOB' },
+  { code: 'maybank', label: 'Maybank' },
+  { code: 'btpn', label: 'BTPN' },
+  { code: 'sinarmas', label: 'Sinarmas' },
+  { code: 'bukopin', label: 'Bukopin' },
+  // Bank syariah
+  { code: 'bca_syr', label: 'BCA Syariah' },
+  { code: 'muamalat', label: 'Muamalat' },
+  { code: 'btn_syr', label: 'BTN Syariah' },
+  { code: 'mega_syr', label: 'Mega Syariah' },
+  // BPD (regional)
+  { code: 'dki', label: 'Bank DKI' },
+  { code: 'jatim', label: 'Bank Jatim' },
+  { code: 'jateng', label: 'Bank Jateng' },
+  { code: 'jabar', label: 'BJB (Jabar)' },
+  { code: 'jogja', label: 'Bank Jogja' },
+  { code: 'bali', label: 'Bank BPD Bali' },
+  { code: 'aceh', label: 'Bank Aceh' },
+  { code: 'sumut', label: 'Bank Sumut' },
+  { code: 'sumsel', label: 'Bank Sumsel Babel' },
+  { code: 'sumbar', label: 'Bank Nagari (Sumbar)' },
+  { code: 'riau', label: 'Bank Riau Kepri' },
+  { code: 'kalbar', label: 'Bank Kalbar' },
+  { code: 'kalsel', label: 'Bank Kalsel' },
+  { code: 'kaltim', label: 'Bank Kaltimtara' },
+  { code: 'sulselbar', label: 'Bank Sulselbar' },
+  { code: 'sulteng', label: 'Bank Sulteng' },
+  { code: 'sulut', label: 'Bank SulutGo' },
+  { code: 'maluku', label: 'Bank Maluku' },
+  { code: 'nusa_tenggara_barat', label: 'Bank NTB Syariah' },
+  { code: 'nusa_tenggara_timur', label: 'Bank NTT' },
+  { code: 'papua', label: 'Bank Papua' },
+  // Digital bank
   { code: 'jago', label: 'Jago' },
   { code: 'jenius', label: 'Jenius (BTPN)' },
   { code: 'seabank', label: 'SeaBank' },
   { code: 'neo', label: 'Neo Commerce' },
   { code: 'allo', label: 'Allo Bank' },
   { code: 'blu', label: 'Blu (BCA Digital)' },
+  { code: 'mestika', label: 'Mestika' },
+  // E-wallet (Flip support disbursement langsung ke wallet)
   { code: 'gopay', label: 'GoPay' },
   { code: 'ovo', label: 'OVO' },
   { code: 'dana', label: 'DANA' },

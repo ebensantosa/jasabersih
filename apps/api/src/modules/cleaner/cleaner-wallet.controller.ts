@@ -276,6 +276,21 @@ export class CleanerWalletController {
         throw new BadRequestException('Info rekening tidak lengkap. Tambah/pilih rekening terverifikasi.');
       }
 
+      // SAFEGUARD bank gangguan: refuse withdrawal kalau bank/wallet tujuan
+      // sedang DOWN. Status di-update otomatis dari Flip webhook ke
+      // app_config 'payment.bank_status'. Cek per bank code.
+      // (delayed masih boleh, transfer mungkin lambat tapi akan sukses)
+      const statusRows = await tx.$queryRaw<{ value: any }[]>`
+        SELECT value FROM app_config WHERE key = 'payment.bank_status' LIMIT 1
+      `;
+      const bankStatuses: Record<string, { status: string }> = (statusRows[0]?.value ?? {}) as any;
+      const bankStatus = bankStatuses[bankCode]?.status;
+      if (bankStatus === 'down') {
+        throw new BadRequestException(
+          `${bankCode.toUpperCase()} sedang gangguan/maintenance. Transfer akan gagal. Pilih bank/e-wallet lain atau tunggu sampai normal.`,
+        );
+      }
+
       // Hitung fee Flip + amount yang ke cleaner
       const flipFee = this.getFlipFee(bankCode, cfg);
       const transferAmount = cfg.feePayer === 'cleaner' ? body.amount - flipFee : body.amount;

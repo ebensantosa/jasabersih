@@ -58,6 +58,8 @@ function Withdraw() {
   const [verifiedAccounts, setVerifiedAccounts] = useState<VerifiedAccount[]>([]);
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+  // Live bank health status dari Flip - utk indicator + safeguard submit.
+  const [bankHealth, setBankHealth] = useState<Record<string, 'normal' | 'delayed' | 'down'>>({});
 
   useEffect(() => {
     (async () => {
@@ -74,7 +76,19 @@ function Withdraw() {
         setLoadingAccounts(false);
       }
     })();
+
+    // Fetch bank health (Flip live status)
+    api.get('/payments/bank-health').then((r) => {
+      const list: { code: string; status: 'normal' | 'delayed' | 'down' }[] = r.data?.data ?? r.data ?? [];
+      const map: Record<string, 'normal' | 'delayed' | 'down'> = {};
+      list.forEach((b) => { map[b.code] = b.status; });
+      setBankHealth(map);
+    }).catch(() => {});
   }, []);
+
+  // Cek apakah selected account lagi gangguan
+  const selectedAccount = verifiedAccounts.find((a) => a.id === selectedBankAccountId);
+  const selectedBankStatus = selectedAccount ? bankHealth[selectedAccount.bankCode.toLowerCase()] : undefined;
 
   const method = METHODS.find((m) => m.code === methodCode) ?? METHODS[0]!;
   const amount = Number(amountStr.replace(/\D/g, '')) || 0;
@@ -87,6 +101,11 @@ function Withdraw() {
     // ngetik lagi pas tarik) + cegah typo nominal rekening salah kirim ke org lain.
     if (!selectedBankAccountId) {
       toast.error('Pilih rekening tersimpan dulu. Kalau belum ada, tambah di "Kelola Rekening".');
+      return;
+    }
+    // SAFEGUARD: cegah submit kalau bank tujuan lagi DOWN.
+    if (selectedBankStatus === 'down') {
+      toast.error(`${selectedAccount?.bankCode.toUpperCase() ?? 'Bank'} sedang gangguan. Pilih rekening lain atau tunggu sampai normal.`);
       return;
     }
     const e = { amount: amount < MIN_WITHDRAW ? `Minimum tarik ${formatRupiah(MIN_WITHDRAW)}` : amount > balance ? 'Jumlah melebihi saldo' : null };
@@ -157,23 +176,43 @@ function Withdraw() {
               <View className="gap-2">
                 {verifiedAccounts.map((acc) => {
                   const selected = selectedBankAccountId === acc.id;
+                  const status = bankHealth[acc.bankCode.toLowerCase()];
+                  const isDown = status === 'down';
+                  const isDelayed = status === 'delayed';
                   return (
                     <Pressable
                       key={acc.id}
-                      onPress={() => setSelectedBankAccountId(acc.id)}
-                      className={`flex-row items-center gap-3 p-3 rounded-xl border ${selected ? 'bg-blue-50 border-blue-500' : 'bg-white border-ink-200'}`}
+                      onPress={() => !isDown && setSelectedBankAccountId(acc.id)}
+                      disabled={isDown}
+                      className={`flex-row items-center gap-3 p-3 rounded-xl border ${
+                        isDown ? 'bg-rose-50 border-rose-200 opacity-60' :
+                        selected ? 'bg-blue-50 border-blue-500' : 'bg-white border-ink-200'
+                      }`}
                     >
                       <View className={`h-9 w-9 rounded-full items-center justify-center ${selected ? 'bg-blue-600' : 'bg-blue-100'}`}>
                         <Building2 color={selected ? 'white' : '#1D4ED8'} size={18} />
                       </View>
                       <View className="flex-1">
-                        <View className="flex-row items-center gap-1">
+                        <View className="flex-row items-center gap-1.5">
                           <Text className="text-sm font-bold text-ink-900">{acc.bankCode.toUpperCase()}</Text>
-                          {acc.isDefault && <Text className="text-[10px] text-amber-600 font-semibold">★ Default</Text>}
+                          {acc.isDefault && <Text className="text-[10px] text-amber-600 font-semibold">Default</Text>}
+                          {isDown && (
+                            <View className="bg-rose-200 px-1.5 py-0.5 rounded">
+                              <Text className="text-[9px] font-bold text-rose-800">GANGGUAN</Text>
+                            </View>
+                          )}
+                          {isDelayed && (
+                            <View className="bg-amber-200 px-1.5 py-0.5 rounded">
+                              <Text className="text-[9px] font-bold text-amber-900">LAMBAT</Text>
+                            </View>
+                          )}
                         </View>
-                        <Text className="text-xs text-ink-600">{acc.accountNumber} · {acc.accountHolderName}</Text>
+                        <Text className="text-xs text-ink-600">{acc.accountNumber} - {acc.accountHolderName}</Text>
+                        {isDown && (
+                          <Text className="text-[10px] text-rose-700 mt-0.5">Bank lagi maintenance. Pilih lain.</Text>
+                        )}
                       </View>
-                      {selected && <CheckCircle2 color="#1D4ED8" size={20} />}
+                      {selected && !isDown && <CheckCircle2 color="#1D4ED8" size={20} />}
                     </Pressable>
                   );
                 })}

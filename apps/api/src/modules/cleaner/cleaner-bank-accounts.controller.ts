@@ -9,13 +9,23 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { FlipService } from '../payments/flip.service';
 
-// Codes diterima Flip disbursement: bank besar + e-wallet utama.
-// Bank: lowercase ISO-ish. E-wallet: nama wallet (gopay, ovo, dana, dst).
+// Codes diterima Flip disbursement (per https://docs.flip.id - lengkap).
+// Bank: lowercase ISO-ish. E-wallet: nama wallet.
 const ALLOWED_BANK_CODES = [
-  // Bank besar
+  // Bank konvensional besar
   'bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega',
+  'panin', 'ocbc', 'uob', 'maybank', 'btpn', 'sinarmas', 'bukopin',
+  // Bank syariah
+  'bca_syr', 'muamalat', 'btn_syr', 'mega_syr',
+  // BPD (regional)
+  'dki', 'jatim', 'jateng', 'jabar', 'jambi', 'jogja', 'bali', 'aceh',
+  'sumut', 'sumsel', 'sumbar', 'riau', 'kalbar', 'kalsel', 'kaltim',
+  'sulselbar', 'sulteng', 'sulut', 'maluku', 'nusa_tenggara_barat',
+  'nusa_tenggara_timur', 'papua',
   // Digital bank
-  'jago', 'jenius', 'seabank', 'neo', 'allo', 'blu',
+  'jago', 'jenius', 'seabank', 'neo', 'allo', 'blu', 'mestika', 'mestika_dharma',
+  // Custodian / sekuritas (jarang dipake utk penarikan tapi Flip support)
+  'commonwealth', 'bumiarta', 'multiarta', 'amar',
   // E-wallet (Flip support disbursement ke wallet)
   'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja',
 ];
