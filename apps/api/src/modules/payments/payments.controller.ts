@@ -25,6 +25,45 @@ export class PaymentsController {
   // ============ FLIP ============
 
   // Create Flip bill for a booking. Returns checkout URL (open in WebView).
+  // Manual sync status payment dari Flip - customer pull-to-refresh.
+  // Polling juga jalan via cron tiap 3 menit, ini supaya user dapat status segera.
+  @Post('flip/sync/:bookingId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async flipSyncPayment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('bookingId') bookingId: string,
+  ) {
+    const rows = await this.prisma.$queryRaw<{ id: string; status: string; flip_bill_id: string | null; user_id: string; amount: number }[]>`
+      SELECT id, status, flip_bill_id, user_id, amount FROM payments
+       WHERE booking_id = ${bookingId}::uuid AND user_id = ${user.id}::uuid
+       ORDER BY created_at DESC LIMIT 1
+    `;
+    const p = rows[0];
+    if (!p) throw new NotFoundException('Payment tidak ditemukan.');
+    if (p.status !== 'pending') return { ok: true, status: p.status, message: 'Status sudah final.' };
+    if (!p.flip_bill_id) return { ok: false, status: p.status, message: 'Belum ada Flip bill ID.' };
+    const result = await this.flip.getAcceptPaymentStatus(p.flip_bill_id);
+    if (!result) return { ok: false, status: p.status, message: 'Gagal cek status Flip.' };
+    const statusRaw = String(result?.status ?? '').toUpperCase();
+    const next = statusRaw === 'SUCCESSFUL' || statusRaw === 'PAID' || statusRaw === 'COMPLETED' ? 'paid'
+      : statusRaw === 'FAILED' || statusRaw === 'CANCELLED' ? 'failed'
+      : statusRaw === 'EXPIRED' ? 'expired' : null;
+    if (!next) return { ok: true, status: p.status, message: `Flip masih ${statusRaw}.` };
+    // Atomic update
+    await this.prisma.$executeRaw`
+      UPDATE payments SET status = ${next}, callback_payload = ${JSON.stringify({ ...result, _source: 'manual-sync' })}::jsonb
+       WHERE id = ${p.id}::uuid AND status = 'pending'
+    `;
+    if (next === 'paid') {
+      await this.prisma.$executeRaw`
+        UPDATE bookings SET status = 'searching', paid_at = NOW()
+         WHERE id = ${bookingId}::uuid AND status = 'pending_payment'
+      `;
+    }
+    return { ok: true, status: next };
+  }
+
   @Post('flip/create')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
