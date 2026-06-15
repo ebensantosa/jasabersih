@@ -1,5 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, Plus, Star, Trash2, X } from 'lucide-react-native';
+import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, Plus, Smartphone, Star, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ type BankAccount = {
   verifiedAt: string | null;
 };
 
-// Kode bank pakai Flip standard (lowercase). Lihat: https://docs.flip.id/#operation/getbankinfo
+// Kode bank + e-wallet pakai Flip standard (lowercase).
 const BANKS = [
   { code: 'bca', label: 'BCA' },
   { code: 'mandiri', label: 'Mandiri' },
@@ -33,36 +33,25 @@ const BANKS = [
   { code: 'bsi', label: 'BSI' },
   { code: 'danamon', label: 'Danamon' },
   { code: 'mega', label: 'Mega' },
-  { code: 'panin', label: 'Panin' },
-  { code: 'ocbc', label: 'OCBC NISP' },
-  { code: 'uob', label: 'UOB' },
-  { code: 'maybank', label: 'Maybank' },
   { code: 'btn', label: 'BTN' },
-  { code: 'btpn', label: 'BTPN' },
-  { code: 'bca_syr', label: 'BCA Syariah' },
-  { code: 'muamalat', label: 'Muamalat' },
-  { code: 'sinarmas', label: 'Sinarmas' },
-  { code: 'bukopin', label: 'Bukopin' },
-  { code: 'dki', label: 'Bank DKI' },
   { code: 'jago', label: 'Jago' },
   { code: 'jenius', label: 'Jenius (BTPN)' },
   { code: 'seabank', label: 'SeaBank' },
   { code: 'neo', label: 'Neo Commerce' },
   { code: 'allo', label: 'Allo Bank' },
   { code: 'blu', label: 'Blu (BCA Digital)' },
-  { code: 'mestika', label: 'Mestika' },
-  { code: 'jatim', label: 'Bank Jatim' },
-  { code: 'jateng', label: 'Bank Jateng' },
-  { code: 'jabar', label: 'BJB' },
-  { code: 'sumut', label: 'Bank Sumut' },
-  { code: 'kalbar', label: 'Bank Kalbar' },
-  { code: 'sulselbar', label: 'Bank Sulselbar' },
   { code: 'gopay', label: 'GoPay' },
   { code: 'ovo', label: 'OVO' },
   { code: 'dana', label: 'DANA' },
   { code: 'shopeepay', label: 'ShopeePay' },
   { code: 'linkaja', label: 'LinkAja' },
 ];
+
+const EWALLET_CODES = new Set(['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja']);
+
+function isEwalletCode(code: string): boolean {
+  return EWALLET_CODES.has(code);
+}
 
 function CleanerBankAccounts() {
   const router = useRouter();
@@ -86,19 +75,21 @@ function CleanerBankAccounts() {
 
   async function setDefault(id: string) {
     try {
-      await api.patch(`/cleaner/bank-accounts/${id}/set-default`);
-      toast.success('Rekening default diatur');
+      await api.patch(`/cleaner/bank-accounts/${id}/default`);
+      toast.success('Rekening utama di-update');
       void load();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal');
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal set default');
     }
   }
 
   async function remove(acc: BankAccount) {
-    Alert.alert('Hapus Rekening', `Hapus ${acc.bankCode.toUpperCase()} ${acc.accountNumber}?`, [
-      { text: 'Batal', style: 'cancel' },
+    Alert.alert('Hapus rekening?', `${acc.bankCode.toUpperCase()} ${acc.accountNumber}`, [
+      { text: 'Batal' },
       {
-        text: 'Hapus', style: 'destructive', onPress: async () => {
+        text: 'Hapus',
+        style: 'destructive',
+        onPress: async () => {
           try {
             await api.delete(`/cleaner/bank-accounts/${acc.id}`);
             toast.success('Rekening dihapus');
@@ -115,12 +106,12 @@ function CleanerBankAccounts() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-ink-50">
-        <SafeAreaView edges={['top']} className="bg-white border-b border-ink-100">
-          <View className="flex-row items-center px-3 py-3">
+        <SafeAreaView edges={['top']} className="bg-white">
+          <View className="flex-row items-center gap-2 px-2 py-2">
             <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
-            <Text className="ml-1 text-base font-bold text-ink-900">Rekening Bank</Text>
+            <Text className="ml-1 text-base font-bold text-ink-900">Rekening &amp; E-Wallet</Text>
           </View>
         </SafeAreaView>
 
@@ -128,8 +119,8 @@ function CleanerBankAccounts() {
           <View className="rounded-xl bg-blue-50 border border-blue-200 p-3 flex-row gap-2">
             <BadgeCheck color="#1D4ED8" size={18} />
             <Text className="flex-1 text-xs text-blue-900 leading-5">
-              Tambah rekening atas nama kamu. Sistem akan verifikasi otomatis ke bank.
-              Hanya rekening verified yang bisa dipakai untuk penarikan otomatis.
+              Tambah rekening bank atau e-wallet atas nama kamu. Sistem akan verifikasi otomatis via Flip.
+              Hanya tujuan verified yang bisa dipakai untuk penarikan otomatis.
             </Text>
           </View>
 
@@ -138,46 +129,52 @@ function CleanerBankAccounts() {
           ) : accounts.length === 0 ? (
             <View className="py-12 items-center">
               <Building2 color="#94A3B8" size={48} />
-              <Text className="mt-3 text-sm text-ink-500">Belum ada rekening</Text>
+              <Text className="mt-3 text-sm text-ink-500">Belum ada rekening / e-wallet</Text>
             </View>
           ) : (
-            accounts.map((acc) => (
-              <View key={acc.id} className="bg-white rounded-xl border border-ink-100 p-4">
-                <View className="flex-row items-center gap-3">
-                  <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center">
-                    <Building2 color="#1D4ED8" size={20} />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-bold text-ink-900">{acc.bankCode.toUpperCase()}</Text>
-                    <Text className="text-xs text-ink-500 mt-0.5">{acc.accountNumber}</Text>
-                  </View>
-                  {acc.isVerified && (
-                    <View className="flex-row items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full">
-                      <CheckCircle2 color="#059669" size={14} />
-                      <Text className="text-[11px] font-semibold text-emerald-700">Verified</Text>
+            accounts.map((acc) => {
+              const ewallet = isEwalletCode(acc.bankCode);
+              return (
+                <View key={acc.id} className="bg-white rounded-xl border border-ink-100 p-4">
+                  <View className="flex-row items-center gap-3">
+                    <View className={`h-10 w-10 rounded-full items-center justify-center ${ewallet ? 'bg-emerald-100' : 'bg-blue-100'}`}>
+                      {ewallet ? <Smartphone color="#059669" size={20} /> : <Building2 color="#1D4ED8" size={20} />}
                     </View>
-                  )}
-                </View>
-                <Text className="mt-2 text-sm text-ink-700">{acc.accountHolderName}</Text>
-                <View className="flex-row gap-2 mt-3">
-                  {!acc.isDefault ? (
-                    <Pressable onPress={() => setDefault(acc.id)} className="flex-row items-center gap-1 bg-ink-100 px-3 py-1.5 rounded-lg">
-                      <Star color="#0F172A" size={14} />
-                      <Text className="text-xs font-semibold text-ink-900">Jadikan Utama</Text>
+                    <View className="flex-1">
+                      <Text className="text-base font-bold text-ink-900">
+                        {acc.bankCode.toUpperCase()}
+                        {ewallet && <Text className="text-[10px] font-bold text-emerald-700"> · E-WALLET</Text>}
+                      </Text>
+                      <Text className="text-xs text-ink-500 mt-0.5">{acc.accountNumber}</Text>
+                    </View>
+                    {acc.isVerified && (
+                      <View className="flex-row items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full">
+                        <CheckCircle2 color="#059669" size={14} />
+                        <Text className="text-[11px] font-semibold text-emerald-700">Verified</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="mt-2 text-sm text-ink-700">{acc.accountHolderName}</Text>
+                  <View className="flex-row gap-2 mt-3">
+                    {!acc.isDefault ? (
+                      <Pressable onPress={() => setDefault(acc.id)} className="flex-row items-center gap-1 bg-ink-100 px-3 py-1.5 rounded-lg">
+                        <Star color="#0F172A" size={14} />
+                        <Text className="text-xs font-semibold text-ink-900">Jadikan Utama</Text>
+                      </Pressable>
+                    ) : (
+                      <View className="flex-row items-center gap-1 bg-amber-100 px-3 py-1.5 rounded-lg">
+                        <Star color="#D97706" size={14} fill="#D97706" />
+                        <Text className="text-xs font-semibold text-amber-700">Default</Text>
+                      </View>
+                    )}
+                    <Pressable onPress={() => remove(acc)} className="flex-row items-center gap-1 bg-rose-50 px-3 py-1.5 rounded-lg ml-auto">
+                      <Trash2 color="#DC2626" size={14} />
+                      <Text className="text-xs font-semibold text-rose-700">Hapus</Text>
                     </Pressable>
-                  ) : (
-                    <View className="flex-row items-center gap-1 bg-amber-100 px-3 py-1.5 rounded-lg">
-                      <Star color="#D97706" size={14} fill="#D97706" />
-                      <Text className="text-xs font-semibold text-amber-700">Default</Text>
-                    </View>
-                  )}
-                  <Pressable onPress={() => remove(acc)} className="flex-row items-center gap-1 bg-rose-50 px-3 py-1.5 rounded-lg ml-auto">
-                    <Trash2 color="#DC2626" size={14} />
-                    <Text className="text-xs font-semibold text-rose-700">Hapus</Text>
-                  </Pressable>
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
 
           <Pressable
@@ -185,7 +182,7 @@ function CleanerBankAccounts() {
             className="mt-2 flex-row items-center justify-center gap-2 bg-blue-600 rounded-xl py-4"
           >
             <Plus color="white" size={20} />
-            <Text className="text-white font-bold text-base">Tambah Rekening</Text>
+            <Text className="text-white font-bold text-base">Tambah Tujuan Penarikan</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -196,14 +193,33 @@ function CleanerBankAccounts() {
 }
 
 function AddBankModal({ visible, onClose, onDone }: { visible: boolean; onClose: () => void; onDone: () => void }) {
+  const [destinationType, setDestinationType] = useState<'bank' | 'ewallet'>('bank');
   const [bankCode, setBankCode] = useState('bca');
   const [accountNumber, setAccountNumber] = useState('');
   const [verifying, setVerifying] = useState(false);
 
+  const isEwallet = isEwalletCode(bankCode);
+  const filteredOptions = BANKS.filter((b) => destinationType === 'ewallet' ? isEwalletCode(b.code) : !isEwalletCode(b.code));
+
+  function onTypeChange(t: 'bank' | 'ewallet') {
+    setDestinationType(t);
+    const first = BANKS.find((b) => t === 'ewallet' ? isEwalletCode(b.code) : !isEwalletCode(b.code));
+    if (first) setBankCode(first.code);
+    setAccountNumber('');
+  }
+
   async function submit() {
-    if (!/^\d{6,20}$/.test(accountNumber)) {
-      toast.warning('Nomor rekening harus 6-20 digit angka');
-      return;
+    if (isEwallet) {
+      const cleaned = accountNumber.replace(/\D/g, '').replace(/^62/, '0');
+      if (!/^08[1-9]\d{7,11}$/.test(cleaned)) {
+        toast.warning('Nomor HP harus format 08xxx (10-13 digit)');
+        return;
+      }
+    } else {
+      if (!/^\d{6,20}$/.test(accountNumber)) {
+        toast.warning('Nomor rekening harus 6-20 digit angka');
+        return;
+      }
     }
     setVerifying(true);
     try {
@@ -213,7 +229,7 @@ function AddBankModal({ visible, onClose, onDone }: { visible: boolean; onClose:
       onDone();
       setAccountNumber('');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal verifikasi rekening');
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal verifikasi');
     } finally {
       setVerifying(false);
     }
@@ -225,44 +241,72 @@ function AddBankModal({ visible, onClose, onDone }: { visible: boolean; onClose:
       <Pressable onPress={onClose} className="flex-1 bg-black/50 justify-end">
         <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-3xl p-5 pb-8">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-bold text-ink-900">Tambah Rekening</Text>
+            <Text className="text-lg font-bold text-ink-900">Tambah Tujuan Penarikan</Text>
             <Pressable onPress={onClose} className="h-8 w-8 items-center justify-center">
               <X color="#475569" size={20} />
             </Pressable>
           </View>
 
-          <Text className="text-sm font-semibold text-ink-700 mb-2">Bank</Text>
+          {/* Toggle Bank vs E-Wallet */}
+          <View className="mb-4 flex-row rounded-xl bg-ink-100 p-1">
+            {([
+              { key: 'bank', label: 'Bank', icon: Building2 },
+              { key: 'ewallet', label: 'E-Wallet', icon: Smartphone },
+            ] as const).map((t) => {
+              const active = destinationType === t.key;
+              const Icon = t.icon;
+              return (
+                <Pressable
+                  key={t.key}
+                  onPress={() => onTypeChange(t.key)}
+                  className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${active ? 'bg-white' : ''}`}
+                  style={active ? { elevation: 2 } : undefined}
+                >
+                  <Icon color={active ? '#1D4ED8' : '#94A3B8'} size={14} strokeWidth={2.4} />
+                  <Text className={`font-bold text-[13px] ${active ? 'text-brand-700' : 'text-ink-500'}`}>{t.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text className="text-sm font-semibold text-ink-700 mb-2">
+            {isEwallet ? 'Pilih E-Wallet' : 'Pilih Bank'}
+          </Text>
           <View className="mb-4">
             <Dropdown
-              options={BANKS.map((b) => b.label)}
-              value={BANKS.find((b) => b.code === bankCode)?.label ?? ''}
+              options={filteredOptions.map((b) => b.label)}
+              value={filteredOptions.find((b) => b.code === bankCode)?.label ?? ''}
               onChange={(label) => {
-                const found = BANKS.find((b) => b.label === label);
+                const found = filteredOptions.find((b) => b.label === label);
                 if (found) setBankCode(found.code);
               }}
-              placeholder="Pilih bank"
+              placeholder={isEwallet ? 'Pilih e-wallet' : 'Pilih bank'}
             />
           </View>
 
-          <Text className="text-sm font-semibold text-ink-700 mb-2">Nomor Rekening</Text>
+          <Text className="text-sm font-semibold text-ink-700 mb-2">
+            {isEwallet ? 'Nomor HP Terdaftar' : 'Nomor Rekening'}
+          </Text>
           <TextInput
             value={accountNumber}
             onChangeText={(t) => setAccountNumber(t.replace(/\D/g, ''))}
-            placeholder="contoh: 1234567890"
+            placeholder={isEwallet ? 'contoh: 08123456789' : 'contoh: 1234567890'}
             keyboardType="number-pad"
-            maxLength={20}
+            maxLength={isEwallet ? 15 : 20}
             className="border border-ink-200 rounded-xl px-4 py-3 text-base"
           />
 
           <Text className="text-xs text-ink-500 mt-3 leading-5">
-            ℹ️ Pastikan rekening atas nama kamu sendiri. Sistem akan otomatis cek nama lewat bank.
+            {isEwallet
+              ? 'Nomor HP harus terdaftar di e-wallet kamu. Sistem akan verifikasi otomatis.'
+              : 'Pastikan rekening atas nama kamu sendiri. Sistem akan otomatis cek nama lewat bank.'}
           </Text>
 
           <Pressable
             onPress={submit}
             disabled={verifying}
             className={`mt-5 rounded-xl py-4 flex-row items-center justify-center gap-2 ${
-              verifying ? 'bg-ink-300' : 'bg-blue-600'
+              verifying ? 'bg-blue-300' : 'bg-blue-600'
             }`}
           >
             {verifying && <ActivityIndicator color="white" />}

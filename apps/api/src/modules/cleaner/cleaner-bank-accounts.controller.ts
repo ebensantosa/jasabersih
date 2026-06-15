@@ -9,12 +9,37 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { FlipService } from '../payments/flip.service';
 
-// Bank codes diterima Flip (Money Transfer): lowercase ISO-ish.
-const ALLOWED_BANK_CODES = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega'];
+// Codes diterima Flip disbursement: bank besar + e-wallet utama.
+// Bank: lowercase ISO-ish. E-wallet: nama wallet (gopay, ovo, dana, dst).
+const ALLOWED_BANK_CODES = [
+  // Bank besar
+  'bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega',
+  // Digital bank
+  'jago', 'jenius', 'seabank', 'neo', 'allo', 'blu',
+  // E-wallet (Flip support disbursement ke wallet)
+  'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja',
+];
+
+const EWALLET_CODES = new Set(['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja']);
 
 const AddBankSchema = z.object({
-  bankCode: z.string().toLowerCase().refine((v) => ALLOWED_BANK_CODES.includes(v), 'Kode bank tidak didukung.'),
-  accountNumber: z.string().min(6).max(20).regex(/^\d+$/, 'Nomor rekening harus angka.'),
+  bankCode: z.string().toLowerCase().refine((v) => ALLOWED_BANK_CODES.includes(v), 'Kode bank/e-wallet tidak didukung.'),
+  // E-wallet pakai nomor HP (10-13 digit, prefix 08/62/+62). Bank pakai nomor
+  // rekening (6-20 digit). Validasi spesifik di superRefine biar pesan jelas.
+  accountNumber: z.string().min(6).max(20).regex(/^[\d+]+$/, 'Nomor rekening / HP harus angka.'),
+}).superRefine((data, ctx) => {
+  if (EWALLET_CODES.has(data.bankCode)) {
+    // E-wallet: harus format nomor HP Indonesia
+    const phone = data.accountNumber.replace(/^\+?62/, '0');
+    if (!/^08[1-9]\d{7,11}$/.test(phone)) {
+      ctx.addIssue({ code: 'custom', path: ['accountNumber'], message: 'Untuk e-wallet, masukkan nomor HP terdaftar (08...).' });
+    }
+  } else {
+    // Bank: digit only
+    if (!/^\d+$/.test(data.accountNumber)) {
+      ctx.addIssue({ code: 'custom', path: ['accountNumber'], message: 'Nomor rekening harus angka.' });
+    }
+  }
 });
 type AddBankDto = z.infer<typeof AddBankSchema>;
 
@@ -58,7 +83,11 @@ export class CleanerBankAccountsController {
     `;
     if (existing[0]) throw new BadRequestException('Rekening ini sudah terdaftar.');
 
-    // Inquiry Flip — verify nama pemilik & rekening valid
+    const isEwallet = EWALLET_CODES.has(body.bankCode);
+
+    // Inquiry Flip - verify nama pemilik & rekening valid.
+    // E-wallet: Flip sometimes return empty account_holder (OVO privacy), tetep
+    // accept asal status=SUCCESS. Nama yg disimpen = nama user di profile.
     let inquiry: any;
     try {
       inquiry = await this.flip.inquiryBankAccount({
@@ -66,19 +95,28 @@ export class CleanerBankAccountsController {
         accountNumber: body.accountNumber,
       });
     } catch (e: any) {
-      throw new BadRequestException(`Verifikasi rekening gagal: ${e?.message ?? 'Coba lagi'}`);
+      throw new BadRequestException(`Verifikasi ${isEwallet ? 'e-wallet' : 'rekening'} gagal: ${e?.message ?? 'Coba lagi'}`);
     }
 
     if (inquiry?.status !== 'SUCCESS' && !inquiry?.account_holder) {
-      throw new BadRequestException('Rekening tidak ditemukan atau tidak aktif. Cek nomor & bank.');
+      throw new BadRequestException(
+        isEwallet
+          ? 'E-wallet tidak ditemukan / belum terdaftar. Cek nomor HP & pastikan wallet aktif.'
+          : 'Rekening tidak ditemukan atau tidak aktif. Cek nomor & bank.',
+      );
     }
 
-    // Verify nama pemilik match nama user (case-insensitive substring untuk tolerate variation)
+    // Verify nama pemilik match nama user (case-insensitive substring).
+    // Skip kalau e-wallet & Flip gak return holder name (privacy).
     const u = await this.prisma.$queryRaw<{ name: string | null }[]>`SELECT name FROM users WHERE id = ${user.id}::uuid`;
     const userName = (u[0]?.name ?? '').toLowerCase().replace(/\s+/g, '');
     const holderName = (inquiry.account_holder ?? '').toLowerCase().replace(/\s+/g, '');
     if (userName && holderName && !holderName.includes(userName) && !userName.includes(holderName)) {
-      throw new BadRequestException(`Nama pemilik rekening (${inquiry.account_holder}) tidak sesuai akun. Gunakan rekening atas nama sendiri.`);
+      throw new BadRequestException(`Nama pemilik ${isEwallet ? 'e-wallet' : 'rekening'} (${inquiry.account_holder}) tidak sesuai akun. Gunakan ${isEwallet ? 'e-wallet' : 'rekening'} atas nama sendiri.`);
+    }
+    // Kalau e-wallet & holder name kosong (OVO privacy), pakai nama user.
+    if (isEwallet && !inquiry.account_holder) {
+      inquiry.account_holder = u[0]?.name ?? 'Cleaner';
     }
 
     // Save
