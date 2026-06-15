@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -48,7 +48,27 @@ export function MaintenanceBanner() {
 
   const hasManual = !!manualNotice && manualNotice.trim().length > 0;
   const hasLive = issues.length > 0;
-  if (!hasManual && !hasLive) return null;
+
+  // Semua aman -> banner hijau positif. Kasih kepercayaan diri ke user
+  // bahwa sistem dimonitor & semua bank operasional.
+  if (!hasManual && !hasLive) {
+    return (
+      <View
+        className="flex-row items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3"
+        style={{ borderLeftWidth: 4, borderLeftColor: '#059669' }}
+      >
+        <View className="mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-emerald-200">
+          <CheckCircle2 color="#047857" size={14} strokeWidth={2.4} />
+        </View>
+        <View className="flex-1">
+          <Text className="font-bold text-[12px] text-emerald-900">Semua bank operasional</Text>
+          <Text className="font-medium mt-0.5 text-[11px] leading-4 text-emerald-800">
+            Tidak ada gangguan terdeteksi. Transfer ke semua bank & e-wallet berjalan normal.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   // Compose message: manual notice di atas, lalu daftar bank issue auto.
   return (
