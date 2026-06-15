@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -41,19 +41,22 @@ function WalletScreen() {
   const router = useRouter();
   const [data, setData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const r = await api.get('/customer/wallet');
-        setData(r.data?.data ?? r.data);
-      } catch {
-        setData({ balance: 0, creditIn: 0, creditOut: 0, ledger: [] });
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  async function load() {
+    try {
+      const r = await api.get('/customer/wallet');
+      setData(r.data?.data ?? r.data);
+    } catch {
+      setData((prev) => prev ?? { balance: 0, creditIn: 0, creditOut: 0, ledger: [] });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, []);
+  const onRefresh = () => { setRefreshing(true); void load(); };
 
   return (
     <>
@@ -73,7 +76,10 @@ function WalletScreen() {
             <ActivityIndicator />
           </View>
         ) : (
-          <ScrollView className="flex-1">
+          <ScrollView
+            className="flex-1"
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D4ED8" />}
+          >
             <View className="m-4 rounded-2xl bg-brand-600 p-5">
               <View className="flex-row items-center gap-2">
                 <WalletIcon color="white" size={18} />
