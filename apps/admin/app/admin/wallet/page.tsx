@@ -95,7 +95,14 @@ export default function WalletPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">{new Date(w.requestedAt).toLocaleString('id-ID')}</td>
                     {tab !== 'pending' && <td className="px-4 py-3 text-xs text-slate-500">{w.reviewedAt ? new Date(w.reviewedAt).toLocaleString('id-ID') : '—'}</td>}
-                    {tab === 'approved' && <td className="px-4 py-3 font-mono text-xs">{w.bankTransferRef ?? '—'}</td>}
+                    {tab === 'approved' && (
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {w.bankTransferRef ?? w.flipDisbursementId ?? '—'}
+                        {w.reviewStatus === 'auto_approved' && (
+                          <span className="ml-1.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">Auto Flip</span>
+                        )}
+                      </td>
+                    )}
                     {tab === 'rejected' && <td className="px-4 py-3 text-xs text-red-700">{w.reviewNote ?? w.failureReason ?? '—'}</td>}
                     {tab === 'pending' && (
                       <td className="px-4 py-3 text-right space-x-1">

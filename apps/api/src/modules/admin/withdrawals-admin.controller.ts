@@ -32,6 +32,10 @@ export class AdminWithdrawalsController {
   @Get()
   @Roles('super_admin', 'finance')
   async list(@Query('status') status: 'pending' | 'approved' | 'rejected' | 'paid' = 'pending') {
+    // Approved tab juga include 'auto_approved' (di-set otomatis saat Flip
+    // auto-disburse sukses). Tanpa ini, withdrawal yg sukses via Flip gak
+    // muncul di tab Approved -> admin gak liat history transfer otomatis.
+    const statuses = status === 'approved' ? ['approved', 'auto_approved'] : [status];
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT w.id, w.user_id AS "userId", u.name AS "userName", u.phone AS "userPhone",
              w.amount, w.fee,
@@ -45,11 +49,13 @@ export class AdminWithdrawalsController {
              w.review_note AS "reviewNote",
              w.bank_transfer_ref AS "bankTransferRef",
              w.failure_reason AS "failureReason",
+             w.flip_disbursement_id AS "flipDisbursementId",
+             w.processed_at AS "processedAt",
              (SELECT cp.tier FROM cleaner_profiles cp WHERE cp.user_id = w.user_id) AS "cleanerTier"
         FROM withdrawals w
         LEFT JOIN users u ON u.id = w.user_id
-       WHERE w.review_status = ${status}
-       ORDER BY w.requested_at ASC
+       WHERE w.review_status = ANY(${statuses}::text[])
+       ORDER BY w.requested_at DESC
        LIMIT 200
     `;
   }
