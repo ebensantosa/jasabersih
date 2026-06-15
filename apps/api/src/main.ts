@@ -33,8 +33,13 @@ async function bootstrap() {
 
   // Tripay webhook butuh raw body untuk verifikasi HMAC signature
   app.use('/v1/payments/callback', raw({ type: '*/*' }));
-  // Flip webhook POSTs application/x-www-form-urlencoded
+  // Flip webhooks POST application/x-www-form-urlencoded - perlu urlencoded
+  // parser di SEMUA endpoint Flip callback, kalau gak req.body kosong dan
+  // handler return ping:true terus -> webhook 'sukses' tapi gak ada side effect.
   app.use('/v1/payments/flip/callback', urlencoded({ extended: true, limit: '1mb' }));
+  app.use('/v1/payments/flip/disbursement-callback', urlencoded({ extended: true, limit: '1mb' }));
+  app.use('/v1/payments/flip/bank-status', urlencoded({ extended: true, limit: '1mb' }));
+  app.use('/v1/payments/flip/inquiry-callback', urlencoded({ extended: true, limit: '1mb' }));
   // Default JSON parser untuk semua route lain
   app.use(json({ limit: '5mb' }));
 
