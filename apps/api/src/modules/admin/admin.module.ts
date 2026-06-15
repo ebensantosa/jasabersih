@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard } from '../../common/admin-auth';
 import { AuthModule } from '../auth/auth.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { StorageModule } from '../storage/storage.module';
 import { FraudDetectionService } from './fraud-detection.service';
 import { RetentionService } from './retention.service';
 import { ScheduledBroadcastService } from './scheduled-broadcast.service';
@@ -28,7 +29,7 @@ import { AdminWithdrawalsController } from './withdrawals-admin.controller';
 import { SystemConfigController } from './system-config.controller';
 
 @Module({
-  imports: [AuthModule, JwtModule.register({}), ScheduleModule.forRoot(), PaymentsModule],
+  imports: [AuthModule, JwtModule.register({}), ScheduleModule.forRoot(), PaymentsModule, StorageModule],
   controllers: [
     AdminController,
     AdminKycController,

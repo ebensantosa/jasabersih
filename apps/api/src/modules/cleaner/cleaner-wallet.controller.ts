@@ -52,7 +52,9 @@ export class CleanerWalletController {
     };
     return {
       minAmount: num('withdrawal.min_amount', num('cleaner.withdraw_min_amount', num('feature.min_withdrawal', 50000))),
-      maxDaily: num('withdrawal.max_daily', 10000000),
+      // Default 0 = NO LIMIT. Admin bisa set di app_config 'withdrawal.max_daily'
+      // utk batasin per hari. User minta: gak ada batas, fee ke cleaner (default).
+      maxDaily: num('withdrawal.max_daily', 0),
       cooldownHours: num('withdrawal.cooldown_hours', 4),
       autoApproveThreshold: num('withdrawal.auto_approve_threshold', 2000000),
       feePayer: (str('withdrawal.fee_payer', 'cleaner') === 'cleaner' ? 'cleaner' : 'owner'),
@@ -207,6 +209,22 @@ export class CleanerWalletController {
       }
     }
 
+    // BLOCK kalau ada dispute open/under_review yg melibatkan cleaner ini.
+    // Cleaner gak boleh tarik selama sengketa belum selesai (anti payout
+    // pre-judgment). Cek booking_id yg cleaner-nya = user atau dispute
+    // raised_by/subject_user_id = user.
+    const openDisputes = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM disputes d
+       LEFT JOIN bookings b ON b.id = d.booking_id
+       WHERE d.status IN ('open', 'under_review', 'pending')
+         AND (b.cleaner_id = ${user.id}::uuid
+              OR d.raised_by = ${user.id}::uuid
+              OR d.subject_user_id = ${user.id}::uuid)
+    `;
+    if (Number(openDisputes[0]?.c ?? 0) > 0) {
+      throw new ForbiddenException('Ada sengketa aktif yg melibatkan kamu. Selesaikan dulu sebelum tarik dana.');
+    }
+
     // KYC + saldo (di dalam tx supaya consistent)
     const txResult = await this.prisma.$transaction(async (tx) => {
       const profile = await tx.$queryRaw<{ kyc_status: string | null }[]>`SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1`;
@@ -303,8 +321,11 @@ export class CleanerWalletController {
     const transferAmount = txResult.transferAmount;
     const flipFee = txResult.flipFee;
 
-    // Auto-disburse kalau eligible (di luar tx — Flip API call bisa lama)
-    const eligible = !!body.bankAccountId && body.amount <= cfg.autoApproveThreshold;
+    // Auto-disburse kalau bank account verified (di luar tx — Flip API call bisa lama).
+    // Threshold limit dihapus — semua nominal langsung release ke Flip selama
+    // udh lolos dispute check + ada bank verified. Fallback manual admin tetap
+    // ada kalau Flip API error (status='pending_review').
+    const eligible = !!body.bankAccountId;
     if (eligible) {
       try {
         const ba = await this.prisma.$queryRaw<{ bank_code: string; account_number: string; account_holder_name: string }[]>`
