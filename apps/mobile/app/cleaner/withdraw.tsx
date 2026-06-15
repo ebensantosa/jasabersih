@@ -1,6 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, CreditCard, Plus, User, Wallet, Zap } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -61,23 +61,32 @@ function Withdraw() {
   // Live bank health status dari Flip - utk indicator + safeguard submit.
   const [bankHealth, setBankHealth] = useState<Record<string, 'normal' | 'delayed' | 'down'>>({});
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await api.get('/cleaner/bank-accounts');
-        const list = (r.data?.data ?? r.data ?? []) as VerifiedAccount[];
-        const verified = list.filter((a) => a.isVerified);
-        setVerifiedAccounts(verified);
-        const def = verified.find((a) => a.isDefault) ?? verified[0];
-        if (def) setSelectedBankAccountId(def.id);
-      } catch {
-        /* ignore - fallback ke inline form */
-      } finally {
-        setLoadingAccounts(false);
-      }
-    })();
+  const loadAccounts = useCallback(async () => {
+    setLoadingAccounts(true);
+    try {
+      const r = await api.get('/cleaner/bank-accounts');
+      const list = (r.data?.data ?? r.data ?? []) as VerifiedAccount[];
+      const verified = list.filter((a) => a.isVerified);
+      setVerifiedAccounts(verified);
+      // Auto-select kalau belum ada selection atau selection lama udh ke-hapus.
+      setSelectedBankAccountId((cur) => {
+        if (cur && verified.some((a) => a.id === cur)) return cur;
+        return verified.find((a) => a.isDefault)?.id ?? verified[0]?.id ?? null;
+      });
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingAccounts(false);
+    }
+  }, []);
 
-    // Fetch bank health (Flip live status)
+  // Re-fetch tiap kali halaman dapat focus -> setelah user tambah rekening
+  // di bank-accounts page lalu back ke sini, list auto-refresh tanpa perlu
+  // manual reload.
+  useFocusEffect(useCallback(() => { void loadAccounts(); }, [loadAccounts]));
+
+  useEffect(() => {
+    // Fetch bank health (Flip live status) sekali aja - jarang berubah.
     api.get('/payments/bank-health').then((r) => {
       const list: { code: string; status: 'normal' | 'delayed' | 'down' }[] = r.data?.data ?? r.data ?? [];
       const map: Record<string, 'normal' | 'delayed' | 'down'> = {};
