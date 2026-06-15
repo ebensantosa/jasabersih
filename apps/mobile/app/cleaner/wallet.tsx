@@ -110,7 +110,7 @@ function CleanerWallet() {
             className="overflow-hidden rounded-2xl"
             style={{ elevation: 4 }}
           >
-            <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ padding: 16 }}>
+            <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 }}>
               <View className="flex-row items-center gap-3">
                 <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
                   <ArrowDownToLine color="white" size={22} strokeWidth={2.2} />
