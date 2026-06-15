@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, Plus, Smartphone, Star, Trash2, X } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, BadgeCheck, Building2, CheckCircle2, Plus, Smartphone, Star, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -97,6 +97,9 @@ function CleanerBankAccounts() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModal, setAddModal] = useState(false);
+  // Confirm delete modal state: simpan account yg mau di-hapus.
+  const [deleteTarget, setDeleteTarget] = useState<BankAccount | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,35 +125,24 @@ function CleanerBankAccounts() {
     }
   }
 
-  async function doRemove(acc: BankAccount) {
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await api.delete(`/cleaner/bank-accounts/${acc.id}`);
+      await api.delete(`/cleaner/bank-accounts/${deleteTarget.id}`);
       toast.success('Rekening dihapus');
+      setDeleteTarget(null);
       void load();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal hapus');
+    } finally {
+      setDeleting(false);
     }
   }
 
-  async function remove(acc: BankAccount) {
-    const isEwallet = EWALLET_CODES.has(acc.bankCode);
-    const label = `${isEwallet ? 'e-wallet' : 'rekening'} ${acc.bankCode.toUpperCase()} ${acc.accountNumber}`;
-    // Alert.alert RN gak jalan di web build. Pakai window.confirm di web,
-    // Alert di native. Memastikan delete bisa di-trigger di semua platform.
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(`Hapus ${label}?`)) {
-        await doRemove(acc);
-      }
-      return;
-    }
-    Alert.alert(
-      `Hapus ${isEwallet ? 'E-Wallet' : 'Rekening'}?`,
-      `${acc.bankCode.toUpperCase()} - ${acc.accountNumber}\n${acc.accountHolderName}`,
-      [
-        { text: 'Batal' },
-        { text: 'Hapus', style: 'destructive', onPress: () => void doRemove(acc) },
-      ],
-    );
+  // Set target -> trigger Modal confirm popup (custom, jalan di semua platform).
+  function remove(acc: BankAccount) {
+    setDeleteTarget(acc);
   }
 
   return (
@@ -239,7 +231,84 @@ function CleanerBankAccounts() {
       </View>
 
       <AddBankModal visible={addModal} onClose={() => setAddModal(false)} onDone={() => { setAddModal(false); void load(); }} />
+
+      {/* Custom confirm popup utk delete - jalan di semua platform (web + native) */}
+      <DeleteConfirmModal
+        target={deleteTarget}
+        deleting={deleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </>
+  );
+}
+
+// Confirm popup utk delete bank/e-wallet. Custom Modal jalan di web + native.
+function DeleteConfirmModal({
+  target,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  target: BankAccount | null;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!target) return null;
+  const isEwallet = EWALLET_CODES.has(target.bankCode);
+  return (
+    <Modal transparent statusBarTranslucent visible animationType="fade" onRequestClose={onCancel}>
+      <Pressable
+        onPress={onCancel}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          className="w-full max-w-sm rounded-2xl bg-white p-5"
+          style={{ elevation: 8, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 16 }}
+        >
+          <View className="items-center">
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-rose-100">
+              <AlertTriangle color="#DC2626" size={26} strokeWidth={2.4} />
+            </View>
+            <Text className="font-extrabold mt-3 text-center text-base text-ink-900">
+              Hapus {isEwallet ? 'E-Wallet' : 'Rekening'}?
+            </Text>
+            <Text className="font-medium mt-1.5 text-center text-[12px] text-ink-600">
+              <Text className="font-bold text-ink-900">{target.bankCode.toUpperCase()}</Text>
+              {' - '}
+              {target.accountNumber}
+              {'\n'}
+              <Text className="text-ink-500">{target.accountHolderName}</Text>
+            </Text>
+            <Text className="font-sans mt-2 text-center text-[11px] text-ink-400">
+              {isEwallet ? 'E-wallet' : 'Rekening'} ini akan dihapus dari daftar tujuan penarikan kamu.
+            </Text>
+          </View>
+          <View className="mt-5 flex-row gap-2">
+            <Pressable
+              onPress={onCancel}
+              disabled={deleting}
+              className="flex-1 items-center rounded-xl border border-ink-300 py-3"
+            >
+              <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              disabled={deleting}
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-rose-600 py-3"
+              style={deleting ? { opacity: 0.6 } : undefined}
+            >
+              {deleting && <ActivityIndicator size="small" color="white" />}
+              <Text className="font-bold text-sm text-white">
+                {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
