@@ -152,30 +152,31 @@ function Chat() {
     if (sending) return; // anti double-tap composer
     if (opts?.fromQuick && pendingQuick) return; // anti double-tap quick reply
 
-    // Optimistic clear / lock: feedback instan supaya user gak tap berkali2
+    // Quick reply: feedback flash 400ms aja (cukup utk tactile feedback +
+    // cegah double-tap), gak nunggu ack server. Pesan udah optimistic
+    // ke-render via socket broadcast - bikin UI snappy, ga keliatan ngebug.
     if (opts?.fromQuick) {
-      setPendingQuick(opts.fromQuick);
+      const q = opts.fromQuick;
+      setPendingQuick(q);
+      setTimeout(() => {
+        setPendingQuick((cur) => (cur === q ? null : cur));
+      }, 400);
     } else {
+      // Composer: clear text instan, spinner cuma 400ms juga.
       setText('');
       setSending(true);
+      setTimeout(() => setSending(false), 400);
     }
 
-    try {
-      const res = await send(content);
+    // Fire-and-forget. Error masuk toast, gak block UI.
+    void send(content).then((res) => {
       if (!res.ok) {
-        toast.error(res.error ?? 'Gagal kirim');
-        // Rollback composer text supaya user bisa retry
-        if (!opts?.fromQuick) setText(content);
-        return;
-      }
-      if (res.blocked) {
+        toast.error(res.error ?? 'Gagal kirim. Coba lagi.');
+        if (!opts?.fromQuick) setText(content); // restore composer
+      } else if (res.blocked) {
         setBlockWarning(res.userMessage ?? 'Pesan ditolak - dilarang share kontak / link / tawaran di luar app.');
-        return;
       }
-    } finally {
-      if (opts?.fromQuick) setPendingQuick(null);
-      else setSending(false);
-    }
+    });
   }
 
   function onChangeText(v: string) {
@@ -292,23 +293,20 @@ function Chat() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-12">
           <View className="flex-row gap-2 px-4 py-2">
             {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => {
-              const isSending = pendingQuick === q;
-              const isLocked = pendingQuick !== null && !isSending;
+              const isFlashing = pendingQuick === q;
               return (
                 <Pressable
                   key={q}
                   onPress={() => handleSend(q, { fromQuick: q })}
                   disabled={pendingQuick !== null}
-                  className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
-                    isSending
+                  className={`rounded-full border px-3 py-1.5 ${
+                    isFlashing
                       ? 'border-brand-600 bg-brand-600'
-                      : isLocked
-                        ? 'border-ink-200 bg-ink-50 opacity-50'
-                        : 'border-brand-200 bg-white'
+                      : 'border-brand-200 bg-white'
                   }`}
+                  style={isFlashing ? { transform: [{ scale: 0.95 }] } : undefined}
                 >
-                  {isSending && <ActivityIndicator size="small" color="white" />}
-                  <Text className={`font-medium text-xs ${isSending ? 'text-white' : 'text-brand-700'}`}>{q}</Text>
+                  <Text className={`font-medium text-xs ${isFlashing ? 'text-white' : 'text-brand-700'}`}>{q}</Text>
                 </Pressable>
               );
             })}
