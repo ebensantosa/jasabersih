@@ -286,22 +286,39 @@ function DeleteConfirmModal({
               {isEwallet ? 'E-wallet' : 'Rekening'} ini akan dihapus dari daftar tujuan penarikan kamu.
             </Text>
           </View>
-          <View className="mt-5 flex-row gap-2">
+          <View style={{ marginTop: 20, flexDirection: 'row', gap: 8 }}>
             <Pressable
               onPress={onCancel}
               disabled={deleting}
-              className="flex-1 items-center rounded-xl border border-ink-300 py-3"
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#CBD5E1',
+                paddingVertical: 12,
+                backgroundColor: '#FFFFFF',
+              }}
             >
-              <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+              <Text style={{ fontWeight: '600', fontSize: 14, color: '#334155' }}>Batal</Text>
             </Pressable>
             <Pressable
               onPress={onConfirm}
               disabled={deleting}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-rose-600 py-3"
-              style={deleting ? { opacity: 0.6 } : undefined}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                borderRadius: 12,
+                paddingVertical: 12,
+                backgroundColor: '#DC2626',
+                opacity: deleting ? 0.6 : 1,
+              }}
             >
-              {deleting && <ActivityIndicator size="small" color="white" />}
-              <Text className="font-bold text-sm text-white">
+              {deleting && <ActivityIndicator size="small" color="#FFFFFF" />}
+              <Text style={{ fontWeight: '700', fontSize: 14, color: '#FFFFFF' }}>
                 {deleting ? 'Menghapus...' : 'Ya, Hapus'}
               </Text>
             </Pressable>
