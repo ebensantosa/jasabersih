@@ -103,7 +103,7 @@ export class AdminBroadcastController {
     }
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       INSERT INTO scheduled_broadcasts (title, body, audience, cta_link, scheduled_at, created_by)
-      VALUES (${title}, ${msgBody}, ${body.audience}, ${body.ctaLink ?? null}, ${scheduled}::timestamptz, ${admin.id}::uuid)
+      VALUES (${title}, ${msgBody}, ${body.audience}, ${body.ctaLink ?? null}, ${scheduled.toISOString()}::timestamptz, ${admin.id}::uuid)
       RETURNING id
     `;
     await this.audit.log({

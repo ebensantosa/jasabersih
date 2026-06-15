@@ -139,7 +139,7 @@ export class AdminManagementController {
          AND (${search}::text IS NULL OR
               LOWER(a.action) LIKE ${search} OR
               LOWER(COALESCE(u.email, '')) LIKE ${search} OR
-              LOWER(COALESCE(a.resource_id, '')) LIKE ${search} OR
+              LOWER(COALESCE(a.resource_id::text, '')) LIKE ${search} OR
               LOWER(COALESCE(CAST(a.changes AS TEXT), '')) LIKE ${search})
        ORDER BY a.performed_at DESC
        LIMIT ${lim}::int
