@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Field, validateMinLength } from '../../src/components/Field';
+import { MaintenanceBanner } from '../../src/components/MaintenanceBanner';
 import { formatRupiah } from '../../src/data/catalog';
 import { api } from '../../src/lib/api';
 import { MIN_WITHDRAW, useCleanerWalletStore } from '../../src/stores/cleanerWallet';
@@ -137,6 +138,13 @@ function Withdraw() {
         </SafeAreaView>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
+          {/* Banner gangguan bank - admin set di app_config:
+              'payment.maintenance_notice'. Cleaner aware kalau transfer
+              mungkin tertunda karena bank maintenance. */}
+          <View className="mb-3">
+            <MaintenanceBanner />
+          </View>
+
           {/* Verified accounts (preferred) */}
           {!loadingAccounts && verifiedAccounts.length > 0 && (
             <Section title="Rekening Tersimpan (Auto-Transfer)">

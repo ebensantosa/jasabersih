@@ -17,6 +17,7 @@ import { useCleanerWalletStore, MIN_WITHDRAW, type WalletEntry } from '../../src
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
+import { MaintenanceBanner } from '../../src/components/MaintenanceBanner';
 import { safeBack } from '../../src/lib/safeBack';
 
 function CleanerWallet() {
@@ -108,6 +109,11 @@ function CleanerWallet() {
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
         >
+          {/* Banner gangguan bank dari admin config */}
+          <View className="mb-3">
+            <MaintenanceBanner />
+          </View>
+
           {/* CTA Tarik - tidak overlap hero, shadow tebal untuk efek lifted */}
           <Pressable
             onPress={tryWithdraw}

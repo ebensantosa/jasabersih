@@ -27,6 +27,7 @@ const HINT: Record<string, string> = {
   'hero.cta_label': 'CTA button label di hero.',
   'safety.chat_banner': 'Teks peringatan di banner kuning chat. Edit utk update reward/kalimat peringatan share kontak luar app.',
   'payment.disabled_methods': 'JSON array kode payment yg di-disable sementara (bank/wallet error). Contoh: ["BCAVA","OVO"]. User gak akan lihat opsi tsb di checkout. Kosongkan utk enable semua.',
+  'payment.maintenance_notice': 'Teks banner kuning yg tampil di halaman wallet/withdraw cleaner + checkout customer. Contoh: "BCA & Mandiri sedang maintenance jam 02:00-04:00. Transfer mungkin tertunda." Kosongkan utk hide banner.',
   'referral.commission_pct': 'Persen komisi referral ke referrer tiap order completed dari user yg di-refer. Default 5. Set 0 utk disable.',
   'referral.enabled': 'Master switch program referral. true/false. Set false utk pause sementara.',
   'withdrawal.max_daily': 'Maksimum total withdraw per cleaner per hari (Rupiah). 0 = no limit. Default 0.',

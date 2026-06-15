@@ -23,6 +23,7 @@ export type AppConfig = Partial<{
   'hero.subtitle': string;
   'hero.cta_label': string;
   'safety.chat_banner': string;
+  'payment.maintenance_notice': string;
 }> & Record<string, unknown>;
 
 export type Banner = { id: string; title: string; subtitle: string | null; imageUrl: string; linkUrl: string | null; placement: string; sortOrder: number };

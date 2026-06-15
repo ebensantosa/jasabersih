@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { withAuth } from '../../src/components/AuthGate';
+import { MaintenanceBanner } from '../../src/components/MaintenanceBanner';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Building2, CheckCircle2, Copy, MessageCircle, QrCode, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -325,6 +326,7 @@ function MethodPicker({
   const getMessage = (code: string) => bankHealth[code]?.message ?? '';
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <MaintenanceBanner />
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Saldo Saya</Text>
         {walletBalance === 0 ? (
