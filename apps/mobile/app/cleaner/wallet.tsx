@@ -70,7 +70,7 @@ function CleanerWallet() {
           colors={['#1E3A8A', '#047857', '#0E7490']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ paddingBottom: 70 }}
+          style={{ paddingBottom: 24 }}
         >
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
           <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.08)' }} />
@@ -101,7 +101,6 @@ function CleanerWallet() {
 
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          style={{ marginTop: -55 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
         >
           {/* CTA Tarik */}

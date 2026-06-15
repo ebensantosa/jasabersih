@@ -82,11 +82,11 @@ function EarningsScreen() {
         colors={['#1E3A8A', '#047857', '#0E7490']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ paddingBottom: 60 }}
+        style={{ paddingBottom: 20 }}
       >
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
         <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-        <View pointerEvents="none" style={{ position: 'absolute', bottom: 10, left: -40, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: -20, left: -40, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
             <Text className="font-extrabold text-xl text-white">Pendapatan</Text>
@@ -98,8 +98,7 @@ function EarningsScreen() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
-        style={{ marginTop: -45 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
       >
