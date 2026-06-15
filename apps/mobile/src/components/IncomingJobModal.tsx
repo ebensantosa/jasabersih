@@ -163,7 +163,7 @@ export function IncomingJobModal() {
         <View className="rounded-t-3xl bg-white" style={{ maxHeight: '92%' }}>
           {/* Header gradient */}
           <LinearGradient
-            colors={['#0B2A6F', '#1D4ED8']}
+            colors={['#1E3A8A', '#047857', '#0E7490']}
             style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}
             className="rounded-t-3xl"
           >

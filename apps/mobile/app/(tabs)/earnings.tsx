@@ -78,7 +78,7 @@ function EarningsScreen() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 60 }}>
+      <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingBottom: 60 }}>
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
             <Text className="font-bold text-xl text-white">Pendapatan</Text>
@@ -100,7 +100,7 @@ function EarningsScreen() {
           className="mx-4 overflow-hidden rounded-2xl"
           style={{ elevation: 4 }}
         >
-          <LinearGradient colors={['#1D4ED8', '#2563EB']} style={{ padding: 16 }}>
+          <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ padding: 16 }}>
             <Text className="font-medium text-[11px] text-white/70">Saldo Bisa Ditarik</Text>
             <Text className="font-bold mt-1 text-2xl text-white">{formatRupiah(balance)}</Text>
             <View className="mt-3 flex-row items-center justify-center gap-1.5 rounded-xl bg-white py-2.5">

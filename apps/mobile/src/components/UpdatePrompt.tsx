@@ -70,7 +70,7 @@ export function UpdatePromptHost() {
           style={{ elevation: 24, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 24 }}
         >
           {/* Header */}
-          <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ padding: 20 }}>
+          <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ padding: 20 }}>
             <View className="flex-row items-start justify-between">
               <View className="flex-1">
                 <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">

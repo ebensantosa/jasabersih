@@ -59,7 +59,7 @@ function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 60 }}>
+      <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingBottom: 60 }}>
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
             <Text className="font-bold text-xl text-white">{t('tab.profile')}</Text>
@@ -109,7 +109,7 @@ function ProfileScreen() {
             className="overflow-hidden rounded-2xl"
             style={{ elevation: 4 }}
           >
-            <LinearGradient colors={['#1D4ED8', '#2563EB']} style={{ padding: 18 }}>
+            <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ padding: 18 }}>
               <View className="flex-row items-center gap-3">
                 <View className="h-12 w-12 items-center justify-center rounded-full bg-white/20">
                   <LogIn color="white" size={22} strokeWidth={2.2} />

@@ -102,22 +102,31 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-white">
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 260 }}>
+      <LinearGradient
+        colors={['#1E3A8A', '#047857', '#0E7490']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ height: 280 }}
+      >
+        {/* Decorative circles - subtle, mimics home hero */}
+        <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: 30, left: -50, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: 80, left: 80, width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.05)' }} />
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
               <ArrowLeft color="white" size={22} />
             </Pressable>
           </View>
-          <View className="px-6 pt-2 pb-6">
+          <View className="px-6 pt-3 pb-8">
             <BrandLogo size={56} showName />
-            <Text className="font-bold mt-4 text-3xl text-white">{t('login.welcome_emoji')}</Text>
-            <Text className="font-sans mt-1 text-sm text-white/85">{t('login.subtitle')}</Text>
+            <Text className="font-extrabold mt-5 text-3xl text-white" style={{ letterSpacing: -0.5 }}>{t('login.welcome_emoji')}</Text>
+            <Text className="font-medium mt-1.5 text-sm leading-5 text-white/90">{t('login.subtitle')}</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView className="flex-1 -mt-6" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 -mt-8" contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="mx-4 rounded-2xl bg-white p-5 shadow-sm" style={{ elevation: 6 }}>
           <View className="mb-4 flex-row rounded-xl bg-ink-100 p-1">
             {([

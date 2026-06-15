@@ -79,7 +79,7 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
 
   return (
     <View className="overflow-hidden rounded-2xl">
-      <LinearGradient colors={['#1E40AF', '#3B82F6']} style={{ paddingVertical: 28, paddingHorizontal: 16 }}>
+      <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingVertical: 28, paddingHorizontal: 16 }}>
         <View style={{ alignItems: 'center', justifyContent: 'center', height: 140, marginBottom: 12 }}>
           <View style={{ position: 'relative', height: 100, width: 100, alignItems: 'center', justifyContent: 'center' }}>
             <Animated.View style={ringStyle(pulse1)} />

@@ -104,22 +104,32 @@ export default function Register() {
 
   const isFreelancer = targetMode === 'freelancer';
   // Tema visual beda antara Customer (biru) vs Cleaner (emerald/teal) - biar sekilas user tahu lagi daftar mana
+  // Gradient samakan dgn home (blue->green->teal). Freelancer mode kasih
+  // accent green dominan; customer ikutin urutan home.
   const theme = isFreelancer
-    ? { gradient: ['#065F46', '#10B981'] as const, btn: 'bg-emerald-600', accent: 'text-emerald-700', linkAccent: 'text-emerald-700', bg: 'bg-emerald-50' }
-    : { gradient: ['#0B2A6F', '#1D4ED8'] as const, btn: 'bg-brand-600', accent: 'text-brand-700', linkAccent: 'text-brand-600', bg: 'bg-white' };
+    ? { gradient: ['#047857', '#0E7490', '#1E3A8A'] as const, btn: 'bg-emerald-600', accent: 'text-emerald-700', linkAccent: 'text-emerald-700', bg: 'bg-emerald-50' }
+    : { gradient: ['#1E3A8A', '#047857', '#0E7490'] as const, btn: 'bg-brand-600', accent: 'text-brand-700', linkAccent: 'text-brand-600', bg: 'bg-white' };
 
   return (
     <View className={`flex-1 ${theme.bg}`}>
-      <LinearGradient colors={theme.gradient} style={{ height: 240 }}>
+      <LinearGradient
+        colors={theme.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ height: 260 }}
+      >
+        {/* Decorative circles supaya gradient nampak hidup, mirip home */}
+        <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: 20, left: -50, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
               <ArrowLeft color="white" size={22} />
             </Pressable>
           </View>
-          <View className="px-6 pt-2">
+          <View className="px-6 pt-3">
             <View className="flex-row items-center gap-3">
-              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20" style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
                 {isFreelancer ? (
                   <Briefcase color="white" size={22} strokeWidth={2.2} />
                 ) : (
@@ -132,10 +142,10 @@ export default function Register() {
                 </Text>
               </View>
             </View>
-            <Text className="font-extrabold mt-4 text-3xl leading-9 text-white">
+            <Text className="font-extrabold mt-5 text-3xl leading-9 text-white" style={{ letterSpacing: -0.5 }}>
               {isFreelancer ? 'Jadi Mitra Cleaner' : 'Daftar Customer'}
             </Text>
-            <Text className="font-sans mt-1.5 text-sm leading-5 text-white/85">
+            <Text className="font-medium mt-1.5 text-sm leading-5 text-white/90">
               {isFreelancer ? 'Kerja fleksibel, payout harian, atur jadwal sendiri' : 'Buat akun untuk mulai pesan layanan'}
             </Text>
           </View>

@@ -66,7 +66,7 @@ function CleanerWallet() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-ink-50">
-        <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ paddingBottom: 70 }}>
+        <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingBottom: 70 }}>
           <SafeAreaView edges={['top']}>
             <View className="flex-row items-center px-3 py-2">
               <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
@@ -102,7 +102,7 @@ function CleanerWallet() {
             className="overflow-hidden rounded-2xl"
             style={{ elevation: 4 }}
           >
-            <LinearGradient colors={['#1D4ED8', '#2563EB']} style={{ padding: 16 }}>
+            <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ padding: 16 }}>
               <View className="flex-row items-center gap-3">
                 <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
                   <ArrowDownToLine color="white" size={22} strokeWidth={2.2} />
