@@ -624,6 +624,25 @@ export class BookingsController {
       const cleanerShare = Math.round(Number(u.amount) * pct / 100);
       const platformFee = Number(u.amount) - cleanerShare;
 
+      // Cek saldo customer wallet — kalau cukup, auto-deduct. Kalau kurang,
+      // tolak approval & arahkan customer ke payment gateway via /payment/[bookingId].
+      const balRows = await tx.$queryRaw<{ balance: number }[]>`
+        SELECT
+          (COALESCE(SUM(CASE WHEN account_type IN ('refund_credit', 'topup') AND status = 'CLEARED' THEN amount ELSE 0 END), 0)
+           - COALESCE(SUM(CASE WHEN account_type IN ('credit_use', 'withdrawal', 'admin_debit') AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0))::bigint AS balance
+        FROM wallet_ledger_entries WHERE user_id = ${user.id}::uuid
+      `;
+      const walletBalance = Number(balRows[0]?.balance ?? 0);
+      const upchargeAmount = Number(u.amount);
+      if (walletBalance < upchargeAmount) {
+        throw new BadRequestException(`Saldo wallet tidak cukup (Rp ${walletBalance.toLocaleString('id-ID')}). Kekurangan: Rp ${(upchargeAmount - walletBalance).toLocaleString('id-ID')}. Topup wallet dulu atau bayar langsung via Tagihan Tambahan di halaman pesanan.`);
+      }
+      // Deduct dari wallet customer (credit_use). PENDING utk konsisten - akan
+      // jadi CLEARED bareng wallet ledger lain via cron.
+      await tx.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
+        VALUES (${user.id}::uuid, 'credit_use', ${upchargeAmount}, 'upcharge', ${upchargeId}::uuid, 'PENDING', ${`Pembayaran tagihan tambahan booking #${id.slice(0, 8)}`})
+      `;
       await tx.$executeRaw`
         UPDATE booking_upcharges
            SET status = 'approved', decided_at = NOW(), decided_by_user_id = ${user.id}::uuid
@@ -632,7 +651,7 @@ export class BookingsController {
       // Tambah ke booking total + cleaner_payout (share only) + platform_fee
       await tx.$executeRaw`
         UPDATE bookings
-           SET total_amount = total_amount + ${Number(u.amount)},
+           SET total_amount = total_amount + ${upchargeAmount},
                cleaner_payout = COALESCE(cleaner_payout, 0) + ${cleanerShare},
                platform_fee = COALESCE(platform_fee, 0) + ${platformFee}
          WHERE id = ${id}::uuid
@@ -640,9 +659,9 @@ export class BookingsController {
       // Insert earning cleaner (share saja, PENDING — escrow 24h)
       await tx.$executeRaw`
         INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
-        VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${id}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${Number(u.amount).toLocaleString('id-ID')}`})
+        VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${id}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${upchargeAmount.toLocaleString('id-ID')}`})
       `;
-      return { ok: true, cleanerShare, platformFee, pct };
+      return { ok: true, cleanerShare, platformFee, pct, walletDeducted: upchargeAmount, walletRemaining: walletBalance - upchargeAmount };
     });
   }
 
