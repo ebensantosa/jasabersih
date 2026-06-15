@@ -967,7 +967,9 @@ function NewBooking() {
                             <View className="items-end">
                               <Text className="font-bold text-sm text-brand-600">{formatRupiah(applyCleanMode(p.price, cleanMode, deepMultiplier))}</Text>
                               {cleanMode === 'deep' && (
-                                <Text className="font-sans text-[10px] text-ink-400 line-through">{formatRupiah(p.price)}</Text>
+                                <Text className="font-semibold text-[10px] text-amber-700">
+                                  Deep +{Math.round((deepMultiplier - 1) * 100)}%
+                                </Text>
                               )}
                               <Text className="font-sans text-[10px] text-ink-500">±{p.durationMin} menit</Text>
                             </View>

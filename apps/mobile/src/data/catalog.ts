@@ -205,8 +205,11 @@ export const LARGE_SCALE_MAX_M2 = 500;
 export const POST_RENO_PROPERTY_TYPES = ['Rumah', 'Apartemen', 'Ruko', 'Kantor', 'Villa', 'Lainnya'] as const;
 export const POST_RENO_LEVELS: { code: string; label: string; desc: string; multiplier: number }[] = [
   { code: 'cat_ulang', label: 'Cat Ulang / Minor', desc: 'Repaint dinding, debu cat ringan, minim puing', multiplier: 1.0 },
-  { code: 'renovasi_sedang', label: 'Renovasi Sedang', desc: 'Ada bongkar partisi, debu semen sedang, sisa material', multiplier: 1.3 },
-  { code: 'renovasi_total', label: 'Renovasi Total', desc: 'Bongkar besar, debu semen tebal, banyak puing & sisa cat', multiplier: 1.6 },
+  // Renovasi sedang multiplier diturunkan 1.3 -> 1.1 (selisih ~30% -> ~10%)
+  // sesuai feedback user (perhitungan manual hampir 40% terlalu mahal).
+  { code: 'renovasi_sedang', label: 'Renovasi Sedang', desc: 'Ada bongkar partisi, debu semen sedang, sisa material', multiplier: 1.1 },
+  // Renovasi total diturunkan 1.6 -> 1.3 (selisih 60% -> 30%) ngikutin rasio yg sama.
+  { code: 'renovasi_total', label: 'Renovasi Total', desc: 'Bongkar besar, debu semen tebal, banyak puing & sisa cat', multiplier: 1.3 },
 ];
 export const POST_RENO_TARGETS: { code: string; label: string; ratePerM2: number; desc: string }[] = [
   { code: 'debu_semen',  label: 'Sapu & buang debu semen',  ratePerM2: 8000, desc: 'Debu konstruksi dari lantai, sudut, sela' },
