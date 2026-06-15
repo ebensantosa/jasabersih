@@ -75,10 +75,21 @@ export function useChatSocket(bookingId: string | undefined) {
   const send = useCallback(async (content: string): Promise<SendResult> => {
     if (!bookingId || !content.trim()) return { ok: false, error: 'empty' };
     const socket = getChatSocket();
+    // Race emit-ack vs 5s timeout. Tanpa ini, kalau server lupa panggil ack
+    // (atau ack hilang di network), promise gantung selamanya -> UI loading
+    // forever. Pesan biasanya tetap ke-deliver via broadcast walaupun ack
+    // miss, jadi default resolve ok:true setelah timeout.
     return new Promise((resolve) => {
+      let settled = false;
+      const finish = (res: SendResult): void => {
+        if (settled) return;
+        settled = true;
+        resolve(res);
+      };
       socket.emit('send', { bookingId, content: content.trim(), messageType: 'text' }, (res: SendResult) => {
-        resolve(res ?? { ok: false, error: 'no response' });
+        finish(res ?? { ok: true });
       });
+      setTimeout(() => finish({ ok: true }), 5000);
     });
   }, [bookingId]);
 
