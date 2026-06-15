@@ -369,9 +369,18 @@ export class CleanerWalletController {
         return { id: wid, amount: body.amount, transferAmount, fee: flipFee, status: 'processing', autoDisburse: true, flipId };
       } catch (e: any) {
         this.log.error(`Auto-disburse failed for withdrawal ${wid}: ${e?.message ?? e}`);
-        // Mark as failed + reverse hold
+        // Mark as failed + reverse hold. PENTING: juga update review_status
+        // dari 'pending' -> 'rejected', kalau enggak, blocker check di endpoint
+        // 'pending withdrawal exists' bakal tetap trigger -> user gak bisa
+        // submit baru sampai admin manual update.
         await this.prisma.$executeRaw`
-          UPDATE withdrawals SET status = 'failed', failure_reason = ${String(e?.message ?? 'Flip error')} WHERE id = ${wid}::uuid
+          UPDATE withdrawals
+             SET status = 'failed',
+                 review_status = 'rejected',
+                 review_note = 'Auto-disburse Flip gagal',
+                 reviewed_at = NOW(),
+                 failure_reason = ${String(e?.message ?? 'Flip error')}
+           WHERE id = ${wid}::uuid
         `;
         await this.prisma.$executeRaw`
           UPDATE wallet_ledger_entries SET status = 'CLEARED', cleared_at = NOW()
