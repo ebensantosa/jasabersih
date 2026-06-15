@@ -1,16 +1,56 @@
 import { AlertTriangle } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { api } from '../lib/api';
 import { useConfig } from '../stores/appContent';
+
+type BankHealth = {
+  code: string;
+  name: string;
+  status: 'normal' | 'delayed' | 'down';
+  message: string;
+};
 
 /**
  * Banner peringatan gangguan bank/payment.
- * Admin set 'payment.maintenance_notice' di app_config -> banner tampil di
- * wallet, withdraw, dan checkout. Kosongkan -> banner hide.
+ *
+ * Dua sumber data:
+ * 1. Admin manual: `payment.maintenance_notice` di app_config.
+ * 2. Live dari Flip: GET /payments/bank-health (data dari Flip webhook +
+ *    admin override). Auto-show kalau ada bank dgn status delayed/down.
+ *
+ * Banner tampil kalau salah satu sumber ada gangguan. Notice manual
+ * di-prioritize (admin tau lebih detail), live data jadi fallback.
  */
 export function MaintenanceBanner() {
-  const notice = useConfig('payment.maintenance_notice', '');
-  if (!notice || !notice.trim()) return null;
+  const manualNotice = useConfig('payment.maintenance_notice', '');
+  const [issues, setIssues] = useState<BankHealth[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const r = await api.get('/payments/bank-health');
+        const list: BankHealth[] = r.data?.data ?? r.data ?? [];
+        if (cancelled) return;
+        // Filter cuma yg lagi gangguan (delayed/down)
+        setIssues(list.filter((b) => b.status !== 'normal'));
+      } catch {
+        // Silent - banner cuma optional info, gak crash kalau API down
+      }
+    }
+    void load();
+    // Re-check tiap 60 detik (banner refresh saat masih kebuka)
+    const t = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
+  const hasManual = !!manualNotice && manualNotice.trim().length > 0;
+  const hasLive = issues.length > 0;
+  if (!hasManual && !hasLive) return null;
+
+  // Compose message: manual notice di atas, lalu daftar bank issue auto.
   return (
     <View
       className="flex-row items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3"
@@ -21,7 +61,25 @@ export function MaintenanceBanner() {
       </View>
       <View className="flex-1">
         <Text className="font-bold text-[12px] text-amber-900">Gangguan Bank / Pembayaran</Text>
-        <Text className="font-medium mt-0.5 text-[11px] leading-4 text-amber-800">{notice}</Text>
+        {hasManual && (
+          <Text className="font-medium mt-0.5 text-[11px] leading-4 text-amber-800">{manualNotice}</Text>
+        )}
+        {hasLive && (
+          <View className="mt-1.5 gap-1">
+            {issues.map((b) => (
+              <Text key={b.code} className="font-medium text-[11px] leading-4 text-amber-800">
+                <Text className="font-bold">{b.name}</Text>
+                {b.status === 'down' ? ' - sedang gangguan' : ' - sedang tertunda'}
+                {b.message ? `: ${b.message}` : ''}
+              </Text>
+            ))}
+          </View>
+        )}
+        {hasLive && !hasManual && (
+          <Text className="font-medium mt-1.5 text-[10px] italic text-amber-700">
+            Status di-update otomatis dari sistem partner (Flip).
+          </Text>
+        )}
       </View>
     </View>
   );
