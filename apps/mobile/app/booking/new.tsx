@@ -29,6 +29,7 @@ import {
   POST_RENO_PROPERTY_TYPES,
   POST_RENO_TARGETS,
   SUBSCRIPTION_DAYS,
+  SUBSCRIPTION_TIERS,
   SUBSCRIPTION_VISITS_BY_PKG,
   PACKAGES as LOCAL_PACKAGES,
   PROPERTY_TYPES,
@@ -176,6 +177,13 @@ function NewBooking() {
   const [subscriptionDates, setSubscriptionDates] = useState<string[]>([]); // ISO YYYY-MM-DD list
   // Month offset untuk calendar nav (0 = bulan ini, 1 = bulan depan, dst). Max 5 (6 bulan ke depan).
   const [subscriptionMonthOffset, setSubscriptionMonthOffset] = useState<number>(0);
+  // Tier subscription: basic/standard/premium/ultimate. Bedanya scope layanan
+  // tiap kunjungan + multiplier harga.
+  const [subscriptionTier, setSubscriptionTier] = useState<'basic' | 'standard' | 'premium' | 'ultimate'>('standard');
+  const subscriptionTierMultiplier = useMemo(() => {
+    if (!isSubscription) return 1;
+    return SUBSCRIPTION_TIERS.find((t) => t.code === subscriptionTier)?.multiplier ?? 1;
+  }, [isSubscription, subscriptionTier]);
   const subscriptionVisits = useMemo(() => {
     if (!isSubscription || !pkg) return 0;
     const match = SUBSCRIPTION_VISITS_BY_PKG.find((r) => r.match.test(pkg.name));
@@ -506,7 +514,7 @@ function NewBooking() {
     : isPostReno
       ? postRenoTotal + addonTotal
       : isSubscription
-        ? basePrice + subscriptionAddonTotal
+        ? Math.round(basePrice * subscriptionTierMultiplier) + subscriptionAddonTotal
         : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
@@ -631,6 +639,8 @@ function NewBooking() {
         postRenoHasKitchen: isPostReno ? postRenoHasKitchen : undefined,
         subscriptionDates: isSubscription ? subscriptionDates : undefined,
         subscriptionVisits: isSubscription ? subscriptionVisits : undefined,
+        subscriptionTier: isSubscription ? subscriptionTier : undefined,
+        subscriptionTierMultiplier: isSubscription ? subscriptionTierMultiplier : undefined,
         dirtLevel,
         dirtCharacters: Array.from(dirtChars),
         floorType,
@@ -1286,6 +1296,60 @@ function NewBooking() {
                                 <Text className="font-medium text-[10px] text-brand-600">{formatRupiah(lineTotal)}</Text>
                               )}
                             </View>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </Section>
+              )}
+              {/* Tier Selector subscription - 4 tier: Basic/Standard/Premium/Ultimate.
+                  Bedanya scope layanan tiap kunjungan. Harga auto-multiplier. */}
+              {isSubscription && (
+                <Section title="Pilih Tier Langganan">
+                  <View className="gap-2">
+                    {SUBSCRIPTION_TIERS.map((t) => {
+                      const active = subscriptionTier === t.code;
+                      const tierPrice = Math.round(basePrice * t.multiplier);
+                      return (
+                        <Pressable
+                          key={t.code}
+                          onPress={() => setSubscriptionTier(t.code)}
+                          className={`rounded-2xl border p-3 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                        >
+                          <View className="flex-row items-start justify-between">
+                            <View className="flex-1">
+                              <View className="flex-row items-center gap-1.5">
+                                <Text className="font-extrabold text-sm text-ink-900">{t.label}</Text>
+                                {t.code === 'standard' && (
+                                  <View className="rounded-full bg-emerald-100 px-2 py-0.5">
+                                    <Text className="font-bold text-[9px] uppercase tracking-wider text-emerald-700">Populer</Text>
+                                  </View>
+                                )}
+                                {t.code === 'ultimate' && (
+                                  <View className="rounded-full bg-amber-100 px-2 py-0.5">
+                                    <Text className="font-bold text-[9px] uppercase tracking-wider text-amber-700">Best Value</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text className="font-medium text-[11px] text-ink-500">{t.tagline}</Text>
+                            </View>
+                            <View className="items-end">
+                              <Text className={`font-extrabold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>{formatRupiah(tierPrice)}</Text>
+                              <Text className="font-medium text-[10px] text-ink-500">/ kunjungan</Text>
+                            </View>
+                          </View>
+                          {/* Scope list - tampilkan 2 item terutama + "+N lain" kalau gak active */}
+                          <View className="mt-2 gap-0.5">
+                            {(active ? t.scope : t.scope.slice(0, 2)).map((s, i) => (
+                              <View key={i} className="flex-row gap-1.5">
+                                <Text className="font-bold text-[11px] text-emerald-600">✓</Text>
+                                <Text className="font-sans flex-1 text-[11px] text-ink-700">{s}</Text>
+                              </View>
+                            ))}
+                            {!active && t.scope.length > 2 && (
+                              <Text className="font-medium mt-0.5 text-[10px] text-brand-600">+{t.scope.length - 2} layanan lain · tap untuk lihat</Text>
+                            )}
                           </View>
                         </Pressable>
                       );

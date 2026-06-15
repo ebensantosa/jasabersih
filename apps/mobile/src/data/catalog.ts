@@ -203,6 +203,72 @@ export const LARGE_SCALE_MAX_M2 = 500;
 
 // Pasca Renovasi: scope spesial (debu konstruksi, sisa cat, puing, kaca)
 export const POST_RENO_PROPERTY_TYPES = ['Rumah', 'Apartemen', 'Ruko', 'Kantor', 'Villa', 'Lainnya'] as const;
+// === PAKET LANGGANAN TIER ===
+// 4 tier untuk Paket Berlangganan Bulanan. Bedanya = jenis layanan yg
+// di-cover saat tiap kunjungan. Harga auto = basePrice * multiplier.
+export const SUBSCRIPTION_TIERS: {
+  code: 'basic' | 'standard' | 'premium' | 'ultimate';
+  label: string;
+  tagline: string;
+  multiplier: number;
+  scope: string[];
+}[] = [
+  {
+    code: 'basic',
+    label: 'Basic',
+    tagline: 'Bersih dasar harian',
+    multiplier: 1.0,
+    scope: [
+      'Sapu & pel seluruh lantai',
+      'Buang sampah dari semua tempat',
+      'Lap permukaan meja & rak',
+      'Rapikan tempat tidur',
+    ],
+  },
+  {
+    code: 'standard',
+    label: 'Standard',
+    tagline: 'Bersih menyeluruh',
+    multiplier: 1.25,
+    scope: [
+      'Semua di Basic',
+      'Bersih kamar mandi (wastafel, kloset, lantai)',
+      'Bersih dapur (kompor, meja, sink)',
+      'Dust furniture & lemari (luar)',
+      'Cuci piring kotor yg ada',
+    ],
+  },
+  {
+    code: 'premium',
+    label: 'Premium',
+    tagline: 'Deep clean + jendela',
+    multiplier: 1.5,
+    scope: [
+      'Semua di Standard',
+      'Deep clean kamar mandi (nilam keramik, anti-kerak)',
+      'Deep clean dapur (degreasing, cuci kompor)',
+      'Lap kaca jendela bagian dalam',
+      'Bersih kipas angin / lampu gantung',
+      'Vacuum karpet & sofa (luar)',
+    ],
+  },
+  {
+    code: 'ultimate',
+    label: 'Ultimate',
+    tagline: 'Lengkap seperti hotel',
+    multiplier: 1.85,
+    scope: [
+      'Semua di Premium',
+      'Bersih AC dalam (filter, blower)',
+      'Polish furniture kayu / kulit',
+      'Lap kaca jendela luar (max lantai 2)',
+      'Steam clean sofa & karpet',
+      'Bersih appliance (kulkas, microwave, oven)',
+      'Aroma terapi + linen fresh spray',
+    ],
+  },
+];
+
 export const POST_RENO_LEVELS: { code: string; label: string; desc: string; multiplier: number }[] = [
   { code: 'cat_ulang', label: 'Cat Ulang / Minor', desc: 'Repaint dinding, debu cat ringan, minim puing', multiplier: 1.0 },
   // Renovasi sedang multiplier diturunkan 1.3 -> 1.1 (selisih ~30% -> ~10%)
