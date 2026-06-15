@@ -70,21 +70,23 @@ function CleanerWallet() {
           colors={['#1E3A8A', '#047857', '#0E7490']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ paddingBottom: 24 }}
+          style={{ paddingBottom: 80 }}
         >
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-          <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-          <View pointerEvents="none" style={{ position: 'absolute', bottom: 20, left: -40, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' }} />
           <SafeAreaView edges={['top']}>
             <View className="flex-row items-center px-3 py-2">
-              <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
-                <ArrowLeft color="white" size={22} />
+              <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                <ArrowLeft color="white" size={20} />
               </Pressable>
-              <Text className="font-bold ml-1 text-base text-white">Wallet Cleaner</Text>
+              <Text className="font-bold ml-2 text-base text-white">Wallet Cleaner</Text>
             </View>
-            <View className="px-5 pb-3 pt-2">
-              <Text className="font-medium text-xs text-white/70">Saldo Bisa Ditarik</Text>
-              <Text className="font-bold mt-1 text-3xl text-white">{formatRupiah(balance)}</Text>
+            <View className="px-5 pb-2 pt-3">
+              <Text className="font-semibold text-[11px] tracking-wide text-white/80">Saldo Bisa Ditarik</Text>
+              <Text className="font-extrabold mt-1.5 text-[32px] text-white" style={{ letterSpacing: -0.6 }}>
+                {formatRupiah(balance)}
+              </Text>
               {escrowPending > 0 && (
                 <Text className="font-medium mt-1 text-[11px] text-amber-200">
                   Escrow {formatRupiah(escrowPending)} - cair otomatis 24 jam setelah job selesai
@@ -92,7 +94,7 @@ function CleanerWallet() {
               )}
               {pending > 0 && (
                 <Text className="font-medium mt-1 text-[11px] text-amber-200">
-                  ⏳ {formatRupiah(pending)} dalam proses penarikan
+                  {formatRupiah(pending)} dalam proses penarikan
                 </Text>
               )}
             </View>
@@ -101,23 +103,36 @@ function CleanerWallet() {
 
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          style={{ marginTop: -60 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
         >
-          {/* CTA Tarik */}
+          {/* CTA Tarik - floating dgn shadow, overlap hero */}
           <Pressable
             onPress={tryWithdraw}
-            className="overflow-hidden rounded-2xl"
-            style={{ elevation: 4 }}
+            className="overflow-hidden rounded-3xl"
+            style={{
+              elevation: 10,
+              shadowColor: '#0B2A6F',
+              shadowOpacity: 0.22,
+              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 6 },
+            }}
           >
-            <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 }}>
+            <LinearGradient
+              colors={['#1D4ED8', '#047857']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 20 }}
+            >
+              <View pointerEvents="none" style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.08)' }} />
               <View className="flex-row items-center gap-3">
-                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
                   <ArrowDownToLine color="white" size={22} strokeWidth={2.2} />
                 </View>
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-white">Tarik Saldo</Text>
-                  <Text className="font-sans mt-0.5 text-[11px] text-white/85">
-                    Min {formatRupiah(MIN_WITHDRAW)} · auto-transfer ke rekening
+                  <Text className="font-medium mt-0.5 text-[11px] text-white/85">
+                    Min {formatRupiah(MIN_WITHDRAW)} - auto-transfer ke rekening
                   </Text>
                 </View>
               </View>

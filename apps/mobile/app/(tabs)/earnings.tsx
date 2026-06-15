@@ -78,18 +78,20 @@ function EarningsScreen() {
 
   return (
     <View className="flex-1 bg-ink-50">
+      {/* Hero gradient lebih tinggi - jadi background floating untuk saldo card */}
       <LinearGradient
         colors={['#1E3A8A', '#047857', '#0E7490']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ paddingBottom: 20 }}
+        style={{ paddingBottom: 90 }}
       >
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-        <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-        <View pointerEvents="none" style={{ position: 'absolute', bottom: -20, left: -40, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: 30, left: -50, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: 80, right: 60, width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.05)' }} />
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
-            <Text className="font-extrabold text-xl text-white">Pendapatan</Text>
+            <Text className="font-extrabold text-xl text-white" style={{ letterSpacing: -0.3 }}>Pendapatan</Text>
             <Text className="font-medium mt-0.5 text-[11px] text-white/80">
               {now.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
             </Text>
@@ -98,29 +100,41 @@ function EarningsScreen() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
+        style={{ marginTop: -70 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
       >
-        {/* Saldo card - gradient atas + tombol bawah dipisah, gak ada lagi
-            pill yg kelihatan numpuk di edge gradient. */}
+        {/* Saldo card floating - overlap ke hero dgn shadow tebal supaya
+            jelas keliatan flying. Background transparan dgn tint biru-emerald
+            tipis biar menyatu warna gradient di belakangnya. */}
         <View
-          className="mx-4 overflow-hidden rounded-2xl bg-white"
-          style={{ elevation: 4, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
+          className="mx-4 overflow-hidden rounded-3xl"
+          style={{
+            elevation: 12,
+            shadowColor: '#0B2A6F',
+            shadowOpacity: 0.25,
+            shadowRadius: 18,
+            shadowOffset: { width: 0, height: 8 },
+            backgroundColor: '#FFFFFF',
+          }}
         >
           <Pressable onPress={() => router.push('/cleaner/wallet')}>
+            {/* Section atas: gradient match hero (biru -> emerald -> teal) */}
             <LinearGradient
-              colors={['#1D4ED8', '#0E7490']}
+              colors={['#1E3A8A', '#047857']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 }}
+              style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 22 }}
             >
-              <Text className="font-medium text-[11px] text-white/80">Saldo Bisa Ditarik</Text>
-              <Text className="font-extrabold mt-1.5 text-[26px] text-white" style={{ letterSpacing: -0.5 }}>
+              <View pointerEvents="none" style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+              <Text className="font-semibold text-[11px] tracking-wide text-white/85">Saldo Bisa Ditarik</Text>
+              <Text className="font-extrabold mt-2 text-[28px] text-white" style={{ letterSpacing: -0.6 }}>
                 {formatRupiah(balance)}
               </Text>
             </LinearGradient>
-            <View className="flex-row items-center justify-center gap-1.5 border-t border-ink-100 bg-white py-3.5">
+            {/* Section bawah: putih bersih, tombol Tarik Saldo */}
+            <View className="flex-row items-center justify-center gap-1.5 bg-white py-4">
               <ArrowDownToLine color="#1D4ED8" size={16} strokeWidth={2.4} />
               <Text className="font-bold text-sm text-brand-700">Tarik Saldo</Text>
             </View>
