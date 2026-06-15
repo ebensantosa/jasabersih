@@ -15,6 +15,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
+import { AuthGate } from '../../src/components/AuthGate';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { api } from '../../src/lib/api';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -27,9 +28,11 @@ type LeaderboardMe = { rank: number | null; jobs: number; earnings: number };
 
 export default function EarningsRoute() {
   return (
-    <CleanerKycGate>
-      <EarningsScreen />
-    </CleanerKycGate>
+    <AuthGate>
+      <CleanerKycGate>
+        <EarningsScreen />
+      </CleanerKycGate>
+    </AuthGate>
   );
 }
 

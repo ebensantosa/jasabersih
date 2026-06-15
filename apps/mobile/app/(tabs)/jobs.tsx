@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
+import { AuthGate } from '../../src/components/AuthGate';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { calculateCleanerEarning, calculateCleanerShare } from '../../src/stores/cleanerWallet';
@@ -33,9 +34,11 @@ type ActiveJob = {
 
 export default function Jobs() {
   return (
-    <CleanerKycGate>
-      <JobsScreen />
-    </CleanerKycGate>
+    <AuthGate>
+      <CleanerKycGate>
+        <JobsScreen />
+      </CleanerKycGate>
+    </AuthGate>
   );
 }
 

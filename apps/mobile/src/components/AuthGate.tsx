@@ -1,6 +1,5 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,14 +24,9 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
 
-  // Anonymous → redirect ke login via useEffect (sync Redirect bisa crash Fabric).
-  useEffect(() => {
-    if (!tokens) router.replace('/(auth)/login');
-  }, [tokens, router]);
-
+  // Anonymous → sync Redirect supaya gak ada flash blank putih sebelum useEffect jalan.
   if (!tokens) {
-    // Empty View placeholder - bukan ActivityIndicator (Animated bisa trigger Fabric error).
-    return <View style={{ flex: 1, backgroundColor: 'white' }} />;
+    return <Redirect href="/(auth)/login" />;
   }
 
   // Logged in but wrong mode (customer trying cleaner page or vice versa)
