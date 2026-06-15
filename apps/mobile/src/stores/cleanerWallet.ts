@@ -89,14 +89,25 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
         const isEarning = l.accountType === 'earnings';
         const isWithdrawal = l.accountType === 'withdrawal';
         const status = l.status as string;
+        const rawAmount = Number(l.amount);
+        // PRESERVE SIGN dari server. Backend insert:
+        //   - Hold withdrawal: +amount (debit user balance)
+        //   - Reverse (kalau Flip gagal): -amount (credit balance kembali)
+        // UI convention: amount positif = '+' hijau (credit), negatif = '-' merah.
+        // Jadi untuk withdrawal: FLIP sign supaya hold tampil minus (debit user),
+        // reverse tampil plus (refund balance).
+        const amount = isEarning ? rawAmount : -rawAmount;
+        // Reverse entry kalau description ada 'Reverse' keyword -> klasifikasi
+        // sebagai 'earning' supaya tampil credit hijau di UI history.
+        const isReverse = isWithdrawal && /reverse/i.test(String(l.description ?? ''));
         return {
           id: l.id,
-          type: isEarning ? 'earning'
+          type: isEarning || isReverse ? 'earning'
             : isWithdrawal && status === 'PENDING' ? 'withdrawal_pending'
             : isWithdrawal && status === 'CLEARED' ? 'withdrawal_complete'
             : isWithdrawal && status === 'CANCELLED' ? 'withdrawal_failed'
             : 'earning',
-          amount: isEarning ? Number(l.amount) : -Math.abs(Number(l.amount)),
+          amount,
           description: l.description ?? (isEarning ? 'Pendapatan' : 'Penarikan'),
           bookingId: l.referenceType === 'booking' ? l.referenceId : undefined,
           createdAt: l.createdAt ? new Date(l.createdAt).getTime() : Date.now(),
