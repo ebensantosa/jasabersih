@@ -1,9 +1,9 @@
 import * as Clipboard from 'expo-clipboard';
 import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Building2, CheckCircle2, Copy, MessageCircle, QrCode, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
+import { ArrowLeft, Building2, CheckCircle2, Copy, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Modal as RNModal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import QRCode from 'react-native-qrcode-svg';
@@ -11,7 +11,6 @@ import { Image } from 'expo-image';
 
 import { api } from '../../src/lib/api';
 import { useBookingsStore } from '../../src/stores/bookings';
-import { useConfig } from '../../src/stores/appContent';
 import { toast } from '../../src/stores/ui';
 import { formatRupiah } from '../../src/data/catalog';
 import { safeBack } from '../../src/lib/safeBack';
@@ -20,7 +19,7 @@ type DirectResult = {
   paymentId: string;
   amount: number;
   senderBank: string;
-  senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer';
+  senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer' | 'retail' | 'credit_card';
   accountNumber: string | null;
   qrString: string | null;
   walletUrl?: string | null;
@@ -28,57 +27,81 @@ type DirectResult = {
   paymentUrl?: string | null;
 };
 
-// Stylized brand badges - no external image deps so always renders.
-const VA_METHODS: {
-  code: string;
-  name: string;
-  bg: string;
-  fg: string;
-  label: string;
-  logo: any;
-}[] = [
-  { code: 'bca',     name: 'BCA Virtual Account',         bg: '#FFFFFF', fg: '#0060AF', label: 'BCA',     logo: require('../../assets/payment-logos/logo-bca.png') },
-  { code: 'mandiri', name: 'Mandiri Virtual Account',     bg: '#FFFFFF', fg: '#003D79', label: 'mandiri', logo: require('../../assets/payment-logos/logo-mandiri.png') },
-  { code: 'bni',     name: 'BNI Virtual Account',         bg: '#FFFFFF', fg: '#F36F21', label: 'BNI',     logo: require('../../assets/payment-logos/logo-bni.png') },
-  { code: 'bri',     name: 'BRI Virtual Account',         bg: '#FFFFFF', fg: '#00529C', label: 'BRI',     logo: require('../../assets/payment-logos/logo-bri.png') },
-  { code: 'cimb',    name: 'CIMB Niaga Virtual Account',  bg: '#FFFFFF', fg: '#7A1A1A', label: 'CIMB',    logo: require('../../assets/payment-logos/cimb.png') },
-  { code: 'permata', name: 'Permata Virtual Account',     bg: '#FFFFFF', fg: '#00853F', label: 'Permata', logo: require('../../assets/payment-logos/logo-permatabank.png') },
-  { code: 'bsi',     name: 'BSI Virtual Account',         bg: '#FFFFFF', fg: '#00904F', label: 'BSI',     logo: require('../../assets/payment-logos/bsi-logo.png') },
-  { code: 'danamon', name: 'Danamon Virtual Account',     bg: '#FFFFFF', fg: '#FF6B00', label: 'Danamon', logo: require('../../assets/payment-logos/logo-danamon.png') },
-  { code: 'btn',     name: 'BTN Virtual Account',         bg: '#FFFFFF', fg: '#005DA8', label: 'BTN',     logo: require('../../assets/payment-logos/BTN.png') },
-  { code: 'mega',    name: 'Bank Mega Virtual Account',   bg: '#FFFFFF', fg: '#FFB500', label: 'Mega',    logo: require('../../assets/payment-logos/logo-mega.png') },
-];
+const VA_METHODS: { code: string; name: string; logo: any }[] = [
+  { code: 'bca', name: 'BCA Virtual Account', logo: require('../../assets/payment-logos/logo-bca.png') },
+  { code: 'mandiri', name: 'Mandiri Virtual Account', logo: require('../../assets/payment-logos/logo-mandiri.png') },
+  { code: 'bni', name: 'BNI Virtual Account', logo: require('../../assets/payment-logos/logo-bni.png') },
+  { code: 'bri', name: 'BRI Virtual Account', logo: require('../../assets/payment-logos/logo-bri.png') },
+  { code: 'cimb', name: 'CIMB Niaga Virtual Account', logo: require('../../assets/payment-logos/cimb.png') },
+  { code: 'permata', name: 'Permata Virtual Account', logo: require('../../assets/payment-logos/logo-permatabank.png') },
+  { code: 'bsi', name: 'BSI Virtual Account', logo: require('../../assets/payment-logos/bsi-logo.png') },
+  { code: 'danamon', name: 'Danamon Virtual Account', logo: require('../../assets/payment-logos/logo-danamon.png') },
+  { code: 'btn', name: 'BTN Virtual Account', logo: require('../../assets/payment-logos/BTN.png') },
+  { code: 'mega', name: 'Bank Mega Virtual Account', logo: require('../../assets/payment-logos/logo-mega.png') },
+] as const;
 
-// E-wallet direct (alternatif kalau gak mau scan QRIS)
 const EWALLET_METHODS: { code: string; name: string; logo: any }[] = [
-  { code: 'ovo',           name: 'OVO',       logo: require('../../assets/payment-logos/logo-ovo.png') },
-  { code: 'dana',          name: 'DANA',      logo: require('../../assets/payment-logos/logo-dana.png') },
-  { code: 'shopeepay_app', name: 'ShopeePay', logo: require('../../assets/payment-logos/shopeepay.png') },
-  { code: 'linkaja_app',   name: 'LinkAja',   logo: require('../../assets/payment-logos/logo-linkaja.png') },
-];
+  { code: 'gopay', name: 'GoPay', logo: require('../../assets/payment-logos/gopay-192x92-1.png') },
+  { code: 'ovo', name: 'OVO', logo: require('../../assets/payment-logos/logo-ovo.png') },
+  { code: 'dana', name: 'DANA', logo: require('../../assets/payment-logos/logo-dana.png') },
+  { code: 'shopeepay', name: 'ShopeePay', logo: require('../../assets/payment-logos/shopeepay.png') },
+  { code: 'linkaja', name: 'LinkAja', logo: require('../../assets/payment-logos/logo-linkaja.png') },
+] as const;
 
-// Transfer Bank (channel Flip) - customer transfer ke rekening tetap merchant,
-// Flip auto-detect dari mutasi. Cek Flip dashboard → Accept Payment → Transfer Bank
-// untuk lihat channel aktif.
-const TRANSFER_BANK_METHODS: { code: string; name: string; logo?: any; label: string }[] = [
-  { code: 'bri',          name: 'Transfer dari BRI',         label: 'BRI',          logo: require('../../assets/payment-logos/logo-bri.png') },
-  { code: 'dbs',          name: 'Transfer dari DBS',         label: 'DBS' },
-  { code: 'muamalat',     name: 'Transfer dari Muamalat',    label: 'MUAMALAT' },
-  { code: 'bni_syariah',  name: 'Transfer dari BNI Syariah', label: 'BNI SYARIAH' },
-];
+const TRANSFER_BANK_METHODS: { code: string; name: string; label: string; logo?: any }[] = [
+  { code: 'bri', name: 'Transfer dari BRI', label: 'BRI', logo: require('../../assets/payment-logos/logo-bri.png') },
+  { code: 'dbs', name: 'Transfer dari DBS', label: 'DBS' },
+  { code: 'muamalat', name: 'Transfer dari Muamalat', label: 'Muamalat' },
+  { code: 'bni_syariah', name: 'Transfer dari BNI Syariah', label: 'BNI Syariah' },
+] as const;
+
+const RETAIL_METHODS: { code: string; name: string; label: string }[] = [
+  { code: 'alfamart', name: 'Alfamart', label: 'Alfamart' },
+  { code: 'indomaret', name: 'Indomaret', label: 'Indomaret' },
+] as const;
+
+const CARD_METHODS: { code: string; name: string; label: string }[] = [
+  { code: 'credit_card', name: 'Kartu Kredit', label: 'CARD' },
+] as const;
 
 const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
 
-type BankHealth = { code: string; status: 'normal' | 'delayed' | 'down'; message: string };
+type CheckoutMethod = {
+  code: string;
+  name: string;
+  group: 'qris' | 'virtual_account' | 'bank_transfer' | 'ewallet' | 'retail' | 'credit_card';
+  senderBank: string;
+  senderBankType: DirectResult['senderBankType'];
+  status: 'normal' | 'delayed' | 'down';
+  message: string;
+  description?: string;
+  recommended?: boolean;
+};
 
-function normalizeHealthCode(code: string) {
-  const normalized = String(code ?? '').trim().toLowerCase();
-  const aliases: Record<string, string> = {
-    shopeepay_app: 'shopeepay',
-    linkaja_app: 'linkaja',
-  };
-  return aliases[normalized] ?? normalized;
-}
+const METHOD_META: Record<string, { logo?: any; label?: string }> = {
+  qris: { logo: QRIS_LOGO, label: 'QRIS' },
+  bca: { logo: require('../../assets/payment-logos/logo-bca.png'), label: 'BCA' },
+  mandiri: { logo: require('../../assets/payment-logos/logo-mandiri.png'), label: 'Mandiri' },
+  bni: { logo: require('../../assets/payment-logos/logo-bni.png'), label: 'BNI' },
+  bri: { logo: require('../../assets/payment-logos/logo-bri.png'), label: 'BRI' },
+  cimb: { logo: require('../../assets/payment-logos/cimb.png'), label: 'CIMB' },
+  permata: { logo: require('../../assets/payment-logos/logo-permatabank.png'), label: 'Permata' },
+  bsi: { logo: require('../../assets/payment-logos/bsi-logo.png'), label: 'BSI' },
+  danamon: { logo: require('../../assets/payment-logos/logo-danamon.png'), label: 'Danamon' },
+  btn: { logo: require('../../assets/payment-logos/BTN.png'), label: 'BTN' },
+  mega: { logo: require('../../assets/payment-logos/logo-mega.png'), label: 'Mega' },
+  ovo: { logo: require('../../assets/payment-logos/logo-ovo.png'), label: 'OVO' },
+  dana: { logo: require('../../assets/payment-logos/logo-dana.png'), label: 'DANA' },
+  gopay: { logo: require('../../assets/payment-logos/gopay-192x92-1.png'), label: 'GoPay' },
+  shopeepay: { logo: require('../../assets/payment-logos/shopeepay.png'), label: 'ShopeePay' },
+  linkaja: { logo: require('../../assets/payment-logos/logo-linkaja.png'), label: 'LinkAja' },
+  dbs: { label: 'DBS' },
+  muamalat: { label: 'Muamalat' },
+  bni_syariah: { label: 'BNI Syariah' },
+  alfamart: { label: 'Alfamart' },
+  indomaret: { label: 'Indomaret' },
+  credit_card: { label: 'Card' },
+};
 
 function PaymentScreen() {
   const router = useRouter();
@@ -284,7 +307,7 @@ function CountdownBadge({ expiredAt }: { expiredAt: string }) {
   return (
     <View className={`rounded-lg px-2 py-1 ${expired ? 'bg-rose-100' : urgent ? 'bg-amber-100' : 'bg-blue-100'}`}>
       <Text className={`text-[10px] font-semibold ${expired ? 'text-rose-700' : urgent ? 'text-amber-700' : 'text-blue-700'}`}>
-        {expired ? '⛔ Expired' : `⏱ ${display}`}
+        {expired ? 'Expired' : display}
       </Text>
     </View>
   );
@@ -314,29 +337,29 @@ function MethodPicker({
   const creditUsed = useCredit ? Math.min(walletBalance, total) : 0;
   const remaining = total - creditUsed;
 
-  // Bank health - disable bank yang lagi down
-  const [bankHealth, setBankHealth] = useState<Record<string, BankHealth>>({});
+  const [methods, setMethods] = useState<CheckoutMethod[]>([]);
+  const [loadingMethods, setLoadingMethods] = useState(true);
+
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
-        const { api } = await import('../../src/lib/api');
-        const r = await api.get('/payments/bank-health');
-        const list = (r.data?.data ?? r.data ?? []) as BankHealth[];
-        const map: Record<string, BankHealth> = {};
-        for (const b of list) map[b.code] = b;
-        setBankHealth(map);
-      } catch { /* ignore - default semua normal */ }
+        const r = await api.get('/payments/checkout-methods');
+        setMethods((r.data?.data ?? r.data ?? []) as CheckoutMethod[]);
+      } catch {
+        setMethods([]);
+      } finally {
+        setLoadingMethods(false);
+      }
     })();
   }, []);
-  // Trust backend API sepenuhnya. Admin bisa toggle aktif/tidak via App Settings
-  // (key: payment.active_channels) tanpa redeploy APK.
-  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => bankHealth[normalizeHealthCode(code)]?.status ?? 'normal';
-  const getMessage = (code: string) => bankHealth[normalizeHealthCode(code)]?.message ?? '';
+
+  const visibleMethods = methods.filter((method) => method.status !== 'down');
+  const getMethod = (code: string) => methods.find((method) => method.senderBank === code || method.code === code.toUpperCase());
+  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => getMethod(code)?.status ?? 'normal';
+  const getMessage = (code: string) => getMethod(code)?.message ?? '';
+
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-      {/* MaintenanceBanner sengaja gak ditampilin ke customer di halaman bayar -
-          info bank maintenance cuma relevan untuk cleaner (withdraw). Customer
-          cukup tahu kalau payment gagal lewat error message saat checkout. */}
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Saldo Saya</Text>
         {walletBalance === 0 ? (
@@ -347,7 +370,7 @@ function MethodPicker({
             <View className="flex-1">
               <Text className="font-bold text-sm text-ink-500">Pakai Saldo (Rp 0)</Text>
               <Text className="font-medium mt-0.5 text-[11px] text-ink-400">
-                Saldo kosong - top-up dulu atau bayar via metode di bawah
+                Saldo kosong. Silakan pilih metode pembayaran di bawah.
               </Text>
             </View>
             <View className="h-5 w-5 items-center justify-center rounded-full border-2 border-ink-300 bg-ink-100" />
@@ -367,7 +390,7 @@ function MethodPicker({
               <View className="flex-1">
                 <Text className="font-bold text-sm text-emerald-900">Bayar dengan Saldo</Text>
                 <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                  Saldo: {formatRupiah(walletBalance)} - bayar penuh dari saldo
+                  Saldo tersedia {formatRupiah(walletBalance)} dan cukup untuk pembayaran penuh.
                 </Text>
               </View>
             </Pressable>
@@ -383,11 +406,11 @@ function MethodPicker({
               <View className="flex-1">
                 <Text className="font-bold text-sm text-ink-900">Pakai Saldo (Rp {walletBalance.toLocaleString('id-ID')})</Text>
                 <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                  {useCredit ? `Potongan: ${formatRupiah(creditUsed)} · Sisa bayar via metode bawah: ${formatRupiah(remaining)}` : 'Tap untuk pakai saldo, sisanya bayar via bank/QRIS'}
+                  {useCredit ? `Potongan saldo ${formatRupiah(creditUsed)}. Sisa pembayaran ${formatRupiah(remaining)}.` : 'Gunakan saldo lebih dulu, lalu pilih metode pembayaran untuk sisanya.'}
                 </Text>
               </View>
               <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${useCredit ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300'}`}>
-                {useCredit && <Text className="font-bold text-white text-[10px]">✓</Text>}
+                {useCredit ? <View className="h-2 w-2 rounded-full bg-white" /> : null}
               </View>
             </Pressable>
           )}
@@ -399,10 +422,10 @@ function MethodPicker({
               </View>
               <View className="flex-row justify-between">
                 <Text className="text-xs text-ink-600">Potong saldo</Text>
-                <Text className="text-xs text-emerald-600">−{formatRupiah(creditUsed)}</Text>
+                <Text className="text-xs text-emerald-600">-{formatRupiah(creditUsed)}</Text>
               </View>
               <View className="mt-1 flex-row justify-between border-t border-ink-200 pt-1">
-                <Text className="text-xs font-bold text-ink-900">Bayar via bank/QRIS</Text>
+                <Text className="text-xs font-bold text-ink-900">Sisa pembayaran</Text>
                 <Text className="text-sm font-bold text-ink-900">{formatRupiah(remaining)}</Text>
               </View>
             </View>
@@ -420,7 +443,7 @@ function MethodPicker({
           return (
             <Pressable
               disabled={disabled || down}
-              onPress={() => onPick('qris', 'wallet_account')}
+              onPress={() => onPick('qris', 'qris')}
               className={`flex-row items-center gap-3 rounded-2xl p-4 ${down ? 'bg-ink-100 opacity-50' : 'bg-white'}`}
             >
               <View className={`h-12 w-14 items-center justify-center rounded-xl border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
@@ -433,7 +456,7 @@ function MethodPicker({
                 ) : delayed ? (
                   <Text className="font-bold mt-0.5 text-[11px] text-amber-600">Transaksi mungkin tertunda</Text>
                 ) : (
-                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500">GoPay · OVO · DANA · ShopeePay · m-banking</Text>
+                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500">GoPay, OVO, DANA, ShopeePay, dan mobile banking</Text>
                 )}
               </View>
             </Pressable>
@@ -531,10 +554,76 @@ function MethodPicker({
         </View>
       </View>
 
-      {disabled && (
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Gerai Retail</Text>
+        <View className="overflow-hidden rounded-2xl bg-white">
+          {RETAIL_METHODS.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            const delayed = st === 'delayed';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'retail')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  <Text className="font-extrabold text-[9px] text-ink-700">{m.label}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
+                  {!down && !delayed && <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Bayar langsung di kasir gerai terdekat</Text>}
+                </View>
+                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Kartu</Text>
+        <View className="overflow-hidden rounded-2xl bg-white">
+          {CARD_METHODS.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            const delayed = st === 'delayed';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'credit_card')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  <Text className="font-extrabold text-[9px] text-ink-700">{m.label}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
+                  {!down && !delayed && <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Pembayaran diarahkan ke halaman aman Flip</Text>}
+                </View>
+                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      {(disabled || loadingMethods) && (
         <View className="items-center py-3">
           <ActivityIndicator color="#1D4ED8" />
-          <Text className="font-medium mt-2 text-[11px] text-ink-500">Memuat metode pembayaran…</Text>
+          <Text className="font-medium mt-2 text-[11px] text-ink-500">Memuat metode pembayaran...</Text>
+        </View>
+      )}
+      {!loadingMethods && visibleMethods.length === 0 && (
+        <View className="rounded-2xl bg-white p-4">
+          <Text className="text-sm font-semibold text-ink-900">Metode pembayaran belum tersedia</Text>
+          <Text className="mt-1 text-[12px] leading-5 text-ink-500">Silakan coba lagi beberapa saat lagi.</Text>
         </View>
       )}
     </ScrollView>
@@ -566,7 +655,7 @@ function BigCountdown({ expiredAt }: { expiredAt: string }) {
         {expired ? 'Pembayaran Expired' : 'Selesaikan dalam'}
       </Text>
       <Text style={{ color: fg, fontSize: 32, fontWeight: '800', letterSpacing: 2, marginTop: 4, fontVariant: ['tabular-nums'] }}>
-        {expired ? '⛔' : h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`}
+        {h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`}
       </Text>
       <Text style={{ color: fg, fontSize: 11, marginTop: 4, opacity: 0.85 }}>
         {expired ? 'Pesan ulang booking untuk lanjut bayar' : 'Setelah waktu habis, kamu perlu pesan ulang'}
@@ -591,7 +680,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
   if (data.senderBankType === 'wallet_account' && data.senderBank !== 'qris' && (data.walletUrl || data.senderBank === 'ovo')) {
     const isOvo = data.senderBank === 'ovo';
     const WALLET_LABELS: Record<string, string> = {
-      ovo: 'OVO', dana: 'DANA', shopeepay_app: 'ShopeePay', linkaja_app: 'LinkAja', gopay: 'GoPay',
+      ovo: 'OVO', dana: 'DANA', shopeepay: 'ShopeePay', linkaja: 'LinkAja', gopay: 'GoPay',
     };
     const walletName = WALLET_LABELS[data.senderBank] ?? data.senderBank.toUpperCase();
     const openWallet = async () => {
@@ -754,12 +843,12 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
         {/* Cara Bayar */}
         <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 16 }}>
           <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 12 }}>
-            📱 Cara Bayar via m-banking {data.senderBank.toUpperCase()}
+            Cara Bayar via m-banking {data.senderBank.toUpperCase()}
           </Text>
           <View style={{ gap: 10 }}>
             {[
               `Buka app m-banking ${data.senderBank.toUpperCase()}`,
-              'Pilih menu Transfer → Virtual Account',
+              'Pilih menu Transfer lalu Virtual Account',
               'Masukkan nomor VA di atas',
               'Masukkan nominal sesuai total bayar',
               'Konfirmasi dan selesaikan transaksi',
@@ -775,7 +864,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
         </View>
 
         <View style={{ marginHorizontal: 4, marginTop: 4, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
-          <Text style={{ fontSize: 14 }}>🔄</Text>
+          <Text style={{ fontSize: 14 }}>Info</Text>
           <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
             Status pembayaran kami cek otomatis. Halaman ini akan pindah ke pesanan otomatis setelah pembayaran masuk.
           </Text>
@@ -843,7 +932,7 @@ function PaidView() {
         <CheckCircle2 color="#16A34A" size={48} />
       </View>
       <Text className="font-bold mt-4 text-lg text-ink-900">Pembayaran Diterima</Text>
-      <Text className="font-sans mt-1 text-center text-sm text-ink-500">Mengarahkan ke pesanan…</Text>
+      <Text className="font-sans mt-1 text-center text-sm text-ink-500">Mengarahkan ke pesanan...</Text>
     </View>
   );
 }

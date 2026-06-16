@@ -11,6 +11,49 @@ import { PushService } from '../notifications/push.service';
 import { TripayService } from './tripay.service';
 import { FlipService } from './flip.service';
 
+type CheckoutMethodGroup = 'qris' | 'virtual_account' | 'bank_transfer' | 'ewallet' | 'retail' | 'credit_card';
+type CheckoutSenderBankType = 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer' | 'retail' | 'credit_card';
+
+type CheckoutMethodDef = {
+  code: string;
+  name: string;
+  group: CheckoutMethodGroup;
+  senderBank: string;
+  senderBankType: CheckoutSenderBankType;
+  description?: string;
+  recommended?: boolean;
+};
+
+const CHECKOUT_METHODS: CheckoutMethodDef[] = [
+  {
+    code: 'QRIS',
+    name: 'QRIS',
+    group: 'qris',
+    senderBank: 'qris',
+    senderBankType: 'qris',
+    description: 'Semua e-wallet dan mobile banking',
+    recommended: true,
+  },
+  { code: 'BCAVA', name: 'BCA Virtual Account', group: 'virtual_account', senderBank: 'bca', senderBankType: 'virtual_account' },
+  { code: 'MANDIRIVA', name: 'Mandiri Virtual Account', group: 'virtual_account', senderBank: 'mandiri', senderBankType: 'virtual_account' },
+  { code: 'BRIVA', name: 'BRI Virtual Account', group: 'virtual_account', senderBank: 'bri', senderBankType: 'virtual_account' },
+  { code: 'BNIVA', name: 'BNI Virtual Account', group: 'virtual_account', senderBank: 'bni', senderBankType: 'virtual_account' },
+  { code: 'CIMBVA', name: 'CIMB Niaga Virtual Account', group: 'virtual_account', senderBank: 'cimb', senderBankType: 'virtual_account' },
+  { code: 'PERMATAVA', name: 'Permata Virtual Account', group: 'virtual_account', senderBank: 'permata', senderBankType: 'virtual_account' },
+  { code: 'BSIVA', name: 'BSI Virtual Account', group: 'virtual_account', senderBank: 'bsi', senderBankType: 'virtual_account' },
+  { code: 'DANAMONVA', name: 'Danamon Virtual Account', group: 'virtual_account', senderBank: 'danamon', senderBankType: 'virtual_account' },
+  { code: 'BTNVA', name: 'BTN Virtual Account', group: 'virtual_account', senderBank: 'btn', senderBankType: 'virtual_account' },
+  { code: 'MEGAVA', name: 'Bank Mega Virtual Account', group: 'virtual_account', senderBank: 'mega', senderBankType: 'virtual_account' },
+  { code: 'GOPAY', name: 'GoPay', group: 'ewallet', senderBank: 'gopay', senderBankType: 'wallet_account' },
+  { code: 'OVO', name: 'OVO', group: 'ewallet', senderBank: 'ovo', senderBankType: 'wallet_account' },
+  { code: 'DANA', name: 'DANA', group: 'ewallet', senderBank: 'dana', senderBankType: 'wallet_account' },
+  { code: 'SHOPEEPAY', name: 'ShopeePay', group: 'ewallet', senderBank: 'shopeepay', senderBankType: 'wallet_account' },
+  { code: 'LINKAJA', name: 'LinkAja', group: 'ewallet', senderBank: 'linkaja', senderBankType: 'wallet_account' },
+  { code: 'ALFAMART', name: 'Alfamart', group: 'retail', senderBank: 'alfamart', senderBankType: 'retail', description: 'Bayar langsung di kasir' },
+  { code: 'INDOMARET', name: 'Indomaret', group: 'retail', senderBank: 'indomaret', senderBankType: 'retail', description: 'Bayar langsung di kasir' },
+  { code: 'CREDIT_CARD', name: 'Kartu Kredit', group: 'credit_card', senderBank: 'credit_card', senderBankType: 'credit_card', description: 'Pembayaran kartu melalui halaman aman Flip' },
+];
+
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
@@ -22,7 +65,7 @@ export class PaymentsController {
     private readonly jobs: JobsGateway,
   ) {}
 
-  private normalizeDisabledMethodCode(code: string, type?: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer'): string {
+  private normalizeDisabledMethodCode(code: string, type?: CheckoutSenderBankType): string {
     const normalized = String(code ?? '').trim().toLowerCase();
     if (type === 'virtual_account') {
       const vaMap: Record<string, string> = {
@@ -50,6 +93,14 @@ export class PaymentsController {
       };
       return walletMap[normalized] ?? normalized.toUpperCase();
     }
+    if (type === 'retail') {
+      const retailMap: Record<string, string> = {
+        alfamart: 'ALFAMART',
+        indomaret: 'INDOMARET',
+      };
+      return retailMap[normalized] ?? normalized.toUpperCase();
+    }
+    if (type === 'credit_card') return 'CREDIT_CARD';
     return normalized.toUpperCase();
   }
 
@@ -72,7 +123,7 @@ export class PaymentsController {
     return new Set(disabled.map((v) => v.toUpperCase()));
   }
 
-  private async assertMethodEnabled(code: string, type: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer') {
+  private async assertMethodEnabled(code: string, type: CheckoutSenderBankType) {
     const disabled = await this.getDisabledMethods();
     const normalizedMethodCode = this.normalizeDisabledMethodCode(code, type);
     if (disabled.has(normalizedMethodCode)) {
@@ -198,7 +249,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async flipCreateDirect(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { bookingId: string; senderBank: string; senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer'; useCredit?: boolean },
+    @Body() body: { bookingId: string; senderBank: string; senderBankType: CheckoutSenderBankType; useCredit?: boolean },
   ) {
     if (!body?.bookingId || !body?.senderBank || !body?.senderBankType) {
       throw new BadRequestException('bookingId, senderBank, senderBankType wajib.');
@@ -652,11 +703,12 @@ export class PaymentsController {
     const overrides: Record<string, { active?: boolean; reason?: string }> =
       (rows.find((r) => r.key === 'payment.active_channels')?.value ?? {}) as any;
     const disabled = await this.getDisabledMethods();
-    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'];
+    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja', 'alfamart', 'indomaret', 'credit_card'];
     const labels: Record<string, string> = {
       bca: 'BCA', mandiri: 'Mandiri', bri: 'BRI', bni: 'BNI', cimb: 'CIMB Niaga', permata: 'Permata',
       bsi: 'BSI', danamon: 'Danamon', btn: 'BTN', mega: 'Bank Mega',
       qris: 'QRIS', gopay: 'GoPay', ovo: 'OVO', dana: 'DANA', shopeepay: 'ShopeePay', linkaja: 'LinkAja',
+      alfamart: 'Alfamart', indomaret: 'Indomaret', credit_card: 'Kartu Kredit',
     };
     return known.map((code) => {
       const override = overrides[code];
@@ -667,7 +719,18 @@ export class PaymentsController {
       if (override?.active === false) {
         status = 'down';
         message = override.reason ?? `${labels[code]} belum aktif`;
-      } else if (disabled.has(this.normalizeDisabledMethodCode(code, code === 'qris' ? 'qris' : ['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'].includes(code) ? 'wallet_account' : 'virtual_account'))) {
+      } else if (disabled.has(this.normalizeDisabledMethodCode(
+        code,
+        code === 'qris'
+          ? 'qris'
+          : ['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'].includes(code)
+            ? 'wallet_account'
+            : ['alfamart', 'indomaret'].includes(code)
+              ? 'retail'
+              : code === 'credit_card'
+                ? 'credit_card'
+                : 'virtual_account',
+      ))) {
         status = 'down';
         message = `${labels[code]} sedang tidak tersedia untuk sementara.`;
       } else if (status === 'down') {
@@ -676,6 +739,22 @@ export class PaymentsController {
         message = `${labels[code]} sedang tertunda, transaksi mungkin lambat.`;
       }
       return { code, name: labels[code], status, message, updated_at: s?.updated_at ?? null };
+    });
+  }
+
+  @Get('checkout-methods')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async checkoutMethods() {
+    const health = await this.bankHealth();
+    const healthMap = new Map(health.map((item) => [item.code, item]));
+    return CHECKOUT_METHODS.map((method) => {
+      const healthEntry = healthMap.get(method.senderBank);
+      return {
+        ...method,
+        status: healthEntry?.status ?? 'normal',
+        message: healthEntry?.message ?? '',
+      };
     });
   }
 

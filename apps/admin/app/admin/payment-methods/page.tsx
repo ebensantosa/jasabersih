@@ -9,7 +9,7 @@ import { Badge, useToast } from '../../../components/ui';
 type Method = {
   code: string;
   name: string;
-  type: 'bank' | 'ewallet' | 'qris';
+  type: 'bank' | 'ewallet' | 'qris' | 'retail' | 'card';
   group?: string;
   iconUrl?: string;
   fee?: number;
@@ -36,6 +36,9 @@ const KNOWN_METHODS: Method[] = [
   { code: 'DANA', name: 'DANA', type: 'ewallet' },
   { code: 'SHOPEEPAY', name: 'ShopeePay', type: 'ewallet' },
   { code: 'LINKAJA', name: 'LinkAja', type: 'ewallet' },
+  { code: 'ALFAMART', name: 'Alfamart', type: 'retail' },
+  { code: 'INDOMARET', name: 'Indomaret', type: 'retail' },
+  { code: 'CREDIT_CARD', name: 'Kartu Kredit', type: 'card' },
 ];
 
 export default function PaymentMethodsPage() {
@@ -107,6 +110,8 @@ export default function PaymentMethodsPage() {
     { type: 'bank', label: 'Bank Transfer (Virtual Account)', icon: CreditCard },
     { type: 'qris', label: 'QRIS', icon: CreditCard },
     { type: 'ewallet', label: 'E-Wallet', icon: Smartphone },
+    { type: 'retail', label: 'Gerai Retail', icon: CreditCard },
+    { type: 'card', label: 'Kartu', icon: CreditCard },
   ];
 
   return (
