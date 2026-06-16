@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -18,6 +18,7 @@ import { safeBack } from '../../src/lib/safeBack';
 
 export default function Login() {
   const router = useRouter();
+  const { next } = useLocalSearchParams<{ next?: string | string[] }>();
   const t = useT();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
@@ -31,6 +32,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+
+  function getSafeNextPath(raw?: string | string[]): string | null {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (!value || typeof value !== 'string') return null;
+    if (!value.startsWith('/') || value.startsWith('//')) return null;
+    if (value === '/booking') return null;
+    return value;
+  }
 
   // Accept email OR Indonesian phone (08.../+62.../62...)
   function validateIdentifier(v: string): string | null {
@@ -77,7 +86,8 @@ export default function Login() {
       }
       // Cleaner: jangan ke (tabs) dulu - CleanerLockOverlay handle routing
       // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
-      router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : '/(tabs)');
+      const safeNext = getSafeNextPath(next);
+      router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : (safeNext ?? '/(tabs)'));
     } catch (e) {
       const raw = (e as Error).message ?? 'Login gagal';
       // Map pesan teknis backend ke pesan ramah user.

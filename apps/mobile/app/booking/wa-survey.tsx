@@ -52,15 +52,27 @@ export default function WaSurvey() {
   );
   const [errors, setErrors] = useState<{ phone?: string | null; description?: string | null }>({});
 
+  function buildLoginNextPath(): string {
+    const params = new URLSearchParams();
+    if (category?.code) params.set('category', category.code);
+    if (workers) params.set('workers', workers);
+    if (areaM2) params.set('areaM2', areaM2);
+    if (propertyType) params.set('propertyType', propertyType);
+    if (bedrooms) params.set('bedrooms', bedrooms);
+    if (bathrooms) params.set('bathrooms', bathrooms);
+    const query = params.toString();
+    return query ? `/booking/wa-survey?${query}` : '/booking/wa-survey';
+  }
+
   function applyTemplate(t: string): void {
     setDescription((prev) => (prev.endsWith('\n') || prev === '' ? prev + t : prev + '\n' + t));
     if (errors.description) setErrors({ ...errors, description: null });
   }
 
-  function onSubmit(): void {
+  async function onSubmit(): Promise<void> {
     if (!tokens) {
       toast.warning('Login dulu untuk lanjut');
-      router.push({ pathname: '/(auth)/login', params: { next: '/booking/wa-survey' } });
+      router.push({ pathname: '/(auth)/login', params: { next: buildLoginNextPath() } });
       return;
     }
     if (!category) return;
@@ -74,7 +86,7 @@ export default function WaSurvey() {
       return;
     }
 
-    const booking = create({
+    const booking = await create({
       pricingMode: 'wa_survey',
       categoryCode: category.code,
       categoryName: category.name,

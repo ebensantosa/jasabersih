@@ -162,6 +162,14 @@ function BookingDetail() {
     && !id?.startsWith('bk_')
     && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status);
 
+  function openWaHelp() {
+    if (!booking) return;
+    router.push({
+      pathname: '/booking/wa-survey',
+      params: { category: booking.categoryCode || 'konsultasi' },
+    });
+  }
+
   // ───── ALL HOOKS BEFORE ANY EARLY RETURN ─────
   // Hook rules require unconditional ordering - moving these above the
   // !booking guard fixed "Rendered fewer hooks than expected" crash.
@@ -515,7 +523,7 @@ function BookingDetail() {
               </Text>
               <View className="mt-3">
                 <Pressable
-                  onPress={() => router.push('/booking/wa-survey')}
+                  onPress={openWaHelp}
                   className="flex-row items-center justify-center gap-1.5 rounded-xl bg-success py-2.5"
                 >
                   <View className="h-4 w-4 items-center justify-center rounded-full bg-white">
