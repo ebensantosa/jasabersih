@@ -42,6 +42,7 @@ const CHECKOUT_METHODS: CheckoutMethodDef[] = [
   { code: 'PERMATAVA', name: 'Permata Virtual Account', group: 'virtual_account', senderBank: 'permata', senderBankType: 'virtual_account' },
   { code: 'BSIVA', name: 'BSI Virtual Account', group: 'virtual_account', senderBank: 'bsi', senderBankType: 'virtual_account' },
   { code: 'DANAMONVA', name: 'Danamon Virtual Account', group: 'virtual_account', senderBank: 'danamon', senderBankType: 'virtual_account' },
+  { code: 'SEABANKVA', name: 'SeaBank Virtual Account', group: 'virtual_account', senderBank: 'seabank', senderBankType: 'virtual_account' },
   { code: 'BTNVA', name: 'BTN Virtual Account', group: 'virtual_account', senderBank: 'btn', senderBankType: 'virtual_account' },
   { code: 'MEGAVA', name: 'Bank Mega Virtual Account', group: 'virtual_account', senderBank: 'mega', senderBankType: 'virtual_account' },
   { code: 'GOPAY', name: 'GoPay', group: 'ewallet', senderBank: 'gopay', senderBankType: 'wallet_account' },
@@ -76,6 +77,7 @@ export class PaymentsController {
         cimb: 'CIMBVA',
         permata: 'PERMATAVA',
         bsi: 'BSIVA',
+        seabank: 'SEABANKVA',
       };
       return vaMap[normalized] ?? normalized.toUpperCase();
     }
@@ -703,10 +705,10 @@ export class PaymentsController {
     const overrides: Record<string, { active?: boolean; reason?: string }> =
       (rows.find((r) => r.key === 'payment.active_channels')?.value ?? {}) as any;
     const disabled = await this.getDisabledMethods();
-    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja', 'alfamart', 'indomaret', 'credit_card'];
+    const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'seabank', 'btn', 'mega', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja', 'alfamart', 'indomaret', 'credit_card'];
     const labels: Record<string, string> = {
       bca: 'BCA', mandiri: 'Mandiri', bri: 'BRI', bni: 'BNI', cimb: 'CIMB Niaga', permata: 'Permata',
-      bsi: 'BSI', danamon: 'Danamon', btn: 'BTN', mega: 'Bank Mega',
+      bsi: 'BSI', danamon: 'Danamon', seabank: 'SeaBank', btn: 'BTN', mega: 'Bank Mega',
       qris: 'QRIS', gopay: 'GoPay', ovo: 'OVO', dana: 'DANA', shopeepay: 'ShopeePay', linkaja: 'LinkAja',
       alfamart: 'Alfamart', indomaret: 'Indomaret', credit_card: 'Kartu Kredit',
     };

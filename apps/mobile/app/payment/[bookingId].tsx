@@ -36,6 +36,7 @@ const VA_METHODS: { code: string; name: string; logo: any }[] = [
   { code: 'permata', name: 'Permata Virtual Account', logo: require('../../assets/payment-logos/logo-permatabank.png') },
   { code: 'bsi', name: 'BSI Virtual Account', logo: require('../../assets/payment-logos/bsi-logo.png') },
   { code: 'danamon', name: 'Danamon Virtual Account', logo: require('../../assets/payment-logos/logo-danamon.png') },
+  { code: 'seabank', name: 'SeaBank Virtual Account', logo: null },
   { code: 'btn', name: 'BTN Virtual Account', logo: require('../../assets/payment-logos/BTN.png') },
   { code: 'mega', name: 'Bank Mega Virtual Account', logo: require('../../assets/payment-logos/logo-mega.png') },
 ] as const;
@@ -88,6 +89,7 @@ const METHOD_META: Record<string, { logo?: any; label?: string }> = {
   permata: { logo: require('../../assets/payment-logos/logo-permatabank.png'), label: 'Permata' },
   bsi: { logo: require('../../assets/payment-logos/bsi-logo.png'), label: 'BSI' },
   danamon: { logo: require('../../assets/payment-logos/logo-danamon.png'), label: 'Danamon' },
+  seabank: { label: 'SeaBank' },
   btn: { logo: require('../../assets/payment-logos/BTN.png'), label: 'BTN' },
   mega: { logo: require('../../assets/payment-logos/logo-mega.png'), label: 'Mega' },
   ovo: { logo: require('../../assets/payment-logos/logo-ovo.png'), label: 'OVO' },
@@ -357,6 +359,11 @@ function MethodPicker({
   const getMethod = (code: string) => methods.find((method) => method.senderBank === code || method.code === code.toUpperCase());
   const getStatus = (code: string): 'normal' | 'delayed' | 'down' => getMethod(code)?.status ?? 'normal';
   const getMessage = (code: string) => getMethod(code)?.message ?? '';
+  const vaMethods = VA_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'virtual_account');
+  const transferBankMethods = TRANSFER_BANK_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'bank_transfer');
+  const ewalletMethods = EWALLET_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'wallet_account');
+  const retailMethods = RETAIL_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'retail');
+  const cardMethods = CARD_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'credit_card');
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -434,6 +441,7 @@ function MethodPicker({
         )}
       </View>
 
+      {getMethod('qris') && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS (rekomendasi)</Text>
         {(() => {
@@ -463,11 +471,13 @@ function MethodPicker({
           );
         })()}
       </View>
+      )}
 
+      {vaMethods.length > 0 && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Transfer Bank (Virtual Account)</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
-          {VA_METHODS.map((m, i) => {
+          {vaMethods.map((m, i) => {
             const st = getStatus(m.code);
             const down = st === 'down';
             const delayed = st === 'delayed';
@@ -492,11 +502,13 @@ function MethodPicker({
           })}
         </View>
       </View>
+      )}
 
+      {transferBankMethods.length > 0 && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Transfer Bank</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
-          {TRANSFER_BANK_METHODS.map((m, i) => {
+          {transferBankMethods.map((m, i) => {
             const st = getStatus(m.code);
             const down = st === 'down';
             return (
@@ -524,11 +536,13 @@ function MethodPicker({
           })}
         </View>
       </View>
+      )}
 
+      {ewalletMethods.length > 0 && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">E-Wallet (langsung)</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
-          {EWALLET_METHODS.map((m, i) => {
+          {ewalletMethods.map((m, i) => {
             const st = getStatus(m.code);
             const down = st === 'down';
             const delayed = st === 'delayed';
@@ -553,11 +567,13 @@ function MethodPicker({
           })}
         </View>
       </View>
+      )}
 
+      {retailMethods.length > 0 && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Gerai Retail</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
-          {RETAIL_METHODS.map((m, i) => {
+          {retailMethods.map((m, i) => {
             const st = getStatus(m.code);
             const down = st === 'down';
             const delayed = st === 'delayed';
@@ -583,11 +599,13 @@ function MethodPicker({
           })}
         </View>
       </View>
+      )}
 
+      {cardMethods.length > 0 && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Kartu</Text>
         <View className="overflow-hidden rounded-2xl bg-white">
-          {CARD_METHODS.map((m, i) => {
+          {cardMethods.map((m, i) => {
             const st = getStatus(m.code);
             const down = st === 'down';
             const delayed = st === 'delayed';
@@ -613,6 +631,7 @@ function MethodPicker({
           })}
         </View>
       </View>
+      )}
 
       {(disabled || loadingMethods) && (
         <View className="items-center py-3">

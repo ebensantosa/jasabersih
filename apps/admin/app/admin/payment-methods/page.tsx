@@ -30,6 +30,7 @@ const KNOWN_METHODS: Method[] = [
   { code: 'PERMATAVA', name: 'Permata Virtual Account', type: 'bank' },
   { code: 'CIMBVA', name: 'CIMB Niaga VA', type: 'bank' },
   { code: 'BSIVA', name: 'BSI Virtual Account', type: 'bank' },
+  { code: 'SEABANKVA', name: 'SeaBank Virtual Account', type: 'bank' },
   { code: 'QRIS', name: 'QRIS', type: 'qris' },
   { code: 'OVO', name: 'OVO', type: 'ewallet' },
   { code: 'GOPAY', name: 'GoPay', type: 'ewallet' },
