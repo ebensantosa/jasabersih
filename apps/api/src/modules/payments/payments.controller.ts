@@ -22,6 +22,64 @@ export class PaymentsController {
     private readonly jobs: JobsGateway,
   ) {}
 
+  private normalizeDisabledMethodCode(code: string, type?: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer'): string {
+    const normalized = String(code ?? '').trim().toLowerCase();
+    if (type === 'virtual_account') {
+      const vaMap: Record<string, string> = {
+        bca: 'BCAVA',
+        mandiri: 'MANDIRIVA',
+        bri: 'BRIVA',
+        bni: 'BNIVA',
+        cimb: 'CIMBVA',
+        permata: 'PERMATAVA',
+        bsi: 'BSIVA',
+      };
+      return vaMap[normalized] ?? normalized.toUpperCase();
+    }
+    if (type === 'qris') return 'QRIS';
+    if (type === 'wallet_account') {
+      const walletMap: Record<string, string> = {
+        ovo: 'OVO',
+        gopay: 'GOPAY',
+        dana: 'DANA',
+        shopeepay: 'SHOPEEPAY',
+        shopeepay_app: 'SHOPEEPAY',
+        linkaja: 'LINKAJA',
+        linkaja_app: 'LINKAJA',
+        qris: 'QRIS',
+      };
+      return walletMap[normalized] ?? normalized.toUpperCase();
+    }
+    return normalized.toUpperCase();
+  }
+
+  private async getDisabledMethods(): Promise<Set<string>> {
+    const cfg = await this.prisma.$queryRaw<{ value: unknown }[]>`
+      SELECT value FROM app_config WHERE key = 'payment.disabled_methods' LIMIT 1
+    `;
+    const value = cfg[0]?.value;
+    let disabled: string[] = [];
+    if (Array.isArray(value)) {
+      disabled = value.filter((v): v is string => typeof v === 'string');
+    } else if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) disabled = parsed.filter((v): v is string => typeof v === 'string');
+      } catch {
+        disabled = [];
+      }
+    }
+    return new Set(disabled.map((v) => v.toUpperCase()));
+  }
+
+  private async assertMethodEnabled(code: string, type: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer') {
+    const disabled = await this.getDisabledMethods();
+    const normalizedMethodCode = this.normalizeDisabledMethodCode(code, type);
+    if (disabled.has(normalizedMethodCode)) {
+      throw new BadRequestException('Metode pembayaran ini sedang dinonaktifkan sementara. Mohon pilih metode lain.');
+    }
+  }
+
   // ============ FLIP ============
 
   // Create Flip bill for a booking. Returns checkout URL (open in WebView).
@@ -145,6 +203,7 @@ export class PaymentsController {
     if (!body?.bookingId || !body?.senderBank || !body?.senderBankType) {
       throw new BadRequestException('bookingId, senderBank, senderBankType wajib.');
     }
+    await this.assertMethodEnabled(body.senderBank, body.senderBankType);
 
     const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string; total_amount: number; status: string }[]>`
       SELECT id, customer_id, total_amount, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
@@ -585,13 +644,14 @@ export class PaymentsController {
   @Get('bank-health')
   async bankHealth() {
     const rows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
-      SELECT key, value FROM app_config WHERE key IN ('payment.bank_status', 'payment.active_channels')
+      SELECT key, value FROM app_config WHERE key IN ('payment.bank_status', 'payment.active_channels', 'payment.disabled_methods')
     `;
     const stored: Record<string, { status: string; updated_at: string }> =
       (rows.find((r) => r.key === 'payment.bank_status')?.value ?? {}) as any;
     // active_channels: { bca: { active: false, reason: 'Belum aktif di Flip' }, qris: { active: false, reason: 'Maintenance Flip' }, ... }
     const overrides: Record<string, { active?: boolean; reason?: string }> =
       (rows.find((r) => r.key === 'payment.active_channels')?.value ?? {}) as any;
+    const disabled = await this.getDisabledMethods();
     const known = ['bca', 'mandiri', 'bri', 'bni', 'cimb', 'permata', 'bsi', 'danamon', 'btn', 'mega', 'qris', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'];
     const labels: Record<string, string> = {
       bca: 'BCA', mandiri: 'Mandiri', bri: 'BRI', bni: 'BNI', cimb: 'CIMB Niaga', permata: 'Permata',
@@ -607,6 +667,9 @@ export class PaymentsController {
       if (override?.active === false) {
         status = 'down';
         message = override.reason ?? `${labels[code]} belum aktif`;
+      } else if (disabled.has(this.normalizeDisabledMethodCode(code, code === 'qris' ? 'qris' : ['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'].includes(code) ? 'wallet_account' : 'virtual_account'))) {
+        status = 'down';
+        message = `${labels[code]} sedang dinonaktifkan sementara oleh admin.`;
       } else if (status === 'down') {
         message = `${labels[code]} sedang gangguan, mohon pilih metode lain.`;
       } else if (status === 'delayed') {
@@ -625,17 +688,9 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async channels() {
     const all = await this.tripay.listChannels();
-    const cfg = await this.prisma.$queryRaw<{ value: any }[]>`
-      SELECT value FROM app_config WHERE key = 'payment.disabled_methods' LIMIT 1
-    `;
-    let disabled: string[] = [];
-    const v = cfg[0]?.value;
-    if (Array.isArray(v)) disabled = v.filter((x: unknown) => typeof x === 'string').map((s) => String(s).toUpperCase());
-    else if (typeof v === 'string') {
-      try { const arr = JSON.parse(v); if (Array.isArray(arr)) disabled = arr.map((s: any) => String(s).toUpperCase()); } catch {}
-    }
+    const disabled = await this.getDisabledMethods();
     return all
-      .filter((c) => c.active && !disabled.includes(String(c.code).toUpperCase()))
+      .filter((c) => c.active && !disabled.has(String(c.code).toUpperCase()))
       .map((c) => ({
         code: c.code, name: c.name, group: c.group, type: c.type,
         iconUrl: c.icon_url, fee: c.total_fee,
@@ -651,6 +706,10 @@ export class PaymentsController {
     @Body() body: { bookingId: string; method: string },
   ) {
     if (!body?.bookingId || !body?.method) throw new BadRequestException('bookingId & method wajib.');
+    const disabled = await this.getDisabledMethods();
+    if (disabled.has(String(body.method).toUpperCase())) {
+      throw new BadRequestException('Metode pembayaran ini sedang dinonaktifkan sementara. Mohon pilih metode lain.');
+    }
 
     // Get booking + verify owner + status pending_payment
     const rows = await this.prisma.$queryRaw<{ id: string; customer_id: string; total_amount: number; status: string }[]>`

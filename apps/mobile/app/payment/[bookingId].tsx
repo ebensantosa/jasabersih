@@ -71,6 +71,15 @@ const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
 
 type BankHealth = { code: string; status: 'normal' | 'delayed' | 'down'; message: string };
 
+function normalizeHealthCode(code: string) {
+  const normalized = String(code ?? '').trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    shopeepay_app: 'shopeepay',
+    linkaja_app: 'linkaja',
+  };
+  return aliases[normalized] ?? normalized;
+}
+
 function PaymentScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
@@ -321,8 +330,8 @@ function MethodPicker({
   }, []);
   // Trust backend API sepenuhnya. Admin bisa toggle aktif/tidak via App Settings
   // (key: payment.active_channels) tanpa redeploy APK.
-  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => bankHealth[code]?.status ?? 'normal';
-  const getMessage = (code: string) => bankHealth[code]?.message ?? '';
+  const getStatus = (code: string): 'normal' | 'delayed' | 'down' => bankHealth[normalizeHealthCode(code)]?.status ?? 'normal';
+  const getMessage = (code: string) => bankHealth[normalizeHealthCode(code)]?.message ?? '';
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       {/* MaintenanceBanner sengaja gak ditampilin ke customer di halaman bayar -
