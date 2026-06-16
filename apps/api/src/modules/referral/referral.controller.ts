@@ -56,7 +56,7 @@ export class ReferralController {
     return {
       code: r.code,
       shareUrl: `https://api.jasabersih.com/r/${r.code}`,
-      shareText: `Download JasaBersih dan pakai kode ${r.code} buat dapat diskon Rp 25.000 di order pertama!`,
+      shareText: `Pesan jasa bersih lewat JasaBersih, pake kode ${r.code} biar order kamu enak & aku dapat komisi 5% dari pesananmu. Download di sini:`,
       totalReferrals: Number(r.total_referrals),
       totalPaid: Number(r.total_paid),
       stats: { pending: Number(stats[0]?.pending ?? 0), qualified: Number(stats[0]?.qualified ?? 0), paid: Number(stats[0]?.paid ?? 0) },
@@ -113,7 +113,7 @@ export class ReferralController {
 
     return {
       ok: true,
-      message: 'Kode berlaku! Diskon Rp 25.000 otomatis di-apply saat order pertama.',
+      message: 'Kode berlaku! Setiap order kamu, yang ngajak dapat komisi 5%.',
     };
   }
 }

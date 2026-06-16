@@ -136,10 +136,12 @@ function ReferralScreen() {
             <View className="rounded-2xl bg-brand-700 p-5">
               <View className="flex-row items-center gap-2">
                 <Gift color="#FACC15" size={20} />
-                <Text className="font-bold text-base text-white">Ajak Teman, Dapat Bonus!</Text>
+                <Text className="font-bold text-base text-white">Ajak Teman, Dapat 5% Setiap Order!</Text>
               </View>
-              <Text className="font-sans mt-1 text-xs text-white/80">
-                Setiap teman yang pakai kodemu untuk order pertama, kamu dapat <Text className="font-bold text-white">Rp 25.000</Text> masuk wallet.
+              <Text className="font-sans mt-1 text-xs leading-4 text-white/85">
+                Dapat komisi <Text className="font-bold text-white">5%</Text> dari nominal setiap order
+                selesai dari teman yang pakai kodemu. Berlaku selama mereka pakai aplikasi - bukan
+                cuma sekali.
               </Text>
 
               <View className="mt-4 rounded-xl bg-white p-3">
@@ -158,22 +160,29 @@ function ReferralScreen() {
             {/* Stats */}
             <View className="flex-row gap-2">
               <StatCard label="Total Teman" value={String(me.totalReferrals)} color="#1D4ED8" />
-              <StatCard label="Total Bonus" value={`Rp ${Number(me.totalPaid).toLocaleString('id-ID')}`} color="#047857" />
+              <StatCard label="Total Komisi" value={`Rp ${Number(me.totalPaid).toLocaleString('id-ID')}`} color="#047857" />
             </View>
             <View className="flex-row gap-2">
-              <StatCard label="Pending" value={String(me.stats.pending)} color="#B45309" />
-              <StatCard label="Qualified" value={String(me.stats.qualified)} color="#1D4ED8" />
-              <StatCard label="Paid" value={String(me.stats.paid)} color="#047857" />
+              <StatCard label="Belum Order" value={String(me.stats.pending)} color="#B45309" />
+              <StatCard label="Sudah Order" value={String(me.stats.qualified + me.stats.paid)} color="#047857" />
             </View>
 
             {/* How it works */}
             <View className="rounded-xl bg-white p-4">
               <Text className="font-bold text-sm text-ink-900">Cara Kerja</Text>
               <View className="mt-2 space-y-1.5">
-                <Text className="font-sans text-xs text-ink-700">1. Bagikan kodemu ke teman/saudara</Text>
-                <Text className="font-sans text-xs text-ink-700">2. Teman pakai kodemu saat daftar/booking pertama</Text>
-                <Text className="font-sans text-xs text-ink-700">3. Setelah teman selesai order pertama, bonus Rp 25.000 masuk wallet kamu</Text>
-                <Text className="font-sans text-xs text-ink-700">4. Bonus bisa langsung kamu tarik (min Rp 50.000)</Text>
+                <Text className="font-sans text-xs text-ink-700">1. Bagikan kodemu ke teman / saudara</Text>
+                <Text className="font-sans text-xs text-ink-700">2. Teman pakai kodemu saat daftar / booking pertama</Text>
+                <Text className="font-sans text-xs text-ink-700">3. Setiap teman selesai 1 order, kamu dapat <Text className="font-bold text-emerald-700">5% dari nominal order</Text> langsung masuk wallet</Text>
+                <Text className="font-sans text-xs text-ink-700">4. Berlaku untuk SEMUA order, gak cuma order pertama - selama mereka pakai aplikasi</Text>
+                <Text className="font-sans text-xs text-ink-700">5. Bonus bisa langsung kamu tarik (min Rp 50.000)</Text>
+              </View>
+              <View className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5">
+                <Text className="font-bold text-[11px] text-emerald-900">Contoh:</Text>
+                <Text className="font-sans mt-0.5 text-[11px] leading-4 text-emerald-800">
+                  Teman pesan layanan Rp 400.000 → kamu dapat <Text className="font-bold">Rp 20.000</Text>.
+                  Bulan depan dia pesan lagi Rp 600.000 → kamu dapat <Text className="font-bold">Rp 30.000</Text>.
+                </Text>
               </View>
             </View>
 
