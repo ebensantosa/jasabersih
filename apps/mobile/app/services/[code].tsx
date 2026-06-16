@@ -23,7 +23,7 @@ export default function ServiceDetail() {
   const perRoomEnabled = !!useConfig('booking.modes.per_room.enabled' as any, true);
   const perHourEnabled = !!useConfig('booking.modes.per_hour.enabled' as any, true);
   const hourlyTiers = useApiHourlyTiers();
-  const cheapestHourly = hourlyTiers.length > 0 ? Math.min(...hourlyTiers.map((t) => t.pricePerHour * t.minHours)) : 0;
+  const cheapestHourly = hourlyTiers.length > 0 ? Math.min(...hourlyTiers.map((t) => t.pricePerHour)) : 0;
   if (!category) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
@@ -230,7 +230,7 @@ export default function ServiceDetail() {
                   title="Per Jam"
                   tagline="Fleksibel sesuai durasi"
                   desc="Pilih durasi 2-8 jam. Cleaner kerjain apapun dalam waktu itu sesuai prioritas kamu."
-                  priceHint={cheapestHourly > 0 ? `Mulai ${formatRupiah(cheapestHourly)}` : undefined}
+                  priceHint={cheapestHourly > 0 ? `Mulai ${formatRupiah(cheapestHourly)}/jam` : undefined}
                   onPress={() =>
                     ensureLogin(() =>
                       router.push({ pathname: '/booking/hourly', params: { category: code } }),
