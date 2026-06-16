@@ -21,6 +21,15 @@ const basePlugins = [
       cameraPermission: 'JasaBersih perlu akses kamera untuk ambil foto kondisi rumah langsung.',
     },
   ],
+  [
+    'expo-notifications',
+    {
+      // Android 13+ POST_NOTIFICATIONS otomatis di-declare oleh plugin ini.
+      // icon harus 96x96 monochrome (white on transparent) - pakai adaptive foreground.
+      icon: './assets/adaptive-icon.png',
+      color: '#1D4ED8',
+    },
+  ],
 ];
 
 const firebasePlugins = [
@@ -80,6 +89,8 @@ module.exports = {
     experiments: { typedRoutes: false },
     extra: {
       apiBaseUrl: 'https://api.jasabersih.com/v1',
+      privacyUrl: 'https://jasabersih.com/privacy',
+      termsUrl: 'https://jasabersih.com/terms',
       eas: { projectId: '4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a' },
     },
     owner: 'ebensantosa',
