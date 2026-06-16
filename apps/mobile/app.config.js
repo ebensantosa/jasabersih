@@ -89,8 +89,8 @@ module.exports = {
     experiments: { typedRoutes: false },
     extra: {
       apiBaseUrl: 'https://api.jasabersih.com/v1',
-      privacyUrl: 'https://jasabersih.com/privacy',
-      termsUrl: 'https://jasabersih.com/terms',
+      privacyUrl: 'https://jasabersih.com/ketentuan-layanan/',
+      termsUrl: 'https://jasabersih.com/syarat-dan-ketentuan/',
       eas: { projectId: '4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a' },
     },
     owner: 'ebensantosa',
