@@ -669,7 +669,7 @@ export class PaymentsController {
         message = override.reason ?? `${labels[code]} belum aktif`;
       } else if (disabled.has(this.normalizeDisabledMethodCode(code, code === 'qris' ? 'qris' : ['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja'].includes(code) ? 'wallet_account' : 'virtual_account'))) {
         status = 'down';
-        message = `${labels[code]} sedang dinonaktifkan sementara oleh admin.`;
+        message = `${labels[code]} sedang tidak tersedia untuk sementara.`;
       } else if (status === 'down') {
         message = `${labels[code]} sedang gangguan, mohon pilih metode lain.`;
       } else if (status === 'delayed') {

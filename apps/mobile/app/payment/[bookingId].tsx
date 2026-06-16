@@ -429,9 +429,9 @@ function MethodPicker({
               <View className="flex-1">
                 <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS - Semua e-wallet & m-banking</Text>
                 {down ? (
-                  <Text className="font-bold mt-0.5 text-[11px] text-rose-600">🔧 {getMessage('qris') || 'Sedang pemeliharaan'}</Text>
+                  <Text className="font-bold mt-0.5 text-[11px] text-rose-600">{getMessage('qris') || 'Metode ini sedang tidak tersedia'}</Text>
                 ) : delayed ? (
-                  <Text className="font-bold mt-0.5 text-[11px] text-amber-600">⚠️ Mungkin tertunda</Text>
+                  <Text className="font-bold mt-0.5 text-[11px] text-amber-600">Transaksi mungkin tertunda</Text>
                 ) : (
                   <Text className="font-medium mt-0.5 text-[11px] text-ink-500">GoPay · OVO · DANA · ShopeePay · m-banking</Text>
                 )}
@@ -460,8 +460,8 @@ function MethodPicker({
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔧 {getMessage(m.code) || 'Belum tersedia'}</Text>}
-                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">⚠️ Mungkin tertunda</Text>}
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
                 </View>
                 <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
               </Pressable>
@@ -493,7 +493,7 @@ function MethodPicker({
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
                   <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Transfer ke rekening kami, auto-detect</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔧 {getMessage(m.code) || 'Belum tersedia'}</Text>}
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
                 </View>
                 <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
               </Pressable>
@@ -521,8 +521,8 @@ function MethodPicker({
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">🔧 {getMessage(m.code) || 'Belum tersedia'}</Text>}
-                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">⚠️ Mungkin tertunda</Text>}
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
                 </View>
                 <WalletIcon color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
               </Pressable>
@@ -632,7 +632,6 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           )}
         </View>
         <View style={{ padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
-          <Text style={{ fontSize: 14 }}>⚠️</Text>
           <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
             Status pembayaran kami cek otomatis. Halaman ini akan pindah saat lunas.
           </Text>
@@ -686,7 +685,6 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
 
         {/* Status info */}
         <View style={{ marginHorizontal: 16, marginTop: 16, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
-          <Text style={{ fontSize: 14 }}>⚠️</Text>
           <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
             Status pembayaran kami cek otomatis tiap beberapa detik. Halaman ini akan otomatis pindah ke pesanan saat sudah lunas.
           </Text>
@@ -749,7 +747,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
             <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Salin Nominal</Text>
           </Pressable>
           <Text style={{ marginTop: 8, fontSize: 11, color: '#047857', textAlign: 'center' }}>
-            ⚠️ Pastikan nominal transfer sama persis (jangan dibulatkan)
+            Pastikan nominal transfer sama persis dan tidak dibulatkan.
           </Text>
         </View>
 
