@@ -17,28 +17,39 @@ export function tzAbbr(tz: string): string {
   return 'WIB';
 }
 
+function parseDateSafe(value: string): Date | null {
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
 export function formatScheduleWithTz(iso: string, address?: string | null, opts?: Intl.DateTimeFormatOptions): string {
+  const parsed = parseDateSafe(iso);
+  if (!parsed) return iso || '-';
   const tz = tzForAddress(address);
   const fmt = new Intl.DateTimeFormat('id-ID', {
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
     ...opts,
     timeZone: tz,
   });
-  return `${fmt.format(new Date(iso))} ${tzAbbr(tz)}`;
+  return `${fmt.format(parsed)} ${tzAbbr(tz)}`;
 }
 
 export function formatDateWithTz(iso: string, address?: string | null): string {
+  const parsed = parseDateSafe(iso);
+  if (!parsed) return iso || '-';
   const tz = tzForAddress(address);
   const fmt = new Intl.DateTimeFormat('id-ID', {
     weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', timeZone: tz,
   });
-  return `${fmt.format(new Date(iso))}`;
+  return `${fmt.format(parsed)}`;
 }
 
 export function formatTimeWithTz(iso: string, address?: string | null): string {
+  const parsed = parseDateSafe(iso);
+  if (!parsed) return iso || '-';
   const tz = tzForAddress(address);
   const fmt = new Intl.DateTimeFormat('id-ID', {
     hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false,
   });
-  return `${fmt.format(new Date(iso))} ${tzAbbr(tz)}`;
+  return `${fmt.format(parsed)} ${tzAbbr(tz)}`;
 }
