@@ -227,7 +227,10 @@ export default function RootLayout() {
             <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F8FAFC' } }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
+        {/* Auth full-screen (bukan modal). Modal presentation di web bikin
+            content ke-tengah dgn white margin kiri/kanan. Slide animation
+            tetap dapat dari default Stack transition. */}
+        <Stack.Screen name="(auth)" />
         <Stack.Screen name="services/[code]" />
         <Stack.Screen name="booking/new" />
         <Stack.Screen name="booking/wa-survey" />
