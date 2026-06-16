@@ -24,6 +24,7 @@ const QUICK_TEMPLATES: { label: string; text: string }[] = [
 ];
 
 const MIN_DESC = 20;
+const MAX_DESC = 500;
 
 export default function WaSurvey() {
   const router = useRouter();
@@ -96,11 +97,14 @@ export default function WaSurvey() {
     }
 
     const nextErrors = {
-      description: validateMinLength(description, MIN_DESC, 'Deskripsi'),
+      description:
+        description.length > MAX_DESC
+          ? `Deskripsi maksimal ${MAX_DESC} karakter`
+          : validateMinLength(description, MIN_DESC, 'Deskripsi'),
     };
     setErrors(nextErrors);
     if (nextErrors.description) {
-      toast.error(`Lengkapi deskripsi kebutuhan minimal ${MIN_DESC} karakter`);
+      toast.error(nextErrors.description);
       return;
     }
 
@@ -113,6 +117,7 @@ export default function WaSurvey() {
   }
 
   const descOk = description.length >= MIN_DESC;
+  const descTooLong = description.length > MAX_DESC;
   const descRemaining = Math.max(0, MIN_DESC - description.length);
 
   return (
@@ -181,9 +186,15 @@ export default function WaSurvey() {
             <TextInput
               value={description}
               onChangeText={(value) => {
-                setDescription(value);
+                setDescription(value.slice(0, MAX_DESC));
                 if (errors.description) {
-                  setErrors({ description: validateMinLength(value, MIN_DESC, 'Deskripsi') });
+                  const nextValue = value.slice(0, MAX_DESC);
+                  setErrors({
+                    description:
+                      nextValue.length > MAX_DESC
+                        ? `Deskripsi maksimal ${MAX_DESC} karakter`
+                        : validateMinLength(nextValue, MIN_DESC, 'Deskripsi'),
+                  });
                 }
               }}
               multiline
@@ -200,11 +211,19 @@ export default function WaSurvey() {
                 <Text className="font-medium flex-1 text-[11px] text-danger">{errors.description}</Text>
               ) : (
                 <Text className="font-medium flex-1 text-[11px] text-ink-400">
-                  {descOk ? 'Deskripsi sudah cukup detail' : `Minimal ${descRemaining} karakter lagi`}
+                  {descTooLong
+                    ? `Maksimal ${MAX_DESC} karakter`
+                    : descOk
+                      ? 'Deskripsi sudah cukup detail'
+                      : `Minimal ${descRemaining} karakter lagi`}
                 </Text>
               )}
-              <Text className={`font-semibold text-[10px] ${descOk ? 'text-emerald-600' : 'text-ink-400'}`}>
-                {description.length} / {MIN_DESC}+
+              <Text
+                className={`font-semibold text-[10px] ${
+                  descTooLong ? 'text-danger' : descOk ? 'text-emerald-600' : 'text-ink-400'
+                }`}
+              >
+                {description.length} / {MAX_DESC}
               </Text>
             </View>
           </View>
