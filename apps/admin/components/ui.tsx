@@ -268,10 +268,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
 // FORM PRIMITIVES
 // ============================================================
 export function Input({
-  label, value, onChange, type = 'text', placeholder, required, helpText, error,
+  label, value, onChange, type = 'text', placeholder, required, helpText, hint, error, disabled,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  type?: string; placeholder?: string; required?: boolean; helpText?: string; error?: string;
+  type?: string; placeholder?: string; required?: boolean; helpText?: string; hint?: string; error?: string; disabled?: boolean;
 }) {
   return (
     <div>
@@ -283,21 +283,22 @@ export function Input({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 ${
           error ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-blue-200'
-        }`}
+        } ${disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      {!error && helpText && <p className="mt-1 text-xs text-slate-500">{helpText}</p>}
+      {!error && (helpText || hint) && <p className="mt-1 text-xs text-slate-500">{helpText ?? hint}</p>}
     </div>
   );
 }
 
 export function Textarea({
-  label, value, onChange, rows = 4, placeholder, required, helpText, mono,
+  label, value, onChange, rows = 4, placeholder, required, helpText, mono, disabled,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  rows?: number; placeholder?: string; required?: boolean; helpText?: string; mono?: boolean;
+  rows?: number; placeholder?: string; required?: boolean; helpText?: string; mono?: boolean; disabled?: boolean;
 }) {
   return (
     <div>
@@ -309,7 +310,8 @@ export function Textarea({
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
         placeholder={placeholder}
-        className={`w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 ${mono ? 'font-mono' : ''}`}
+        disabled={disabled}
+        className={`w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 ${mono ? 'font-mono' : ''} ${disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
       />
       {helpText && <p className="mt-1 text-xs text-slate-500">{helpText}</p>}
     </div>

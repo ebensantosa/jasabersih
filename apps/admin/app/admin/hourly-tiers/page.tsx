@@ -226,24 +226,24 @@ function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose:
     <Modal open onClose={onClose} title={tier ? 'Edit Tier Per-Jam' : 'Buat Tier Per-Jam'}>
       <div className="grid gap-3">
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Code (unik)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="general / deep" disabled={!!tier} />
-          <Input label="Nama" value={name} onChange={(e) => setName(e.target.value)} placeholder="General Cleaning" />
+          <Input label="Code (unik)" value={code} onChange={setCode} placeholder="general / deep" disabled={!!tier} />
+          <Input label="Nama" value={name} onChange={setName} placeholder="General Cleaning" />
         </div>
-        <Textarea label="Deskripsi" value={description ?? ''} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Sapu, pel, lap, rapikan" />
+        <Textarea label="Deskripsi" value={description ?? ''} onChange={setDescription} rows={2} placeholder="Sapu, pel, lap, rapikan" />
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Tarif per Jam (Rp)"
             type="number"
             value={String(pricePerHour)}
-            onChange={(e) => setPricePerHour(Number(e.target.value))}
+            onChange={(v) => setPricePerHour(Number(v))}
             hint={pricePerHour ? rupiah(pricePerHour) : undefined}
           />
-          <Input label="Komisi Cleaner (%)" type="number" value={String(cleanerSharePct)} onChange={(e) => setCleanerSharePct(Number(e.target.value))} hint="0-100" />
+          <Input label="Komisi Cleaner (%)" type="number" value={String(cleanerSharePct)} onChange={(v) => setCleanerSharePct(Number(v))} hint="0-100" />
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Min Jam" type="number" value={String(minHours)} onChange={(e) => setMinHours(Number(e.target.value))} />
-          <Input label="Max Jam" type="number" value={String(maxHours)} onChange={(e) => setMaxHours(Number(e.target.value))} />
-          <Input label="Urutan" type="number" value={String(displayOrder)} onChange={(e) => setDisplayOrder(Number(e.target.value))} hint="kecil = atas" />
+          <Input label="Min Jam" type="number" value={String(minHours)} onChange={(v) => setMinHours(Number(v))} />
+          <Input label="Max Jam" type="number" value={String(maxHours)} onChange={(v) => setMaxHours(Number(v))} />
+          <Input label="Urutan" type="number" value={String(displayOrder)} onChange={(v) => setDisplayOrder(Number(v))} hint="kecil = atas" />
         </div>
         <div className="flex items-center justify-between rounded border p-2">
           <span className="text-sm">Aktif</span>
