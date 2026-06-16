@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Clock } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
 import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
+import { useApiHourlyTiers, useConfig } from '../../src/stores/appContent';
 import { useAuthStore } from '../../src/stores/auth';
 import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
@@ -19,6 +20,10 @@ export default function ServiceDetail() {
   const SERVICE_CATEGORIES = useServices();
 
   const category = SERVICE_CATEGORIES.find((s) => s.code === code);
+  const perRoomEnabled = !!useConfig('booking.modes.per_room.enabled' as any, true);
+  const perHourEnabled = !!useConfig('booking.modes.per_hour.enabled' as any, true);
+  const hourlyTiers = useApiHourlyTiers();
+  const cheapestHourly = hourlyTiers.length > 0 ? Math.min(...hourlyTiers.map((t) => t.pricePerHour * t.minHours)) : 0;
   if (!category) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
@@ -178,7 +183,7 @@ export default function ServiceDetail() {
 
             <Text className="font-bold text-base text-ink-900">Pilih Cara Pesan</Text>
             <Text className="font-sans mt-0.5 text-xs text-ink-500">
-              Tiga cara tersedia, pilih sesuai kebutuhanmu
+              Pilih cara pemesanan yang sesuai dengan kebutuhanmu
             </Text>
 
             {category.isActive === false && (
@@ -191,30 +196,48 @@ export default function ServiceDetail() {
             )}
 
             <View className="mt-4 gap-2.5" style={category.isActive === false ? { opacity: 0.5 } : undefined} pointerEvents={category.isActive === false ? 'none' : 'auto'}>
-              <ModeCard
-                renderIcon={() =>
-                  category.customIconUrl ? (
-                    <Image source={{ uri: category.customIconUrl }} style={{ width: 26, height: 26 }} contentFit="contain" />
-                  ) : (
-                    <category.icon color={category.iconColor} size={26} strokeWidth={2.2} />
-                  )
-                }
-                iconBg={category.iconBg}
-                title="Per Ruangan"
-                tagline="Harga tetap"
-                tag="Paling Populer"
-                desc="Bayar sesuai paket per ruangan. Total pasti tahu di muka."
-                priceHint={
-                  category.startingPrice > 0
-                    ? `Mulai ${formatRupiah(category.startingPrice)}`
-                    : undefined
-                }
-                onPress={() =>
-                  ensureLogin(() =>
-                    router.push({ pathname: '/booking/new', params: { category: code } }),
-                  )
-                }
-              />
+              {perRoomEnabled && (
+                <ModeCard
+                  renderIcon={() =>
+                    category.customIconUrl ? (
+                      <Image source={{ uri: category.customIconUrl }} style={{ width: 26, height: 26 }} contentFit="contain" />
+                    ) : (
+                      <category.icon color={category.iconColor} size={26} strokeWidth={2.2} />
+                    )
+                  }
+                  iconBg={category.iconBg}
+                  title="Per Ruangan"
+                  tagline="Harga tetap"
+                  tag="Paling Populer"
+                  desc="Bayar sesuai paket per ruangan. Total pasti tahu di muka."
+                  priceHint={
+                    category.startingPrice > 0
+                      ? `Mulai ${formatRupiah(category.startingPrice)}`
+                      : undefined
+                  }
+                  onPress={() =>
+                    ensureLogin(() =>
+                      router.push({ pathname: '/booking/new', params: { category: code } }),
+                    )
+                  }
+                />
+              )}
+
+              {perHourEnabled && hourlyTiers.length > 0 && (
+                <ModeCard
+                  renderIcon={() => <Clock color="#1D4ED8" size={26} strokeWidth={2.2} />}
+                  iconBg="#DBEAFE"
+                  title="Per Jam"
+                  tagline="Fleksibel sesuai durasi"
+                  desc="Pilih durasi 2-8 jam. Cleaner kerjain apapun dalam waktu itu sesuai prioritas kamu."
+                  priceHint={cheapestHourly > 0 ? `Mulai ${formatRupiah(cheapestHourly)}` : undefined}
+                  onPress={() =>
+                    ensureLogin(() =>
+                      router.push({ pathname: '/booking/hourly', params: { category: code } }),
+                    )
+                  }
+                />
+              )}
 
               <ModeCard
                 renderIcon={() => <WaIcon size={26} />}
@@ -232,7 +255,7 @@ export default function ServiceDetail() {
             <View className="mt-5 rounded-2xl bg-brand-50 p-3">
               <Text className="font-semibold text-[11px] text-brand-900">💡 Tips memilih</Text>
               <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
-                <Text className="font-bold">Paket Tetap</Text> cocok untuk job rutin (harga jelas di muka).{' '}
+                <Text className="font-bold">Per Ruangan</Text> cocok untuk job rutin (harga jelas di muka).{perHourEnabled && hourlyTiers.length > 0 ? <> <Text className="font-bold">Per Jam</Text> untuk yang butuh fleksibilitas durasi.</> : null}{' '}
                 <Text className="font-bold">WA Survey</Text> untuk properti besar / pasca renovasi / kebutuhan unik.
               </Text>
             </View>
