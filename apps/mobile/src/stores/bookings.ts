@@ -81,6 +81,7 @@ export type Booking = {
   // Mode-specific
   packageId?: string;
   packageName?: string;
+  hourlyTierId?: string;
   hourlyTierCode?: string;
   hourlyTierName?: string;
   hours?: number;
@@ -260,10 +261,11 @@ export const useBookingsStore = create<State>((set, get) => ({
       // like "pkg_kamar_standard" that fail backend Zod uuid validation).
       const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const safePackageId = b.packageId && UUID_RE.test(b.packageId) ? b.packageId : undefined;
+      const safeHourlyTierId = b.hourlyTierId && UUID_RE.test(b.hourlyTierId) ? b.hourlyTierId : undefined;
       const payload = {
         pricingMode: b.pricingMode,
         packageId: safePackageId,
-        hourlyTierId: undefined,
+        hourlyTierId: safeHourlyTierId,
         hoursBooked: b.hours,
         scheduledAt: b.scheduledAt,
         addressLine: b.addressLine,
