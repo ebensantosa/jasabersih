@@ -77,6 +77,8 @@ export type Booking = {
   status: BookingStatus;
   createdAt: number;
   paidAt?: number;
+  startedAt?: number;
+  completedAt?: number;
   cancelRefund?: number;
   // Mode-specific
   packageId?: string;
@@ -230,6 +232,11 @@ export const useBookingsStore = create<State>((set, get) => ({
         cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
         cleanerPhotoUrl: s.cleaner_photo_url ?? s.cleanerPhotoUrl ?? undefined,
         paidAt: s.paid_at ? (Number.isFinite(Date.parse(s.paid_at)) ? Date.parse(s.paid_at) : undefined) : undefined,
+        startedAt: s.startedAt ? (Number.isFinite(Date.parse(s.startedAt)) ? Date.parse(s.startedAt) : undefined) : undefined,
+        completedAt: s.completed_at ? (Number.isFinite(Date.parse(s.completed_at)) ? Date.parse(s.completed_at) : undefined) : undefined,
+        hours: s.hoursBooked != null ? Number(s.hoursBooked) : undefined,
+        hourlyTierId: s.hourlyTierId ?? undefined,
+        hourlyTierName: s.hourlyTierName ?? undefined,
         formSnapshot: s.form_snapshot ?? s.formSnapshot ?? {},
         messages: [],
       };

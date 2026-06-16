@@ -4,10 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Calendar, Check, Clock, Info, Minus, Plus, Sparkles, Wrench } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
+import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { useServices } from '../../src/hooks/useServices';
 import { safeBack } from '../../src/lib/safeBack';
@@ -63,12 +64,18 @@ export default function HourlyBooking() {
 
   const [tierId, setTierId] = useState<string | null>(tiers[0]?.id ?? null);
   const [hours, setHours] = useState<number>(tiers[0]?.minHours ?? 2);
-  const [address, setAddress] = useState(defaultAddress?.addressLine ?? savedLocation?.address ?? '');
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddress?.id ?? null);
+  const [useNewLocation, setUseNewLocation] = useState(addressList.length === 0);
+  const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
+  const [address, setAddress] = useState(
+    selectedAddress?.addressLine ?? savedLocation?.address ?? '',
+  );
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    defaultAddress ? { lat: defaultAddress.lat, lng: defaultAddress.lng }
+    selectedAddress ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
     : savedLocation ? { lat: savedLocation.lat, lng: savedLocation.lng }
     : null,
   );
+  const [notes, setNotes] = useState('');
   const [scheduleAt, setScheduleAt] = useState<Date>(() => earliestAvailable());
   const [schedModalOpen, setSchedModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -122,6 +129,7 @@ export default function HourlyBooking() {
           pricePerHour: tier.pricePerHour,
           lat: coords.lat,
           lng: coords.lng,
+          customerNotes: notes.trim() || undefined,
         } as any,
       } as any);
 
@@ -264,11 +272,56 @@ export default function HourlyBooking() {
                 <Text className="font-sans mt-1 mb-3 text-[11px] text-ink-500">
                   Pin lokasi biar cleaner bisa nyari rumah kamu
                 </Text>
-                <AddressField
-                  value={address}
-                  onChange={setAddress}
-                  coords={coords}
-                  onCoordsChange={setCoords}
+                {addressList.length > 0 && !useNewLocation ? (
+                  <>
+                    <AddressPickerInline
+                      selectedId={selectedAddressId}
+                      onSelect={(a) => {
+                        setSelectedAddressId(a.id);
+                        setAddress(a.addressLine);
+                        setCoords({ lat: a.lat, lng: a.lng });
+                      }}
+                    />
+                    <Pressable onPress={() => setUseNewLocation(true)} className="mt-3 self-start">
+                      <Text className="font-semibold text-xs text-brand-600">
+                        + Pakai alamat lain (sekali pakai)
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <AddressField
+                      value={address}
+                      onChange={setAddress}
+                      coords={coords}
+                      onCoordsChange={setCoords}
+                    />
+                    {addressList.length > 0 && (
+                      <Pressable onPress={() => setUseNewLocation(false)} className="mt-3 self-start">
+                        <Text className="font-semibold text-xs text-brand-600">
+                          ← Pakai alamat tersimpan
+                        </Text>
+                      </Pressable>
+                    )}
+                  </>
+                )}
+              </View>
+
+              {/* Notes */}
+              <View className="mt-3 rounded-2xl bg-white p-4 shadow-sm" style={{ elevation: 3 }}>
+                <Text className="font-bold text-sm text-ink-900">Detail Tambahan (Opsional)</Text>
+                <Text className="font-sans mt-1 mb-2 text-[11px] text-ink-500">
+                  Patokan, kode pintu, prioritas yang mau dikerjain, dll
+                </Text>
+                <TextInput
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Contoh: Pintu pagar biru, fokusin kamar mandi + dapur dulu"
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={3}
+                  className="font-sans rounded-xl border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900"
+                  style={{ minHeight: 70, textAlignVertical: 'top' }}
                 />
               </View>
 
@@ -349,7 +402,7 @@ export default function HourlyBooking() {
         <ScheduleModal
           visible={schedModalOpen}
           value={scheduleAt}
-          onChange={setScheduleAt}
+          onChange={(d) => { setScheduleAt(d); setSchedModalOpen(false); }}
           onClose={() => setSchedModalOpen(false)}
         />
       </View>

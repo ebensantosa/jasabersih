@@ -531,6 +531,10 @@ function BookingDetail() {
               BookingTimeline (server-driven, auto-refresh on status change).
               Hindari dua source yg bisa kelihatan out-of-sync. */}
 
+          {booking.pricingMode === 'hourly' && booking.status === 'in_progress' && booking.startedAt && booking.hours && (
+            <HourlyCountdown startedAt={booking.startedAt} hours={booking.hours} isCleaner={isCleaner} />
+          )}
+
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
               Detail
@@ -1074,6 +1078,52 @@ function BookingDetail() {
         />
       )}
     </>
+  );
+}
+
+function HourlyCountdown({ startedAt, hours, isCleaner }: { startedAt: number; hours: number; isCleaner: boolean }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const totalMs = hours * 3600 * 1000;
+  const elapsedMs = Math.max(0, now - startedAt);
+  const remainingMs = totalMs - elapsedMs;
+  const overtime = remainingMs < 0;
+  const absMs = Math.abs(remainingMs);
+  const hh = Math.floor(absMs / 3600000);
+  const mm = Math.floor((absMs % 3600000) / 60000);
+  const ss = Math.floor((absMs % 60000) / 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const elapsedH = Math.floor(elapsedMs / 3600000);
+  const elapsedM = Math.floor((elapsedMs % 3600000) / 60000);
+
+  return (
+    <View
+      className={`mx-4 mt-3 rounded-2xl p-4 ${overtime ? 'border-2 border-amber-300 bg-amber-50' : 'bg-white'}`}
+      style={{ elevation: 3 }}
+    >
+      <View className="flex-row items-center gap-2">
+        <Clock color={overtime ? '#B45309' : '#1D4ED8'} size={16} strokeWidth={2.4} />
+        <Text className={`font-bold text-sm ${overtime ? 'text-amber-900' : 'text-ink-900'}`}>
+          {overtime ? 'OVERTIME' : 'Sisa Waktu Pengerjaan'}
+        </Text>
+      </View>
+      <Text className={`font-extrabold mt-2 text-4xl ${overtime ? 'text-amber-700' : 'text-brand-700'}`} style={{ fontVariant: ['tabular-nums'] }}>
+        {pad(hh)}:{pad(mm)}:{pad(ss)}
+      </Text>
+      <Text className="font-sans mt-1 text-[11px] text-ink-500">
+        Sudah kerja {elapsedH}j {elapsedM}m dari {hours} jam yang di-book
+      </Text>
+      {overtime && (
+        <Text className="font-medium mt-1.5 text-[11px] text-amber-800">
+          {isCleaner
+            ? '⚠ Waktu udah lewat. 30 menit pertama free, lebih dari itu admin yang konfirmasi extra charge ke customer.'
+            : '⚠ Cleaner masih nerusin kerjaan. 30 menit pertama free; lebih dari itu admin akan tinjau extra charge.'}
+        </Text>
+      )}
+    </View>
   );
 }
 
