@@ -39,7 +39,7 @@ export class AppContentController {
   // active announcement (latest), commission tiers.
   @Get('content')
   async content() {
-    const [config, banners, services, addons, packages, announcement, commissionTiers, serviceAreas] = await Promise.all([
+    const [config, banners, services, addons, packages, announcement, commissionTiers, serviceAreas, hourlyTiers] = await Promise.all([
       this.prisma.$queryRaw<Record<string, unknown>[]>`SELECT key, value FROM app_config`,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT id, title, subtitle, image_url AS "imageUrl", link_url AS "linkUrl",
@@ -85,6 +85,14 @@ export class AppContentController {
                ST_X(centroid::geometry) AS lng, ST_Y(centroid::geometry) AS lat
           FROM service_areas WHERE is_active = TRUE ORDER BY city ASC, name ASC
       `,
+      this.prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT id, code, name, description,
+               price_per_hour AS "pricePerHour",
+               min_hours AS "minHours",
+               max_hours AS "maxHours",
+               cleaner_share_pct AS "cleanerSharePct"
+          FROM hourly_tiers WHERE is_active = TRUE ORDER BY display_order ASC, price_per_hour ASC
+      `,
     ]);
 
     // Convert config rows to flat object
@@ -96,7 +104,7 @@ export class AppContentController {
       banners,
       services,
       addons,
-      hourlyTiers: [],
+      hourlyTiers,
       packages,
       announcement: announcement[0] ?? null,
       commissionTiers,

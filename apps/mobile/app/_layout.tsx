@@ -233,6 +233,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="services/[code]" />
         <Stack.Screen name="booking/new" />
+        <Stack.Screen name="booking/preview-hourly" />
         <Stack.Screen name="booking/wa-survey" />
         <Stack.Screen name="booking/[id]" />
         <Stack.Screen name="chat/[id]" />
