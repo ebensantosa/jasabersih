@@ -25,6 +25,7 @@ type DirectResult = {
   walletUrl?: string | null;
   expiredAt: string | null;
   paymentUrl?: string | null;
+  fellBackToCheckout?: boolean;
 };
 
 const VA_METHODS: { code: string; name: string; logo: any }[] = [
@@ -169,6 +170,15 @@ function PaymentScreen() {
     try {
       const res = await api.post('/payments/flip/create-direct', { bookingId, senderBank, senderBankType, useCredit });
       const data: DirectResult = res.data?.data ?? res.data;
+      const hasNativeInstructions =
+        Boolean(data.accountNumber)
+        || Boolean(data.qrString)
+        || Boolean(data.walletUrl);
+
+      if (data.fellBackToCheckout || !hasNativeInstructions) {
+        throw new Error('Metode ini belum bisa ditampilkan langsung di aplikasi. Silakan pilih QRIS atau Virtual Account.');
+      }
+
       setDirect(data);
       try {
         const { Track } = await import('../../src/lib/analytics');
@@ -360,10 +370,7 @@ function MethodPicker({
   const getStatus = (code: string): 'normal' | 'delayed' | 'down' => getMethod(code)?.status ?? 'normal';
   const getMessage = (code: string) => getMethod(code)?.message ?? '';
   const vaMethods = VA_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'virtual_account');
-  const transferBankMethods = TRANSFER_BANK_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'bank_transfer');
   const ewalletMethods = EWALLET_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'wallet_account');
-  const retailMethods = RETAIL_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'retail');
-  const cardMethods = CARD_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'credit_card');
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -504,40 +511,6 @@ function MethodPicker({
       </View>
       )}
 
-      {transferBankMethods.length > 0 && (
-      <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Transfer Bank</Text>
-        <View className="overflow-hidden rounded-2xl bg-white">
-          {transferBankMethods.map((m, i) => {
-            const st = getStatus(m.code);
-            const down = st === 'down';
-            return (
-              <Pressable
-                key={m.code}
-                disabled={disabled || down}
-                onPress={() => onPick(m.code, 'bank_transfer')}
-                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
-              >
-                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  {m.logo ? (
-                    <Image source={m.logo} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
-                  ) : (
-                    <Text className="font-extrabold text-[9px] text-ink-700">{m.label}</Text>
-                  )}
-                </View>
-                <View className="flex-1">
-                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Transfer ke rekening kami, auto-detect</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
-                </View>
-                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      )}
-
       {ewalletMethods.length > 0 && (
       <View>
         <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">E-Wallet (langsung)</Text>
@@ -562,70 +535,6 @@ function MethodPicker({
                   {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
                 </View>
                 <WalletIcon color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      )}
-
-      {retailMethods.length > 0 && (
-      <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Gerai Retail</Text>
-        <View className="overflow-hidden rounded-2xl bg-white">
-          {retailMethods.map((m, i) => {
-            const st = getStatus(m.code);
-            const down = st === 'down';
-            const delayed = st === 'delayed';
-            return (
-              <Pressable
-                key={m.code}
-                disabled={disabled || down}
-                onPress={() => onPick(m.code, 'retail')}
-                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
-              >
-                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  <Text className="font-extrabold text-[9px] text-ink-700">{m.label}</Text>
-                </View>
-                <View className="flex-1">
-                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
-                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
-                  {!down && !delayed && <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Bayar langsung di kasir gerai terdekat</Text>}
-                </View>
-                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      )}
-
-      {cardMethods.length > 0 && (
-      <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Kartu</Text>
-        <View className="overflow-hidden rounded-2xl bg-white">
-          {cardMethods.map((m, i) => {
-            const st = getStatus(m.code);
-            const down = st === 'down';
-            const delayed = st === 'delayed';
-            return (
-              <Pressable
-                key={m.code}
-                disabled={disabled || down}
-                onPress={() => onPick(m.code, 'credit_card')}
-                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
-              >
-                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  <Text className="font-extrabold text-[9px] text-ink-700">{m.label}</Text>
-                </View>
-                <View className="flex-1">
-                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
-                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
-                  {!down && !delayed && <Text className="font-medium text-[10px] text-ink-500 mt-0.5">Pembayaran diarahkan ke halaman aman Flip</Text>}
-                </View>
-                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
               </Pressable>
             );
           })}
