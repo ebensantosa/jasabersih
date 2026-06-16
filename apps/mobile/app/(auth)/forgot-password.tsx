@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -58,7 +58,8 @@ export default function ForgotPassword() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View className="flex-row items-center px-3 py-2">
           <Pressable onPress={() => (step === 2 ? setStep(1) : safeBack())} className="h-10 w-10 items-center justify-center">
             <ArrowLeft color="#0F172A" size={22} />
@@ -166,6 +167,7 @@ export default function ForgotPassword() {
             </>
           )}
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </>
   );

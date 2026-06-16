@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '../../src/components/BrandLogo';
@@ -101,6 +101,7 @@ export default function Login() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View className="flex-1 bg-ink-50">
       {/* Hero gradient blue->emerald->teal (samain dgn home, earnings, profile, wallet).
           width '100%' + alignSelf 'stretch' supaya gak shrink ke children -
@@ -240,5 +241,6 @@ export default function Login() {
         </View>
       </ScrollView>
     </View>
+    </KeyboardAvoidingView>
   );
 }

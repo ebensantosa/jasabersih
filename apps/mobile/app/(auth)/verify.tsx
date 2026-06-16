@@ -102,7 +102,7 @@ export default function Verify() {
   const otpDigits = otp.padEnd(OTP_LENGTH, ' ').split('').slice(0, OTP_LENGTH);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
           <ArrowLeft color="#0F172A" size={22} />

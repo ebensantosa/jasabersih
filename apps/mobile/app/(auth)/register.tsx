@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Briefcase, Eye, EyeOff, Mail, Phone, User } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -109,6 +109,7 @@ export default function Register() {
     : { gradient: ['#0B2A6F', '#1D4ED8'] as const, btn: 'bg-brand-600', accent: 'text-brand-700', linkAccent: 'text-brand-600', bg: 'bg-white' };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
     <View className={`flex-1 ${theme.bg}`}>
       <LinearGradient colors={theme.gradient} style={{ height: 240, width: '100%', alignSelf: 'stretch' }}>
         <SafeAreaView edges={['top']}>
@@ -285,5 +286,6 @@ export default function Register() {
         </Text>
       </ScrollView>
     </View>
+    </KeyboardAvoidingView>
   );
 }
