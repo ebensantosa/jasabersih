@@ -337,6 +337,12 @@ export function createClient(opts: ClientOptions) {
       updatePopup: (id: string, body: any) => request<unknown>('PATCH', `/admin/app/popups/${id}`, body),
       deletePopup: (id: string) => request<unknown>('DELETE', `/admin/app/popups/${id}`),
 
+      // Hourly tiers (per-jam booking pricing)
+      hourlyTiers: () => request<any[]>('GET', '/admin/app/hourly-tiers'),
+      createHourlyTier: (body: any) => request<{ id: string }>('POST', '/admin/app/hourly-tiers', body),
+      updateHourlyTier: (id: string, body: any) => request<unknown>('PATCH', `/admin/app/hourly-tiers/${id}`, body),
+      deleteHourlyTier: (id: string) => request<unknown>('DELETE', `/admin/app/hourly-tiers/${id}`),
+
       // Analytics
       analyticsOverview: () => request<any>('GET', '/admin/analytics/overview'),
 

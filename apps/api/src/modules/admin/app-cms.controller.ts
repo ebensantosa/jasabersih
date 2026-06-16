@@ -97,6 +97,82 @@ export class AdminAppCmsController {
     return { ok: true };
   }
 
+  // =========== HOURLY TIERS (per-jam booking pricing) ===========
+  @Get('hourly-tiers')
+  @Roles('super_admin', 'ops')
+  async listHourlyTiers() {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, code, name, description,
+             price_per_hour AS "pricePerHour",
+             min_hours AS "minHours",
+             max_hours AS "maxHours",
+             cleaner_share_pct AS "cleanerSharePct",
+             is_active AS "isActive",
+             display_order AS "displayOrder",
+             updated_at AS "updatedAt"
+        FROM pricing_hourly_tiers
+       ORDER BY display_order ASC, price_per_hour ASC
+    `;
+  }
+
+  @Post('hourly-tiers')
+  @Roles('super_admin', 'ops')
+  async createHourlyTier(
+    @Body() body: { code: string; name: string; description?: string; pricePerHour: number; minHours?: number; maxHours?: number; cleanerSharePct?: number; displayOrder?: number; isActive?: boolean },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body?.code || !body?.name || !body?.pricePerHour) {
+      throw new BadRequestException('code, name, pricePerHour wajib.');
+    }
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO pricing_hourly_tiers
+        (code, name, description, price_per_hour, min_hours, max_hours, cleaner_share_pct, is_active, display_order)
+      VALUES
+        (${body.code}, ${body.name}, ${body.description ?? null},
+         ${body.pricePerHour}, ${body.minHours ?? 2}, ${body.maxHours ?? 8},
+         ${body.cleanerSharePct ?? 60}, ${body.isActive ?? true}, ${body.displayOrder ?? 0})
+      RETURNING id
+    `;
+    await this.audit.log({ adminId: admin.id, action: 'hourly_tier.create', resourceType: 'pricing_hourly_tiers', resourceId: rows[0]?.id, changes: body, ipAddress: req.ip ?? null });
+    return { id: rows[0]?.id };
+  }
+
+  @Patch('hourly-tiers/:id')
+  @Roles('super_admin', 'ops')
+  async updateHourlyTier(
+    @Param('id') id: string,
+    @Body() body: { code?: string; name?: string; description?: string | null; pricePerHour?: number; minHours?: number; maxHours?: number; cleanerSharePct?: number; displayOrder?: number; isActive?: boolean },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    await this.prisma.$executeRaw`
+      UPDATE pricing_hourly_tiers SET
+        code              = COALESCE(${body.code ?? null}, code),
+        name              = COALESCE(${body.name ?? null}, name),
+        description       = COALESCE(${body.description ?? null}, description),
+        price_per_hour    = COALESCE(${body.pricePerHour ?? null}, price_per_hour),
+        min_hours         = COALESCE(${body.minHours ?? null}, min_hours),
+        max_hours         = COALESCE(${body.maxHours ?? null}, max_hours),
+        cleaner_share_pct = COALESCE(${body.cleanerSharePct ?? null}, cleaner_share_pct),
+        display_order     = COALESCE(${body.displayOrder ?? null}, display_order),
+        is_active         = COALESCE(${body.isActive ?? null}, is_active),
+        updated_at        = NOW()
+       WHERE id = ${id}::uuid
+    `;
+    await this.audit.log({ adminId: admin.id, action: 'hourly_tier.update', resourceType: 'pricing_hourly_tiers', resourceId: id, changes: body, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
+  @Delete('hourly-tiers/:id')
+  @Roles('super_admin')
+  async deleteHourlyTier(@Param('id') id: string, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+    // Soft-disable supaya booking history yg FK ke tier ini gak putus
+    await this.prisma.$executeRaw`UPDATE pricing_hourly_tiers SET is_active = FALSE, updated_at = NOW() WHERE id = ${id}::uuid`;
+    await this.audit.log({ adminId: admin.id, action: 'hourly_tier.disable', resourceType: 'pricing_hourly_tiers', resourceId: id, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
   // =========== POPUPS ===========
   @Get('popups')
   @Roles('super_admin', 'ops')

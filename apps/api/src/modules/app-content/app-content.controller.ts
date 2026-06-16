@@ -91,7 +91,7 @@ export class AppContentController {
                min_hours AS "minHours",
                max_hours AS "maxHours",
                cleaner_share_pct AS "cleanerSharePct"
-          FROM hourly_tiers WHERE is_active = TRUE ORDER BY display_order ASC, price_per_hour ASC
+          FROM pricing_hourly_tiers WHERE is_active = TRUE ORDER BY display_order ASC, price_per_hour ASC
       `,
     ]);
 
