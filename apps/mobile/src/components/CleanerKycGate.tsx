@@ -33,7 +33,7 @@ export function CleanerKycGate({ children }: { children: React.ReactNode }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <LinearGradient colors={theme.gradient} style={{ paddingBottom: 36 }}>
+      <LinearGradient colors={theme.gradient} style={{ paddingBottom: 36, width: '100%', alignSelf: 'stretch' }}>
         <SafeAreaView edges={['top']}>
           <View style={{ paddingHorizontal: 24, paddingTop: 24, alignItems: 'center' }}>
             <View style={{ height: 80, width: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>

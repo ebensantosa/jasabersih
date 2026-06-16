@@ -85,7 +85,7 @@ export function SuspendedOverlay() {
   return (
     <Modal visible animationType="fade" transparent={false} onRequestClose={() => {}} presentationStyle="overFullScreen">
       <View style={{ flex: 1, backgroundColor: 'white' }}>
-        <LinearGradient colors={theme.gradient} style={{ paddingBottom: 48 }}>
+        <LinearGradient colors={theme.gradient} style={{ paddingBottom: 48, width: '100%', alignSelf: 'stretch' }}>
           <SafeAreaView edges={['top']}>
             <View className="items-center px-6 pt-8 pb-2">
               <View

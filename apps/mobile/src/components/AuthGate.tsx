@@ -34,7 +34,7 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
     const wantCleaner = requireMode === 'freelancer';
     return (
       <View className="flex-1 bg-white">
-        <LinearGradient colors={['#7C2D12', '#DC2626']} style={{ height: 180 }}>
+        <LinearGradient colors={['#7C2D12', '#DC2626']} style={{ height: 180, width: '100%', alignSelf: 'stretch' }}>
           <SafeAreaView edges={['top']} />
         </LinearGradient>
         <View className="flex-1 items-center px-6 -mt-16">

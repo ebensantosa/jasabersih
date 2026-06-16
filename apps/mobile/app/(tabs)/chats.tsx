@@ -55,7 +55,7 @@ function ChatsScreen() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingBottom: 24 }}>
+      <LinearGradient colors={['#1E3A8A', '#047857', '#0E7490']} style={{ paddingBottom: 24, width: '100%', alignSelf: 'stretch' }}>
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
             <Text className="font-extrabold text-2xl text-white">Pesan</Text>
