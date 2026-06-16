@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Eye, EyeOff, Mail, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -101,50 +101,65 @@ export default function Login() {
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <LinearGradient colors={['#0B2A6F', '#1D4ED8']} style={{ height: 260 }}>
+    <View className="flex-1 bg-ink-50">
+      {/* Hero gradient blue->emerald->teal (samain dgn home, earnings, profile, wallet) */}
+      <LinearGradient
+        colors={['#1E3A8A', '#047857', '#0E7490']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingBottom: 32 }}
+      >
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: 70, left: -40, width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: 20, right: 60, width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
-            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
-              <ArrowLeft color="white" size={22} />
+            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
+              <ArrowLeft color="white" size={20} />
             </Pressable>
           </View>
-          <View className="px-6 pt-2 pb-6">
-            <BrandLogo size={56} showName />
-            <Text className="font-bold mt-4 text-3xl text-white">{t('login.welcome_emoji')}</Text>
-            <Text className="font-sans mt-1 text-sm text-white/85">{t('login.subtitle')}</Text>
+          <View className="px-6 pt-4 pb-4">
+            <BrandLogo size={52} showName />
+            <Text className="font-extrabold mt-6 text-3xl leading-9 text-white" style={{ letterSpacing: -0.5 }}>
+              {t('login.welcome_emoji')}
+            </Text>
+            <Text className="font-medium mt-2 text-sm leading-5 text-white/90">{t('login.subtitle')}</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView className="flex-1 -mt-6" contentContainerStyle={{ paddingBottom: 40 }}>
-        <View className="mx-4 rounded-2xl bg-white p-5 shadow-sm" style={{ elevation: 6 }}>
+      <ScrollView
+        className="flex-1"
+        style={{ marginTop: -20 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          className="mx-4 rounded-3xl bg-white p-5"
+          style={{ elevation: 8, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } }}
+        >
+          {/* Role toggle - clean pill segmented */}
           <View className="mb-4 flex-row rounded-xl bg-ink-100 p-1">
             {([
-              { key: 'customer', label: 'Customer', desc: 'Pesan layanan bersih' },
-              { key: 'freelancer', label: 'Cleaner', desc: 'Mitra cleaner' },
+              { key: 'customer', label: 'Customer' },
+              { key: 'freelancer', label: 'Cleaner' },
             ] as const).map((r) => {
               const active = loginAs === r.key;
               return (
                 <Pressable
                   key={r.key}
                   onPress={() => setLoginAs(r.key)}
-                  className={`flex-1 items-center rounded-lg py-2 ${active ? 'bg-white shadow-sm' : ''}`}
-                  style={active ? { elevation: 2 } : undefined}
+                  className={`flex-1 items-center justify-center rounded-lg py-2.5 ${active ? 'bg-white' : ''}`}
+                  style={active ? { elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 4 } : undefined}
                 >
-                  <Text className={`font-bold text-[13px] ${active ? 'text-brand-700' : 'text-ink-500'}`}>{r.label}</Text>
-                  <Text className={`font-sans text-[10px] ${active ? 'text-ink-600' : 'text-ink-400'}`}>{r.desc}</Text>
+                  <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-500'}`}>{r.label}</Text>
                 </Pressable>
               );
             })}
           </View>
-          <View className="mb-3 rounded-lg bg-blue-50 p-2.5">
-            <Text className="font-sans text-[11px] text-blue-900">
-              {loginAs === 'customer'
-                ? 'Login sebagai Customer untuk pesan layanan, lihat history, & kelola alamat.'
-                : 'Login sebagai Cleaner untuk terima job, kelola jadwal, & dompet payout.'}
-            </Text>
-          </View>
+
+          {/* Form fields */}
           <View className="gap-4">
             <Field label="Email atau No. HP" required error={touched.email ? errors.email : null}>
               <Mail color="#94A3B8" size={18} />
@@ -188,30 +203,34 @@ export default function Login() {
               </Pressable>
             </Field>
 
-            <Pressable className="self-end" onPress={() => router.push('/(auth)/forgot-password')}>
-              <Text className="font-semibold text-xs text-brand-600">Lupa password?</Text>
+            <Pressable className="self-end" onPress={() => router.push('/(auth)/forgot-password')} hitSlop={8}>
+              <Text className="font-bold text-xs text-brand-600">Lupa password?</Text>
             </Pressable>
           </View>
 
+          {/* Primary CTA */}
           <Pressable
             onPress={onLogin}
             disabled={loading}
-            className="mt-2 rounded-2xl bg-brand-600 py-4 disabled:opacity-50"
+            className={`mt-5 items-center rounded-2xl py-4 ${loading ? 'bg-brand-400' : 'bg-brand-600'}`}
+            style={{ elevation: 3, shadowColor: '#1D4ED8', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}
           >
-            <Text className="font-bold text-center text-sm text-white">
+            <Text className="font-bold text-sm text-white">
               {loading ? t('login.signing_in') : t('auth.login')}
             </Text>
           </Pressable>
 
+          {/* Footer link */}
           <Pressable
             onPress={() => loginAs === 'freelancer'
               ? router.replace('/(auth)/cleaner-onboarding')
               : router.replace({ pathname: '/(auth)/register', params: { mode: 'customer' } })}
-            className="mt-3"
+            className="mt-5"
+            hitSlop={8}
           >
-            <Text className="font-sans text-center text-sm text-ink-500">
+            <Text className="text-center text-[13px] text-ink-500">
               {loginAs === 'freelancer' ? 'Belum jadi mitra? ' : t('login.no_account') + ' '}
-              <Text className="font-semibold text-brand-600">
+              <Text className="font-bold text-brand-600">
                 {loginAs === 'freelancer' ? 'Daftar Jadi Mitra' : t('login.signup_link')}
               </Text>
             </Text>
