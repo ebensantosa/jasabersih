@@ -110,7 +110,7 @@ export default function Register() {
 
   return (
     <View className={`flex-1 ${theme.bg}`}>
-      <LinearGradient colors={theme.gradient} style={{ height: 240 }}>
+      <LinearGradient colors={theme.gradient} style={{ height: 240, width: '100%', alignSelf: 'stretch' }}>
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
             <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">

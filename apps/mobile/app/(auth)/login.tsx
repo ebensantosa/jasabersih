@@ -102,12 +102,14 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      {/* Hero gradient blue->emerald->teal (samain dgn home, earnings, profile, wallet) */}
+      {/* Hero gradient blue->emerald->teal (samain dgn home, earnings, profile, wallet).
+          width '100%' + alignSelf 'stretch' supaya gak shrink ke children -
+          tanpa ini di RN-Web, gradient cuma se-lebar content terdalam. */}
       <LinearGradient
         colors={['#1E3A8A', '#047857', '#0E7490']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ paddingBottom: 32 }}
+        style={{ paddingBottom: 32, width: '100%', alignSelf: 'stretch' }}
       >
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
         <View pointerEvents="none" style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.10)' }} />
