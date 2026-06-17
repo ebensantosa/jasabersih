@@ -7,6 +7,7 @@ import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralPayoutService } from '../referral/referral-payout.service';
+import { JobsGateway } from '../jobs/jobs.gateway';
 import { StorageService } from '../storage/storage.service';
 
 @ApiTags('admin-bookings')
@@ -18,6 +19,7 @@ export class AdminBookingsController {
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
     private readonly push: PushService,
+    private readonly jobs: JobsGateway,
     private readonly storage: StorageService,
     private readonly referralPayout: ReferralPayoutService,
   ) {}
@@ -145,6 +147,10 @@ export class AdminBookingsController {
         body: 'Admin assign job manual untuk kamu. Tap untuk lihat detail.',
         data: { type: 'job_assigned', bookingId },
       }).catch(() => {});
+    }
+
+    if (bookingId && !body.cleanerId && body.paymentStatus === 'paid') {
+      void this.jobs.broadcastIncomingJob(bookingId).catch(() => {});
     }
 
     return { id: bookingId, customerId, status };
@@ -415,6 +421,10 @@ export class AdminBookingsController {
         body: 'Admin telah mengonfirmasi pembayaran kamu. Mencari cleaner...',
         data: { type: 'payment_confirmed', bookingId: id },
       }).catch(() => {});
+    }
+
+    if (nextStatus === 'searching') {
+      void this.jobs.broadcastIncomingJob(id).catch(() => {});
     }
 
     await this.audit.log({
