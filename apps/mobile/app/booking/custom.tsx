@@ -110,6 +110,12 @@ function CustomBooking() {
   const [address, setAddress] = useState(defaultAddress?.addressLine ?? savedLocation?.address ?? '');
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddress?.id ?? null);
   const [useNewLocation, setUseNewLocation] = useState(addressList.length === 0);
+  const selectedAddress = addressList.find((a) => a.id === selectedAddressId) ?? null;
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    defaultAddress ? { lat: defaultAddress.lat, lng: defaultAddress.lng }
+      : savedLocation ? { lat: savedLocation.lat, lng: savedLocation.lng }
+      : null,
+  );
 
   const dateOptions = useMemo(() => makeDateOptions(), []);
   const [dateIdx, setDateIdx] = useState(1); // default besok
@@ -217,9 +223,11 @@ function CustomBooking() {
     const userLoc = useLocationStore.getState().current;
     const areas = useAppContent.getState().content.serviceAreas;
     const checkLoc =
-      selectedAddress && Number.isFinite(selectedAddress.lat) && Number.isFinite(selectedAddress.lng)
-        ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
-        : userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null;
+      coords
+        ? { lat: coords.lat, lng: coords.lng }
+        : selectedAddress && Number.isFinite(selectedAddress.lat) && Number.isFinite(selectedAddress.lng)
+          ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
+          : userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null;
     const cov = checkCoverage(checkLoc, areas);
     if (!cov.covered) {
       router.push({
@@ -335,14 +343,15 @@ function CustomBooking() {
             <Text className="font-bold mb-2 text-sm text-ink-900">Alamat</Text>
             {addressList.length > 0 && !useNewLocation && (
               <>
-                <AddressPickerInline
-                  selectedId={selectedAddressId}
-                  onSelect={(a) => {
-                    setSelectedAddressId(a.id);
-                    setAddress(a.addressLine);
-                  }}
-                />
-                <Pressable onPress={() => setUseNewLocation(true)} className="mt-3 self-start">
+                    <AddressPickerInline
+                      selectedId={selectedAddressId}
+                      onSelect={(a) => {
+                        setSelectedAddressId(a.id);
+                        setAddress(a.addressLine);
+                        setCoords({ lat: a.lat, lng: a.lng });
+                      }}
+                    />
+                <Pressable onPress={() => { setUseNewLocation(true); setCoords(null); }} className="mt-3 self-start">
                   <Text className="font-semibold text-xs text-brand-600">
                     + Pakai alamat lain (sekali pakai)
                   </Text>
@@ -351,9 +360,23 @@ function CustomBooking() {
             )}
             {(addressList.length === 0 || useNewLocation) && (
               <>
-                <AddressField value={address} onChange={setAddress} />
+                <AddressField
+                  value={address}
+                  onChange={setAddress}
+                  coords={coords}
+                  onCoordsChange={setCoords}
+                />
                 {addressList.length > 0 && (
-                  <Pressable onPress={() => setUseNewLocation(false)} className="mt-3 self-start">
+                  <Pressable
+                    onPress={() => {
+                      setUseNewLocation(false);
+                      if (selectedAddress) {
+                        setAddress(selectedAddress.addressLine);
+                        setCoords({ lat: selectedAddress.lat, lng: selectedAddress.lng });
+                      }
+                    }}
+                    className="mt-3 self-start"
+                  >
                     <Text className="font-semibold text-xs text-brand-600">
                       ←  Pakai alamat tersimpan
                     </Text>

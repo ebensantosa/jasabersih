@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Copy, Facebook, Gift, Mail, MessageCircle, Send, Share2, Twitter, Users, X } from 'lucide-react-native';
+import { ArrowLeft, Copy, Gift, Globe, Mail, MessageCircle, Send, Share2, Users, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -237,8 +237,8 @@ function ReferralScreen() {
               {[
                 { key: 'whatsapp' as const, label: 'WhatsApp', Icon: MessageCircle, bg: '#22C55E' },
                 { key: 'telegram' as const, label: 'Telegram', Icon: Send, bg: '#0EA5E9' },
-                { key: 'twitter' as const, label: 'X / Twitter', Icon: Twitter, bg: '#0F172A' },
-                { key: 'facebook' as const, label: 'Facebook', Icon: Facebook, bg: '#2563EB' },
+                { key: 'twitter' as const, label: 'X / Twitter', Icon: Share2, bg: '#0F172A' },
+                { key: 'facebook' as const, label: 'Facebook', Icon: Globe, bg: '#2563EB' },
                 { key: 'email' as const, label: 'Email', Icon: Mail, bg: '#6366F1' },
                 { key: 'copy' as const, label: 'Salin Link', Icon: Copy, bg: '#475569' },
               ].map(({ key, label, Icon, bg }) => (

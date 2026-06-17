@@ -82,9 +82,10 @@ export default function HourlyBooking() {
 
   // Auto-pick first tier saat data tiers selesai load
   useEffect(() => {
-    if (!tierId && tiers.length > 0) {
-      setTierId(tiers[0].id);
-      setHours(tiers[0].minHours);
+    const firstTier = tiers[0];
+    if (!tierId && firstTier) {
+      setTierId(firstTier.id);
+      setHours(firstTier.minHours);
     }
   }, [tiers, tierId]);
 
@@ -282,7 +283,7 @@ export default function HourlyBooking() {
                         setCoords({ lat: a.lat, lng: a.lng });
                       }}
                     />
-                    <Pressable onPress={() => setUseNewLocation(true)} className="mt-3 self-start">
+                    <Pressable onPress={() => { setUseNewLocation(true); setCoords(null); }} className="mt-3 self-start">
                       <Text className="font-semibold text-xs text-brand-600">
                         + Pakai alamat lain (sekali pakai)
                       </Text>
@@ -297,7 +298,16 @@ export default function HourlyBooking() {
                       onCoordsChange={setCoords}
                     />
                     {addressList.length > 0 && (
-                      <Pressable onPress={() => setUseNewLocation(false)} className="mt-3 self-start">
+                      <Pressable
+                        onPress={() => {
+                          setUseNewLocation(false);
+                          if (selectedAddress) {
+                            setAddress(selectedAddress.addressLine);
+                            setCoords({ lat: selectedAddress.lat, lng: selectedAddress.lng });
+                          }
+                        }}
+                        className="mt-3 self-start"
+                      >
                         <Text className="font-semibold text-xs text-brand-600">
                           ← Pakai alamat tersimpan
                         </Text>

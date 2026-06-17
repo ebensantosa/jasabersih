@@ -601,7 +601,11 @@ function NewBooking() {
   }
 
   async function doSubmit() {
-    if ((!pkg && !isLargeScale && !isPostReno) || !category) return;
+    if ((!pkg && !isLargeScale && !isPostReno) || !category) {
+      toast.error('Paket layanan belum tersedia. Coba pilih layanan lain atau hubungi customer service.');
+      return;
+    }
+    const selectedPackage = pkg;
     if (largeScaleOverLimit || postRenoOverLimit) {
       router.replace({ pathname: '/booking/wa-survey', params: { category: categoryCode } });
       return;
@@ -613,8 +617,8 @@ function NewBooking() {
       categoryCode: category.code,
       categoryName: category.name,
       categoryImage: category.imageUrl,
-      packageId: pkg.id,
-      packageName: cleanMode === 'deep' ? `${pkg.name} (Deep Cleaning)` : pkg.name,
+      packageId: selectedPackage?.id,
+      packageName: selectedPackage ? (cleanMode === 'deep' ? `${selectedPackage.name} (Deep Cleaning)` : selectedPackage.name) : category.name,
       addressLine: address,
       scheduledAt: scheduleIso,
       addOns: ADDONS.filter((a) => selectedAddons.has(a.code)).map((a) => ({
@@ -951,7 +955,7 @@ function NewBooking() {
               {(!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length === 0) && (
                 <Section title={`Cakupan Layanan ${category?.name ?? ''}`}>
                   <View className="items-center py-6">
-                    <Text className="font-medium text-[12px] text-ink-500">Memuat paket layanan...</Text>
+                    <Text className="font-medium text-[12px] text-ink-500">Paket layanan belum tersedia untuk layanan ini.</Text>
                   </View>
                 </Section>
               )}
@@ -1855,7 +1859,7 @@ function NewBooking() {
                       }}
                       error={addressError}
                     />
-                    <Pressable onPress={() => setUseNewLocation(true)} className="mt-3 self-start">
+                    <Pressable onPress={() => { setUseNewLocation(true); setCoords(null); }} className="mt-3 self-start">
                       <Text className="font-semibold text-xs text-brand-600">
                         + Pakai alamat lain (sekali pakai)
                       </Text>
@@ -1877,7 +1881,14 @@ function NewBooking() {
                     />
                     {addressList.length > 0 && (
                       <Pressable
-                        onPress={() => setUseNewLocation(false)}
+                        onPress={() => {
+                          setUseNewLocation(false);
+                          if (selectedAddress) {
+                            setAddress(selectedAddress.addressLine);
+                            setCoords({ lat: selectedAddress.lat, lng: selectedAddress.lng });
+                            setAddressError(null);
+                          }
+                        }}
                         className="mt-3 self-start"
                       >
                         <Text className="font-semibold text-xs text-brand-600">

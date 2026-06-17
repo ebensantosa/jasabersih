@@ -59,9 +59,7 @@ export function AddressField({
             <MapsIcon size={32} />
           </View>
           <View className="flex-1">
-            <Text
-              className={`font-semibold text-sm ${error ? 'text-danger' : 'text-brand-700'}`}
-            >
+            <Text className={`font-semibold text-sm ${error ? 'text-danger' : 'text-brand-700'}`}>
               Pin Lokasi di Peta
             </Text>
             <Text className="font-sans mt-0.5 text-[11px] text-ink-600">
@@ -71,20 +69,28 @@ export function AddressField({
         </Pressable>
       )}
 
-      <Text className="font-semibold mb-1.5 mt-3 text-[11px] uppercase tracking-wider text-ink-500">
-        Detail Tambahan (opsional)
-      </Text>
-      <TextInput
-        value={coords ? value.split(',').slice(0, 0).join(', ') || '' : value}
-        onChangeText={onChange}
-        multiline
-        placeholder={coords ? 'Patokan, kode pintu, lantai…' : 'Atau ketik alamat manual…'}
-        placeholderTextColor="#94A3B8"
-        className={`font-sans rounded-xl border bg-white px-4 py-3 text-sm ${
-          error ? 'border-danger' : 'border-ink-200'
-        }`}
-        style={{ minHeight: 60 }}
-      />
+      {!coords ? (
+        <>
+          <Text className="font-semibold mb-1.5 mt-3 text-[11px] uppercase tracking-wider text-ink-500">
+            Alamat Manual
+          </Text>
+          <TextInput
+            value={value}
+            onChangeText={onChange}
+            multiline
+            placeholder="Atau ketik alamat manual..."
+            placeholderTextColor="#94A3B8"
+            className={`font-sans rounded-xl border bg-white px-4 py-3 text-sm ${
+              error ? 'border-danger' : 'border-ink-200'
+            }`}
+            style={{ minHeight: 60 }}
+          />
+        </>
+      ) : (
+        <Text className="font-sans mt-3 text-[11px] text-ink-500">
+          Ketuk kartu lokasi di atas jika ingin mengubah pin atau alamat.
+        </Text>
+      )}
       {error && <Text className="font-medium mt-1 text-[11px] text-danger">{error}</Text>}
 
       <LocationPicker
