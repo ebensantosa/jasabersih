@@ -69,6 +69,17 @@ const TIMELINE_WA: { status: BookingStatus; label: string }[] = [
   { status: 'completed', label: 'Selesai' },
 ];
 
+function getCleanerHeaderLabel(status: BookingStatus) {
+  switch (status) {
+    case 'completed':
+      return 'JOB SELESAI';
+    case 'cancelled':
+      return 'JOB DIBATALKAN';
+    default:
+      return 'JOB AKTIF';
+  }
+}
+
 function BookingDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -431,7 +442,7 @@ function BookingDetail() {
               />
               <View className="flex-1">
                 <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-400">
-                  {isCleaner ? 'JOB AKTIF' : 'PESANANMU'}
+                  {isCleaner ? getCleanerHeaderLabel(booking.status) : 'PESANANMU'}
                 </Text>
                 <Text className="font-bold text-base text-ink-900">{booking.categoryName}</Text>
                 <Text className="font-medium text-[11px] text-ink-500">{modeLabel}</Text>
