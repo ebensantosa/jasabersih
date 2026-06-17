@@ -111,6 +111,7 @@ function PaymentScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === bookingId));
   const syncBookings = useBookingsStore((s) => s.syncFromApi);
+  const fetchOne = useBookingsStore((s) => s.fetchOne);
 
   const [creating, setCreating] = useState(false);
   const [pickingCode, setPickingCode] = useState<string | null>(null);
@@ -120,6 +121,16 @@ function PaymentScreen() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  function finishAndRedirect() {
+    setPaid(true);
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    void syncBookings();
+    setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
+  }
 
   // Kalau user back dari VA detail (direct → null), stop polling.
   // Tanpa ini interval terus jalan walau user udah balik ke method picker → API call infinite.
@@ -149,9 +160,7 @@ function PaymentScreen() {
     setCreating(true);
     try {
       await api.post(`/bookings/${bookingId}/pay`, { useCredit: true });
-      setPaid(true);
-      void syncBookings();
-      setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
+      finishAndRedirect();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal bayar dengan saldo');
     } finally {
@@ -187,17 +196,20 @@ function PaymentScreen() {
       // Poll status
       pollRef.current = setInterval(async () => {
         try {
+          await fetchOne(String(bookingId));
+          const latestBooking = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+          if (latestBooking && latestBooking.status !== 'pending_payment') {
+            finishAndRedirect();
+            return;
+          }
           const r = await api.get(`/payments/${data.paymentId}`);
           const status = (r.data?.data ?? r.data)?.status;
           if (status === 'paid') {
-            setPaid(true);
-            if (pollRef.current) clearInterval(pollRef.current);
-            void syncBookings();
+            finishAndRedirect();
             try {
               const { Track } = await import('../../src/lib/analytics');
               Track.paymentSuccess(String(bookingId), data.senderBank, data.amount);
             } catch {}
-            setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
           } else if (['failed', 'cancelled', 'expired'].includes(status)) {
             toast.error('Pembayaran gagal/expired. Coba lagi.');
             if (pollRef.current) clearInterval(pollRef.current);
@@ -234,6 +246,13 @@ function PaymentScreen() {
       setPickingCode(null);
     }
   }
+
+  useEffect(() => {
+    if (!booking || paid) return;
+    if (booking.status !== 'pending_payment') {
+      finishAndRedirect();
+    }
+  }, [booking?.status, paid]);
 
   async function copyVa() {
     if (!direct?.accountNumber) return;
