@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
 import type { AuthTokens } from '@jasabersih/shared-types';
+import { getDeviceId } from './deviceIdentity';
 
 const API_BASE =
   (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? 'http://localhost:3000/v1';
@@ -19,9 +20,10 @@ function timeoutSignal(ms: number): AbortSignal {
 
 /** Login real ke backend NestJS - no mock. */
 export async function login(email: string, password: string): Promise<AuthResult> {
+  const deviceId = await getDeviceId();
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-device-id': deviceId },
     body: JSON.stringify({ phone: email, password }),
     signal: timeoutSignal(10_000),
   });

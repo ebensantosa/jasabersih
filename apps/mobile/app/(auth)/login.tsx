@@ -95,6 +95,8 @@ export default function Login() {
       const lc = raw.toLowerCase();
       if (lc.includes('invalid') || lc.includes('wrong') || lc.includes('salah') || lc.includes('credential') || lc.includes('401') || lc.includes('not found')) {
         userMsg = 'Email/Nomor HP atau password kamu salah. Coba cek lagi ya.';
+      } else if (lc.includes('percobaan login') || lc.includes('login_temp_locked')) {
+        userMsg = raw;
       } else if (lc.includes('network') || lc.includes('fetch') || lc.includes('timeout') || lc.includes('abort')) {
         userMsg = 'Koneksi internet bermasalah. Pastikan sinyal/Wi-Fi stabil & coba lagi.';
       } else if (lc.includes('too many') || lc.includes('rate') || lc.includes('429')) {

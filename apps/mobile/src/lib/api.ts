@@ -2,15 +2,17 @@ import axios, { type AxiosInstance } from 'axios';
 import Constants from 'expo-constants';
 
 import { useAuthStore } from '../stores/auth';
+import { getDeviceId } from './deviceIdentity';
 
 const baseURL =
   (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? 'http://localhost:3000/v1';
 
 export const api: AxiosInstance = axios.create({ baseURL, timeout: 15_000 });
 
-api.interceptors.request.use((req) => {
+api.interceptors.request.use(async (req) => {
   const token = useAuthStore.getState().tokens?.accessToken;
   if (token && req.headers) req.headers.Authorization = `Bearer ${token}`;
+  if (req.headers) req.headers['x-device-id'] = await getDeviceId();
   return req;
 });
 

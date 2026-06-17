@@ -16,6 +16,7 @@ import {
   type RegisterRequest,
   type VerifyOtpRequest,
 } from './dto';
+import { LoginProtectionService } from './login-protection.service';
 import { OtpService } from './otp.service';
 import { TokenService, type IssuedTokens } from './token.service';
 
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly tokens: TokenService,
     private readonly storage: StorageService,
+    private readonly loginProtection: LoginProtectionService,
   ) {}
 
   async register(input: RegisterRequest): Promise<{ phone: string; expiresInSeconds: number; emailSent?: boolean; devOtp?: string }> {
@@ -139,10 +141,13 @@ export class AuthService {
     meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
   ): Promise<IssuedTokens> {
     const raw = input.phone.trim();
+    const identifier = isLikelyEmail(raw) ? raw.toLowerCase() : normalizePhone(raw);
+    await this.loginProtection.assertAllowed(identifier, meta);
     const user = isLikelyEmail(raw)
       ? await this.prisma.user.findUnique({ where: { email: raw.toLowerCase() } })
-      : await this.prisma.user.findUnique({ where: { phone: normalizePhone(raw) } });
+      : await this.prisma.user.findUnique({ where: { phone: identifier } });
     if (!user || !user.phoneVerifiedAt) {
+      await this.loginProtection.recordFailure(identifier, meta);
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: 'Email/No. HP atau password salah.',
@@ -150,6 +155,7 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
+      await this.loginProtection.recordFailure(identifier, meta);
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: 'Nomor HP atau password salah.',
@@ -158,6 +164,7 @@ export class AuthService {
     if (user.deletedAt) {
       throw new UnauthorizedException({ code: 'ACCOUNT_DISABLED', message: 'Akun dinonaktifkan.' });
     }
+    await this.loginProtection.clearFailures(identifier, meta);
     return this.tokens.issueForUser(user.id, user.phone, meta);
   }
 

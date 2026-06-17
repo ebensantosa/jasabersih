@@ -7,13 +7,14 @@ import { AdminAuthService } from './admin-login';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { LoginProtectionService } from './login-protection.service';
 import { OtpService } from './otp.service';
 import { TokenService } from './token.service';
 
 @Module({
   imports: [PassportModule.register({ defaultStrategy: 'jwt' }), JwtModule.register({}), StorageModule],
   controllers: [AuthController],
-  providers: [AuthService, AdminAuthService, OtpService, TokenService, JwtStrategy],
+  providers: [AuthService, AdminAuthService, OtpService, TokenService, JwtStrategy, LoginProtectionService],
   exports: [AuthService, TokenService],
 })
 export class AuthModule {}
