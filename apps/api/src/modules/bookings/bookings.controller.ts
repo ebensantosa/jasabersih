@@ -129,6 +129,7 @@ export class BookingsController {
               b.scheduled_at, b.address_line, b.customer_notes, b.form_snapshot,
               b.customer_id, b.cleaner_id, b.service_id, b.package_id,
               b.cleaner_payout, b.matched_at, b.paid_at, b.canceled_at,
+              b.cleaner_otw_at, b.cleaner_arrived_at,
               b.started_at AS "startedAt",
               b.completed_at, b.created_at,
               b.hourly_tier_id AS "hourlyTierId", b.hours_booked AS "hoursBooked",

@@ -13,6 +13,11 @@ type ServerBooking = {
   completed_at: string | null;
   canceled_at: string | null;
   status: string;
+  cleanerOtwAt?: string | null;
+  cleanerArrivedAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  canceledAt?: string | null;
 };
 
 const STEPS: { key: keyof ServerBooking; label: string }[] = [
@@ -49,17 +54,26 @@ export function BookingTimeline({ bookingId, status }: { bookingId: string; stat
   }
   if (!data) return null;
 
+  const timelineData: ServerBooking = {
+    ...data,
+    cleaner_otw_at: data.cleaner_otw_at ?? data.cleanerOtwAt ?? (data.status === 'on_the_way' ? new Date().toISOString() : null),
+    cleaner_arrived_at: data.cleaner_arrived_at ?? data.cleanerArrivedAt ?? data.started_at ?? data.startedAt ?? (data.status === 'in_progress' || data.status === 'completed' ? new Date().toISOString() : null),
+    started_at: data.started_at ?? data.startedAt ?? null,
+    completed_at: data.completed_at ?? data.completedAt ?? null,
+    canceled_at: data.canceled_at ?? data.canceledAt ?? null,
+  };
+
   // Find current step (last with timestamp)
   let currentIdx = -1;
-  STEPS.forEach((s, i) => { if (data[s.key]) currentIdx = i; });
+  STEPS.forEach((s, i) => { if (timelineData[s.key]) currentIdx = i; });
 
   return (
     <View className="rounded-2xl bg-white p-4">
       <Text className="font-bold mb-3 text-sm text-ink-900">Timeline Order</Text>
       {STEPS.map((s, i) => {
-        const ts = data[s.key] as string | null;
+        const ts = timelineData[s.key] as string | null;
         const done = !!ts;
-        const current = i === currentIdx && data.status !== 'completed';
+        const current = i === currentIdx && timelineData.status !== 'completed';
         return (
           <View key={s.key} className="flex-row gap-3">
             {/* Dot + line */}
@@ -80,9 +94,9 @@ export function BookingTimeline({ bookingId, status }: { bookingId: string; stat
           </View>
         );
       })}
-      {data.canceled_at && (
+      {timelineData.canceled_at && (
         <View className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
-          <Text className="font-bold text-xs text-red-700">Dibatalkan {fmt(data.canceled_at)}</Text>
+          <Text className="font-bold text-xs text-red-700">Dibatalkan {fmt(timelineData.canceled_at)}</Text>
         </View>
       )}
     </View>
