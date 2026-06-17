@@ -133,6 +133,7 @@ export class BookingsController {
               b.completed_at, b.created_at,
               b.hourly_tier_id AS "hourlyTierId", b.hours_booked AS "hoursBooked",
               ht.name AS "hourlyTierName", ht.price_per_hour AS "hourlyPricePerHour",
+              pp.name AS "packageName",
               b.reclean_count AS "recleanCount", b.reclean_status AS "recleanStatus",
               b.reclean_requested_at AS "recleanRequestedAt", b.reclean_reason AS "recleanReason",
               ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
@@ -141,6 +142,7 @@ export class BookingsController {
               cl.name AS cleaner_name, cl.phone AS cleaner_phone, cl.photo_url AS cleaner_photo_url
          FROM bookings b
          LEFT JOIN services s ON s.id = b.service_id
+         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
          LEFT JOIN users cu ON cu.id = b.customer_id
          LEFT JOIN users cl ON cl.id = b.cleaner_id
          LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id

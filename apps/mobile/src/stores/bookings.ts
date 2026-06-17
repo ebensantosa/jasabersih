@@ -23,6 +23,21 @@ function safeTimestamp(v: any): number {
   return Date.now();
 }
 
+function pickBookingTitle(source: any): string {
+  return source?.categoryName
+    ?? source?.packageName
+    ?? source?.hourlyTierName
+    ?? source?.serviceName
+    ?? source?.service_name
+    ?? source?.formSnapshot?.categoryName
+    ?? source?.formSnapshot?.packageName
+    ?? source?.formSnapshot?.hourlyTierName
+    ?? source?.form_snapshot?.categoryName
+    ?? source?.form_snapshot?.packageName
+    ?? source?.form_snapshot?.hourlyTierName
+    ?? 'Layanan';
+}
+
 export type PricingMode = 'package' | 'hourly' | 'wa_survey';
 
 export type BookingStatus =
@@ -172,7 +187,7 @@ export const useBookingsStore = create<State>((set, get) => ({
               id: s.id,
               pricingMode: (s.pricingMode ?? 'package') as PricingMode,
               categoryCode: '',
-              categoryName: s.packageName ?? s.serviceName ?? 'Layanan',
+              categoryName: pickBookingTitle(s),
               categoryImage: s.serviceIcon ?? '',
               addressLine: s.address ?? '',
               scheduledAt: safeIsoDate(s.scheduledAt),
@@ -217,11 +232,12 @@ export const useBookingsStore = create<State>((set, get) => ({
       const s: any = r.data?.data ?? r.data;
       if (!s?.id) return;
       const total = Number(s.total_amount ?? s.total ?? 0);
+      const snapshot = s.form_snapshot ?? s.formSnapshot ?? {};
       const mapped: Booking = {
         id: s.id,
         pricingMode: (s.pricing_mode ?? s.pricingMode ?? 'package') as PricingMode,
-        categoryCode: '',
-        categoryName: s.service_name ?? s.serviceName ?? 'Layanan',
+        categoryCode: s.category_code ?? s.categoryCode ?? snapshot.categoryCode ?? '',
+        categoryName: pickBookingTitle({ ...s, formSnapshot: snapshot }),
         categoryImage: s.service_icon ?? s.serviceIcon ?? '',
         addressLine: s.address_line ?? s.address ?? '',
         scheduledAt: safeIsoDate(s.scheduled_at ?? s.scheduledAt),
@@ -236,8 +252,9 @@ export const useBookingsStore = create<State>((set, get) => ({
         completedAt: s.completed_at ? (Number.isFinite(Date.parse(s.completed_at)) ? Date.parse(s.completed_at) : undefined) : undefined,
         hours: s.hoursBooked != null ? Number(s.hoursBooked) : undefined,
         hourlyTierId: s.hourlyTierId ?? undefined,
-        hourlyTierName: s.hourlyTierName ?? undefined,
-        formSnapshot: s.form_snapshot ?? s.formSnapshot ?? {},
+        hourlyTierName: s.hourlyTierName ?? snapshot.hourlyTierName ?? undefined,
+        packageName: s.packageName ?? snapshot.packageName ?? undefined,
+        formSnapshot: snapshot,
         messages: [],
       };
       const cur = get().list;
