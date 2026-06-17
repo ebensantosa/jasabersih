@@ -9,7 +9,17 @@ import { toast } from '../stores/ui';
 
 type Photo = { id: string; photoType: 'before' | 'after' | 'damage'; url: string; uploadedAt: string };
 
-export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: string; isCleaner: boolean; status: string }) {
+export function BookingPhotos({
+  bookingId,
+  isCleaner,
+  status,
+  onSummaryChange,
+}: {
+  bookingId: string;
+  isCleaner: boolean;
+  status: string;
+  onSummaryChange?: (summary: { beforeCount: number; afterCount: number; damageCount: number }) => void;
+}) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [uploading, setUploading] = useState<'before' | 'after' | 'damage' | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,10 +33,16 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
     setLoading(true);
     try {
       const r = await api.get(`/cleaner/jobs/${bookingId}/photos`);
-      setPhotos((r.data?.data ?? []) as Photo[]);
+      const nextPhotos = (r.data?.data ?? []) as Photo[];
+      setPhotos(nextPhotos);
+      onSummaryChange?.({
+        beforeCount: nextPhotos.filter((p) => p.photoType === 'before').length,
+        afterCount: nextPhotos.filter((p) => p.photoType === 'after').length,
+        damageCount: nextPhotos.filter((p) => p.photoType === 'damage').length,
+      });
     } catch { /* silent */ } finally { setLoading(false); }
   }
-  useEffect(() => { void load(); }, [bookingId]);
+  useEffect(() => { void load(); }, [bookingId, onSummaryChange]);
 
   const beforePhotosCount = photos.filter((p) => p.photoType === 'before').length;
 

@@ -101,6 +101,7 @@ function BookingDetail() {
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const [photoSummary, setPhotoSummary] = useState({ beforeCount: 0, afterCount: 0, damageCount: 0 });
   const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
   const [showUpchargeModal, setShowUpchargeModal] = useState(false);
   const [subscriptionVisits, setSubscriptionVisits] = useState<Array<{ id: string; status: string; scheduledAt: string; visitIndex: number; visitTotal: number; cleanerName: string | null; completedAt: string | null }> | null>(null);
@@ -190,6 +191,7 @@ function BookingDetail() {
   const canDispute = booking
     && !id?.startsWith('bk_')
     && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status);
+  const cleanerCanFinish = booking?.status === 'in_progress' && photoSummary.afterCount > 0;
 
   function openWaHelp() {
     if (!booking) return;
@@ -526,7 +528,7 @@ function BookingDetail() {
           {/* Foto Pekerjaan - cleaner: taruh di atas biar gak kelewat upload before/after */}
           {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
-              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
+              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} onSummaryChange={setPhotoSummary} />
             </View>
           )}
 
@@ -790,7 +792,7 @@ function BookingDetail() {
 
           {!isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
-              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} />
+              <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} onSummaryChange={setPhotoSummary} />
             </View>
           )}
 
@@ -962,13 +964,20 @@ function BookingDetail() {
                     </Pressable>
                   )}
                   {booking.status === 'in_progress' && (
-                    <Pressable
-                      onPress={() => advanceStatus('completed')}
-                      disabled={advancing}
-                      className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-success/60' : 'bg-success'}`}
-                    >
-                      <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.finish')}</Text>
-                    </Pressable>
+                    <View className="flex-1">
+                      <Pressable
+                        onPress={() => advanceStatus('completed')}
+                        disabled={advancing || !cleanerCanFinish}
+                        className={`items-center rounded-2xl py-3.5 ${(advancing || !cleanerCanFinish) ? 'bg-success/40' : 'bg-success'}`}
+                      >
+                        <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.finish')}</Text>
+                      </Pressable>
+                      {!cleanerCanFinish && (
+                        <Text className="mt-1 text-center text-[10px] text-amber-700">
+                          Upload foto hasil kerja dulu sebelum menyelesaikan job.
+                        </Text>
+                      )}
+                    </View>
                   )}
                 </View>
               </SafeAreaView>
