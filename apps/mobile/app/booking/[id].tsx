@@ -476,7 +476,7 @@ function BookingDetail() {
               </Text>
             </View>
           )}
-          {!isCleaner && (booking.status === 'on_the_way' || booking.status === 'cleaner_otw') && (
+          {!isCleaner && booking.status === 'on_the_way' && (
             <View className="mx-4 mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3">
               <Text className="font-bold text-[11px] text-blue-900">🚗 Cleaner sedang dalam perjalanan</Text>
               <Text className="font-medium mt-0.5 text-[11px] leading-4 text-blue-800">
@@ -513,24 +513,28 @@ function BookingDetail() {
               <View className="flex-row items-center gap-2">
                 <AlertTriangle color="#B45309" size={18} strokeWidth={2.4} />
                 <Text className="font-bold text-sm text-amber-900">
-                  Belum ada cleaner ambil order
+                  Tim customer service sedang bantu carikan cleaner
                 </Text>
               </View>
               <Text className="font-sans mt-2 text-[12px] leading-[18px] text-amber-900">
-                Sudah lebih dari 15 menit dan belum ada cleaner yang ambil. Bisa karena jam sibuk
-                atau kurang cleaner di area kamu. Yuk lanjut konsultasi via WhatsApp - CS akan
-                bantu cariin cleaner.
+                Sudah lebih dari 15 menit dan belum ada cleaner yang mengambil pesanan ini.
+                Customer service sekarang melanjutkan pencarian secara manual. Kamu tidak perlu
+                melakukan apa-apa. Jika ingin, kamu tetap bisa hubungi customer service lewat
+                WhatsApp, tapi itu tidak wajib.
               </Text>
               <View className="mt-3">
                 <Pressable
                   onPress={openWaHelp}
-                  className="flex-row items-center justify-center gap-1.5 rounded-xl bg-success py-2.5"
+                  className="flex-row items-center justify-center gap-1.5 rounded-xl border border-amber-400 bg-white py-2.5"
                 >
                   <View className="h-4 w-4 items-center justify-center rounded-full bg-white">
                     <WaIcon size={11} />
                   </View>
-                  <Text className="font-bold text-xs text-white">Chat ke WA untuk bantuan</Text>
+                  <Text className="font-bold text-xs text-amber-900">Hubungi customer service via WhatsApp</Text>
                 </Pressable>
+                <Text className="font-medium mt-2 text-[10px] text-amber-800">
+                  Opsional. Pesanan tetap sedang diproses manual oleh customer service.
+                </Text>
               </View>
             </View>
           )}

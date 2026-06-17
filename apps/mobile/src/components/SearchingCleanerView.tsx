@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, Sparkles, Users } from 'lucide-react-native';
+import { BellRing, MapPin, Search, Sparkles, Users } from 'lucide-react-native';
 import { useCallback, useEffect, useRef } from 'react';
 import { Animated, Easing, Text, View } from 'react-native';
 
@@ -39,6 +39,7 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
   const pulse1 = useRef(new Animated.Value(0)).current;
   const pulse2 = useRef(new Animated.Value(0)).current;
   const rotate = useRef(new Animated.Value(0)).current;
+  const dotWave = useRef(new Animated.Value(0)).current;
   const animsRef = useRef<Animated.CompositeAnimation[]>([]);
 
   // Auto-pause animasi saat screen unfocus (gak buang battery di background)
@@ -58,13 +59,19 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
       const r = Animated.loop(
         Animated.timing(rotate, { toValue: 1, duration: 8000, easing: Easing.linear, useNativeDriver: true }),
       );
-      animsRef.current = [a1, a2, r];
-      a1.start(); a2.start(); r.start();
+      const d = Animated.loop(
+        Animated.sequence([
+          Animated.timing(dotWave, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(dotWave, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      );
+      animsRef.current = [a1, a2, r, d];
+      a1.start(); a2.start(); r.start(); d.start();
       return () => {
         animsRef.current.forEach((a) => a.stop());
-        pulse1.setValue(0); pulse2.setValue(0); rotate.setValue(0);
+        pulse1.setValue(0); pulse2.setValue(0); rotate.setValue(0); dotWave.setValue(0);
       };
-    }, [pulse1, pulse2, rotate]),
+    }, [dotWave, pulse1, pulse2, rotate]),
   );
 
   function ringStyle(val: Animated.Value) {
@@ -79,6 +86,14 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
     };
   }
   const rotateInterpolate = rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const dotOpacity = (index: number) =>
+    dotWave.interpolate({
+      inputRange: [0, 0.33, 0.66, 1],
+      outputRange:
+        index === 0 ? [0.35, 1, 0.45, 0.35]
+        : index === 1 ? [0.45, 0.35, 1, 0.45]
+        : [1, 0.45, 0.35, 1],
+    });
 
   return (
     <View className="overflow-hidden rounded-2xl">
@@ -101,6 +116,51 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
         <Text style={{ color: 'rgba(255,255,255,0.85)', textAlign: 'center', fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 6, lineHeight: 18, paddingHorizontal: 8 }}>
           {statusMsg}
         </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+          {[0, 1, 2].map((index) => (
+            <Animated.View
+              key={index}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                backgroundColor: 'white',
+                opacity: dotOpacity(index),
+                transform: [{
+                  scale: dotWave.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: index === 1 ? [0.95, 1.2, 0.95] : [0.9, 1.05, 0.9],
+                  }),
+                }],
+              }}
+            />
+          ))}
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <MapPin color="white" size={14} strokeWidth={2.2} />
+              <Text style={{ color: 'white', fontSize: 11, fontFamily: 'Inter_700Bold' }}>
+                Area terdekat
+              </Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 14 }}>
+              Sistem sedang mencari cleaner aktif di sekitar alamat kamu secara realtime.
+            </Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <BellRing color="white" size={14} strokeWidth={2.2} />
+              <Text style={{ color: 'white', fontSize: 11, fontFamily: 'Inter_700Bold' }}>
+                Notifikasi dikirim
+              </Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 14 }}>
+              Cleaner yang cocok akan menerima notifikasi dan bisa ambil pesanan ini.
+            </Text>
+          </View>
+        </View>
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
           <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 10, alignItems: 'center' }}>
