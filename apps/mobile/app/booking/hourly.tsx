@@ -93,8 +93,7 @@ export default function HourlyBooking() {
   const maxH = tier?.maxHours ?? 8;
   const clampedHours = Math.min(Math.max(hours, minH), maxH);
   const subtotal = tier ? tier.pricePerHour * clampedHours : 0;
-  const platformFee = Math.round(subtotal * 0.05);
-  const total = subtotal + platformFee;
+  const total = subtotal;
 
   function dec() { setHours((h) => Math.max(minH, h - 1)); }
   function inc() { setHours((h) => Math.min(maxH, h + 1)); }
@@ -103,6 +102,7 @@ export default function HourlyBooking() {
     if (!tier) { toast.error('Pilih jenis pembersihan dulu'); return; }
     if (!address.trim()) { toast.error('Alamat wajib diisi'); return; }
     if (!coords) { toast.error('Pin lokasi di peta dulu biar cleaner bisa nyari'); return; }
+    if (!notes.trim()) { toast.error('Deskripsi pekerjaan wajib diisi'); return; }
 
     setSubmitting(true);
     try {
@@ -309,14 +309,14 @@ export default function HourlyBooking() {
 
               {/* Notes */}
               <View className="mt-3 rounded-2xl bg-white p-4 shadow-sm" style={{ elevation: 3 }}>
-                <Text className="font-bold text-sm text-ink-900">Detail Tambahan (Opsional)</Text>
+                <Text className="font-bold text-sm text-ink-900">Deskripsi Pekerjaan</Text>
                 <Text className="font-sans mt-1 mb-2 text-[11px] text-ink-500">
-                  Patokan, kode pintu, prioritas yang mau dikerjain, dll
+                  Wajib diisi agar cleaner tahu area dan prioritas yang harus dibersihkan
                 </Text>
                 <TextInput
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="Contoh: Pintu pagar biru, fokusin kamar mandi + dapur dulu"
+                  placeholder="Contoh: Fokus bersihkan toilet, lantai, wastafel, kaca, dan dinding area basah terlebih dahulu"
                   placeholderTextColor="#94A3B8"
                   multiline
                   numberOfLines={3}
@@ -347,7 +347,7 @@ export default function HourlyBooking() {
                 <View className="flex-1">
                   <Text className="font-bold text-[12px] text-amber-900">Cara kerja per-jam</Text>
                   <Text className="font-sans mt-0.5 text-[11px] leading-4 text-amber-900">
-                    Cleaner foto check-in saat mulai & check-out saat selesai. Bayar sesuai durasi yang di-book. Overtime +30 menit pertama gratis.
+                    Pekerjaan selesai mengikuti estimasi waktu sejak cleaner mulai bekerja. Countdown durasi nanti tampil di aplikasi customer dan cleaner agar waktu kerja tercatat sama.
                   </Text>
                 </View>
               </View>
@@ -362,10 +362,6 @@ export default function HourlyBooking() {
                         {tier.name} · {clampedHours} jam
                       </Text>
                       <Text className="font-semibold text-[13px] text-ink-900">{rupiah(subtotal)}</Text>
-                    </View>
-                    <View className="flex-row justify-between">
-                      <Text className="font-sans text-[13px] text-ink-600">Biaya platform (5%)</Text>
-                      <Text className="font-semibold text-[13px] text-ink-900">{rupiah(platformFee)}</Text>
                     </View>
                     <View className="my-2 h-px bg-ink-100" />
                     <View className="flex-row items-center justify-between">

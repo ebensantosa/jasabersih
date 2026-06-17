@@ -1124,6 +1124,9 @@ function HourlyCountdown({ startedAt, hours, isCleaner }: { startedAt: number; h
       <Text className="font-sans mt-1 text-[11px] text-ink-500">
         Sudah kerja {elapsedH}j {elapsedM}m dari {hours} jam yang di-book
       </Text>
+      <Text className="font-sans mt-1 text-[11px] text-ink-500">
+        Countdown ini tampil sama di aplikasi customer dan cleaner sebagai acuan durasi kerja.
+      </Text>
       {overtime && (
         <Text className="font-medium mt-1.5 text-[11px] text-amber-800">
           {isCleaner
