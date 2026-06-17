@@ -46,6 +46,14 @@ const PUBLIC_CONFIG_PREFIX_ALLOWLIST = [
   'typography.',
 ];
 
+const PUBLIC_CONFIG_EXACT_SQL = Array.from(PUBLIC_CONFIG_EXACT_ALLOWLIST)
+  .map((key) => `'${key.replace(/'/g, "''")}'`)
+  .join(', ');
+
+const PUBLIC_CONFIG_PREFIX_SQL = PUBLIC_CONFIG_PREFIX_ALLOWLIST
+  .map((prefix) => `key LIKE '${prefix.replace(/'/g, "''")}%'`)
+  .join(' OR ');
+
 function isPublicConfigKey(key: string): boolean {
   return PUBLIC_CONFIG_EXACT_ALLOWLIST.has(key)
     || PUBLIC_CONFIG_PREFIX_ALLOWLIST.some((prefix) => key.startsWith(prefix));
@@ -86,8 +94,15 @@ export class AppContentController {
   @Get('content')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async content() {
-    const [config, banners, services, addons, packages, announcement, commissionTiers, serviceAreas, hourlyTiers] = await Promise.all([
-      this.prisma.$queryRaw<Record<string, unknown>[]>`SELECT key, value FROM app_config`,
+    const [config, banners, services, addons, packages, announcement, serviceAreas, hourlyTiers] = await Promise.all([
+      this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+        `
+        SELECT key, value
+          FROM app_config
+         WHERE key IN (${PUBLIC_CONFIG_EXACT_SQL})
+            OR ${PUBLIC_CONFIG_PREFIX_SQL}
+        `,
+      ),
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT id, title, subtitle, image_url AS "imageUrl", link_url AS "linkUrl",
                placement, sort_order AS "sortOrder"
@@ -122,14 +137,10 @@ export class AppContentController {
          ORDER BY created_at DESC LIMIT 1
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
-        SELECT id, range_min AS "rangeMin", range_max AS "rangeMax",
-               cleaner_share_no_tools AS "shareNoTools", cleaner_share_with_tools AS "shareWithTools"
-          FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
-      `,
-      this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT id, name, city, radius_m AS "radiusM",
                surge_multiplier AS "surgeMultiplier",
-               ST_X(centroid::geometry) AS lng, ST_Y(centroid::geometry) AS lat
+               ROUND((ST_X(centroid::geometry))::numeric, 5) AS lng,
+               ROUND((ST_Y(centroid::geometry))::numeric, 5) AS lat
           FROM service_areas WHERE is_active = TRUE ORDER BY city ASC, name ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
@@ -157,7 +168,6 @@ export class AppContentController {
       hourlyTiers,
       packages,
       announcement: announcement[0] ?? null,
-      commissionTiers,
       serviceAreas,
     };
   }
