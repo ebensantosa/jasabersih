@@ -33,7 +33,7 @@ export class AbuseLimitsService {
     const rows = await this.prisma.$queryRaw<{ key: string; value: unknown }[]>`
       SELECT key, value FROM app_config WHERE category = 'abuse'
     `;
-    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const map = new Map(rows.map((r: { key: string; value: unknown }) => [r.key, r.value] as const));
     const num = (k: string, d: number) => {
       const v = map.get(k);
       if (v == null) return d;
