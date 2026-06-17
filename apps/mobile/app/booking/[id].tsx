@@ -1185,11 +1185,26 @@ function HourlyCountdown({
       className={`mx-4 mt-3 rounded-2xl p-4 ${overtime ? 'border-2 border-amber-300 bg-amber-50' : 'bg-white'}`}
       style={{ elevation: 3 }}
     >
-      <View className="flex-row items-center gap-2">
-        <Clock color={overtime ? '#B45309' : '#1D4ED8'} size={16} strokeWidth={2.4} />
-        <Text className={`font-bold text-sm ${overtime ? 'text-amber-900' : 'text-ink-900'}`}>
-          {overtime ? 'OVERTIME' : 'Sisa Waktu Pengerjaan'}
-        </Text>
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1 flex-row items-center gap-2">
+          <Clock color={overtime ? '#B45309' : '#1D4ED8'} size={16} strokeWidth={2.4} />
+          <Text className={`font-bold text-sm ${overtime ? 'text-amber-900' : 'text-ink-900'}`}>
+            {overtime ? 'OVERTIME' : 'Sisa Waktu Pengerjaan'}
+          </Text>
+        </View>
+        {isCleaner && (
+          <Pressable
+            onPress={() => void togglePause()}
+            disabled={timerBusy}
+            className={`min-w-[108px] items-center rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : ''}`}
+          >
+            {timerBusy ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text className="font-bold text-[11px] text-white">{isPaused ? 'Lanjut Kerja' : 'Jeda Kerja'}</Text>
+            )}
+          </Pressable>
+        )}
       </View>
       <Text className={`font-extrabold mt-2 text-4xl ${overtime ? 'text-amber-700' : 'text-brand-700'}`} style={{ fontVariant: ['tabular-nums'] }}>
         {pad(hh)}:{pad(mm)}:{pad(ss)}
@@ -1205,19 +1220,6 @@ function HourlyCountdown({
       <Text className="font-sans mt-1 text-[11px] text-ink-500">
         Countdown ini tampil sama di aplikasi customer dan cleaner sebagai acuan durasi kerja.
       </Text>
-      {isCleaner && (
-        <Pressable
-          onPress={() => void togglePause()}
-          disabled={timerBusy}
-          className={`mt-3 items-center rounded-xl py-3 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : ''}`}
-        >
-          {timerBusy ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <Text className="font-bold text-sm text-white">{isPaused ? 'Lanjut Kerja' : 'Jeda Kerja'}</Text>
-          )}
-        </Pressable>
-      )}
       {overtime && (
         <Text className="font-medium mt-1.5 text-[11px] text-amber-800">
           {isCleaner
