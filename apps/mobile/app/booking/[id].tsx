@@ -11,6 +11,8 @@ import {
   Clock,
   MapPin,
   MessageCircle,
+  Pause,
+  Play,
   Sparkles,
   XCircle,
 } from 'lucide-react-native';
@@ -1196,12 +1198,15 @@ function HourlyCountdown({
           <Pressable
             onPress={() => void togglePause()}
             disabled={timerBusy}
-            className={`min-w-[108px] items-center rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : ''}`}
+            className={`min-w-[122px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : ''}`}
           >
             {timerBusy ? (
               <ActivityIndicator color="white" size="small" />
             ) : (
-              <Text className="font-bold text-[11px] text-white">{isPaused ? 'Lanjut Kerja' : 'Jeda Kerja'}</Text>
+              <>
+                {isPaused ? <Play color="white" size={12} strokeWidth={2.8} /> : <Pause color="white" size={12} strokeWidth={2.8} />}
+                <Text className="font-bold text-[11px] text-white">{isPaused ? 'Lanjut Kerja' : 'Jeda Kerja'}</Text>
+              </>
             )}
           </Pressable>
         )}

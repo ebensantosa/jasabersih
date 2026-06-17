@@ -618,9 +618,13 @@ export class CleanerJobsController {
     }
 
     if (!booking.pause_started_at) throw new BadRequestException('Timer tidak sedang dijeda.');
+    const pausedSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(booking.pause_started_at).getTime()) / 1000),
+    );
     await this.prisma.$executeRaw`
       UPDATE bookings
-         SET paused_total_sec = COALESCE(paused_total_sec, 0) + GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - pause_started_at))))::int,
+         SET paused_total_sec = COALESCE(paused_total_sec, 0) + ${pausedSeconds},
              pause_started_at = NULL
        WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
     `;
