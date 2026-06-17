@@ -15,7 +15,23 @@ export function getAllowedOrigins(): string[] {
     .filter(Boolean);
 }
 
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/$/, '').toLowerCase();
+}
+
 export function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return true;
-  return getAllowedOrigins().includes(origin);
+  const normalized = normalizeOrigin(origin);
+  const allowed = getAllowedOrigins().map(normalizeOrigin);
+  if (allowed.includes(normalized)) return true;
+
+  try {
+    const url = new URL(normalized);
+    const isLocalDevHost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+    if (isLocalDevHost) return true;
+  } catch {
+    return false;
+  }
+
+  return false;
 }
