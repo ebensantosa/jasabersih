@@ -32,6 +32,57 @@ const ALLOWED_BANK_CODES = [
 
 const EWALLET_CODES = new Set(['gopay', 'ovo', 'dana', 'shopeepay', 'linkaja']);
 
+const HOLDER_NAME_NOISE = new Set([
+  'dana',
+  'gopay',
+  'gopaylater',
+  'ovo',
+  'shopeepay',
+  'shopee',
+  'linkaja',
+  'ewallet',
+  'wallet',
+  'topup',
+  'top',
+  'up',
+  'transfer',
+  'disbursement',
+]);
+
+function normalizeName(raw: string | null | undefined): string[] {
+  return String(raw ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(' ')
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 2)
+    .filter((part) => !HOLDER_NAME_NOISE.has(part))
+    .filter((part) => !/^x{2,}$/i.test(part));
+}
+
+function tokenMatches(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))) return true;
+  return false;
+}
+
+function namesLikelyMatch(userName: string | null | undefined, holderName: string | null | undefined): boolean {
+  const userTokens = normalizeName(userName);
+  const holderTokens = normalizeName(holderName);
+  if (userTokens.length === 0 || holderTokens.length === 0) return true;
+
+  const matched = userTokens.filter((userToken) => holderTokens.some((holderToken) => tokenMatches(userToken, holderToken)));
+  if (matched.length === userTokens.length) return true;
+
+  const firstToken = userTokens[0];
+  const secondToken = userTokens[1];
+  const firstMatched = firstToken ? holderTokens.some((holderToken) => tokenMatches(firstToken, holderToken)) : false;
+  const secondMatched = secondToken ? holderTokens.some((holderToken) => tokenMatches(secondToken, holderToken)) : false;
+
+  if (firstMatched && (secondMatched || userTokens.length === 1)) return true;
+  return matched.length / userTokens.length >= 0.6;
+}
+
 const AddBankSchema = z.object({
   bankCode: z.string().toLowerCase().refine((v) => ALLOWED_BANK_CODES.includes(v), 'Kode bank/e-wallet tidak didukung.'),
   // E-wallet pakai nomor HP (10-13 digit, prefix 08/62/+62). Bank pakai nomor
@@ -119,9 +170,9 @@ export class CleanerBankAccountsController {
     // Verify nama pemilik match nama user (case-insensitive substring).
     // Skip kalau e-wallet & Flip gak return holder name (privacy).
     const u = await this.prisma.$queryRaw<{ name: string | null }[]>`SELECT name FROM users WHERE id = ${user.id}::uuid`;
-    const userName = (u[0]?.name ?? '').toLowerCase().replace(/\s+/g, '');
-    const holderName = (inquiry.account_holder ?? '').toLowerCase().replace(/\s+/g, '');
-    if (userName && holderName && !holderName.includes(userName) && !userName.includes(holderName)) {
+    const userName = u[0]?.name ?? '';
+    const holderName = inquiry.account_holder ?? '';
+    if (userName && holderName && !namesLikelyMatch(userName, holderName)) {
       throw new BadRequestException(`Nama pemilik ${isEwallet ? 'e-wallet' : 'rekening'} (${inquiry.account_holder}) tidak sesuai akun. Gunakan ${isEwallet ? 'e-wallet' : 'rekening'} atas nama sendiri.`);
     }
     // Kalau e-wallet & holder name kosong (OVO privacy), pakai nama user.

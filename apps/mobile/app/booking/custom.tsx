@@ -1,24 +1,25 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Bath, Bed, Camera, ChefHat, Minus, Plus, Sofa, Trees, UtensilsCrossed, Warehouse, Wind, Square, Droplets, Layers, Brush } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Image as RNImage, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ArrowLeft, Bath, Bed, Brush, Camera, Check, ChefHat, Droplets, Layers, Minus, Plus, Sofa, Square, Trees, Warehouse, Wind } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Image as RNImage, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { withAuth } from '../../src/components/AuthGate';
 import { AddressField } from '../../src/components/AddressField';
 import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { ScheduleModal } from '../../src/components/ScheduleModal';
-import { useAddressesStore } from '../../src/stores/addresses';
-import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
-import { useBookingsStore } from '../../src/stores/bookings';
-import { useLocationStore } from '../../src/stores/location';
-import { toast } from '../../src/stores/ui';
-import { withAuth } from '../../src/components/AuthGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { safeBack } from '../../src/lib/safeBack';
+import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
+import { useAddressesStore } from '../../src/stores/addresses';
+import { useBookingsStore } from '../../src/stores/bookings';
+import { applyCleanMode } from '../../src/stores/cleaningMode';
+import { useLocationStore } from '../../src/stores/location';
+import { toast } from '../../src/stores/ui';
 
 type Item = { key: string; label: string; price: number; icon: any; durationMin: number; unit?: string };
+type RoomSelection = { general: number; deep: number };
 
-// Fallback icon resolver - pick icon by code substring.
 function iconFor(code: string): any {
   const c = code.toLowerCase();
   if (c.includes('kamar') && !c.includes('mandi')) return Bed;
@@ -34,20 +35,50 @@ function iconFor(code: string): any {
   return Brush;
 }
 
-const TIME_SLOTS = ['07:00', '08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
-
 function makeDateOptions(): { date: Date; label: string; sub: string }[] {
   const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const out: { date: Date; label: string; sub: string }[] = [];
-  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
   for (let i = 0; i < 7; i++) {
-    const d = new Date(now); d.setDate(now.getDate() + i);
-    const label = i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : days[d.getDay()];
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const label = i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : (days[d.getDay()] ?? 'Min');
     const sub = `${d.getDate()} ${months[d.getMonth()]}`;
     out.push({ date: d, label, sub });
   }
   return out;
+}
+
+function QtyControl({
+  value,
+  onMinus,
+  onPlus,
+  tone = 'brand',
+}: {
+  value: number;
+  onMinus: () => void;
+  onPlus: () => void;
+  tone?: 'brand' | 'amber';
+}) {
+  const activeBg = tone === 'amber' ? 'bg-amber-50' : 'bg-brand-50';
+  const activeColor = tone === 'amber' ? '#D97706' : '#1D4ED8';
+  return (
+    <View className="flex-row items-center gap-2">
+      <Pressable
+        onPress={onMinus}
+        disabled={value === 0}
+        className={`h-8 w-8 items-center justify-center rounded-lg ${value === 0 ? 'bg-ink-100' : activeBg}`}
+      >
+        <Minus color={value === 0 ? '#94A3B8' : activeColor} size={14} strokeWidth={2.4} />
+      </Pressable>
+      <Text className="w-6 text-center text-sm font-bold text-ink-900">{value}</Text>
+      <Pressable onPress={onPlus} className={`h-8 w-8 items-center justify-center rounded-lg ${activeBg}`}>
+        <Plus color={activeColor} size={14} strokeWidth={2.4} />
+      </Pressable>
+    </View>
+  );
 }
 
 function CustomBooking() {
@@ -60,131 +91,94 @@ function CustomBooking() {
   const services = useApiServices();
   const allPackages = useAppContent((s) => s.content.packages);
   const apiAddons = useApiAddons();
+  const appConfig = useAppContent((s) => s.content.config);
+  const deepMultiplier = Number(appConfig['pricing.deep_clean_multiplier' as any] ?? 1.45) || 1.45;
 
-  // Skip services yang tabrakan / kombo (kamar+toilet = kombo dari kamar & toilet)
-  // dan service per-meter (ruko/kantor/apartemen) - itu butuh flow sendiri.
-  const EXCLUDED_SERVICE_CODES = new Set([
-    'kamar_km_dalam',  // kombo, sudah ada Kamar Tidur + Toilet terpisah
-    'ruko', 'kantor', 'apartemen', // per-meter, gak fit qty-based selector
-    'full_house', 'paket_bundle', 'subscription', 'general_cleaning', 'deep_cleaning',
-    'kos', 'konsultasi', 'pasca_renovasi',
+  const excludedServiceCodes = new Set([
+    'kamar_km_dalam',
+    'ruko',
+    'kantor',
+    'apartemen',
+    'full_house',
+    'paket_bundle',
+    'subscription',
+    'general_cleaning',
+    'deep_cleaning',
+    'kos',
+    'konsultasi',
+    'pasca_renovasi',
   ]);
 
-  // ROOMS = services atomic (per ruangan), bukan kombo & bukan per-meter.
-  const ROOMS: Item[] = useMemo(() => services
-    .filter((s: any) => !EXCLUDED_SERVICE_CODES.has(String(s.code ?? '')))
-    .map((s: any) => {
-      const pkg = allPackages.find((p: any) => p.serviceId === s.id);
-      // Skip kalau package per-meter
-      if (pkg?.scope && typeof pkg.scope === 'object' && (pkg.scope as any).perMeter) return null;
-      return {
-        key: s.code ?? s.id,
-        label: s.name,
-        price: Number(pkg?.price ?? 0),
-        icon: iconFor(String(s.code ?? '')),
-        durationMin: Number(pkg?.durationMin ?? 60),
-      };
-    })
-    .filter((r): r is Item => r !== null && r.price > 0), [services, allPackages]);
+  const rooms: Item[] = useMemo(
+    () =>
+      services
+        .filter((s: any) => !excludedServiceCodes.has(String(s.code ?? '')))
+        .map((s: any) => {
+          const pkg = allPackages.find((p: any) => p.serviceId === s.id);
+          if (pkg?.scope && typeof pkg.scope === 'object' && (pkg.scope as any).perMeter) return null;
+          return {
+            key: s.code ?? s.id,
+            label: s.name,
+            price: Number(pkg?.price ?? 0),
+            icon: iconFor(String(s.code ?? '')),
+            durationMin: Number(pkg?.durationMin ?? 60),
+          };
+        })
+        .filter((room): room is Item => room !== null && room.price > 0),
+    [services, allPackages],
+  );
 
-  // Add-ons yang punya unit khusus (per m², per panel, per lubang, dll) gak masuk EXTRAS
-  // karena rancu kalau dikalikan qty bulat (user gak bisa pilih "0.5 m²").
-  // Add-on per-pcs / per-unit / per-dudukan tetap masuk.
   const isSpecialUnit = (desc: string | null | undefined) => {
     const d = (desc ?? '').toLowerCase();
     return d.includes('per m²') || d.includes('/m²') || d.includes('per panel') || d.includes('per lubang') || d.includes('per daun');
   };
-  const EXTRAS: Item[] = useMemo(() => apiAddons
-    .filter((a: any) => !isSpecialUnit(a.description))
-    .map((a: any) => ({
-      key: a.code ?? a.id,
-      label: a.name,
-      price: Number(a.price ?? 0),
-      icon: iconFor(String(a.code ?? '')),
-      durationMin: Number(a.durationMin ?? 15),
-      unit: a.description ?? undefined,
-    })), [apiAddons]);
 
-  const allItems = [...ROOMS, ...EXTRAS];
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  const extras: Item[] = useMemo(
+    () =>
+      apiAddons
+        .filter((a: any) => !isSpecialUnit(a.description))
+        .map((a: any) => ({
+          key: a.code ?? a.id,
+          label: a.name,
+          price: Number(a.price ?? 0),
+          icon: iconFor(String(a.code ?? '')),
+          durationMin: Number(a.durationMin ?? 15),
+          unit: a.description ?? undefined,
+        })),
+    [apiAddons],
+  );
+
+  const [roomCounts, setRoomCounts] = useState<Record<string, RoomSelection>>({});
+  const [extraCounts, setExtraCounts] = useState<Record<string, number>>({});
   const [address, setAddress] = useState(defaultAddress?.addressLine ?? savedLocation?.address ?? '');
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddress?.id ?? null);
   const [useNewLocation, setUseNewLocation] = useState(addressList.length === 0);
   const selectedAddress = addressList.find((a) => a.id === selectedAddressId) ?? null;
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    defaultAddress ? { lat: defaultAddress.lat, lng: defaultAddress.lng }
-      : savedLocation ? { lat: savedLocation.lat, lng: savedLocation.lng }
-      : null,
+    defaultAddress
+      ? { lat: defaultAddress.lat, lng: defaultAddress.lng }
+      : savedLocation
+        ? { lat: savedLocation.lat, lng: savedLocation.lng }
+        : null,
   );
 
   const dateOptions = useMemo(() => makeDateOptions(), []);
-  const [dateIdx, setDateIdx] = useState(1); // default besok
+  const [dateIdx, setDateIdx] = useState(1);
   const [timeSlot, setTimeSlot] = useState('09:00');
-  // "Sekarang" mode = pakai jam tercepat exact (sekarang+1h dengan menit asli)
   const [useNowTime, setUseNowTime] = useState(false);
-
-  // Modal handle validasi jam operasional + bump otomatis.
   const [notes, setNotes] = useState('');
   const [emptyHouse, setEmptyHouse] = useState(false);
   const [schedModalOpen, setSchedModalOpen] = useState(false);
-  const [photos, setPhotos] = useState<{ uri: string; url: string }[]>([]); // foto before (full house)
+  const [photos, setPhotos] = useState<{ uri: string; url: string }[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
-
-  function showPhotoPicker() {
-    if (Platform.OS === 'web') { void pickPhoto('library'); return; }
-    Alert.alert('Tambah Foto', 'Ambil dari:', [
-      { text: 'Kamera', onPress: () => pickPhoto('camera') },
-      { text: 'Galeri', onPress: () => pickPhoto('library') },
-      { text: 'Batal', style: 'cancel' },
-    ]);
-  }
-
-  async function pickPhoto(source: 'camera' | 'library') {
-    if (photos.length >= 3) {
-      toast.warning('Maksimal 3 foto');
-      return;
-    }
-    try {
-      const ImagePicker = await import('expo-image-picker');
-      const { launchImageLibraryAsync, launchCameraAsync, MediaTypeOptions,
-        requestCameraPermissionsAsync, requestMediaLibraryPermissionsAsync } = ImagePicker;
-      if (source === 'camera') {
-        const perm = await requestCameraPermissionsAsync();
-        if (!perm.granted) { toast.warning('Izin kamera ditolak'); return; }
-      } else {
-        const perm = await requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) { toast.warning('Izin galeri ditolak'); return; }
-      }
-      const r = source === 'camera'
-        ? await launchCameraAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.9 })
-        : await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.9 });
-      if (r.canceled || !r.assets?.[0]) return;
-      const asset = r.assets[0];
-      setPhotoUploading(true);
-      const { compressImage } = await import('../../src/lib/imageCompress');
-      const c = await compressImage(asset.uri);
-      const { api } = await import('../../src/lib/api');
-      const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });
-      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
-      const blob = await (await fetch(c.uri)).blob();
-      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
-      if (!up.ok) throw new Error('Upload gagal');
-      setPhotos((p) => [...p, { uri: c.uri, url: publicUrl }]);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Gagal upload foto');
-    } finally {
-      setPhotoUploading(false);
-    }
-  }
   const [submitting, setSubmitting] = useState(false);
 
-  const EMPTY_HOUSE_DISC = 0.20;
+  const emptyHouseDiscountRate = 0.2;
 
   const scheduleAt = useMemo(() => {
     if (useNowTime && dateIdx === 0) {
-      // Exact earliest: sekarang + 1 jam, tapi clamp ke jam operasional 07:00-20:00
       const nowPlus1h = new Date(Date.now() + 60 * 60 * 1000);
-      if (nowPlus1h.getHours() < 7) { nowPlus1h.setHours(7, 0, 0, 0); }
+      if (nowPlus1h.getHours() < 7) nowPlus1h.setHours(7, 0, 0, 0);
       else if (nowPlus1h.getHours() >= 20) {
         nowPlus1h.setDate(nowPlus1h.getDate() + 1);
         nowPlus1h.setHours(7, 0, 0, 0);
@@ -197,54 +191,263 @@ function CustomBooking() {
     return d;
   }, [dateOptions, dateIdx, timeSlot, useNowTime]);
 
-  const { subtotal, total, discount, totalMin, itemCount } = useMemo(() => {
-    let t = 0, m = 0, n = 0;
-    for (const it of allItems) {
-      const c = counts[it.key] ?? 0;
-      if (c > 0) { t += c * it.price; m += c * it.durationMin; n += c; }
-    }
-    const disc = emptyHouse ? Math.round((t * EMPTY_HOUSE_DISC) / 1000) * 1000 : 0;
-    return { subtotal: t, total: t - disc, discount: disc, totalMin: m, itemCount: n };
-  }, [counts, emptyHouse]);
+  const { subtotal, total, discount, totalMin, itemCount, summaryRows } = useMemo(() => {
+    let runningSubtotal = 0;
+    let runningMinutes = 0;
+    let runningCount = 0;
+    const rows: Array<{ key: string; label: string; qty: number; totalPrice: number }> = [];
 
-  function bump(k: string, delta: number) {
-    setCounts((p) => ({ ...p, [k]: Math.max(0, Math.min(50, (p[k] ?? 0) + delta)) }));
+    for (const room of rooms) {
+      const selection = roomCounts[room.key] ?? { general: 0, deep: 0 };
+      if (selection.general > 0) {
+        const totalPrice = selection.general * room.price;
+        rows.push({
+          key: `${room.key}:general`,
+          label: `${room.label} (General)`,
+          qty: selection.general,
+          totalPrice,
+        });
+        runningSubtotal += totalPrice;
+        runningMinutes += selection.general * room.durationMin;
+        runningCount += selection.general;
+      }
+      if (selection.deep > 0) {
+        const deepPrice = applyCleanMode(room.price, 'deep', deepMultiplier);
+        const totalPrice = selection.deep * deepPrice;
+        rows.push({
+          key: `${room.key}:deep`,
+          label: `${room.label} (Deep Clean)`,
+          qty: selection.deep,
+          totalPrice,
+        });
+        runningSubtotal += totalPrice;
+        runningMinutes += selection.deep * Math.ceil(room.durationMin * deepMultiplier);
+        runningCount += selection.deep;
+      }
+    }
+
+    for (const extra of extras) {
+      const qty = extraCounts[extra.key] ?? 0;
+      if (qty > 0) {
+        const totalPrice = qty * extra.price;
+        rows.push({
+          key: extra.key,
+          label: extra.label,
+          qty,
+          totalPrice,
+        });
+        runningSubtotal += totalPrice;
+        runningMinutes += qty * extra.durationMin;
+        runningCount += qty;
+      }
+    }
+
+    const discountValue = emptyHouse ? Math.round((runningSubtotal * emptyHouseDiscountRate) / 1000) * 1000 : 0;
+    return {
+      subtotal: runningSubtotal,
+      total: runningSubtotal - discountValue,
+      discount: discountValue,
+      totalMin: runningMinutes,
+      itemCount: runningCount,
+      summaryRows: rows,
+    };
+  }, [rooms, extras, roomCounts, extraCounts, emptyHouse, deepMultiplier]);
+
+  function bumpExtra(key: string, delta: number) {
+    setExtraCounts((prev) => ({ ...prev, [key]: Math.max(0, Math.min(50, (prev[key] ?? 0) + delta)) }));
+  }
+
+  function bumpRoom(key: string, mode: keyof RoomSelection, delta: number) {
+    setRoomCounts((prev) => {
+      const current = prev[key] ?? { general: 0, deep: 0 };
+      const nextValue = Math.max(0, Math.min(50, current[mode] + delta));
+      return {
+        ...prev,
+        [key]: {
+          general: mode === 'general' ? nextValue : 0,
+          deep: mode === 'deep' ? nextValue : 0,
+        },
+      };
+    });
+  }
+
+  function setRoomMode(key: string, mode: keyof RoomSelection) {
+    setRoomCounts((prev) => {
+      const current = prev[key] ?? { general: 0, deep: 0 };
+      const carryCount = Math.max(current.general, current.deep, 1);
+      return {
+        ...prev,
+        [key]: {
+          general: mode === 'general' ? carryCount : 0,
+          deep: mode === 'deep' ? carryCount : 0,
+        },
+      };
+    });
+  }
+
+  function showPhotoPicker() {
+    if (Platform.OS === 'web') {
+      void pickPhoto('library');
+      return;
+    }
+    Alert.alert('Tambah Foto', 'Ambil dari:', [
+      { text: 'Kamera', onPress: () => pickPhoto('camera') },
+      { text: 'Galeri', onPress: () => pickPhoto('library') },
+      { text: 'Batal', style: 'cancel' },
+    ]);
+  }
+
+  async function pickPhoto(source: 'camera' | 'library') {
+    if (photos.length >= 3) {
+      toast.warning('Maksimal 3 foto');
+      return;
+    }
+
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const {
+        launchCameraAsync,
+        launchImageLibraryAsync,
+        MediaTypeOptions,
+        requestCameraPermissionsAsync,
+        requestMediaLibraryPermissionsAsync,
+      } = ImagePicker;
+
+      if (source === 'camera') {
+        const perm = await requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          toast.warning('Izin kamera ditolak');
+          return;
+        }
+      } else {
+        const perm = await requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          toast.warning('Izin galeri ditolak');
+          return;
+        }
+      }
+
+      const result =
+        source === 'camera'
+          ? await launchCameraAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.9 })
+          : await launchImageLibraryAsync({ mediaTypes: MediaTypeOptions.Images, quality: 0.9 });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      setPhotoUploading(true);
+
+      const { compressImage } = await import('../../src/lib/imageCompress');
+      const compressed = await compressImage(asset.uri);
+      const { api } = await import('../../src/lib/api');
+      const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });
+      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
+      const blob = await (await fetch(compressed.uri)).blob();
+      const upload = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/jpeg' },
+        body: blob,
+      });
+      if (!upload.ok) throw new Error('Upload gagal');
+
+      setPhotos((prev) => [...prev, { uri: compressed.uri, url: publicUrl }]);
+    } catch (error: any) {
+      toast.error(error?.message ?? 'Gagal upload foto');
+    } finally {
+      setPhotoUploading(false);
+    }
   }
 
   async function submit() {
-    if (itemCount === 0) { toast.error('Pilih minimal 1 layanan'); return; }
-    if (!address.trim()) { toast.error('Alamat wajib diisi'); return; }
+    if (itemCount === 0) {
+      toast.error('Pilih minimal 1 layanan');
+      return;
+    }
+    if (!address.trim()) {
+      toast.error('Alamat wajib diisi');
+      return;
+    }
 
-    // Coverage gate — cek alamat booking dalam area layanan
     const { checkCoverage } = await import('../../src/lib/coverage');
-    const { useLocationStore } = await import('../../src/stores/location');
-    const { useAppContent } = await import('../../src/stores/appContent');
-    const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
-    const userLoc = useLocationStore.getState().current;
-    const areas = useAppContent.getState().content.serviceAreas;
+    const { useLocationStore: locationStore } = await import('../../src/stores/location');
+    const { useAppContent: appContentStore } = await import('../../src/stores/appContent');
+
+    const pickedAddress = addressList.find((a) => a.id === selectedAddressId);
+    const userLoc = locationStore.getState().current;
+    const areas = appContentStore.getState().content.serviceAreas;
     const checkLoc =
       coords
         ? { lat: coords.lat, lng: coords.lng }
-        : selectedAddress && Number.isFinite(selectedAddress.lat) && Number.isFinite(selectedAddress.lng)
-          ? { lat: selectedAddress.lat, lng: selectedAddress.lng }
-          : userLoc ? { lat: userLoc.lat, lng: userLoc.lng } : null;
-    const cov = checkCoverage(checkLoc, areas);
-    if (!cov.covered) {
+        : pickedAddress && Number.isFinite(pickedAddress.lat) && Number.isFinite(pickedAddress.lng)
+          ? { lat: pickedAddress.lat, lng: pickedAddress.lng }
+          : userLoc
+            ? { lat: userLoc.lat, lng: userLoc.lng }
+            : null;
+
+    const coverage = checkCoverage(checkLoc, areas);
+    if (!coverage.covered) {
       router.push({
         pathname: '/city-request',
-        params: { city: userLoc?.shortLabel ?? cov.nearestAreaName ?? '' },
+        params: { city: userLoc?.shortLabel ?? coverage.nearestAreaName ?? '' },
       });
       return;
     }
 
     setSubmitting(true);
-    const items = allItems.filter((r) => (counts[r.key] ?? 0) > 0).map((r) => ({
-      key: r.key, label: r.label, qty: counts[r.key]!, pricePerUnit: r.price, subtotal: counts[r.key]! * r.price,
-    }));
-    const labelSummary = items.map((i) => `${i.qty}× ${i.label}`).join(', ');
+    const items = [
+      ...rooms.flatMap((room) => {
+        const selection = roomCounts[room.key] ?? { general: 0, deep: 0 };
+        const rows: Array<{
+          key: string;
+          label: string;
+          qty: number;
+          pricePerUnit: number;
+          subtotal: number;
+          cleaningMode: 'general' | 'deep' | null;
+        }> = [];
+
+        if (selection.general > 0) {
+          rows.push({
+            key: `${room.key}:general`,
+            label: `${room.label} - General`,
+            qty: selection.general,
+            pricePerUnit: room.price,
+            subtotal: selection.general * room.price,
+            cleaningMode: 'general',
+          });
+        }
+
+        if (selection.deep > 0) {
+          const deepPrice = applyCleanMode(room.price, 'deep', deepMultiplier);
+          rows.push({
+            key: `${room.key}:deep`,
+            label: `${room.label} - Deep Clean`,
+            qty: selection.deep,
+            pricePerUnit: deepPrice,
+            subtotal: selection.deep * deepPrice,
+            cleaningMode: 'deep',
+          });
+        }
+
+        return rows;
+      }),
+      ...extras
+        .filter((extra) => (extraCounts[extra.key] ?? 0) > 0)
+        .map((extra) => ({
+          key: extra.key,
+          label: extra.label,
+          qty: extraCounts[extra.key]!,
+          pricePerUnit: extra.price,
+          subtotal: extraCounts[extra.key]! * extra.price,
+          cleaningMode: null,
+        })),
+    ];
+
+    const labelSummary = items.map((item) => `${item.qty}x ${item.label}`).join(', ');
+
     try {
-      // Pakai home.cta_image_url (config admin) sebagai icon Layanan Custom
-      const ctaImage = useAppContent.getState().content.config['home.cta_image_url' as keyof typeof useAppContent.prototype.content.config] as unknown as string | undefined;
+      const ctaImage = (useAppContent.getState().content.config as Record<string, unknown>)['home.cta_image_url'] as
+        | string
+        | undefined;
       const customIcon = typeof ctaImage === 'string' && ctaImage.trim() ? { uri: ctaImage.trim() } : undefined;
 
       const booking = await create({
@@ -260,50 +463,123 @@ function CustomBooking() {
         basePrice: subtotal,
         dirtSurcharge: 0,
         totalPrice: total,
-        formSnapshot: { mode: 'custom', items, totalMin, notes, emptyHouse, emptyHouseDiscount: discount, beforePhotos: photos.map((p) => p.url) },
+        formSnapshot: {
+          mode: 'custom',
+          items,
+          totalMin,
+          notes,
+          emptyHouse,
+          emptyHouseDiscount: discount,
+          beforePhotos: photos.map((photo) => photo.url),
+        },
         initialStatus: 'pending_payment',
       } as any);
-      toast.success('Pesanan custom dibuat - silakan bayar');
+
+      toast.success('Pesanan custom dibuat, silakan bayar');
       try {
         const { Track } = await import('../../src/lib/analytics');
         Track.bookingCreated(booking.id, total, 'custom');
       } catch {}
       router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
     } catch {
-      // toast handled in store
+      // handled in store
     } finally {
       setSubmitting(false);
     }
   }
 
-  function renderItem(it: Item, idx: number, last: boolean) {
-    const Icon = it.icon;
-    const c = counts[it.key] ?? 0;
+  function renderRoomItem(room: Item, idx: number, last: boolean) {
+    const Icon = room.icon;
+    const selection = roomCounts[room.key] ?? { general: 0, deep: 0 };
+    const deepPrice = applyCleanMode(room.price, 'deep', deepMultiplier);
+    const deepDuration = Math.ceil(room.durationMin * deepMultiplier);
+    const totalSelected = selection.general + selection.deep;
+    const isDeep = selection.deep > 0;
+    const count = isDeep ? selection.deep : selection.general;
+    const activeMode: keyof RoomSelection = isDeep ? 'deep' : 'general';
+    const activePrice = isDeep ? deepPrice : room.price;
+    const activeDuration = isDeep ? deepDuration : room.durationMin;
+
     return (
-      <View key={it.key} className={`flex-row items-center gap-3 py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
+      <View key={room.key} className={`py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
+        <View className="mb-3 flex-row items-center gap-3">
+          <View className="h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
+            <Icon color="#1D4ED8" size={20} strokeWidth={2} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-ink-900">{room.label}</Text>
+            <Text className="text-[11px] text-ink-500">Pilih jenis pembersihan untuk ruangan ini</Text>
+          </View>
+          {totalSelected > 0 && (
+            <View className="rounded-full bg-ink-100 px-2.5 py-1">
+              <Text className="text-[10px] font-bold text-ink-700">{totalSelected} dipilih</Text>
+            </View>
+          )}
+        </View>
+
+        <View
+          className={`rounded-2xl border p-3 ${
+            isDeep ? 'border-amber-300 bg-amber-50' : totalSelected > 0 ? 'border-brand-300 bg-brand-50' : 'border-ink-200 bg-white'
+          }`}
+        >
+          <View className="flex-row items-start justify-between gap-2">
+            <View className="flex-1">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm font-semibold text-ink-900">{formatRupiah(activePrice)}</Text>
+                <View className={`rounded-full px-2 py-1 ${isDeep ? 'bg-amber-100' : 'bg-ink-100'}`}>
+                  <Text className={`text-[10px] font-bold ${isDeep ? 'text-amber-800' : 'text-ink-700'}`}>
+                    {isDeep ? 'Deep Clean' : 'General'}
+                  </Text>
+                </View>
+              </View>
+              <Text className="mt-0.5 text-[11px] text-ink-500">Estimasi {activeDuration} menit</Text>
+              <Text className={`mt-1 text-[10px] ${isDeep ? 'text-amber-700' : 'text-ink-500'}`}>
+                {isDeep
+                  ? 'Deep Clean untuk area lebih kotor atau butuh hasil lebih detail.'
+                  : 'General untuk pembersihan rutin dan kondisi normal.'}
+              </Text>
+            </View>
+            <QtyControl
+              value={count}
+              onMinus={() => bumpRoom(room.key, activeMode, -1)}
+              onPlus={() => bumpRoom(room.key, activeMode, 1)}
+              tone={isDeep ? 'amber' : 'brand'}
+            />
+          </View>
+
+          <Pressable
+            onPress={() => setRoomMode(room.key, isDeep ? 'general' : 'deep')}
+            className="mt-3 flex-row items-center gap-2 border-t border-ink-100 pt-3"
+          >
+            <View className={`h-5 w-5 items-center justify-center rounded border ${isDeep ? 'border-amber-400 bg-amber-500' : 'border-ink-300 bg-white'}`}>
+              {isDeep && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+            </View>
+            <Text className={`flex-1 text-[11px] font-semibold ${isDeep ? 'text-amber-700' : 'text-ink-600'}`}>
+              {isDeep ? 'Deep Clean aktif untuk ruangan ini' : 'Centang jika ruangan ini perlu Deep Clean'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  function renderExtraItem(extra: Item, idx: number, last: boolean) {
+    const Icon = extra.icon;
+    const qty = extraCounts[extra.key] ?? 0;
+    return (
+      <View key={extra.key} className={`flex-row items-center gap-3 py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
         <View className="h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
           <Icon color="#1D4ED8" size={20} strokeWidth={2} />
         </View>
         <View className="flex-1">
-          <Text className="font-semibold text-sm text-ink-900">{it.label}</Text>
-          <Text className="text-[11px] text-ink-500">{formatRupiah(it.price)}{it.unit ? ` / ${it.unit}` : ''} · ~{it.durationMin}m</Text>
+          <Text className="text-sm font-semibold text-ink-900">{extra.label}</Text>
+          <Text className="text-[11px] text-ink-500">
+            {formatRupiah(extra.price)}
+            {extra.unit ? ` / ${extra.unit}` : ''}
+            {` · ~${extra.durationMin}m`}
+          </Text>
         </View>
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            onPress={() => bump(it.key, -1)}
-            disabled={c === 0}
-            className={`h-8 w-8 items-center justify-center rounded-lg ${c === 0 ? 'bg-ink-100' : 'bg-brand-50'}`}
-          >
-            <Minus color={c === 0 ? '#94A3B8' : '#1D4ED8'} size={14} strokeWidth={2.4} />
-          </Pressable>
-          <Text className="font-bold w-6 text-center text-sm text-ink-900">{c}</Text>
-          <Pressable
-            onPress={() => bump(it.key, 1)}
-            className="h-8 w-8 items-center justify-center rounded-lg bg-brand-50"
-          >
-            <Plus color="#1D4ED8" size={14} strokeWidth={2.4} />
-          </Pressable>
-        </View>
+        <QtyControl value={qty} onMinus={() => bumpExtra(extra.key, -1)} onPlus={() => bumpExtra(extra.key, 1)} />
       </View>
     );
   }
@@ -313,59 +589,58 @@ function CustomBooking() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
         <View className="flex-row items-center gap-3 border-b border-ink-200 bg-white px-4 py-3">
-          <Pressable onPress={() => safeBack('/(tabs)')} className="h-10 w-10 items-center justify-center -ml-2">
+          <Pressable onPress={() => safeBack('/(tabs)')} className="-ml-2 h-10 w-10 items-center justify-center">
             <ArrowLeft size={22} color="#0F172A" />
           </Pressable>
           <View className="flex-1">
-            <Text className="font-bold text-base text-ink-900">Layanan Custom</Text>
-            <Text className="text-[11px] text-ink-500">Atur sendiri, bayar tanpa konsultasi</Text>
+            <Text className="text-base font-bold text-ink-900">Layanan Custom</Text>
+            <Text className="text-[11px] text-ink-500">Atur sendiri layanan per ruangan</Text>
           </View>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 200 }}>
           <View className="mx-4 mt-4 rounded-2xl bg-white p-4">
             <View className="mb-2 flex-row items-center justify-between">
-              <Text className="font-bold text-sm text-ink-900">Ruangan</Text>
-              <Text className="text-[10px] text-ink-500">{ROOMS.length} pilihan</Text>
+              <Text className="text-sm font-bold text-ink-900">Ruangan</Text>
+              <Text className="text-[10px] text-ink-500">{rooms.length} pilihan</Text>
             </View>
-            {ROOMS.map((it, i) => renderItem(it, i, i === ROOMS.length - 1))}
+            <View className="mb-2 rounded-2xl border border-ink-100 bg-ink-50 px-3 py-2.5">
+              <Text className="text-[11px] leading-4 text-ink-600">
+                General cocok untuk pembersihan rutin harian. Deep Clean cocok untuk area yang lebih kotor, lama tidak dibersihkan, atau butuh pengerjaan lebih detail.
+              </Text>
+            </View>
+            {rooms.map((room, idx) => renderRoomItem(room, idx, idx === rooms.length - 1))}
           </View>
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <View className="mb-2 flex-row items-center justify-between">
-              <Text className="font-bold text-sm text-ink-900">Tambahan</Text>
-              <Text className="text-[10px] text-ink-500">{EXTRAS.length} pilihan</Text>
+              <Text className="text-sm font-bold text-ink-900">Tambahan</Text>
+              <Text className="text-[10px] text-ink-500">{extras.length} pilihan</Text>
             </View>
-            {EXTRAS.map((it, i) => renderItem(it, i, i === EXTRAS.length - 1))}
+            {extras.map((extra, idx) => renderExtraItem(extra, idx, idx === extras.length - 1))}
           </View>
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-            <Text className="font-bold mb-2 text-sm text-ink-900">Alamat</Text>
+            <Text className="mb-2 text-sm font-bold text-ink-900">Alamat</Text>
             {addressList.length > 0 && !useNewLocation && (
               <>
-                    <AddressPickerInline
-                      selectedId={selectedAddressId}
-                      onSelect={(a) => {
-                        setSelectedAddressId(a.id);
-                        setAddress(a.addressLine);
-                        setCoords({ lat: a.lat, lng: a.lng });
-                      }}
-                    />
+                <AddressPickerInline
+                  selectedId={selectedAddressId}
+                  onSelect={(picked) => {
+                    setSelectedAddressId(picked.id);
+                    setAddress(picked.addressLine);
+                    setCoords({ lat: picked.lat, lng: picked.lng });
+                  }}
+                />
                 <Pressable onPress={() => { setUseNewLocation(true); setCoords(null); }} className="mt-3 self-start">
-                  <Text className="font-semibold text-xs text-brand-600">
-                    + Pakai alamat lain (sekali pakai)
-                  </Text>
+                  <Text className="text-xs font-semibold text-brand-600">+ Pakai alamat lain</Text>
                 </Pressable>
               </>
             )}
+
             {(addressList.length === 0 || useNewLocation) && (
               <>
-                <AddressField
-                  value={address}
-                  onChange={setAddress}
-                  coords={coords}
-                  onCoordsChange={setCoords}
-                />
+                <AddressField value={address} onChange={setAddress} coords={coords} onCoordsChange={setCoords} />
                 {addressList.length > 0 && (
                   <Pressable
                     onPress={() => {
@@ -377,29 +652,26 @@ function CustomBooking() {
                     }}
                     className="mt-3 self-start"
                   >
-                    <Text className="font-semibold text-xs text-brand-600">
-                      ←  Pakai alamat tersimpan
-                    </Text>
+                    <Text className="text-xs font-semibold text-brand-600">Kembali ke alamat tersimpan</Text>
                   </Pressable>
                 )}
               </>
             )}
           </View>
 
-          {/* Foto Before - kondisi awal full house */}
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-            <Text className="font-semibold mb-2 text-[11px] uppercase tracking-wider text-ink-500">
+            <Text className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
               Foto Kondisi (Opsional, max 3)
             </Text>
             <View className="flex-row flex-wrap gap-2">
-              {photos.map((p, i) => (
-                <View key={i} className="relative h-20 w-20">
-                  <RNImage source={{ uri: p.uri }} style={{ width: 80, height: 80, borderRadius: 12 }} />
+              {photos.map((photo, idx) => (
+                <View key={idx} className="relative h-20 w-20">
+                  <RNImage source={{ uri: photo.uri }} style={{ width: 80, height: 80, borderRadius: 12 }} />
                   <Pressable
-                    onPress={() => setPhotos((arr) => arr.filter((_, idx) => idx !== i))}
+                    onPress={() => setPhotos((prev) => prev.filter((_, photoIdx) => photoIdx !== idx))}
                     className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-red-600"
                   >
-                    <Text className="font-bold text-[10px] text-white">×</Text>
+                    <Text className="text-[10px] font-bold text-white">x</Text>
                   </Pressable>
                 </View>
               ))}
@@ -410,25 +682,20 @@ function CustomBooking() {
                   className="h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-brand-300 bg-brand-50"
                 >
                   <Camera color="#1D4ED8" size={20} strokeWidth={2.2} />
-                  <Text className="font-medium mt-1 text-[10px] text-brand-700">
-                    {photoUploading ? '...' : '+ Tambah'}
-                  </Text>
+                  <Text className="mt-1 text-[10px] font-medium text-brand-700">{photoUploading ? '...' : '+ Tambah'}</Text>
                 </Pressable>
               )}
             </View>
-            <Text className="font-sans mt-2 text-[10px] text-ink-500">
-              JPG / PNG / WEBP · auto compress {`<5MB`}
-            </Text>
+            <Text className="mt-2 text-[10px] text-ink-500">JPG / PNG / WEBP, otomatis dikompres di bawah 5MB</Text>
           </View>
 
-          {/* Tap card → buka modal Pilih Jadwal */}
           <Pressable
             onPress={() => setSchedModalOpen(true)}
             className="mx-4 mt-3 flex-row items-center justify-between rounded-2xl bg-white p-4"
           >
             <View>
-              <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-500">Pilih Tanggal & Jam</Text>
-              <Text className="font-bold mt-0.5 text-sm text-ink-900">
+              <Text className="text-[10px] font-medium uppercase tracking-wider text-ink-500">Pilih Tanggal dan Jam</Text>
+              <Text className="mt-0.5 text-sm font-bold text-ink-900">
                 {useNowTime && dateIdx === 0
                   ? `Sekarang (${String(scheduleAt.getHours()).padStart(2, '0')}:${String(scheduleAt.getMinutes()).padStart(2, '0')})`
                   : `${dateOptions[dateIdx]?.label ?? ''} · ${timeSlot}`}
@@ -448,29 +715,27 @@ function CustomBooking() {
                 emptyHouse ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'
               }`}
             >
-              {emptyHouse && <Text className="text-[10px] font-bold text-white">✓</Text>}
+              {emptyHouse && <Text className="text-[10px] font-bold text-white">V</Text>}
             </View>
             <View className="flex-1">
               <View className="flex-row items-center gap-1.5">
-                <Text className={`font-extrabold text-sm ${emptyHouse ? 'text-emerald-800' : 'text-ink-900'}`}>
-                  Rumah Kosong (Tanpa Barang)
-                </Text>
+                <Text className={`text-sm font-extrabold ${emptyHouse ? 'text-emerald-800' : 'text-ink-900'}`}>Rumah Kosong</Text>
                 <View className="rounded bg-emerald-200 px-1.5 py-0.5">
-                  <Text className="font-extrabold text-[9px] text-emerald-900">DISKON 20%</Text>
+                  <Text className="text-[9px] font-extrabold text-emerald-900">DISKON 20%</Text>
                 </View>
               </View>
-              <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                Semua barang sudah dipindah, kerja lebih cepat tanpa hambatan furniture.
+              <Text className="mt-0.5 text-[11px] font-medium text-ink-600">
+                Pilih ini jika barang sudah dipindahkan sehingga pengerjaan lebih cepat.
               </Text>
             </View>
           </Pressable>
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-            <Text className="font-bold mb-2 text-sm text-ink-900">Catatan (opsional)</Text>
+            <Text className="mb-2 text-sm font-bold text-ink-900">Catatan (opsional)</Text>
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Contoh: ada hewan peliharaan, akses pintu samping, dll"
+              placeholder="Contoh: ada hewan peliharaan, akses pintu samping, atau area prioritas"
               multiline
               numberOfLines={3}
               className="rounded-xl border border-ink-200 bg-white p-3 text-sm text-ink-900"
@@ -480,11 +745,11 @@ function CustomBooking() {
 
           {itemCount > 0 && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
-              <Text className="font-bold mb-2 text-sm text-ink-900">Rincian</Text>
-              {allItems.filter((r) => (counts[r.key] ?? 0) > 0).map((r) => (
-                <View key={r.key} className="flex-row justify-between py-1">
-                  <Text className="text-xs text-ink-700">{counts[r.key]}× {r.label}</Text>
-                  <Text className="text-xs text-ink-900">{formatRupiah(counts[r.key]! * r.price)}</Text>
+              <Text className="mb-2 text-sm font-bold text-ink-900">Rincian</Text>
+              {summaryRows.map((row) => (
+                <View key={row.key} className="flex-row justify-between py-1">
+                  <Text className="text-xs text-ink-700">{row.qty}x {row.label}</Text>
+                  <Text className="text-xs text-ink-900">{formatRupiah(row.totalPrice)}</Text>
                 </View>
               ))}
               {discount > 0 && (
@@ -495,13 +760,13 @@ function CustomBooking() {
               )}
               {discount > 0 && (
                 <View className="flex-row justify-between py-1">
-                  <Text className="text-xs text-emerald-700">Diskon Rumah Kosong (20%)</Text>
-                  <Text className="text-xs font-bold text-emerald-700">−{formatRupiah(discount)}</Text>
+                  <Text className="text-xs text-emerald-700">Diskon Rumah Kosong</Text>
+                  <Text className="text-xs font-bold text-emerald-700">-{formatRupiah(discount)}</Text>
                 </View>
               )}
-              <View className={`flex-row justify-between ${discount > 0 ? 'border-t border-ink-100 pt-2' : 'mt-2 border-t border-ink-100 pt-2'}`}>
-                <Text className="font-bold text-sm text-ink-900">Total · ~{Math.round(totalMin / 60 * 10) / 10}j</Text>
-                <Text className="font-bold text-sm text-brand-700">{formatRupiah(total)}</Text>
+              <View className={`flex-row justify-between border-t border-ink-100 pt-2 ${discount > 0 ? '' : 'mt-2'}`}>
+                <Text className="text-sm font-bold text-ink-900">Total · ~{Math.round((totalMin / 60) * 10) / 10}j</Text>
+                <Text className="text-sm font-bold text-brand-700">{formatRupiah(total)}</Text>
               </View>
             </View>
           )}
@@ -512,7 +777,7 @@ function CustomBooking() {
             <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-3">
               <View>
                 <Text className="text-[10px] uppercase tracking-wider text-ink-500">Total Bayar</Text>
-                <Text className="font-extrabold text-lg text-brand-700">{formatRupiah(total)}</Text>
+                <Text className="text-lg font-extrabold text-brand-700">{formatRupiah(total)}</Text>
               </View>
               {itemCount > 0 && <Text className="text-[10px] text-ink-500">{itemCount} item dipilih</Text>}
             </View>
@@ -522,7 +787,7 @@ function CustomBooking() {
                 disabled={submitting || itemCount === 0}
                 className={`h-12 items-center justify-center rounded-2xl ${itemCount === 0 ? 'bg-ink-300' : 'bg-brand-600'}`}
               >
-                <Text className="font-bold text-sm text-white">
+                <Text className="text-sm font-bold text-white">
                   {submitting ? 'Memproses...' : itemCount === 0 ? 'Pilih layanan dulu' : 'Buat Pesanan'}
                 </Text>
               </Pressable>
@@ -534,12 +799,14 @@ function CustomBooking() {
       <ScheduleModal
         visible={schedModalOpen}
         value={scheduleAt}
-        onChange={(d) => {
+        onChange={(date) => {
           setUseNowTime(false);
-          const today = new Date(); today.setHours(0, 0, 0, 0);
-          const dd = new Date(d); dd.setHours(0, 0, 0, 0);
-          setDateIdx(Math.max(0, Math.min(13, Math.round((dd.getTime() - today.getTime()) / 86400000))));
-          setTimeSlot(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const selected = new Date(date);
+          selected.setHours(0, 0, 0, 0);
+          setDateIdx(Math.max(0, Math.min(13, Math.round((selected.getTime() - today.getTime()) / 86400000))));
+          setTimeSlot(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`);
           setSchedModalOpen(false);
         }}
         onClose={() => setSchedModalOpen(false)}

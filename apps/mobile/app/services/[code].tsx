@@ -24,6 +24,7 @@ export default function ServiceDetail() {
   const perHourEnabled = !!useConfig('booking.modes.per_hour.enabled' as any, true);
   const hourlyTiers = useApiHourlyTiers();
   const cheapestHourly = hourlyTiers.length > 0 ? Math.min(...hourlyTiers.map((t) => t.pricePerHour)) : 0;
+  const hourlyBlockedCodes = new Set(['subscription', 'full_house', 'pasca_renovasi', 'kantor']);
   if (!category) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
@@ -31,6 +32,8 @@ export default function ServiceDetail() {
       </SafeAreaView>
     );
   }
+
+  const showHourlyMode = perHourEnabled && hourlyTiers.length > 0 && !hourlyBlockedCodes.has(code) && !category.isBundle;
 
   function ensureLogin(go: () => void) {
     if (!tokens) {
@@ -223,7 +226,7 @@ export default function ServiceDetail() {
                 />
               )}
 
-              {perHourEnabled && hourlyTiers.length > 0 && (
+              {showHourlyMode && (
                 <ModeCard
                   renderIcon={() => <Clock color="#1D4ED8" size={26} strokeWidth={2.2} />}
                   iconBg="#DBEAFE"
@@ -242,9 +245,9 @@ export default function ServiceDetail() {
               <ModeCard
                 renderIcon={() => <WaIcon size={26} />}
                 iconBg="#D1FAE5"
-                title="Konsultasi via WhatsApp"
-                tagline="Untuk job kompleks"
-                desc="Properti besar, pasca renovasi, atau kebutuhan unik. CS hubungi untuk survey & quote."
+                title="Diskusikan Kebutuhan"
+                tagline="Untuk kebutuhan yang perlu penyesuaian"
+                desc="Cocok untuk properti besar, pasca renovasi, atau kebutuhan khusus. Tim kami bantu cek kebutuhan dan siapkan penawaran yang sesuai."
                 priceHint={undefined}
                 onPress={() =>
                   router.push({ pathname: '/booking/wa-survey', params: { category: code } })
@@ -255,8 +258,9 @@ export default function ServiceDetail() {
             <View className="mt-5 rounded-2xl bg-brand-50 p-3">
               <Text className="font-semibold text-[11px] text-brand-900">💡 Tips memilih</Text>
               <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
-                <Text className="font-bold">Per Ruangan</Text> cocok untuk job rutin (harga jelas di muka).{perHourEnabled && hourlyTiers.length > 0 ? <> <Text className="font-bold">Per Jam</Text> untuk yang butuh fleksibilitas durasi.</> : null}{' '}
-                <Text className="font-bold">WA Survey</Text> untuk properti besar / pasca renovasi / kebutuhan unik.
+                <Text className="font-bold">Per Ruangan</Text> cocok untuk kebutuhan dengan lingkup kerja yang jelas dan harga tetap di awal.
+                {showHourlyMode ? <> <Text className="font-bold"> Per Jam</Text> cocok kalau kamu butuh durasi kerja yang lebih fleksibel.</> : null}{' '}
+                <Text className="font-bold">Diskusi Kebutuhan</Text> cocok untuk properti besar, pasca renovasi, atau kebutuhan yang perlu penyesuaian dulu.
               </Text>
             </View>
           </View>

@@ -76,7 +76,9 @@ export default function Home() {
   const SERVICE_CATEGORIES = SERVICE_CATEGORIES_ALL.slice(0, HOME_TILE_LIMIT);
   const hasMoreServices = SERVICE_CATEGORIES_ALL.length > HOME_TILE_LIMIT;
   // Section "Paket Lengkap": yang ditandai admin sebagai bundle, kecuali yang hidden.
-  const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => s.isBundle && !HIDDEN_CODES.has(s.code));
+  const BUNDLE_SERVICES = ALL_SERVICES.filter((s) => s.isBundle && !HIDDEN_CODES.has(s.code) && s.code !== 'hourly');
+  const BUNDLE_CARD_WIDTH = 232;
+  const BUNDLE_CARD_GAP = 12;
   const t = useT();
   const profile = useUserStore((s) => s.profile);
   const firstName = profile?.name?.trim().split(' ')[0] ?? null;
@@ -315,7 +317,7 @@ export default function Home() {
 
         {BUNDLE_SERVICES.length > 0 && (
           <View className="mt-8">
-            <View className="mb-3 flex-row items-end justify-between px-4">
+            <View className="mb-3 px-4">
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
                   <Text className="font-extrabold text-base text-ink-900">Paket Lengkap</Text>
@@ -323,28 +325,34 @@ export default function Home() {
                     <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Hemat</Text>
                   </View>
                 </View>
-                <Text className="font-medium mt-1 text-[11px] text-ink-500">Combo all-in untuk rumah, kantor & berkala</Text>
+                <Text className="font-medium mt-1 text-[11px] text-ink-500">
+                  Pilihan paket praktis untuk rumah, properti besar, dan kebutuhan berkala
+                </Text>
               </View>
-              <Pressable onPress={() => router.push('/(tabs)/explore')}>
-                <Text className="font-semibold text-[12px] text-brand-600">Lihat semua ›</Text>
-              </Pressable>
             </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={{ overflow: 'visible' }}
-              contentContainerStyle={{ paddingVertical: 8 }}
+              nestedScrollEnabled
+              directionalLockEnabled
+              decelerationRate="fast"
+              disableIntervalMomentum
+              snapToAlignment="start"
+              snapToInterval={BUNDLE_CARD_WIDTH + BUNDLE_CARD_GAP}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 20, paddingVertical: 8 }}
             >
-              <View className="flex-row gap-3 px-4">
+              <View className="flex-row">
                 {BUNDLE_SERVICES.map((s, idx) => {
                   const isDisabled = s.isActive === false;
+                  const isLast = idx === BUNDLE_SERVICES.length - 1;
                   return (
                   <Pressable
                     key={s.code}
                     disabled={isDisabled}
                     onPress={() => router.push(`/services/${s.code}`)}
                     style={{
-                      width: 220,
+                      width: BUNDLE_CARD_WIDTH,
+                      marginRight: isLast ? 0 : BUNDLE_CARD_GAP,
                       elevation: 4,
                       shadowColor: '#0F172A',
                       shadowOpacity: 0.12,
@@ -364,11 +372,11 @@ export default function Home() {
                       />
                       <View style={{ position: 'absolute', top: 8, left: 8, flexDirection: 'row', gap: 4 }}>
                         <View style={{ backgroundColor: '#F97316', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Combo</Text>
+                          <Text className="font-extrabold text-[9px] uppercase tracking-wider text-white">Paket</Text>
                         </View>
                         {idx === 0 && (
                           <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                            <Text className="font-extrabold text-[9px] uppercase tracking-wider text-ink-900">Best Seller</Text>
+                            <Text className="font-extrabold text-[9px] uppercase tracking-wider text-ink-900">Pilihan Favorit</Text>
                           </View>
                         )}
                       </View>
@@ -393,13 +401,17 @@ export default function Home() {
                       <Text className="font-sans text-[11px] text-ink-600" numberOfLines={2}>{s.description}</Text>
                       <View className="mt-1.5 flex-row items-end justify-between">
                         <View>
-                          <Text className="font-sans text-[9px] uppercase tracking-wider text-ink-400">Mulai dari</Text>
+                          <Text className="font-sans text-[9px] uppercase tracking-wider text-ink-400">
+                            {s.startingPrice > 0 ? 'Harga paket' : 'Peninjauan awal'}
+                          </Text>
                           <Text className="font-extrabold text-[14px] text-brand-600">
-                            {s.startingPrice > 0 ? formatRupiah(s.startingPrice) : 'WA Survey'}
+                            {s.startingPrice > 0 ? formatRupiah(s.startingPrice) : 'Sesuai kebutuhan'}
                           </Text>
                         </View>
                         <View className={`rounded-full px-2 py-1 ${isDisabled ? 'bg-ink-200' : 'bg-brand-50'}`}>
-                          <Text className={`font-bold text-[10px] ${isDisabled ? 'text-ink-500' : 'text-brand-700'}`}>{isDisabled ? 'Tidak Tersedia' : 'Pesan ›'}</Text>
+                          <Text className={`font-bold text-[10px] ${isDisabled ? 'text-ink-500' : 'text-brand-700'}`}>
+                            {isDisabled ? 'Tidak Tersedia' : 'Lihat Detail'}
+                          </Text>
                         </View>
                       </View>
                     </View>
