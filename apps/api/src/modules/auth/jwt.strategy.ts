@@ -44,10 +44,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         FROM users WHERE id = ${payload.sub}::uuid LIMIT 1
     `;
     const u = rows[0];
-    // Kalau row gak ada di users table, kemungkinan ini admin token (admins di tabel admin_users).
-    // Skip enforcement — endpoint admin punya AdminJwtGuard sendiri yang validate token-nya.
     if (!u) {
-      return { id: payload.sub, phone: payload.phone };
+      throw new UnauthorizedException({ code: 'USER_NOT_FOUND', message: 'Sesi user tidak valid.' });
     }
     if (u.deleted_at) {
       throw new UnauthorizedException({ code: 'ACCOUNT_DELETED', message: 'Akun sudah dihapus.' });

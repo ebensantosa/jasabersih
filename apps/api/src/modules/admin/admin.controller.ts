@@ -6,12 +6,11 @@ import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
-import { JwtAuthGuard } from '../auth/jwt.guard';
 import { PushService } from '../notifications/push.service';
 
 @ApiTags('admin')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AdminJwtGuard, AdminRbacGuard)
 @Controller('admin')
 export class AdminController {
   constructor(
@@ -21,7 +20,6 @@ export class AdminController {
   ) {}
 
   @Get('bookings')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
   async listBookings(
     @Query('status') status?: string,
@@ -68,7 +66,6 @@ export class AdminController {
   // GET /admin/bookings/export.csv — export semua booking yg cocok filter ke CSV.
   // Capped 10k rows untuk safety; user persempit filter kalau lebih.
   @Get('bookings/export.csv')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops', 'finance')
   async exportBookingsCsv(
     @Query('status') status?: string,
@@ -103,7 +100,6 @@ export class AdminController {
 
   // GET /admin/payouts/export.csv — export withdrawal/payout untuk reconciliation finance.
   @Get('payouts/export.csv')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'finance')
   async exportPayoutsCsv(
     @Query('from') from?: string,
@@ -131,7 +127,6 @@ export class AdminController {
   }
 
   @Get('cleaners')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops', 'finance', 'fraud_analyst', 'support')
   async listCleaners(
     @Query('status') status?: string,
@@ -179,7 +174,6 @@ export class AdminController {
 
   // POST /admin/customers — manual create customer (admin-trusted, bypass OTP)
   @Post('customers')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async createCustomer(
     @Body() body: { name: string; phone: string; email?: string; password: string },
@@ -218,7 +212,6 @@ export class AdminController {
 
   // DELETE /admin/customers/:id — hard delete customer
   @Delete('customers/:id')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async deleteCustomer(
     @Param('id') id: string,
@@ -267,7 +260,6 @@ export class AdminController {
 
   // POST /admin/cleaners — manual create cleaner (admin-trusted, bypass OTP)
   @Post('cleaners')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async createCleaner(
     @Body() body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean },
@@ -328,7 +320,6 @@ export class AdminController {
 
   // PATCH /admin/users/:id — admin edit name / email / password (customer ATAU cleaner)
   @Patch('users/:id')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async updateUserAccount(
     @Param('id') id: string,
@@ -369,7 +360,6 @@ export class AdminController {
 
   // PATCH /admin/cleaners/:id — admin update bringsTools / tier / serviceAreas
   @Patch('cleaners/:id')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async updateCleaner(
     @Param('id') id: string,
@@ -395,7 +385,6 @@ export class AdminController {
 
   // DELETE /admin/cleaners/:id — hard delete cleaner (NULL non-cascade FKs + DELETE user)
   @Delete('cleaners/:id')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async deleteCleaner(
     @Param('id') id: string,
@@ -450,7 +439,6 @@ export class AdminController {
 
   // GET wallet detail untuk user tertentu (customer atau cleaner)
   @Get('users/:id/wallet')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops', 'support')
   async userWallet(@Param('id') id: string) {
     const balRow = await this.prisma.$queryRaw<{ credit_in: number | null; credit_out: number | null }[]>`
@@ -473,7 +461,6 @@ export class AdminController {
 
   // POST adjust saldo manual (admin top-up atau admin debit)
   @Post('users/:id/wallet-adjust')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async walletAdjust(
     @Param('id') id: string,
@@ -502,7 +489,6 @@ export class AdminController {
 
   // Admin tolak foto profil cleaner — clear photo_url, set is_available=false, notif cleaner
   @Post('cleaners/:id/reject-photo')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async rejectPhoto(
     @Param('id') id: string,
@@ -532,7 +518,6 @@ export class AdminController {
   // bayangin filter-nya sehingga UI Banned filter gak jalan. Dihapus.
 
   @Patch('bookings/:id/assign')
-  @UseGuards(AdminJwtGuard, AdminRbacGuard)
   @Roles('super_admin', 'ops')
   async assignCleaner(
     @Param('id') id: string,
