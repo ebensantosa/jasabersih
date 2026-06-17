@@ -97,10 +97,8 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
     }
   }
 
-  // Flow yang lebih natural:
-  // cleaner mulai kerja dulu, lalu dokumentasi foto berjalan saat status
-  // in_progress / completed.
-  const canManagePhotos = isCleaner && ['in_progress', 'completed'].includes(status);
+  // Setelah job selesai, foto tetap bisa dilihat tetapi tidak boleh diubah lagi.
+  const canManagePhotos = isCleaner && status === 'in_progress';
   const beforePhotos = photos.filter((p) => p.photoType === 'before');
   const afterPhotos = photos.filter((p) => p.photoType === 'after');
   const damagePhotos = photos.filter((p) => p.photoType === 'damage');
@@ -108,12 +106,12 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   if (!canManagePhotos && photos.length === 0) return null;
 
   // Hint contextual untuk cleaner
-  const needBefore = isCleaner && ['in_progress', 'completed'].includes(status) && beforePhotos.length === 0;
-  const needAfter = isCleaner && ['in_progress', 'completed'].includes(status) && beforePhotos.length > 0 && afterPhotos.length === 0;
-  const beforeLocked = !isCleaner || !['in_progress', 'completed'].includes(status);
+  const needBefore = canManagePhotos && beforePhotos.length === 0;
+  const needAfter = canManagePhotos && beforePhotos.length > 0 && afterPhotos.length === 0;
+  const beforeLocked = !canManagePhotos;
   // After locked sampai before ada minimal 1 dan job sudah mulai dikerjakan
-  const afterLocked = !isCleaner || beforePhotos.length === 0 || !['in_progress', 'completed'].includes(status);
-  const damageLocked = !isCleaner || !['in_progress', 'completed'].includes(status);
+  const afterLocked = !canManagePhotos || beforePhotos.length === 0;
+  const damageLocked = !canManagePhotos;
   const activeStep = needBefore ? 'before' : needAfter ? 'after' : null;
 
   return (

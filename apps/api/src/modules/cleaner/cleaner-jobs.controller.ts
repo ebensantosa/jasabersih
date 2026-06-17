@@ -80,7 +80,7 @@ export class CleanerJobsController {
       SELECT id, status FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
     `;
     if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
-    if (!['matched', 'on_the_way', 'in_progress', 'completed'].includes(owns[0].status)) {
+    if (!['matched', 'on_the_way', 'in_progress'].includes(owns[0].status)) {
       throw new BadRequestException('Tidak bisa upload foto di status ini.');
     }
     await this.prisma.$executeRaw`
@@ -104,8 +104,8 @@ export class CleanerJobsController {
       SELECT id, status FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
     `;
     if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
-    if (!['in_progress', 'completed'].includes(owns[0].status)) {
-      throw new BadRequestException('Foto hanya bisa dihapus saat job aktif atau baru selesai.');
+    if (owns[0].status !== 'in_progress') {
+      throw new BadRequestException('Foto hanya bisa dihapus saat pekerjaan masih berjalan.');
     }
 
     const rows = await this.prisma.$queryRaw<{ id: string; photo_type: 'before' | 'after' | 'damage'; storage_path: string; uploaded_by: string | null }[]>`
