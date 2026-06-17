@@ -5,8 +5,8 @@ import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralPayoutService } from '../referral/referral-payout.service';
 
-// Auto-complete booking yang stuck in_progress > 4 jam.
-// Cleaner kemungkinan lupa tap "Selesai" atau koneksi terputus → uang stuck.
+// Auto-complete hanya untuk job non-hourly yang benar-benar stale.
+// Job per jam harus selesai manual karena durasinya sekarang ditracking oleh timer.
 const STALE_HOURS = 4;
 
 @Injectable()
@@ -25,6 +25,7 @@ export class AutoCompleteService {
       SELECT id, customer_id, cleaner_id, cleaner_payout
         FROM bookings
        WHERE status = 'in_progress'
+         AND COALESCE(pricing_mode, '') <> 'hourly'
          AND COALESCE(started_at, matched_at, created_at) < NOW() - (${STALE_HOURS}::int * INTERVAL '1 hour')
     `;
     if (stale.length === 0) return;
