@@ -545,7 +545,15 @@ function BookingDetail() {
               Hindari dua source yg bisa kelihatan out-of-sync. */}
 
           {booking.pricingMode === 'hourly' && booking.status === 'in_progress' && booking.startedAt && booking.hours && (
-            <HourlyCountdown startedAt={booking.startedAt} hours={booking.hours} isCleaner={isCleaner} />
+            <HourlyCountdown
+              bookingId={booking.id}
+              startedAt={booking.startedAt}
+              hours={booking.hours}
+              isCleaner={isCleaner}
+              pauseStartedAt={booking.pauseStartedAt}
+              pausedTotalSec={booking.pausedTotalSec ?? 0}
+              onRefresh={() => { if (id) void fetchOne(String(id)); }}
+            />
           )}
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
@@ -1095,14 +1103,33 @@ function BookingDetail() {
   );
 }
 
-function HourlyCountdown({ startedAt, hours, isCleaner }: { startedAt: number; hours: number; isCleaner: boolean }) {
+function HourlyCountdown({
+  bookingId,
+  startedAt,
+  hours,
+  isCleaner,
+  pauseStartedAt,
+  pausedTotalSec,
+  onRefresh,
+}: {
+  bookingId: string;
+  startedAt: number;
+  hours: number;
+  isCleaner: boolean;
+  pauseStartedAt?: number;
+  pausedTotalSec?: number;
+  onRefresh?: () => void;
+}) {
   const [now, setNow] = useState(Date.now());
+  const [timerBusy, setTimerBusy] = useState(false);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
   const totalMs = hours * 3600 * 1000;
-  const elapsedMs = Math.max(0, now - startedAt);
+  const isPaused = !!pauseStartedAt;
+  const effectiveNow = isPaused ? pauseStartedAt! : now;
+  const elapsedMs = Math.max(0, effectiveNow - startedAt - ((pausedTotalSec ?? 0) * 1000));
   const remainingMs = totalMs - elapsedMs;
   const overtime = remainingMs < 0;
   const absMs = Math.abs(remainingMs);
@@ -1112,6 +1139,20 @@ function HourlyCountdown({ startedAt, hours, isCleaner }: { startedAt: number; h
   const pad = (n: number) => String(n).padStart(2, '0');
   const elapsedH = Math.floor(elapsedMs / 3600000);
   const elapsedM = Math.floor((elapsedMs % 3600000) / 60000);
+
+  async function togglePause() {
+    if (timerBusy) return;
+    setTimerBusy(true);
+    try {
+      await api.post(`/cleaner/jobs/${bookingId}/timer`, { action: isPaused ? 'resume' : 'pause' });
+      toast.success(isPaused ? 'Timer dilanjutkan' : 'Timer dijeda');
+      onRefresh?.();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal ubah timer');
+    } finally {
+      setTimerBusy(false);
+    }
+  }
 
   return (
     <View
@@ -1130,9 +1171,27 @@ function HourlyCountdown({ startedAt, hours, isCleaner }: { startedAt: number; h
       <Text className="font-sans mt-1 text-[11px] text-ink-500">
         Sudah kerja {elapsedH}j {elapsedM}m dari {hours} jam yang di-book
       </Text>
+      {isPaused && (
+        <View className="mt-2 self-start rounded-full bg-amber-100 px-3 py-1">
+          <Text className="font-semibold text-[11px] text-amber-800">Timer sedang dijeda</Text>
+        </View>
+      )}
       <Text className="font-sans mt-1 text-[11px] text-ink-500">
         Countdown ini tampil sama di aplikasi customer dan cleaner sebagai acuan durasi kerja.
       </Text>
+      {isCleaner && (
+        <Pressable
+          onPress={() => void togglePause()}
+          disabled={timerBusy}
+          className={`mt-3 items-center rounded-xl py-3 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : ''}`}
+        >
+          {timerBusy ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <Text className="font-bold text-sm text-white">{isPaused ? 'Lanjut Kerja' : 'Jeda Kerja'}</Text>
+          )}
+        </Pressable>
+      )}
       {overtime && (
         <Text className="font-medium mt-1.5 text-[11px] text-amber-800">
           {isCleaner

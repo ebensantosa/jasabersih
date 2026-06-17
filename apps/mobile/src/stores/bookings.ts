@@ -93,6 +93,8 @@ export type Booking = {
   createdAt: number;
   paidAt?: number;
   startedAt?: number;
+  pauseStartedAt?: number;
+  pausedTotalSec?: number;
   completedAt?: number;
   cancelRefund?: number;
   // Mode-specific
@@ -249,6 +251,8 @@ export const useBookingsStore = create<State>((set, get) => ({
         cleanerPhotoUrl: s.cleaner_photo_url ?? s.cleanerPhotoUrl ?? undefined,
         paidAt: s.paid_at ? (Number.isFinite(Date.parse(s.paid_at)) ? Date.parse(s.paid_at) : undefined) : undefined,
         startedAt: (s.started_at ?? s.startedAt) ? (Number.isFinite(Date.parse(s.started_at ?? s.startedAt)) ? Date.parse(s.started_at ?? s.startedAt) : undefined) : undefined,
+        pauseStartedAt: (s.pause_started_at ?? s.pauseStartedAt) ? (Number.isFinite(Date.parse(s.pause_started_at ?? s.pauseStartedAt)) ? Date.parse(s.pause_started_at ?? s.pauseStartedAt) : undefined) : undefined,
+        pausedTotalSec: (s.paused_total_sec ?? s.pausedTotalSec) != null ? Number(s.paused_total_sec ?? s.pausedTotalSec) : 0,
         completedAt: (s.completed_at ?? s.completedAt) ? (Number.isFinite(Date.parse(s.completed_at ?? s.completedAt)) ? Date.parse(s.completed_at ?? s.completedAt) : undefined) : undefined,
         hours: (s.hoursBooked ?? s.hours_booked) != null ? Number(s.hoursBooked ?? s.hours_booked) : undefined,
         hourlyTierId: s.hourlyTierId ?? undefined,

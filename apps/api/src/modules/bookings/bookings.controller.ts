@@ -131,6 +131,8 @@ export class BookingsController {
               b.cleaner_payout, b.matched_at, b.paid_at, b.canceled_at,
               b.cleaner_otw_at, b.cleaner_arrived_at,
               b.started_at AS "startedAt",
+              b.pause_started_at AS "pauseStartedAt",
+              b.paused_total_sec AS "pausedTotalSec",
               b.completed_at, b.created_at,
               b.hourly_tier_id AS "hourlyTierId", b.hours_booked AS "hoursBooked",
               ht.name AS "hourlyTierName", ht.price_per_hour AS "hourlyPricePerHour",

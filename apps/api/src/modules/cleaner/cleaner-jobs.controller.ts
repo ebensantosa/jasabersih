@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -22,6 +22,24 @@ export class CleanerJobsController {
     private readonly storage: StorageService,
     private readonly referralPayout: ReferralPayoutService,
   ) {}
+
+  private async syncPhotoLookupColumn(bookingId: string, type: 'before' | 'after') {
+    const rows = await this.prisma.$queryRaw<{ storage_path: string }[]>`
+      SELECT storage_path
+        FROM booking_photos
+       WHERE booking_id = ${bookingId}::uuid
+         AND photo_type = ${type}
+       ORDER BY uploaded_at DESC
+       LIMIT 1
+    `;
+    const col = type === 'before' ? 'before_photo_url' : 'after_photo_url';
+    const publicUrl = rows[0]?.storage_path ? this.storage.getPublicUrl(rows[0].storage_path) : null;
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE bookings SET ${col} = $1 WHERE id = $2::uuid`,
+      publicUrl,
+      bookingId,
+    );
+  }
 
   // Generate signed PUT URL untuk upload foto before/after ke R2 public bucket
   @Post(':id/photo-upload-url')
@@ -71,14 +89,46 @@ export class CleanerJobsController {
     `;
     // Quick lookup column (untuk validasi require_after_photo / before_photo).
     if (body.photoType === 'before' || body.photoType === 'after') {
-      const col = body.photoType === 'before' ? 'before_photo_url' : 'after_photo_url';
-      const publicUrl = this.storage.getPublicUrl(body.storagePath);
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE bookings SET ${col} = $1 WHERE id = $2::uuid`,
-        publicUrl, id,
-      );
+      await this.syncPhotoLookupColumn(id, body.photoType);
     }
     return { ok: true, publicUrl: this.storage.getPublicUrl(body.storagePath) };
+  }
+
+  @Delete(':id/photos/:photoId')
+  async deletePhoto(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('photoId') photoId: string,
+  ) {
+    const owns = await this.prisma.$queryRaw<{ id: string; status: string }[]>`
+      SELECT id, status FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
+    `;
+    if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
+    if (!['in_progress', 'completed'].includes(owns[0].status)) {
+      throw new BadRequestException('Foto hanya bisa dihapus saat job aktif atau baru selesai.');
+    }
+
+    const rows = await this.prisma.$queryRaw<{ id: string; photo_type: 'before' | 'after' | 'damage'; storage_path: string; uploaded_by: string | null }[]>`
+      SELECT id, photo_type, storage_path, uploaded_by
+        FROM booking_photos
+       WHERE id = ${photoId}::uuid
+         AND booking_id = ${id}::uuid
+       LIMIT 1
+    `;
+    const photo = rows[0];
+    if (!photo) throw new BadRequestException('Foto tidak ditemukan.');
+    if (photo.uploaded_by && photo.uploaded_by !== user.id) {
+      throw new ForbiddenException('Kamu tidak bisa hapus foto milik user lain.');
+    }
+
+    await this.storage.deleteObject('public', photo.storage_path);
+    await this.prisma.$executeRaw`
+      DELETE FROM booking_photos WHERE id = ${photoId}::uuid
+    `;
+    if (photo.photo_type === 'before' || photo.photo_type === 'after') {
+      await this.syncPhotoLookupColumn(id, photo.photo_type);
+    }
+    return { ok: true };
   }
 
   // List photos for a booking (both customer + cleaner can view)
@@ -369,6 +419,14 @@ export class CleanerJobsController {
     @Body() body: { to: 'on_the_way' | 'in_progress' | 'completed' },
   ) {
     if (!body?.to) throw new BadRequestException('to wajib.');
+    const bookingRows = await this.prisma.$queryRaw<{ status: string; customer_id: string | null; pause_started_at: Date | null }[]>`
+      SELECT status, customer_id, pause_started_at
+        FROM bookings
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+       LIMIT 1
+    `;
+    const currentBooking = bookingRows[0];
+    if (!currentBooking) throw new ForbiddenException('Bukan job kamu.');
 
     const allowedFrom: Record<string, string[]> = {
       on_the_way: ['matched'],
@@ -380,6 +438,9 @@ export class CleanerJobsController {
 
     // Photo enforcement: cek ada foto required sebelum transisi
     if (body.to === 'completed') {
+      if (currentBooking.pause_started_at) {
+        throw new BadRequestException('Lanjutkan timer dulu sebelum tandai job selesai.');
+      }
       const before = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM booking_photos
          WHERE booking_id = ${id}::uuid AND photo_type = 'before'
@@ -431,7 +492,8 @@ export class CleanerJobsController {
               cleaner_otw_at = CASE WHEN $1 = 'on_the_way' THEN NOW() ELSE cleaner_otw_at END,
               cleaner_arrived_at = CASE WHEN $1 = 'in_progress' AND cleaner_arrived_at IS NULL THEN NOW() ELSE cleaner_arrived_at END,
               started_at = CASE WHEN $1 = 'in_progress' AND started_at IS NULL THEN NOW() ELSE started_at END,
-              completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END
+              completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END,
+              pause_started_at = CASE WHEN $1 = 'completed' THEN NULL ELSE pause_started_at END
         WHERE id = $2::uuid AND cleaner_id = $3::uuid AND status IN (${fromCsv})`,
       body.to, id, user.id,
     );
@@ -514,6 +576,55 @@ export class CleanerJobsController {
       }
     }
     return { ok: true };
+  }
+
+  @Post(':id/timer')
+  async updateTimer(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { action: 'pause' | 'resume' },
+  ) {
+    if (!['pause', 'resume'].includes(body?.action)) {
+      throw new BadRequestException('Aksi timer tidak valid.');
+    }
+    const rows = await this.prisma.$queryRaw<{
+      pricing_mode: string;
+      status: string;
+      started_at: Date | null;
+      pause_started_at: Date | null;
+      paused_total_sec: number | null;
+    }[]>`
+      SELECT pricing_mode, status, started_at, pause_started_at, paused_total_sec
+        FROM bookings
+       WHERE id = ${id}::uuid
+         AND cleaner_id = ${user.id}::uuid
+       LIMIT 1
+    `;
+    const booking = rows[0];
+    if (!booking) throw new ForbiddenException('Bukan job kamu.');
+    if (booking.pricing_mode !== 'hourly') throw new BadRequestException('Timer jeda hanya untuk layanan per jam.');
+    if (booking.status !== 'in_progress' || !booking.started_at) {
+      throw new BadRequestException('Timer hanya bisa diatur saat pekerjaan sedang berjalan.');
+    }
+
+    if (body.action === 'pause') {
+      if (booking.pause_started_at) throw new BadRequestException('Timer sudah dijeda.');
+      await this.prisma.$executeRaw`
+        UPDATE bookings
+           SET pause_started_at = NOW()
+         WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+      `;
+      return { ok: true, paused: true };
+    }
+
+    if (!booking.pause_started_at) throw new BadRequestException('Timer tidak sedang dijeda.');
+    await this.prisma.$executeRaw`
+      UPDATE bookings
+         SET paused_total_sec = COALESCE(paused_total_sec, 0) + GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - pause_started_at))))::int,
+             pause_started_at = NULL
+       WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+    `;
+    return { ok: true, paused: false };
   }
 
   // ============ UPCHARGE: cleaner minta charge tambahan ============

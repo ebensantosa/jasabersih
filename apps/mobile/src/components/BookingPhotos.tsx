@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, CheckCircle2, Download, Lock, X } from 'lucide-react-native';
+import { Camera, CheckCircle2, Download, Lock, Trash2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
@@ -14,6 +14,7 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   const [uploading, setUploading] = useState<'before' | 'after' | 'damage' | null>(null);
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   // Damage requires reason text - input modal before pick photo.
   const [damageReason, setDamageReason] = useState('');
   const [damageInputOpen, setDamageInputOpen] = useState(false);
@@ -79,6 +80,21 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
       else if (status >= 500) msg = 'Server error. Coba lagi.';
       toast.error(msg);
     } finally { setUploading(null); }
+  }
+
+  async function deletePhoto(photo: Photo) {
+    if (deletingId) return;
+    setDeletingId(photo.id);
+    try {
+      await api.delete(`/cleaner/jobs/${bookingId}/photos/${photo.id}`);
+      setPhotos((cur) => cur.filter((item) => item.id !== photo.id));
+      toast.success('Foto berhasil dihapus');
+      void load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal hapus foto');
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   // Flow yang lebih natural:
@@ -149,9 +165,36 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
         </View>
       )}
 
-      {beforePhotos.length > 0 && <PhotoRow label="Kondisi Awal" photos={beforePhotos} onPress={setPreview} />}
-      {afterPhotos.length > 0 && <PhotoRow label="Hasil Kerja" photos={afterPhotos} onPress={setPreview} />}
-      {damagePhotos.length > 0 && <PhotoRow label="Kerusakan" photos={damagePhotos} onPress={setPreview} />}
+      {beforePhotos.length > 0 && (
+        <PhotoRow
+          label="Kondisi Awal"
+          photos={beforePhotos}
+          onPress={setPreview}
+          canDelete={canManagePhotos}
+          deletingId={deletingId}
+          onDelete={deletePhoto}
+        />
+      )}
+      {afterPhotos.length > 0 && (
+        <PhotoRow
+          label="Hasil Kerja"
+          photos={afterPhotos}
+          onPress={setPreview}
+          canDelete={canManagePhotos}
+          deletingId={deletingId}
+          onDelete={deletePhoto}
+        />
+      )}
+      {damagePhotos.length > 0 && (
+        <PhotoRow
+          label="Kerusakan"
+          photos={damagePhotos}
+          onPress={setPreview}
+          canDelete={canManagePhotos}
+          deletingId={deletingId}
+          onDelete={deletePhoto}
+        />
+      )}
 
       {preview && <PhotoPreviewModal url={preview} onClose={() => setPreview(null)} />}
       {damageInputOpen && (
@@ -185,16 +228,45 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   );
 }
 
-function PhotoRow({ label, photos, onPress }: { label: string; photos: Photo[]; onPress: (url: string) => void }) {
+function PhotoRow({
+  label,
+  photos,
+  onPress,
+  canDelete,
+  deletingId,
+  onDelete,
+}: {
+  label: string;
+  photos: Photo[];
+  onPress: (url: string) => void;
+  canDelete?: boolean;
+  deletingId?: string | null;
+  onDelete?: (photo: Photo) => void;
+}) {
   return (
     <View className="mb-3">
       <Text className="font-semibold mb-1 text-[11px] uppercase tracking-wider text-ink-500">{label} ({photos.length})</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className="flex-row gap-2">
           {photos.map((p) => (
-            <Pressable key={p.id} onPress={() => onPress(p.url)}>
-              <Image source={{ uri: p.url }} style={{ width: 100, height: 100, borderRadius: 8 }} contentFit="cover" />
-            </Pressable>
+            <View key={p.id} style={{ width: 100, height: 100 }}>
+              <Pressable onPress={() => onPress(p.url)}>
+                <Image source={{ uri: p.url }} style={{ width: 100, height: 100, borderRadius: 8 }} contentFit="cover" />
+              </Pressable>
+              {canDelete && onDelete && (
+                <Pressable
+                  onPress={() => onDelete(p)}
+                  disabled={deletingId === p.id}
+                  className="absolute right-1 top-1 h-7 w-7 items-center justify-center rounded-full bg-black/65"
+                >
+                  {deletingId === p.id ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Trash2 color="white" size={14} strokeWidth={2.4} />
+                  )}
+                </Pressable>
+              )}
+            </View>
           ))}
         </View>
       </ScrollView>
