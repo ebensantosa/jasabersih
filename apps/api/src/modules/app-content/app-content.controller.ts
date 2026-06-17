@@ -1,21 +1,55 @@
 import { Body, Controller, Get, Optional, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 
 import { PrismaService } from '../../common/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
-const PUBLIC_CONFIG_BLOCKLIST = [
-  'payment.tripay_api_key',
-  'payment.tripay_private_key',
-  'payment.tripay_merchant_code',
-  'payment.midtrans_server_key',
-  'payment.midtrans_client_key',
-  'payment.flip_secret_key',
-  'payment.flip_validation_token',
-  'email.resend_api_key',
+const PUBLIC_CONFIG_EXACT_ALLOWLIST = new Set([
+  'app.latest_version',
+  'app.min_version',
+  'app.release_notes',
+  'app.play_store_url',
+  'app.app_store_url',
+  'app.deep_link_scheme',
+  'app.force_update',
+  'payment.maintenance_notice',
+  'payment.disabled_methods',
+  'contact.whatsapp',
+  'contact.email',
+  'contact.phone',
+  'feature.cancel_window_sec',
+  'feature.cancel_penalty_pct',
+  'feature.min_withdrawal',
+  'feature.max_addresses',
+  'hero.subtitle',
+  'hero.cta_label',
+  'home.cta_animated',
+  'home.cta_image_url',
+  'safety.chat_banner',
+  'pricing.deep_clean_multiplier',
+  'pricing.dirt_multipliers',
+  'pricing.floor_surcharges_idr',
+  'pricing.furniture_multipliers',
+  'pricing.per_meter_ruko',
+  'pricing.per_meter_kantor',
+  'pricing.per_meter_apartemen',
+  'pricing.per_meter_minimum',
+  'booking.modes.per_room.enabled',
+  'booking.modes.per_hour.enabled',
+]);
+
+const PUBLIC_CONFIG_PREFIX_ALLOWLIST = [
+  'brand.',
+  'typography.',
 ];
+
+function isPublicConfigKey(key: string): boolean {
+  return PUBLIC_CONFIG_EXACT_ALLOWLIST.has(key)
+    || PUBLIC_CONFIG_PREFIX_ALLOWLIST.some((prefix) => key.startsWith(prefix));
+}
 
 @ApiTags('app-content')
 @Controller('app')
@@ -24,6 +58,7 @@ export class AppContentController {
 
   // PUBLIC — version check untuk update prompt mobile
   @Get('version-check')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async versionCheck(@Query('platform') platform?: string, @Query('version') _currentVersion?: string) {
     const rows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
       SELECT key, value FROM app_config
@@ -49,6 +84,7 @@ export class AppContentController {
   // Returns: config (key→value), banners, services, addons, packages,
   // active announcement (latest), commission tiers.
   @Get('content')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async content() {
     const [config, banners, services, addons, packages, announcement, commissionTiers, serviceAreas, hourlyTiers] = await Promise.all([
       this.prisma.$queryRaw<Record<string, unknown>[]>`SELECT key, value FROM app_config`,
@@ -108,9 +144,8 @@ export class AppContentController {
 
     // Convert config rows to flat object
     const configMap: Record<string, unknown> = {};
-    const blocked = new Set(PUBLIC_CONFIG_BLOCKLIST);
     for (const row of config as { key: string; value: unknown }[]) {
-      if (blocked.has(row.key)) continue;
+      if (!isPublicConfigKey(row.key)) continue;
       configMap[row.key] = row.value;
     }
 
@@ -129,23 +164,35 @@ export class AppContentController {
 
   // Customer di kota yang belum dilayani submit request → admin lihat & prioritize.
   @Post('city-requests')
+  @Throttle({ default: { ttl: 10 * 60_000, limit: 3 } })
   async submitCityRequest(@Body() body: {
     city: string; province?: string; contactName?: string; contactPhone?: string;
     notes?: string; lat?: number; lng?: number;
   }) {
-    if (!body?.city || body.city.trim().length < 2) {
+    const city = body?.city?.trim();
+    const province = body?.province?.trim();
+    const contactName = body?.contactName?.trim();
+    const contactPhone = body?.contactPhone?.trim();
+    const notes = body?.notes?.trim();
+    if (!city || city.length < 2) {
       return { ok: false, error: 'Nama kota wajib (min 2 karakter)' };
     }
+    if (city.length > 100) return { ok: false, error: 'Nama kota terlalu panjang.' };
+    if (province && province.length > 100) return { ok: false, error: 'Provinsi terlalu panjang.' };
+    if (contactName && contactName.length > 100) return { ok: false, error: 'Nama kontak terlalu panjang.' };
+    if (contactPhone && contactPhone.length > 30) return { ok: false, error: 'Nomor kontak terlalu panjang.' };
+    if (notes && notes.length > 500) return { ok: false, error: 'Catatan maksimal 500 karakter.' };
     await this.prisma.$executeRaw`
       INSERT INTO city_requests (city, province, contact_name, contact_phone, notes, lat, lng)
-      VALUES (${body.city.trim()}, ${body.province ?? null}, ${body.contactName ?? null},
-              ${body.contactPhone ?? null}, ${body.notes ?? null}, ${body.lat ?? null}, ${body.lng ?? null})
+      VALUES (${city}, ${province ?? null}, ${contactName ?? null},
+              ${contactPhone ?? null}, ${notes ?? null}, ${body.lat ?? null}, ${body.lng ?? null})
     `;
     return { ok: true };
   }
 
   // Get a published static page by slug (public)
   @Get('pages/:slug')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async page(@Query('slug') _: string, @Req() req: Request) {
     const slug = (req.params as Record<string, string>).slug;
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`

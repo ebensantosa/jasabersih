@@ -1,5 +1,6 @@
 import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 import { PrismaService } from '../../common/prisma.service';
 
@@ -10,6 +11,7 @@ export class CleanerPublicController {
 
   // Top cleaners — for home/explore featured section. Public, no auth.
   @Get('featured')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async featured() {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT u.id, u.name, u.photo_url AS "photoUrl",
@@ -27,6 +29,7 @@ export class CleanerPublicController {
 
   // Public: anyone can view cleaner profile (read-only).
   @Get(':id')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async profile(@Param('id') id: string) {
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT
@@ -52,6 +55,22 @@ export class CleanerPublicController {
        ORDER BY r.created_at DESC LIMIT 20
     `;
 
-    return { profile: rows[0], reviews };
+    return {
+      profile: rows[0],
+      reviews: reviews.map((review) => ({
+        ...review,
+        raterName: typeof review.raterName === 'string' ? maskName(review.raterName) : null,
+      })),
+    };
   }
+}
+
+function maskName(full: string): string {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'Pengguna';
+  if (parts.length === 1) {
+    const word = parts[0]!;
+    return word.length <= 2 ? word : `${word[0]}${'*'.repeat(Math.max(1, word.length - 2))}${word.slice(-1)}`;
+  }
+  return `${parts[0]} ${parts[parts.length - 1]![0]}.`;
 }

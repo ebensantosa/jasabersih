@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Headers, Logger, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -695,6 +696,7 @@ export class PaymentsController {
   // 2. payment.bank_status (auto-updated dari Flip Status Bank webhook)
   // 3. Default 'normal'
   @Get('bank-health')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async bankHealth() {
     const rows = await this.prisma.$queryRaw<{ key: string; value: any }[]>`
       SELECT key, value FROM app_config WHERE key IN ('payment.bank_status', 'payment.active_channels', 'payment.disabled_methods')
