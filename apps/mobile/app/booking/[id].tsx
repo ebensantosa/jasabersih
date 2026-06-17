@@ -133,6 +133,22 @@ function BookingDetail() {
   }
   const t = useT();
 
+  function confirmStartWork() {
+    if (!booking) return;
+    if (booking.pricingMode !== 'hourly') {
+      void advanceStatus('in_progress');
+      return;
+    }
+    Alert.alert(
+      'Mulai hitung durasi kerja?',
+      'Untuk layanan per jam, menekan Mulai Kerja akan langsung menjalankan hitungan waktu. Gunakan Jeda Kerja bila perlu istirahat.',
+      [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Mulai Sekarang', onPress: () => { void advanceStatus('in_progress'); } },
+      ],
+    );
+  }
+
   // Cleaner advance status - pakai API kalau bukan local-only booking
   async function advanceStatus(to: 'on_the_way' | 'in_progress' | 'completed') {
     if (!booking) return;
@@ -894,6 +910,16 @@ function BookingDetail() {
           booking.cleanerName && (
             <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
               <SafeAreaView edges={['bottom']}>
+                {booking.status === 'on_the_way' && booking.pricingMode === 'hourly' && (
+                  <View className="px-4 pt-3">
+                    <View className="rounded-2xl border border-amber-300 bg-amber-50 p-3">
+                      <Text className="font-bold text-[11px] text-amber-900">Mulai Kerja akan menjalankan hitungan waktu</Text>
+                      <Text className="mt-1 text-[11px] leading-4 text-amber-800">
+                        Khusus layanan per jam, durasi akan mulai dihitung saat kamu menekan tombol Mulai Kerja. Jika perlu istirahat di tengah pekerjaan, gunakan tombol Jeda Kerja.
+                      </Text>
+                    </View>
+                  </View>
+                )}
                 <View className="flex-row gap-2 p-4">
                   <Pressable
                     onPress={() =>
@@ -915,7 +941,7 @@ function BookingDetail() {
                   )}
                   {booking.status === 'on_the_way' && (
                     <Pressable
-                      onPress={() => advanceStatus('in_progress')}
+                      onPress={confirmStartWork}
                       disabled={advancing}
                       className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
                     >
