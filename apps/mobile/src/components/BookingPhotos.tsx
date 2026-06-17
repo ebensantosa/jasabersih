@@ -116,16 +116,16 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
             </>
           ) : activeStep === 'after' ? (
             <>
-              <Text className="mt-1 text-sm font-bold text-ink-900">Catat hasil kerja</Text>
+              <Text className="mt-1 text-sm font-bold text-ink-900">Kondisi awal sudah tersimpan</Text>
               <Text className="mt-1 text-[11px] leading-4 text-ink-700">
-                Ambil minimal 1 foto hasil akhir sebagai bukti pekerjaan sudah selesai dengan rapi.
+                Sekarang lanjut ambil foto hasil kerja. Setelah itu job sudah siap ditandai selesai.
               </Text>
             </>
           ) : (
             <View className="mt-1 flex-row items-center gap-2">
               <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
               <Text className="flex-1 text-[11px] leading-4 text-emerald-800">
-                Catatan kondisi awal dan hasil kerja sudah lengkap. Kalau ada kendala, kamu masih bisa tambah catatan kerusakan.
+                Kondisi awal dan hasil kerja sudah lengkap. Kamu bisa lanjut selesaikan job atau tambah catatan kerusakan kalau memang diperlukan.
               </Text>
             </View>
           )}
