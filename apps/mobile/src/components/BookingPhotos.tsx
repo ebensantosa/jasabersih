@@ -218,7 +218,7 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
       )}
 
       {canManagePhotos && (
-        <View className="mt-3 flex-row gap-2 border-t border-ink-100 pt-3">
+        <View className="mt-3 flex-row flex-wrap gap-2 border-t border-ink-100 pt-3">
           <UploadBtn label="Kondisi Awal" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} locked={beforeLocked} />
           <UploadBtn label="Hasil Kerja" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} locked={afterLocked} />
           <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" locked={damageLocked} />
@@ -364,14 +364,14 @@ function UploadBtn({ label, loading, onPress, variant, locked }: { label: string
     <Pressable
       onPress={onPress}
       disabled={loading || locked}
-      className={`flex-1 flex-row items-center justify-center gap-1 rounded-xl border ${cls} px-3 py-2.5 ${loading ? 'opacity-50' : ''}`}
+      className={`min-w-0 basis-[31%] flex-1 flex-row items-center justify-center gap-1 rounded-xl border px-2 py-2.5 ${cls} ${loading ? 'opacity-50' : ''}`}
     >
       {loading
         ? <ActivityIndicator size="small" color={variant === 'primary' ? 'white' : undefined} />
         : locked
           ? <Lock size={12} color={iconColor} />
           : <Camera size={14} color={iconColor} />}
-      <Text className={`font-semibold text-xs ${fg}`}>{label}</Text>
+      <Text className={`flex-shrink text-center font-semibold text-[11px] leading-4 ${fg}`}>{label}</Text>
     </Pressable>
   );
 }
