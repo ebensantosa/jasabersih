@@ -7,6 +7,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 
+import { isAllowedOrigin } from '../../common/cors';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 
@@ -17,7 +18,8 @@ const ROOM_AVAILABLE = 'cleaners:available';
 @WebSocketGateway({
   namespace: '/jobs',
   cors: {
-    origin: (origin: string, cb: (err: Error | null, allow?: boolean) => void) => cb(null, true),
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) =>
+      cb(null, isAllowedOrigin(origin)),
     credentials: true,
   },
   transports: ['websocket', 'polling'],

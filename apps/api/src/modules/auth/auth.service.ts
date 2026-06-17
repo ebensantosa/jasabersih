@@ -21,6 +21,9 @@ import { OtpService } from './otp.service';
 import { TokenService, type IssuedTokens } from './token.service';
 
 const PENDING_TTL_MIN = 5;
+const PUBLIC_AUTH_WINDOW_SEC = 10 * 60;
+const PUBLIC_AUTH_LIMIT_PER_IP = 10;
+const PUBLIC_AUTH_LIMIT_PER_IDENTIFIER = 5;
 
 @Injectable()
 export class AuthService {
@@ -32,9 +35,13 @@ export class AuthService {
     private readonly loginProtection: LoginProtectionService,
   ) {}
 
-  async register(input: RegisterRequest): Promise<{ phone: string; expiresInSeconds: number; emailSent?: boolean; devOtp?: string }> {
+  async register(
+    input: RegisterRequest,
+    meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
+  ): Promise<{ phone: string; expiresInSeconds: number; emailSent?: boolean; devOtp?: string }> {
     const phone = normalizePhone(input.phone);
     const email = input.email?.trim().toLowerCase();
+    await this.assertPublicAuthRate('register', email || phone, meta);
 
     // Cek email sudah dipakai akun lain (verified) — cegah duplikat
     if (email) {
@@ -76,12 +83,36 @@ export class AuthService {
     };
   }
 
+  private async assertPublicAuthRate(
+    action: 'register' | 'verify_otp' | 'forgot_password' | 'reset_password',
+    identifier: string,
+    meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
+  ): Promise<void> {
+    await this.otp.assertScopedRateOk({
+      key: `auth:${action}:id:${identifier.toLowerCase()}`,
+      limit: PUBLIC_AUTH_LIMIT_PER_IDENTIFIER,
+      windowSec: PUBLIC_AUTH_WINDOW_SEC,
+      code: 'AUTH_RATE_LIMIT_IDENTIFIER',
+      message: 'Terlalu banyak percobaan untuk akun ini. Coba lagi beberapa menit lagi.',
+    });
+    if (meta.ipAddress) {
+      await this.otp.assertScopedRateOk({
+        key: `auth:${action}:ip:${meta.ipAddress}`,
+        limit: PUBLIC_AUTH_LIMIT_PER_IP,
+        windowSec: PUBLIC_AUTH_WINDOW_SEC,
+        code: 'AUTH_RATE_LIMIT_IP',
+        message: 'Terlalu banyak percobaan dari jaringan ini. Coba lagi beberapa menit lagi.',
+      });
+    }
+  }
+
   async verifyOtp(
     input: VerifyOtpRequest,
     mode: 'customer' | 'freelancer',
     meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
   ): Promise<IssuedTokens> {
     const phone = normalizePhone(input.phone);
+    await this.assertPublicAuthRate('verify_otp', phone, meta);
     await this.otp.verify(phone, input.otp);
 
     const passwordHash = await bcrypt.hash(input.password, 12);
@@ -250,8 +281,13 @@ export class AuthService {
     await this.prisma.$executeRaw`UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = ${userId}::uuid AND revoked_at IS NULL`;
   }
 
-  async forgotPassword(identifier: string): Promise<{ ok: boolean; emailSent?: boolean; devOtp?: string }> {
+  async forgotPassword(
+    identifier: string,
+    meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
+  ): Promise<{ ok: boolean; emailSent?: boolean; devOtp?: string }> {
     const raw = identifier.trim();
+    const normalized = isLikelyEmail(raw) ? raw.toLowerCase() : normalizePhone(raw);
+    await this.assertPublicAuthRate('forgot_password', normalized, meta);
     const user = isLikelyEmail(raw)
       ? await this.prisma.user.findUnique({ where: { email: raw.toLowerCase() } })
       : await this.prisma.user.findUnique({ where: { phone: normalizePhone(raw) } });
@@ -266,11 +302,18 @@ export class AuthService {
     return { ok: true, emailSent, ...(devMode ? { devOtp: otp } : {}) };
   }
 
-  async resetPassword(identifier: string, otp: string, newPassword: string): Promise<void> {
+  async resetPassword(
+    identifier: string,
+    otp: string,
+    newPassword: string,
+    meta: { ipAddress?: string; userAgent?: string; deviceId?: string } = {},
+  ): Promise<void> {
     if (newPassword.length < 8) {
       throw new BadRequestException({ code: 'WEAK_PASSWORD', message: 'Password baru min 8 karakter.' });
     }
     const raw = identifier.trim();
+    const normalized = isLikelyEmail(raw) ? raw.toLowerCase() : normalizePhone(raw);
+    await this.assertPublicAuthRate('reset_password', normalized, meta);
     const user = isLikelyEmail(raw)
       ? await this.prisma.user.findUnique({ where: { email: raw.toLowerCase() } })
       : await this.prisma.user.findUnique({ where: { phone: normalizePhone(raw) } });

@@ -43,6 +43,23 @@ export class OtpService {
     return otp;
   }
 
+  async assertScopedRateOk(opts: {
+    key: string;
+    limit: number;
+    windowSec: number;
+    code: string;
+    message: string;
+  }): Promise<void> {
+    const count = await this.redis.incr(opts.key);
+    if (count === 1) await this.redis.expire(opts.key, opts.windowSec);
+    if (count > opts.limit) {
+      throw new HttpException(
+        { code: opts.code, message: opts.message },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
   /** Kirim OTP via email (Resend). Best-effort — caller bisa fallback ke devOtp/SMS. */
   async sendViaEmail(toEmail: string, otp: string): Promise<{ ok: boolean; error?: string }> {
     return this.email.sendOtp(toEmail, otp);

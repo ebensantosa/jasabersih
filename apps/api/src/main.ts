@@ -22,14 +22,16 @@ process.emit = function (event: any, ...args: any[]) {
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { json, raw, urlencoded } from 'body-parser';
+import { json, raw, urlencoded, type Request, type Response, type NextFunction } from 'express';
 
 import { AppModule } from './app.module';
+import { getAllowedOrigins, isAllowedOrigin } from './common/cors';
 import { ResponseInterceptor } from './common/response.interceptor';
 import { AllExceptionsFilter } from './common/exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, bodyParser: false });
+  const http = app.getHttpAdapter().getInstance();
 
   // Tripay webhook butuh raw body untuk verifikasi HMAC signature
   app.use('/v1/payments/callback', raw({ type: '*/*' }));
@@ -42,17 +44,24 @@ async function bootstrap() {
   app.use('/v1/payments/flip/inquiry-callback', urlencoded({ extended: true, limit: '1mb' }));
   // Default JSON parser untuk semua route lain
   app.use(json({ limit: '5mb' }));
+  http.set('trust proxy', process.env.TRUST_PROXY ?? 1);
+  http.disable('x-powered-by');
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+    next();
+  });
 
   // CORS allow: production domain + localhost (aman karena localhost gak bisa di-spoof).
   // Bisa di-override via env CORS_ORIGINS (comma-separated).
-  const defaultOrigins =
-    'https://dashboard.jasabersih.com,http://localhost:3001,http://localhost:8081,http://localhost:8082,http://localhost:19006';
-  const corsOrigins = (process.env.CORS_ORIGINS ?? defaultOrigins)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const corsOrigins = getAllowedOrigins();
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, cb) => cb(null, isAllowedOrigin(origin ?? undefined)),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });

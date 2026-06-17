@@ -1,4 +1,4 @@
-import { Injectable, TooManyRequestsException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../common/prisma.service';
 
@@ -30,11 +30,14 @@ export class LoginProtectionService {
     if (!activeLock) return;
 
     const remainingSec = Math.max(1, Math.ceil((activeLock - Date.now()) / 1000));
-    throw new TooManyRequestsException({
-      code: 'LOGIN_TEMP_LOCKED',
-      message: `Terlalu banyak percobaan login. Coba lagi dalam ${this.humanizeSeconds(remainingSec)}.`,
-      details: { remainingSeconds: remainingSec },
-    });
+    throw new HttpException(
+      {
+        code: 'LOGIN_TEMP_LOCKED',
+        message: `Terlalu banyak percobaan login. Coba lagi dalam ${this.humanizeSeconds(remainingSec)}.`,
+        details: { remainingSeconds: remainingSec },
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
   }
 
   async recordFailure(identifier: string, meta: RequestMeta = {}): Promise<void> {

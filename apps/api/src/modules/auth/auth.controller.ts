@@ -35,8 +35,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Mulai registrasi: kirim OTP ke nomor HP' })
   register(
     @Body(new ZodValidationPipe(RegisterRequestSchema)) body: RegisterRequest,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+    @Headers('x-device-id') deviceId?: string,
   ): Promise<{ phone: string; expiresInSeconds: number }> {
-    return this.auth.register(body);
+    return this.auth.register(body, this.meta(ip, userAgent, deviceId));
   }
 
   @Post('verify-otp')
@@ -141,8 +144,13 @@ export class AuthController {
   @Post('forgot-password')
   @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(@Body() body: { identifier: string }) {
-    return this.auth.forgotPassword(body.identifier);
+  async forgotPassword(
+    @Body() body: { identifier: string },
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+    @Headers('x-device-id') deviceId?: string,
+  ) {
+    return this.auth.forgotPassword(body.identifier, this.meta(ip, userAgent, deviceId));
   }
 
   @Post('reset-password')
@@ -150,8 +158,11 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(
     @Body() body: { identifier: string; otp: string; newPassword: string },
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+    @Headers('x-device-id') deviceId?: string,
   ): Promise<void> {
-    await this.auth.resetPassword(body.identifier, body.otp, body.newPassword);
+    await this.auth.resetPassword(body.identifier, body.otp, body.newPassword, this.meta(ip, userAgent, deviceId));
   }
 
   @Post('logout')

@@ -13,6 +13,7 @@ import {
 import type { Server, Socket } from 'socket.io';
 
 import { AbuseLimitsService } from '../../common/abuse-limits.service';
+import { isAllowedOrigin } from '../../common/cors';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 
@@ -48,7 +49,8 @@ function detectBlockReason(content: string): { reason: string; userMsg: string }
 @WebSocketGateway({
   namespace: '/chat',
   cors: {
-    origin: (origin: string, cb: (err: Error | null, allow?: boolean) => void) => cb(null, true),
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) =>
+      cb(null, isAllowedOrigin(origin)),
     credentials: true,
   },
   transports: ['websocket', 'polling'],
