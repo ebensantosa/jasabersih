@@ -6,6 +6,17 @@ import { PrismaService } from '../../common/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
+const PUBLIC_CONFIG_BLOCKLIST = [
+  'payment.tripay_api_key',
+  'payment.tripay_private_key',
+  'payment.tripay_merchant_code',
+  'payment.midtrans_server_key',
+  'payment.midtrans_client_key',
+  'payment.flip_secret_key',
+  'payment.flip_validation_token',
+  'email.resend_api_key',
+];
+
 @ApiTags('app-content')
 @Controller('app')
 export class AppContentController {
@@ -97,7 +108,11 @@ export class AppContentController {
 
     // Convert config rows to flat object
     const configMap: Record<string, unknown> = {};
-    for (const row of config as { key: string; value: unknown }[]) configMap[row.key] = row.value;
+    const blocked = new Set(PUBLIC_CONFIG_BLOCKLIST);
+    for (const row of config as { key: string; value: unknown }[]) {
+      if (blocked.has(row.key)) continue;
+      configMap[row.key] = row.value;
+    }
 
     return {
       config: configMap,
