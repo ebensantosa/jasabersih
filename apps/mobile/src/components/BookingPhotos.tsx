@@ -81,21 +81,24 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
     } finally { setUploading(null); }
   }
 
-  // Upload baru aktif saat cleaner sudah MULAI kerja (in_progress) atau sudah completed.
-  // Saat matched/on_the_way (otw), tombol di-hide karena cleaner belum di lokasi -
-  // foto before harusnya diambil di tempat saat mulai kerja, bukan sebelum berangkat.
-  const canUpload = isCleaner && ['in_progress', 'completed'].includes(status);
+  // Samakan dengan backend:
+  // - before sudah boleh di-upload saat matched / on_the_way sebelum cleaner tap "Mulai Kerja"
+  // - after wajib setelah before, biasanya saat in_progress / completed
+  // - damage tetap boleh selama job aktif
+  const canManagePhotos = isCleaner && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
   const beforePhotos = photos.filter((p) => p.photoType === 'before');
   const afterPhotos = photos.filter((p) => p.photoType === 'after');
   const damagePhotos = photos.filter((p) => p.photoType === 'damage');
 
-  if (!canUpload && photos.length === 0) return null;
+  if (!canManagePhotos && photos.length === 0) return null;
 
   // Hint contextual untuk cleaner
-  const needBefore = isCleaner && status === 'in_progress' && beforePhotos.length === 0;
-  const needAfter = isCleaner && status === 'in_progress' && beforePhotos.length > 0 && afterPhotos.length === 0;
-  // After locked sampai before ada minimal 1
-  const afterLocked = isCleaner && status === 'in_progress' && beforePhotos.length === 0;
+  const needBefore = isCleaner && ['matched', 'on_the_way', 'in_progress'].includes(status) && beforePhotos.length === 0;
+  const needAfter = isCleaner && ['in_progress', 'completed'].includes(status) && beforePhotos.length > 0 && afterPhotos.length === 0;
+  const beforeLocked = !isCleaner || !['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
+  // After locked sampai before ada minimal 1 dan job sudah mulai dikerjakan
+  const afterLocked = !isCleaner || beforePhotos.length === 0 || !['in_progress', 'completed'].includes(status);
+  const damageLocked = !isCleaner || !['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
 
   return (
     <View className="rounded-2xl bg-white p-4">
@@ -139,15 +142,15 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
         />
       )}
 
-      {photos.length === 0 && !canUpload && !loading && (
+      {photos.length === 0 && !canManagePhotos && !loading && (
         <Text className="font-sans text-center text-xs text-ink-500">Belum ada foto.</Text>
       )}
 
-      {canUpload && (
+      {canManagePhotos && (
         <View className="mt-3 flex-row gap-2 border-t border-ink-100 pt-3">
-          <UploadBtn label="Sebelum" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} />
+          <UploadBtn label="Sebelum" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} locked={beforeLocked} />
           <UploadBtn label="Sesudah" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} locked={afterLocked} />
-          <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" />
+          <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" locked={damageLocked} />
         </View>
       )}
     </View>
