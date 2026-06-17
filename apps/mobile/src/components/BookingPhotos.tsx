@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Download, Lock, X } from 'lucide-react-native';
+import { Camera, CheckCircle2, Download, Lock, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
@@ -98,30 +98,59 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   // After locked sampai before ada minimal 1 dan job sudah mulai dikerjakan
   const afterLocked = !isCleaner || beforePhotos.length === 0 || !['in_progress', 'completed'].includes(status);
   const damageLocked = !isCleaner || !['in_progress', 'completed'].includes(status);
+  const activeStep = needBefore ? 'before' : needAfter ? 'after' : null;
 
   return (
     <View className="rounded-2xl bg-white p-4">
-      <Text className="font-bold mb-3 text-sm text-ink-900">Foto Pekerjaan</Text>
+      <Text className="font-bold mb-3 text-sm text-ink-900">Catatan Kondisi</Text>
+
+      {isCleaner && canManagePhotos && (
+        <View className="mb-3 rounded-2xl border border-brand-100 bg-brand-50 p-3">
+          <Text className="font-bold text-xs uppercase tracking-wider text-brand-700">Langkah berikutnya</Text>
+          {activeStep === 'before' ? (
+            <>
+              <Text className="mt-1 text-sm font-bold text-ink-900">Catat kondisi awal area</Text>
+              <Text className="mt-1 text-[11px] leading-4 text-ink-700">
+                Ambil minimal 1 foto kondisi area sebelum dikerjakan. Setelah itu tombol hasil kerja akan terbuka.
+              </Text>
+            </>
+          ) : activeStep === 'after' ? (
+            <>
+              <Text className="mt-1 text-sm font-bold text-ink-900">Catat hasil kerja</Text>
+              <Text className="mt-1 text-[11px] leading-4 text-ink-700">
+                Ambil minimal 1 foto hasil akhir sebagai bukti pekerjaan sudah selesai dengan rapi.
+              </Text>
+            </>
+          ) : (
+            <View className="mt-1 flex-row items-center gap-2">
+              <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
+              <Text className="flex-1 text-[11px] leading-4 text-emerald-800">
+                Catatan kondisi awal dan hasil kerja sudah lengkap. Kalau ada kendala, kamu masih bisa tambah catatan kerusakan.
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {needBefore && (
         <View className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
-          <Text className="font-bold text-[11px] text-amber-900">Step 1: Upload foto SEBELUM</Text>
+          <Text className="font-bold text-[11px] text-amber-900">Kondisi awal belum dicatat</Text>
           <Text className="font-sans mt-0.5 text-[10px] leading-4 text-amber-800">
-            Setelah mulai kerja, upload foto kondisi area sebelum dibersihkan. Tombol "Sesudah" akan terbuka setelah upload "Sebelum".
+            Setelah mulai kerja, ambil foto kondisi area sebelum dibersihkan. Tombol hasil kerja akan terbuka setelah kondisi awal tersimpan.
           </Text>
         </View>
       )}
       {needAfter && (
         <View className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
-          <Text className="font-bold text-[11px] text-emerald-900">Step 2: Upload foto SESUDAH</Text>
+          <Text className="font-bold text-[11px] text-emerald-900">Hasil kerja belum dicatat</Text>
           <Text className="font-sans mt-0.5 text-[10px] leading-4 text-emerald-800">
-            Foto hasil pekerjaan sebagai bukti job selesai (minimal 1). Wajib sebelum tandai "Selesai".
+            Ambil foto hasil akhir pekerjaan. Ini wajib sebelum kamu tandai job selesai.
           </Text>
         </View>
       )}
 
-      {beforePhotos.length > 0 && <PhotoRow label="Sebelum" photos={beforePhotos} onPress={setPreview} />}
-      {afterPhotos.length > 0 && <PhotoRow label="Sesudah" photos={afterPhotos} onPress={setPreview} />}
+      {beforePhotos.length > 0 && <PhotoRow label="Kondisi Awal" photos={beforePhotos} onPress={setPreview} />}
+      {afterPhotos.length > 0 && <PhotoRow label="Hasil Kerja" photos={afterPhotos} onPress={setPreview} />}
       {damagePhotos.length > 0 && <PhotoRow label="Kerusakan" photos={damagePhotos} onPress={setPreview} />}
 
       {preview && <PhotoPreviewModal url={preview} onClose={() => setPreview(null)} />}
@@ -147,8 +176,8 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
 
       {canManagePhotos && (
         <View className="mt-3 flex-row gap-2 border-t border-ink-100 pt-3">
-          <UploadBtn label="Sebelum" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} locked={beforeLocked} />
-          <UploadBtn label="Sesudah" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} locked={afterLocked} />
+          <UploadBtn label="Kondisi Awal" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} locked={beforeLocked} />
+          <UploadBtn label="Hasil Kerja" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} locked={afterLocked} />
           <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" locked={damageLocked} />
         </View>
       )}
