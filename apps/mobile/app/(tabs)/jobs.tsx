@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck, Bell, Briefcase, Calendar, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -171,14 +171,25 @@ function JobsScreen() {
       } catch { /* analytics non-fatal */ }
       // Refresh dulu supaya booking detail bisa baca dari store baru
       await load();
-      // Navigate setelah store fresh - hindari crash di booking/[id] kalau record blm ke-load
-      router.push({ pathname: '/booking/[id]', params: { id } });
+      Alert.alert(
+        'Job berhasil diambil',
+        'Pesanan ini sekarang masuk ke daftar job aktif kamu.',
+        [
+          {
+            text: 'Lihat detail',
+            onPress: () => {
+              router.push({ pathname: '/booking/[id]', params: { id } });
+            },
+          },
+        ],
+      );
     } catch (e: any) {
       const code = e?.response?.status;
       const msg = e?.response?.data?.error?.message
         ?? e?.response?.data?.message
         ?? (code === 400 ? 'Job sudah diambil cleaner lain.' : 'Gagal ambil job. Coba lagi.');
       toast.error(msg);
+      Alert.alert('Gagal ambil job', msg);
       // Rollback: refresh available supaya UI sync sama server (job yg gagal di-ambil balik muncul)
       await load();
     } finally {
