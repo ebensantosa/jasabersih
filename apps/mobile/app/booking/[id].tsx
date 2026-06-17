@@ -212,6 +212,23 @@ function BookingDetail() {
   }, [id, booking, fetchOne]);
   const stillFetching = !booking && id && !id.startsWith('bk_') && (Date.now() - fetchTriedAt < 10000);
 
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+  const [tipGiven, setTipGiven] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { api } = await import('../../src/lib/api');
+        const r = await api.get('/customer/wallet');
+        const bal = Number((r.data?.data ?? r.data)?.balance ?? 0);
+        if (mounted) setWalletBalance(bal);
+      } catch { /* ignore */ }
+    })();
+    return () => { mounted = false; };
+  }, [tipGiven]);
+
   if (!booking) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
@@ -314,22 +331,6 @@ function BookingDetail() {
     router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id } });
   }
 
-  const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [showTip, setShowTip] = useState(false);
-  const [tipGiven, setTipGiven] = useState(0);
-  const [walletBalance, setWalletBalance] = useState(0);
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const { api } = await import('../../src/lib/api');
-        const r = await api.get('/customer/wallet');
-        const bal = Number((r.data?.data ?? r.data)?.balance ?? 0);
-        if (mounted) setWalletBalance(bal);
-      } catch { /* ignore */ }
-    })();
-    return () => { mounted = false; };
-  }, [tipGiven]);
   const rescheduleCount = (booking as any)?.rescheduleCount ?? 0;
   const hoursToSchedule = booking?.scheduledAt
     ? (new Date(booking.scheduledAt).getTime() - Date.now()) / 3_600_000
