@@ -1,8 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, Bell, Briefcase, Calendar, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
+import { AlertCircle, BadgeCheck, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +35,13 @@ type ActiveJob = {
   cleanerPayout?: number | null;
 };
 
+type AcceptResultModalState = {
+  kind: 'success' | 'error';
+  title: string;
+  message: string;
+  bookingId?: string;
+} | null;
+
 export default function Jobs() {
   return (
     <AuthGate>
@@ -61,6 +68,7 @@ function JobsScreen() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   // Job detail modal sebelum cleaner accept - tampilin formSnapshot + foto kondisi
   const [previewJob, setPreviewJob] = useState<AvailableJob | null>(null);
+  const [acceptResult, setAcceptResult] = useState<AcceptResultModalState>(null);
   const bringsTools = useCleanerStore((s) => s.bringsTools);
 
   // Sync online state + service areas dari server.
@@ -171,25 +179,23 @@ function JobsScreen() {
       } catch { /* analytics non-fatal */ }
       // Refresh dulu supaya booking detail bisa baca dari store baru
       await load();
-      Alert.alert(
-        'Job berhasil diambil',
-        'Pesanan ini sekarang masuk ke daftar job aktif kamu.',
-        [
-          {
-            text: 'Lihat detail',
-            onPress: () => {
-              router.push({ pathname: '/booking/[id]', params: { id } });
-            },
-          },
-        ],
-      );
+      setAcceptResult({
+        kind: 'success',
+        title: 'Job berhasil diambil',
+        message: 'Pesanan ini sekarang masuk ke daftar job aktif kamu.',
+        bookingId: id,
+      });
     } catch (e: any) {
       const code = e?.response?.status;
       const msg = e?.response?.data?.error?.message
         ?? e?.response?.data?.message
         ?? (code === 400 ? 'Job sudah diambil cleaner lain.' : 'Gagal ambil job. Coba lagi.');
       toast.error(msg);
-      Alert.alert('Gagal ambil job', msg);
+      setAcceptResult({
+        kind: 'error',
+        title: 'Gagal ambil job',
+        message: msg,
+      });
       // Rollback: refresh available supaya UI sync sama server (job yg gagal di-ambil balik muncul)
       await load();
     } finally {
@@ -413,6 +419,15 @@ function JobsScreen() {
           </View>
         </View>
       </Modal>
+
+      <AcceptResultModal
+        state={acceptResult}
+        onClose={() => setAcceptResult(null)}
+        onViewDetail={(bookingId) => {
+          setAcceptResult(null);
+          router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
+        }}
+      />
     </View>
   );
 }
@@ -481,6 +496,89 @@ function DetailRow({ label, value, bold }: { label: string; value: string; bold?
       <Text className="font-medium text-[11px] text-ink-500" style={{ width: 90 }}>{label}</Text>
       <Text className={`flex-1 text-[12px] ${bold ? 'font-bold text-ink-900' : 'font-sans text-ink-800'}`}>{value}</Text>
     </View>
+  );
+}
+
+function AcceptResultModal({
+  state,
+  onClose,
+  onViewDetail,
+}: {
+  state: AcceptResultModalState;
+  onClose: () => void;
+  onViewDetail: (bookingId: string) => void;
+}) {
+  if (!state) return null;
+
+  const success = state.kind === 'success';
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/55 px-6">
+        <View className="w-full max-w-sm overflow-hidden rounded-[28px] bg-white">
+          <LinearGradient
+            colors={success ? ['#0F766E', '#14B8A6'] : ['#B91C1C', '#F97316']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 }}
+          >
+            <View className="mb-4 h-12 w-12 items-center justify-center rounded-2xl bg-white/18">
+              {success ? (
+                <CheckCircle2 color="white" size={28} strokeWidth={2.4} />
+              ) : (
+                <AlertCircle color="white" size={28} strokeWidth={2.4} />
+              )}
+            </View>
+            <Text className="font-bold text-xl text-white">{state.title}</Text>
+            <Text className="mt-1 text-[13px] leading-5 text-white/85">{state.message}</Text>
+          </LinearGradient>
+
+          <View className="px-5 pb-5 pt-4">
+            <View className={`rounded-2xl border px-4 py-3 ${success ? 'border-emerald-100 bg-emerald-50' : 'border-orange-100 bg-orange-50'}`}>
+              <Text className={`text-[12px] leading-5 ${success ? 'text-emerald-800' : 'text-orange-900'}`}>
+                {success
+                  ? 'Lanjutkan ke detail job untuk lihat alamat, jadwal, dan mulai update status pengerjaan.'
+                  : 'Daftar job sudah disegarkan. Kalau job masih tersedia, kamu bisa coba ambil lagi.'}
+              </Text>
+            </View>
+
+            <View className="mt-4 flex-row gap-2">
+              {!success && (
+                <Pressable
+                  onPress={onClose}
+                  className="flex-1 items-center rounded-2xl border border-ink-200 bg-white py-3"
+                >
+                  <Text className="font-semibold text-sm text-ink-700">Tutup</Text>
+                </Pressable>
+              )}
+              {success ? (
+                <>
+                  <Pressable
+                    onPress={onClose}
+                    className="flex-1 items-center rounded-2xl border border-ink-200 bg-white py-3"
+                  >
+                    <Text className="font-semibold text-sm text-ink-700">Nanti</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => state.bookingId && onViewDetail(state.bookingId)}
+                    className="flex-1 items-center rounded-2xl bg-brand-600 py-3"
+                  >
+                    <Text className="font-bold text-sm text-white">Lihat Detail</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable
+                  onPress={onClose}
+                  className="flex-1 items-center rounded-2xl bg-orange-500 py-3"
+                >
+                  <Text className="font-bold text-sm text-white">Mengerti</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
