@@ -81,11 +81,10 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
     } finally { setUploading(null); }
   }
 
-  // Samakan dengan backend:
-  // - before sudah boleh di-upload saat matched / on_the_way sebelum cleaner tap "Mulai Kerja"
-  // - after wajib setelah before, biasanya saat in_progress / completed
-  // - damage tetap boleh selama job aktif
-  const canManagePhotos = isCleaner && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
+  // Flow yang lebih natural:
+  // cleaner mulai kerja dulu, lalu dokumentasi foto berjalan saat status
+  // in_progress / completed.
+  const canManagePhotos = isCleaner && ['in_progress', 'completed'].includes(status);
   const beforePhotos = photos.filter((p) => p.photoType === 'before');
   const afterPhotos = photos.filter((p) => p.photoType === 'after');
   const damagePhotos = photos.filter((p) => p.photoType === 'damage');
@@ -93,12 +92,12 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
   if (!canManagePhotos && photos.length === 0) return null;
 
   // Hint contextual untuk cleaner
-  const needBefore = isCleaner && ['matched', 'on_the_way', 'in_progress'].includes(status) && beforePhotos.length === 0;
+  const needBefore = isCleaner && ['in_progress', 'completed'].includes(status) && beforePhotos.length === 0;
   const needAfter = isCleaner && ['in_progress', 'completed'].includes(status) && beforePhotos.length > 0 && afterPhotos.length === 0;
-  const beforeLocked = !isCleaner || !['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
+  const beforeLocked = !isCleaner || !['in_progress', 'completed'].includes(status);
   // After locked sampai before ada minimal 1 dan job sudah mulai dikerjakan
   const afterLocked = !isCleaner || beforePhotos.length === 0 || !['in_progress', 'completed'].includes(status);
-  const damageLocked = !isCleaner || !['matched', 'on_the_way', 'in_progress', 'completed'].includes(status);
+  const damageLocked = !isCleaner || !['in_progress', 'completed'].includes(status);
 
   return (
     <View className="rounded-2xl bg-white p-4">
@@ -108,7 +107,7 @@ export function BookingPhotos({ bookingId, isCleaner, status }: { bookingId: str
         <View className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
           <Text className="font-bold text-[11px] text-amber-900">Step 1: Upload foto SEBELUM</Text>
           <Text className="font-sans mt-0.5 text-[10px] leading-4 text-amber-800">
-            Foto kondisi area sebelum dibersihkan (minimal 1). Tombol "Sesudah" akan terbuka setelah upload "Sebelum".
+            Setelah mulai kerja, upload foto kondisi area sebelum dibersihkan. Tombol "Sesudah" akan terbuka setelah upload "Sebelum".
           </Text>
         </View>
       )}

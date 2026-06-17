@@ -379,7 +379,7 @@ export class CleanerJobsController {
     if (!fromList) throw new BadRequestException('Status target invalid.');
 
     // Photo enforcement: cek ada foto required sebelum transisi
-    if (body.to === 'in_progress') {
+    if (body.to === 'completed') {
       const before = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM booking_photos
          WHERE booking_id = ${id}::uuid AND photo_type = 'before'
@@ -387,11 +387,9 @@ export class CleanerJobsController {
       if (Number(before[0]?.c ?? 0) === 0) {
         throw new BadRequestException({
           code: 'BEFORE_PHOTO_REQUIRED',
-          message: 'Upload minimal 1 foto kondisi SEBELUM (before) dulu sebelum mulai kerja.',
+          message: 'Upload minimal 1 foto kondisi SEBELUM (before) dulu sebelum tandai selesai.',
         });
       }
-    }
-    if (body.to === 'completed') {
       const after = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM booking_photos
          WHERE booking_id = ${id}::uuid AND photo_type = 'after'
