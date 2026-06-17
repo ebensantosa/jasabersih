@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { CalendarCheck, ChevronRight } from 'lucide-react-native';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +23,10 @@ export default function Bookings() {
   const syncFromApi = useBookingsStore((s) => s.syncFromApi);
   const syncing = useBookingsStore((s) => s.syncing);
   const isCleaner = mode === 'freelancer';
+  const [filter, setFilter] = useState<'active' | 'history'>(isCleaner ? 'history' : 'active');
+  useEffect(() => {
+    setFilter(isCleaner ? 'history' : 'active');
+  }, [isCleaner]);
 
   // Refresh on focus - skip kalau belum login (sync bakal 401 + Redirect tetep jalan di bawah)
   useFocusEffect(useCallback(() => { if (tokens) void syncFromApi(); }, [syncFromApi, tokens]));
@@ -35,6 +39,10 @@ export default function Bookings() {
         (cleanerName && b.cleanerName === cleanerName),
       )
     : allList;
+  const activeStatuses = useMemo(() => new Set(['pending_payment', 'searching', 'matched', 'on_the_way', 'in_progress', 'wa_survey_pending', 'subscription_parent', 'scheduled_future']), []);
+  const activeList = useMemo(() => list.filter((b) => activeStatuses.has(b.status)), [list, activeStatuses]);
+  const historyList = useMemo(() => list.filter((b) => !activeStatuses.has(b.status)), [list, activeStatuses]);
+  const visibleList = filter === 'active' ? activeList : historyList;
 
   // Redirect synchronous saat tidak ada token - menghindari blank screen flash
   if (!tokens) {
@@ -46,26 +54,52 @@ export default function Bookings() {
       <SafeAreaView edges={['top']} className="bg-white">
         <View className="px-4 pb-3 pt-2">
           <Text className="font-bold text-2xl text-ink-900">
-            {isCleaner ? 'Riwayat Job' : 'Pesanan Saya'}
+            {isCleaner ? 'Order Cleaner' : 'Pesanan Saya'}
           </Text>
           <Text className="font-sans mt-0.5 text-xs text-ink-500">
-            {list.length === 0
-              ? (isCleaner ? 'Belum pernah ambil job' : 'Belum ada pesanan')
-              : `${list.length} ${isCleaner ? 'job' : 'pesanan'}`}
+            {visibleList.length === 0
+              ? (filter === 'active'
+                  ? (isCleaner ? 'Belum ada job aktif' : 'Belum ada order aktif')
+                  : (isCleaner ? 'Belum ada riwayat job' : 'Belum ada riwayat pesanan'))
+              : `${visibleList.length} ${isCleaner ? 'job' : 'pesanan'}`}
           </Text>
+          <View className="mt-3 flex-row rounded-2xl bg-ink-100 p-1">
+            <Pressable
+              onPress={() => setFilter('active')}
+              className={`flex-1 rounded-xl px-3 py-2 ${filter === 'active' ? 'bg-white' : ''}`}
+            >
+              <Text className={`text-center text-xs font-bold ${filter === 'active' ? 'text-brand-700' : 'text-ink-500'}`}>
+                Aktif ({activeList.length})
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFilter('history')}
+              className={`flex-1 rounded-xl px-3 py-2 ${filter === 'history' ? 'bg-white' : ''}`}
+            >
+              <Text className={`text-center text-xs font-bold ${filter === 'history' ? 'text-brand-700' : 'text-ink-500'}`}>
+                Riwayat ({historyList.length})
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </SafeAreaView>
 
-      {list.length === 0 ? (
+      {visibleList.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <CalendarCheck color="#94A3B8" size={48} />
           <Text className="font-semibold mt-3 text-ink-700">
-            {isCleaner ? 'Belum pernah ambil job' : 'Belum ada pesanan'}
+            {filter === 'active'
+              ? (isCleaner ? 'Belum ada job aktif' : 'Belum ada order aktif')
+              : (isCleaner ? 'Belum ada riwayat job' : 'Belum ada riwayat pesanan')}
           </Text>
           <Text className="font-sans mt-1 text-center text-xs text-ink-500">
-            {isCleaner
-              ? 'Aktifkan Online di tab Job, lalu ambil job yang masuk untuk muncul di sini.'
-              : 'Tap layanan di Home untuk pesan sekarang'}
+            {filter === 'active'
+              ? (isCleaner
+                  ? 'Buka Job Board untuk melihat job yang sedang berjalan atau ambil job baru.'
+                  : 'Order yang masih berjalan akan muncul di sini.')
+              : (isCleaner
+                  ? 'Job yang sudah selesai atau dibatalkan akan tersimpan di riwayat.'
+                  : 'Pesanan yang sudah selesai atau dibatalkan akan tersimpan di riwayat.')}
           </Text>
           <Pressable
             onPress={() => router.push(isCleaner ? '/(tabs)/jobs' : '/(tabs)')}
@@ -81,7 +115,7 @@ export default function Bookings() {
           contentContainerStyle={{ padding: 16, gap: 10 }}
           refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void syncFromApi()} />}
         >
-          {list.map((b) => {
+          {visibleList.map((b) => {
             const c = STATUS_COLOR[b.status] ?? { bg: '#F1F5F9', fg: '#475569' };
             return (
               <Pressable

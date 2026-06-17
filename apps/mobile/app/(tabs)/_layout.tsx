@@ -76,9 +76,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
-          href: isFreelancer ? null : '/(tabs)/bookings',
+          href: '/(tabs)/bookings',
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={ClipboardList} label={t('tab.bookings')} focused={focused} />
+            <TabItem icon={ClipboardList} label={isFreelancer ? 'Riwayat' : t('tab.bookings')} focused={focused} />
           ),
         }}
       />

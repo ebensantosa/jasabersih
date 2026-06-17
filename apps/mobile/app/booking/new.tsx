@@ -1386,7 +1386,8 @@ function NewBooking() {
                         />
                       </View>
 
-                      {/* Month navigator: bisa scroll ke 6 bulan ke depan, tapi span first→last picked ≤ 30 hari */}
+                      {/* Month navigator: bisa scroll ke 6 bulan ke depan.
+                          Semua tanggal langganan harus tetap dalam 1 bulan kalender yang sama. */}
                       {(() => {
                         const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
                         const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -1399,17 +1400,12 @@ function NewBooking() {
                         for (let i = 0; i < startOffset; i++) cells.push(null);
                         for (let d = 1; d <= lastOfMonth.getDate(); d++) cells.push(new Date(view.getFullYear(), view.getMonth(), d));
 
-                        // Compute span constraint: from min picked date to max picked date ≤ 30 days
-                        const SPAN_DAYS = 30;
                         const sorted = [...subscriptionDates].sort();
-                        const minPicked = sorted[0] ?? null;
-                        const maxPicked = sorted[sorted.length - 1] ?? null;
-                        function wouldExceedSpan(iso: string): boolean {
-                          if (!minPicked) return false;
-                          const newMin = iso < minPicked ? iso : minPicked;
-                          const newMax = iso > (maxPicked ?? iso) ? iso : (maxPicked ?? iso);
-                          const days = Math.round((new Date(newMax).getTime() - new Date(newMin).getTime()) / 86400000);
-                          return days > SPAN_DAYS - 1;
+                        const firstPicked = sorted[0] ?? null;
+                        const pickedMonthKey = firstPicked ? firstPicked.slice(0, 7) : null;
+                        function isOutsidePickedMonth(iso: string): boolean {
+                          if (!pickedMonthKey) return false;
+                          return iso.slice(0, 7) !== pickedMonthKey;
                         }
 
                         return (
@@ -1461,8 +1457,8 @@ function NewBooking() {
                                 const isPast = dNorm.getTime() < today.getTime();
                                 const active = subscriptionDates.includes(iso);
                                 const reachedLimit = subscriptionDates.length >= subscriptionVisits && !active;
-                                const exceedsSpan = !active && wouldExceedSpan(iso);
-                                const disabled = isPast || reachedLimit || exceedsSpan;
+                                const outsidePickedMonth = !active && isOutsidePickedMonth(iso);
+                                const disabled = isPast || reachedLimit || outsidePickedMonth;
                                 const isSunday = d.getDay() === 0;
                                 return (
                                   <View key={iso} style={{ width: `${100 / 7}%` }} className="p-0.5">
@@ -1471,7 +1467,7 @@ function NewBooking() {
                                       onPress={() => setSubscriptionDates(active
                                         ? subscriptionDates.filter((x) => x !== iso)
                                         : [...subscriptionDates, iso].sort())}
-                                      style={disabled ? { opacity: isPast ? 0.2 : exceedsSpan ? 0.25 : 0.3 } : undefined}
+                                      style={disabled ? { opacity: isPast ? 0.2 : outsidePickedMonth ? 0.25 : 0.3 } : undefined}
                                       className={`aspect-square items-center justify-center rounded-xl ${active
                                         ? 'bg-brand-600'
                                         : disabled
@@ -1487,9 +1483,9 @@ function NewBooking() {
                               })}
                             </View>
 
-                            {minPicked && (
+                            {firstPicked && (
                               <Text className="font-medium mt-2 text-[10px] text-ink-500">
-                                Rentang max 30 hari. Sudah pilih {sorted.length > 1 ? `${sorted[0]} → ${sorted[sorted.length - 1]}` : sorted[0]}
+                                Semua kunjungan harus berada dalam bulan yang sama. Sudah pilih {sorted.length > 1 ? `${sorted[0]} → ${sorted[sorted.length - 1]}` : sorted[0]}
                               </Text>
                             )}
                           </View>
