@@ -110,8 +110,8 @@ export default function Register() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
-    <View className={`flex-1 ${theme.bg}`}>
-      <LinearGradient colors={theme.gradient} style={{ height: 240, width: '100%', alignSelf: 'stretch' }}>
+    <View className={`flex-1 ${theme.bg}`} style={{ overflow: 'hidden' }}>
+      <LinearGradient colors={theme.gradient} style={{ height: 240, width: '100%', alignSelf: 'stretch', overflow: 'hidden' }}>
         <SafeAreaView edges={['top']}>
           <View className="flex-row items-center px-3 py-2">
             <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
