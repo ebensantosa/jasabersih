@@ -1075,6 +1075,7 @@ function BookingDetail() {
       {canDispute && (
         <DisputeFormModal
           bookingId={booking.id}
+          isCleaner={isCleaner}
           open={showDispute}
           onClose={() => setShowDispute(false)}
           onSubmitted={() => setShowDispute(false)}

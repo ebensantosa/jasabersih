@@ -1,12 +1,12 @@
 import * as ImagePicker from 'expo-image-picker';
 import { AlertTriangle, Camera, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
 import { toast } from '../stores/ui';
 
-const TYPES: { code: string; label: string }[] = [
+const CUSTOMER_TYPES: { code: string; label: string }[] = [
   { code: 'quality', label: 'Kualitas pekerjaan kurang' },
   { code: 'no_show', label: 'Tidak datang / hilang' },
   { code: 'theft', label: 'Pencurian / kehilangan barang' },
@@ -15,23 +15,41 @@ const TYPES: { code: string; label: string }[] = [
   { code: 'other', label: 'Lainnya' },
 ];
 
+const CLEANER_TYPES: { code: string; label: string }[] = [
+  { code: 'customer_absent', label: 'Customer tidak ada di lokasi' },
+  { code: 'address_issue', label: 'Alamat / pin tidak sesuai' },
+  { code: 'access_denied', label: 'Akses lokasi ditolak / sulit masuk' },
+  { code: 'scope_mismatch', label: 'Kondisi / scope tidak sesuai pesanan' },
+  { code: 'unsafe_items', label: 'Barang berharga / risiko kerusakan' },
+  { code: 'harassment', label: 'Pelecehan / ancaman / kasar' },
+  { code: 'payment', label: 'Masalah pembayaran / charge tambahan' },
+  { code: 'other', label: 'Butuh bantuan customer service' },
+];
+
 export function DisputeFormModal({
   bookingId,
   open,
   onClose,
   onSubmitted,
-  initialType,
+  isCleaner = false,
 }: {
   bookingId: string;
   open: boolean;
   onClose: () => void;
   onSubmitted: () => void;
+  isCleaner?: boolean;
 }) {
-  const [type, setType] = useState<string>('quality');
+  const typeOptions = isCleaner ? CLEANER_TYPES : CUSTOMER_TYPES;
+  const defaultType = typeOptions[0]?.code ?? 'other';
+  const [type, setType] = useState<string>(defaultType);
   const [description, setDescription] = useState('');
   const [evidenceKeys, setEvidenceKeys] = useState<{ key: string; uri: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (open) setType(defaultType);
+  }, [open, defaultType]);
 
   async function pickEvidence() {
     if (evidenceKeys.length >= 5) {
@@ -90,7 +108,7 @@ export function DisputeFormModal({
   }
 
   function reset() {
-    setType('quality');
+    setType(defaultType);
     setDescription('');
     setEvidenceKeys([]);
   }
@@ -113,7 +131,7 @@ export function DisputeFormModal({
             <View>
               <Text className="font-semibold mb-2 text-xs text-ink-700">Jenis Masalah</Text>
               <View className="flex-row flex-wrap gap-2">
-                {TYPES.map((t) => (
+                {typeOptions.map((t) => (
                   <Pressable
                     key={t.code}
                     onPress={() => setType(t.code)}
@@ -130,7 +148,9 @@ export function DisputeFormModal({
               <TextInput
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Ceritakan detail masalah yg kamu alami (min 10 karakter)…"
+                placeholder={isCleaner
+                  ? 'Jelaskan kendala di lapangan, kondisi aktual, dan bantuan yang kamu butuhkan (min 10 karakter)…'
+                  : 'Ceritakan detail masalah yang kamu alami (min 10 karakter)…'}
                 placeholderTextColor="#94A3B8"
                 multiline
                 style={{ minHeight: 100, textAlignVertical: 'top' }}
@@ -168,7 +188,9 @@ export function DisputeFormModal({
             <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
               <Text className="font-bold text-[11px] text-amber-900">📌 Penting</Text>
               <Text className="font-sans mt-1 text-[11px] text-amber-900">
-                Laporan palsu dapat ditolak & berakibat strike di akun kamu. Pastikan deskripsi jujur & bukti relevan.
+                {isCleaner
+                  ? 'Gunakan laporan ini untuk kendala kerja yang benar-benar terjadi di lapangan. Pastikan deskripsi jujur dan bukti relevan.'
+                  : 'Laporan palsu dapat ditolak dan berakibat strike di akun kamu. Pastikan deskripsi jujur dan bukti relevan.'}
                 {'\n'}SLA admin response: 24 jam.
               </Text>
             </View>
