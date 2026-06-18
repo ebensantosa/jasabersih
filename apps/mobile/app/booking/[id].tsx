@@ -1021,6 +1021,39 @@ function BookingDetail() {
                 </View>
               ) : (
                 <View className="p-4">
+                  {!isCleaner &&
+                  booking.cleanerName &&
+                  (booking.status === 'matched' ||
+                    booking.status === 'on_the_way' ||
+                    booking.status === 'in_progress' ||
+                    booking.status === 'completed') && (
+                    <View className="mb-3 flex-row items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                      <View className="h-12 w-12 overflow-hidden rounded-full bg-emerald-100 items-center justify-center">
+                        {booking.cleanerPhotoUrl ? (
+                          <Image
+                            source={{ uri: booking.cleanerPhotoUrl }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <Text className="font-bold text-base text-emerald-700">
+                            {booking.cleanerName.slice(0, 1).toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+                          Cleaner yang menangani pesanan
+                        </Text>
+                        <Text className="mt-0.5 text-sm font-bold text-emerald-900">
+                          {booking.cleanerName}
+                        </Text>
+                        <Text className="mt-0.5 text-[11px] leading-4 text-emerald-800">
+                          Pesanan kamu sudah punya cleaner. Kamu bisa chat langsung di bawah kalau perlu konfirmasi.
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                   <View className="flex-row gap-2">
                     {booking.status === 'matched' ||
                     booking.status === 'on_the_way' ||
