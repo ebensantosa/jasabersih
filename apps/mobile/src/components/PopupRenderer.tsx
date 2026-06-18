@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
 
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/auth';
+
+// Session-level guard: kalau token rotate (refresh 15-menit), PopupRenderer
+// useEffect([token]) re-fire dan /popups kena fetch ulang. Cache per-event
+// supaya satu user-session = max 1 fetch per event type.
+const fetchedEvents = new Set<string>();
 
 type Popup = {
   id: string;
@@ -18,12 +23,26 @@ type Popup = {
 
 // Polls /v1/app/popups when authenticated; shows highest-priority one matching `event`.
 export function PopupRenderer({ event = 'app_open' }: { event?: 'app_open' | 'post_login' | 'booking_complete' }) {
-  const token = useAuthStore((s) => s.tokens?.accessToken);
-  const [queue, setQueue] = useState<Popup[]>([]);
+  const hasToken = useAuthStore((s) => !!s.tokens?.accessToken);
+  const [, setQueue] = useState<Popup[]>([]);
   const [shown, setShown] = useState<Popup | null>(null);
+  const firedRef = useRef(false);
+
+  // Reset session cache saat token hilang (logout) - supaya next login fetch lagi
+  useEffect(() => {
+    if (!hasToken) {
+      fetchedEvents.clear();
+      firedRef.current = false;
+    }
+  }, [hasToken]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!hasToken) return;
+    // Guard: cuma fire sekali per session per event. Tanpa ini, tiap kali JWT
+    // refresh (15-mnt), useEffect re-fire → /popups + /popups/:id/view kena spam.
+    if (firedRef.current || fetchedEvents.has(event)) return;
+    firedRef.current = true;
+    fetchedEvents.add(event);
     let cancelled = false;
     (async () => {
       try {
@@ -33,14 +52,13 @@ export function PopupRenderer({ event = 'app_open' }: { event?: 'app_open' | 'po
           setQueue(list);
           if (list[0]) {
             setShown(list[0]);
-            // Record view
             api.post(`/app/popups/${list[0].id}/view`, { ctaClicked: false }).catch(() => {});
           }
         }
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [token, event]);
+  }, [hasToken, event]);
 
   function close() {
     setShown(null);
