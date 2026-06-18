@@ -721,7 +721,7 @@ function CustomBooking() {
                 emptyHouse ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'
               }`}
             >
-              {emptyHouse && <Text className="text-[10px] font-bold text-white">V</Text>}
+              {emptyHouse && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
             </View>
             <View className="flex-1">
               <View className="flex-row items-center gap-1.5">
