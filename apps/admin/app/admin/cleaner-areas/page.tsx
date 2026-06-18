@@ -22,18 +22,17 @@ type Req = {
 export default function CleanerAreaRequestsPage() {
   const toast = useToast();
   const confirm = useConfirm();
-  const [tab, setTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [list, setList] = useState<Req[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      setList((await api.admin.cleanerAreaRequests(tab)) as Req[]);
+      setList((await api.admin.cleanerAreaRequests('pending')) as Req[]);
     } catch (e: any) { toast.error(e?.message ?? 'Gagal load'); }
     setLoading(false);
   }
-  useEffect(() => { void load(); }, [tab]);
+  useEffect(() => { void load(); }, []);
 
   async function approve(r: Req) {
     const ok = await confirm({ title: 'Approve request', message: `Tambahkan area "${r.city}" untuk cleaner ${r.cleanerName ?? r.cleanerId.slice(0,8)}?` });
@@ -59,19 +58,7 @@ export default function CleanerAreaRequestsPage() {
     <div>
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Permintaan Area Cleaner</h1>
-        <p className="text-sm text-slate-500">Cleaner request tambah area kerja. Admin yang putuskan accept/reject.</p>
-      </div>
-
-      <div className="mt-5 flex gap-2 border-b">
-        {(['pending', 'approved', 'rejected'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-semibold ${tab === t ? 'border-b-2 border-blue-600 text-blue-700' : 'text-slate-500'}`}
-          >
-            {t === 'pending' ? 'Menunggu' : t === 'approved' ? 'Disetujui' : 'Ditolak'}
-          </button>
-        ))}
+        <p className="text-sm text-slate-500">Cleaner request tambah area kerja. Approve untuk tambahin ke area mereka, tolak kalau gak cocok.</p>
       </div>
 
       {loading ? (
@@ -79,7 +66,7 @@ export default function CleanerAreaRequestsPage() {
       ) : list.length === 0 ? (
         <div className="mt-4 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           <MapPin size={28} className="mx-auto mb-2 text-slate-400" />
-          Belum ada request {tab === 'pending' ? 'menunggu' : tab === 'approved' ? 'yang disetujui' : 'yang ditolak'}.
+          Belum ada request menunggu.
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-md border bg-white">
@@ -113,14 +100,10 @@ export default function CleanerAreaRequestsPage() {
                   </td>
                   <td className="px-3 py-2 text-xs text-slate-500">{new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                   <td className="px-3 py-2 text-right">
-                    {tab === 'pending' ? (
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="primary" icon={<Check size={12} />} onClick={() => approve(r)}>Approve</Button>
-                        <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => reject(r)}>Tolak</Button>
-                      </div>
-                    ) : (
-                      <Badge variant={tab === 'approved' ? 'green' : 'amber'}>{tab}</Badge>
-                    )}
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="primary" icon={<Check size={12} />} onClick={() => approve(r)}>Approve</Button>
+                      <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => reject(r)}>Tolak</Button>
+                    </div>
                   </td>
                 </tr>
               ))}
