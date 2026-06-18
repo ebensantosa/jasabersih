@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Check, Lightbulb, MapPin } from 'lucide-react-native';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ArrowLeft, Check, Lightbulb, MapPin, Plus } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -17,6 +17,25 @@ function CleanerAreas() {
   const areas = useCleanerStore((s) => s.serviceAreas);
   const toggle = useCleanerStore((s) => s.toggleArea);
   const setAreas = useCleanerStore((s) => s.setAreas);
+  const [showRequestCity, setShowRequestCity] = useState(false);
+  const [requestCityName, setRequestCityName] = useState('');
+
+  async function requestNewCity() {
+    const name = requestCityName.trim();
+    if (name.length < 2) { toast.error('Nama kota min 2 karakter'); return; }
+    try {
+      await api.post('/app/city-requests', {
+        city: name,
+        source: 'cleaner',
+        notes: 'Cleaner request kota tambahan dari halaman Area Layananku',
+      });
+      toast.success(`Permintaan kota "${name}" dikirim. Admin akan review.`);
+      setShowRequestCity(false);
+      setRequestCityName('');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
+    }
+  }
 
   // Source of truth: service_areas dari CMS. Dedupe by city. Kalau admin
   // belum config any, default tampil [] supaya cleaner gak bisa pilih kota
@@ -85,6 +104,13 @@ function CleanerAreas() {
               <Text className="font-sans text-center text-[11px] text-ink-500">
                 Belum ada kota yang dilayani. Hubungi admin untuk konfirmasi.
               </Text>
+              <Pressable
+                onPress={() => setShowRequestCity(true)}
+                className="mt-3 flex-row items-center gap-2 rounded-xl bg-brand-50 px-4 py-2.5"
+              >
+                <Plus color="#1D4ED8" size={14} />
+                <Text className="font-bold text-[12px] text-brand-700">Request Kota Baru</Text>
+              </Pressable>
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl bg-white">
@@ -124,7 +150,46 @@ function CleanerAreas() {
               })}
             </View>
           )}
+
+          {cities.length > 0 && (
+            <Pressable
+              onPress={() => setShowRequestCity(true)}
+              className="mt-3 flex-row items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 py-3"
+            >
+              <Plus color="#1D4ED8" size={14} />
+              <Text className="font-bold text-[12px] text-brand-700">Kota saya belum ada? Request ke admin</Text>
+            </Pressable>
+          )}
         </ScrollView>
+
+        <Modal visible={showRequestCity} transparent animationType="fade" onRequestClose={() => setShowRequestCity(false)}>
+          <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
+            <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
+              <Text className="font-extrabold text-lg text-ink-900">Request Kota Baru</Text>
+              <Text className="font-medium mt-1 text-[12px] text-ink-600">
+                Admin akan review. Setelah diapprove, kota akan tampil di daftar pilihan.
+              </Text>
+              <View className="mt-3">
+                <Text className="font-semibold mb-1 text-[11px] text-ink-700">Nama Kota</Text>
+                <TextInput
+                  value={requestCityName}
+                  onChangeText={setRequestCityName}
+                  placeholder="Contoh: Surabaya"
+                  placeholderTextColor="#94A3B8"
+                  className="font-sans rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900"
+                />
+              </View>
+              <View className="mt-4 flex-row gap-2">
+                <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 rounded-xl border border-ink-200 bg-white py-3">
+                  <Text className="font-bold text-center text-sm text-ink-700">Batal</Text>
+                </Pressable>
+                <Pressable onPress={requestNewCity} className="flex-1 rounded-xl bg-brand-600 py-3">
+                  <Text className="font-bold text-center text-sm text-white">Kirim Request</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
           <SafeAreaView edges={['bottom']}>

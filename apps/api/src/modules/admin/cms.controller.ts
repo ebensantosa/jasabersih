@@ -421,11 +421,13 @@ export class AdminCmsController {
     return this.prisma.$queryRaw`
       SELECT lower(trim(city)) AS city,
              COUNT(*)::int AS "requestCount",
+             COUNT(*) FILTER (WHERE source = 'customer')::int AS "customerCount",
+             COUNT(*) FILTER (WHERE source = 'cleaner')::int AS "cleanerCount",
              MAX(created_at) AS "lastRequestAt",
              ARRAY_AGG(DISTINCT province) FILTER (WHERE province IS NOT NULL) AS provinces,
              json_agg(json_build_object(
                'id', id, 'contactName', contact_name, 'contactPhone', contact_phone,
-               'notes', notes, 'createdAt', created_at
+               'notes', notes, 'source', source, 'status', status, 'createdAt', created_at
              ) ORDER BY created_at DESC) AS samples
         FROM city_requests
        GROUP BY lower(trim(city))

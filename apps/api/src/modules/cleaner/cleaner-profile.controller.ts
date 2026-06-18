@@ -15,6 +15,7 @@ const UpdateProfileSchema = z.object({
   languages: z.array(z.string()).optional(),
   isAvailable: z.boolean().optional(),
   photoUrl: z.string().url().optional(),
+  domicileCity: z.string().min(2).max(100).optional(),
 });
 type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>;
 
@@ -50,7 +51,7 @@ export class CleanerProfileController {
     `;
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT user_id AS "userId", bio, brings_tools AS "bringsTools",
-             service_areas AS "serviceAreas", languages,
+             service_areas AS "serviceAreas", languages, domicile_city AS "domicileCity",
              is_available AS "isAvailable", kyc_status AS "kycStatus", tier,
              rating_avg AS "ratingAvg", rating_count AS "ratingCount",
              acceptance_rate AS "acceptanceRate", completion_rate AS "completionRate",
@@ -74,6 +75,7 @@ export class CleanerProfileController {
 
     if (body.bio !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET bio = ${body.bio}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     if (body.serviceAreas !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET service_areas = ${JSON.stringify(body.serviceAreas)}::jsonb, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+    if (body.domicileCity !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET domicile_city = ${body.domicileCity.trim()}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     if (body.languages !== undefined) {
       // text[] requires array literal — use raw param
       await this.prisma.$executeRawUnsafe(`UPDATE cleaner_profiles SET languages = $1::text[], updated_at = NOW() WHERE user_id = $2::uuid`, body.languages, user.id);

@@ -23,6 +23,7 @@ export default function Verify() {
     mode: modeParam,
     devOtp,
     referralCode: referralCodeParam,
+    domicileCity: domicileCityParam,
   } = useLocalSearchParams<{
     phone: string;
     email?: string;
@@ -31,6 +32,7 @@ export default function Verify() {
     mode?: string;
     devOtp?: string;
     referralCode?: string;
+    domicileCity?: string;
   }>();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
@@ -71,6 +73,14 @@ export default function Verify() {
       // Tanpa ini, cleaner stuck di home tab customer = keliatan blank.
       const targetMode = modeParam === 'freelancer' ? 'freelancer' : 'customer';
       setMode(targetMode);
+      // Cleaner domisili dari register form - set ke cleaner_profile via /cleaner/profile.
+      // Non-blocking: kalau gagal, KYC step bisa minta ulang.
+      if (targetMode === 'freelancer' && domicileCityParam) {
+        void api.patch('/cleaner/profile', {
+          domicileCity: domicileCityParam,
+          serviceAreas: [domicileCityParam],
+        }).catch(() => {});
+      }
       toast.success(`Selamat datang, ${nameParam ?? 'Pengguna'}!`);
       router.replace(targetMode === 'freelancer' ? '/(tabs)/jobs' : '/(tabs)');
     } catch (e: any) {

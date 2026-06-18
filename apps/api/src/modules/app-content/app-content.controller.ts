@@ -177,13 +177,14 @@ export class AppContentController {
   @Throttle({ default: { ttl: 10 * 60_000, limit: 3 } })
   async submitCityRequest(@Body() body: {
     city: string; province?: string; contactName?: string; contactPhone?: string;
-    notes?: string; lat?: number; lng?: number;
-  }) {
+    notes?: string; lat?: number; lng?: number; source?: 'customer' | 'cleaner';
+  }, @Req() req?: Request) {
     const city = body?.city?.trim();
     const province = body?.province?.trim();
     const contactName = body?.contactName?.trim();
     const contactPhone = body?.contactPhone?.trim();
     const notes = body?.notes?.trim();
+    const source = body?.source === 'cleaner' ? 'cleaner' : 'customer';
     if (!city || city.length < 2) {
       return { ok: false, error: 'Nama kota wajib (min 2 karakter)' };
     }
@@ -192,10 +193,13 @@ export class AppContentController {
     if (contactName && contactName.length > 100) return { ok: false, error: 'Nama kontak terlalu panjang.' };
     if (contactPhone && contactPhone.length > 30) return { ok: false, error: 'Nomor kontak terlalu panjang.' };
     if (notes && notes.length > 500) return { ok: false, error: 'Catatan maksimal 500 karakter.' };
+    // Kalau user authenticated (JWT di header), attach user_id (untuk audit trail).
+    const authUserId = (req as any)?.user?.id ?? null;
     await this.prisma.$executeRaw`
-      INSERT INTO city_requests (city, province, contact_name, contact_phone, notes, lat, lng)
+      INSERT INTO city_requests (city, province, contact_name, contact_phone, notes, lat, lng, source, user_id)
       VALUES (${city}, ${province ?? null}, ${contactName ?? null},
-              ${contactPhone ?? null}, ${notes ?? null}, ${body.lat ?? null}, ${body.lng ?? null})
+              ${contactPhone ?? null}, ${notes ?? null}, ${body.lat ?? null}, ${body.lng ?? null},
+              ${source}, ${authUserId}::uuid)
     `;
     return { ok: true };
   }

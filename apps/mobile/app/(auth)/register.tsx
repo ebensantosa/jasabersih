@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Briefcase, Eye, EyeOff, Mail, Phone, User } from 'lucide-react-native';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ArrowLeft, Briefcase, Eye, EyeOff, Mail, MapPin, Phone, Plus, User } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -12,14 +12,15 @@ import {
   validatePassword,
 } from '../../src/components/Field';
 import { api } from '../../src/lib/api';
+import { useAppContent } from '../../src/stores/appContent';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
 import { safeBack } from '../../src/lib/safeBack';
 
-type Errors = { name?: string | null; email?: string | null; phone?: string | null; password?: string | null };
-type Touched = { name?: boolean; email?: boolean; phone?: boolean; password?: boolean };
+type Errors = { name?: string | null; email?: string | null; phone?: string | null; password?: string | null; city?: string | null };
+type Touched = { name?: boolean; email?: boolean; phone?: boolean; password?: boolean; city?: boolean };
 
 function validatePhoneId(v: string): string | null {
   const x = v.trim().replace(/\s/g, '');
@@ -42,10 +43,44 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [domicileCity, setDomicileCity] = useState('');
   const [showPwd, setShowPwd] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
+  const [showRequestCity, setShowRequestCity] = useState(false);
+  const [requestCityName, setRequestCityName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Touched>({});
+
+  const serviceAreas = useAppContent((s) => s.content.serviceAreas);
+  const cities = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of serviceAreas) if (a.city) set.add(a.city);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [serviceAreas]);
+
+  function validateCity(v: string): string | null {
+    if (!targetMode || targetMode !== 'freelancer') return null;
+    if (!v.trim()) return 'Pilih kota domisili kamu';
+    return null;
+  }
+
+  async function requestNewCity() {
+    const name = requestCityName.trim();
+    if (name.length < 2) { toast.error('Nama kota min 2 karakter'); return; }
+    try {
+      await api.post('/app/city-requests', {
+        city: name,
+        source: 'cleaner',
+        notes: 'Diminta dari halaman register cleaner',
+      });
+      toast.success(`Permintaan kota "${name}" dikirim. Tunggu konfirmasi admin.`);
+      setShowRequestCity(false);
+      setRequestCityName('');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
+    }
+  }
 
   function validate(): boolean {
     const e: Errors = {
@@ -53,10 +88,11 @@ export default function Register() {
       email: validateEmail(email),
       phone: validatePhoneId(phone),
       password: validatePassword(password, 8),
+      city: validateCity(domicileCity),
     };
     setErrors(e);
-    setTouched({ name: true, email: true, phone: true, password: true });
-    return !e.name && !e.email && !e.phone && !e.password;
+    setTouched({ name: true, email: true, phone: true, password: true, city: true });
+    return !e.name && !e.email && !e.phone && !e.password && !e.city;
   }
 
   async function onSubmit() {
@@ -87,6 +123,7 @@ export default function Register() {
             email: email.trim().toLowerCase(),
             password,
             mode: targetMode,
+            ...(domicileCity.trim() ? { domicileCity: domicileCity.trim() } : {}),
             ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
             ...(devOtp ? { devOtp } : {}),
           },
@@ -242,6 +279,26 @@ export default function Register() {
               </Pressable>
             </Field>
 
+            {isFreelancer && (
+              <Field
+                label="Kota Domisili Kerja"
+                required
+                hint="Pilih kota tempat kamu mau terima order"
+                error={touched.city ? errors.city : null}
+              >
+                <Pressable
+                  onPress={() => setShowCityPicker(true)}
+                  className="flex-1 flex-row items-center"
+                  hitSlop={8}
+                >
+                  <MapPin color="#94A3B8" size={18} />
+                  <Text className={`font-sans ml-2 flex-1 text-sm ${domicileCity ? 'text-ink-900' : 'text-ink-400'}`}>
+                    {domicileCity || 'Pilih kota…'}
+                  </Text>
+                </Pressable>
+              </Field>
+            )}
+
             <Field label="Kode Referral (opsional)" hint="Punya kode dari teman? Dapatkan bonus untuk order pertama.">
               <TextInput
                 value={referralCode}
@@ -254,6 +311,78 @@ export default function Register() {
               />
             </Field>
           </View>
+
+          {/* City picker modal */}
+          <Modal visible={showCityPicker} transparent animationType="slide" onRequestClose={() => setShowCityPicker(false)}>
+            <Pressable onPress={() => setShowCityPicker(false)} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+              <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' }}>
+                <View className="p-5 pb-2">
+                  <Text className="font-extrabold text-lg text-ink-900">Pilih Kota Domisili</Text>
+                  <Text className="font-medium mt-1 text-[11px] text-ink-500">
+                    Kamu hanya akan terima order dari kota ini (bisa tambah area lain setelah KYC).
+                  </Text>
+                </View>
+                <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+                  {cities.length === 0 ? (
+                    <View className="mx-5 mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <Text className="font-bold text-[12px] text-amber-900">Belum ada kota aktif</Text>
+                      <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                        Klik "Kotaku belum ada" di bawah untuk request ke admin.
+                      </Text>
+                    </View>
+                  ) : (
+                    cities.map((c, i) => (
+                      <Pressable
+                        key={c}
+                        onPress={() => { setDomicileCity(c); setErrors({ ...errors, city: null }); setShowCityPicker(false); }}
+                        className={`flex-row items-center gap-3 px-5 py-3.5 ${i < cities.length - 1 ? 'border-b border-ink-100' : ''}`}
+                      >
+                        <MapPin color={domicileCity === c ? '#1D4ED8' : '#94A3B8'} size={18} />
+                        <Text className={`font-semibold flex-1 text-sm ${domicileCity === c ? 'text-brand-700' : 'text-ink-900'}`}>{c}</Text>
+                      </Pressable>
+                    ))
+                  )}
+                  <Pressable
+                    onPress={() => { setShowCityPicker(false); setShowRequestCity(true); }}
+                    className="mx-5 mt-3 flex-row items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 py-3"
+                  >
+                    <Plus color="#1D4ED8" size={16} />
+                    <Text className="font-bold text-[12px] text-brand-700">Kotaku belum ada — Request ke admin</Text>
+                  </Pressable>
+                </ScrollView>
+              </Pressable>
+            </Pressable>
+          </Modal>
+
+          {/* Request new city modal */}
+          <Modal visible={showRequestCity} transparent animationType="fade" onRequestClose={() => setShowRequestCity(false)}>
+            <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
+              <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
+                <Text className="font-extrabold text-lg text-ink-900">Request Kota Baru</Text>
+                <Text className="font-medium mt-1 text-[12px] text-ink-600">
+                  Tulis nama kota kamu, admin akan review. Setelah diapprove kamu bisa langsung pilih kota ini di profile.
+                </Text>
+                <Field label="Nama Kota" required>
+                  <MapPin color="#94A3B8" size={18} />
+                  <TextInput
+                    value={requestCityName}
+                    onChangeText={setRequestCityName}
+                    placeholder="Contoh: Surabaya"
+                    placeholderTextColor="#94A3B8"
+                    className="font-sans flex-1 text-sm text-ink-900"
+                  />
+                </Field>
+                <View className="mt-4 flex-row gap-2">
+                  <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 rounded-xl border border-ink-200 bg-white py-3">
+                    <Text className="font-bold text-center text-sm text-ink-700">Batal</Text>
+                  </Pressable>
+                  <Pressable onPress={requestNewCity} className="flex-1 rounded-xl bg-emerald-600 py-3">
+                    <Text className="font-bold text-center text-sm text-white">Kirim Request</Text>
+                  </Pressable>
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           <Pressable
             onPress={onSubmit}
