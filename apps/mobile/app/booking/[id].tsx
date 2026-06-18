@@ -830,7 +830,9 @@ function BookingDetail() {
                     <View className="flex-1 pr-1">
                       <Text className="font-bold text-sm text-amber-950">Penilaian untuk pekerjaan ini</Text>
                       <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
-                        Customer sudah mengirim rating setelah job selesai.
+                        {cleanerRatingValue != null
+                          ? 'Customer sudah mengirim rating setelah job selesai.'
+                          : 'Customer belum mengirim rating untuk job ini.'}
                       </Text>
                     </View>
                     <View className="min-w-[72px] rounded-2xl border border-amber-100 bg-white px-3 py-2">
