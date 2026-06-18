@@ -410,6 +410,213 @@ export class PaymentsController {
     }
   }
 
+  // Extra payment (upcharge / tip) via Flip. Sama struktur dgn /flip/create-direct
+  // tapi: payment_type ditandai + extra_metadata simpan upchargeId/tipAmount.
+  // Callback finalize-nya hook ke approveUpcharge / tip ledger insert.
+  @Post('flip/create-direct-extra')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async flipCreateDirectExtra(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: {
+      bookingId: string;
+      type: 'upcharge' | 'tip';
+      upchargeId?: string;
+      tipAmount?: number;
+      senderBank: string;
+      senderBankType: CheckoutSenderBankType;
+      useCredit?: boolean;
+    },
+  ) {
+    if (!body?.bookingId || !body?.senderBank || !body?.senderBankType || !body?.type) {
+      throw new BadRequestException('bookingId, type, senderBank, senderBankType wajib.');
+    }
+    if (body.type === 'upcharge' && !body.upchargeId) throw new BadRequestException('upchargeId wajib untuk upcharge.');
+    if (body.type === 'tip' && (!body.tipAmount || body.tipAmount <= 0)) throw new BadRequestException('tipAmount wajib > 0 untuk tip.');
+    await this.assertMethodEnabled(body.senderBank, body.senderBankType);
+
+    const bRows = await this.prisma.$queryRaw<{ id: string; customer_id: string; cleaner_id: string | null; status: string }[]>`
+      SELECT id, customer_id, cleaner_id, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    `;
+    const b = bRows[0];
+    if (!b) throw new NotFoundException('Booking tidak ditemukan.');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu.');
+
+    let amount = 0;
+    let extra: any = { type: body.type, bookingId: body.bookingId };
+    if (body.type === 'upcharge') {
+      const uRows = await this.prisma.$queryRaw<{ id: string; amount: number; status: string }[]>`
+        SELECT id, amount, status FROM booking_upcharges
+         WHERE id = ${body.upchargeId}::uuid AND booking_id = ${body.bookingId}::uuid LIMIT 1
+      `;
+      const u = uRows[0];
+      if (!u) throw new NotFoundException('Upcharge tidak ditemukan.');
+      if (u.status !== 'pending') throw new BadRequestException('Upcharge sudah diputuskan.');
+      amount = Number(u.amount);
+      extra = { ...extra, upchargeId: body.upchargeId };
+    } else {
+      if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner untuk dikasih tip.');
+      amount = Number(body.tipAmount);
+      extra = { ...extra, tipAmount: amount, cleanerId: b.cleaner_id };
+    }
+
+    const userRows = await this.prisma.$queryRaw<{ name: string | null; email: string | null; phone: string }[]>`
+      SELECT name, email, phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
+    `;
+    const u = userRows[0]!;
+    const merchantRef = `JBSIH-${body.type.toUpperCase()}-${b.id.slice(0, 8)}-${Date.now().toString(36)}`;
+
+    // Pakai saldo (partial): kurangi tagihan PG sebesar min(balance, amount)
+    let creditUsed = 0;
+    if (body.useCredit) {
+      const balRow = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
+        `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup','earnings') AND status='CLEARED' THEN amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
+           FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
+        user.id,
+      );
+      const balance = Number(balRow[0]?.b ?? 0);
+      creditUsed = Math.min(balance, amount);
+      if (creditUsed >= amount) {
+        // Wallet covers full - skip Flip, langsung finalize.
+        if (body.type === 'upcharge') {
+          await this.finalizeUpcharge(user.id, body.bookingId, body.upchargeId!);
+        } else {
+          await this.finalizeTip(user.id, body.bookingId, b.cleaner_id!, amount);
+        }
+        return { ok: true, paidViaWallet: true, walletDeducted: amount, walletRemaining: balance - amount };
+      }
+      if (creditUsed > 0) {
+        // Partial: deduct sekarang, sisanya via Flip
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+           VALUES ($1::uuid, 'credit_use', $2, $3, $4::uuid, 'CLEARED', NOW(), $5)`,
+          user.id, creditUsed, body.type, body.upchargeId ?? body.bookingId,
+          `Potongan saldo untuk ${body.type} booking ${b.id.slice(0, 8)}`,
+        );
+        extra = { ...extra, creditUsed };
+      }
+    }
+    const flipAmount = amount - creditUsed;
+    if (flipAmount <= 0) throw new BadRequestException('Total bayar 0.');
+    const methodLabel = `flip_${body.senderBankType}_${body.senderBank}`;
+
+    const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO payments (booking_id, user_id, amount, payment_method, status, provider, tripay_merchant_ref, payment_type, extra_metadata)
+      VALUES (${b.id}::uuid, ${user.id}::uuid, ${flipAmount}::bigint, ${methodLabel}, 'pending', 'flip', ${merchantRef}, ${body.type}, ${JSON.stringify(extra)}::jsonb)
+      RETURNING id
+    `;
+    const paymentId = inserted[0]!.id;
+
+    try {
+      let result: any;
+      try {
+        result = await this.flip.createDirectBill({
+          title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : 'Tip Cleaner'} ${b.id.slice(0, 8)}`,
+          amount: flipAmount,
+          refId: merchantRef,
+          customerName: u.name ?? 'JasaBersih Customer',
+          customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
+          customerPhone: u.phone,
+          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
+          senderBank: body.senderBank,
+          senderBankType: body.senderBankType,
+        });
+      } catch (directErr: any) {
+        this.flipLog.warn(`createDirect extra failed (${directErr?.message ?? 'unknown'}), fallback`);
+        result = await this.flip.createBill({
+          title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : 'Tip'} ${b.id.slice(0, 8)}`,
+          amount: flipAmount,
+          refId: merchantRef,
+          customerName: u.name ?? 'JasaBersih Customer',
+          customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
+          customerPhone: u.phone,
+          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
+        });
+      }
+
+      if (result?.link_id) {
+        try {
+          const detail = await this.flip.getBillDetail(result.link_id);
+          if (detail?.bill_payment) result.bill_payment = { ...(result.bill_payment ?? {}), ...detail.bill_payment };
+          for (const k of ['qr_code_data', 'qr_string', 'qrcode_string', 'account_number']) {
+            if (detail?.[k] && !result?.[k]) result[k] = detail[k];
+          }
+        } catch {}
+      }
+
+      const billPayment = result?.bill_payment ?? {};
+      const receiverAcc = billPayment?.receiver_bank_account ?? {};
+      const accountNumber: string | undefined = receiverAcc?.account_number ?? billPayment?.account_number ?? result?.account_number;
+      const qrString: string | undefined = receiverAcc?.qr_code_data ?? receiverAcc?.qr_string ?? billPayment?.qr_code_data ?? billPayment?.qr_string ?? billPayment?.qrcode_string ?? result?.qr_code_data ?? result?.qr_string;
+      const walletUrl: string | undefined = billPayment?.customer?.payment_url ?? billPayment?.redirect_url ?? billPayment?.payment_url ?? billPayment?.url ?? result?.customer_url ?? result?.payment_url;
+      const expiredAt = result?.expired_date ?? null;
+
+      await this.prisma.$executeRaw`
+        UPDATE payments SET flip_link_id = ${String(result.link_id ?? '')},
+              pay_code = ${accountNumber ?? null},
+              payment_url = ${result.link_url ?? null}
+         WHERE id = ${paymentId}::uuid
+      `;
+
+      return {
+        paymentId, provider: 'flip', amount: flipAmount,
+        senderBank: body.senderBank, senderBankType: body.senderBankType,
+        accountNumber: accountNumber ?? null,
+        qrString: qrString ?? null,
+        walletUrl: walletUrl ?? null,
+        paymentUrl: result.link_url ? (/^https?:\/\//i.test(result.link_url) ? result.link_url : `https://${result.link_url}`) : null,
+        expiredAt, linkId: result.link_id,
+        creditUsed,
+      };
+    } catch (e) {
+      await this.prisma.$executeRaw`UPDATE payments SET status = 'failed' WHERE id = ${paymentId}::uuid`;
+      throw e;
+    }
+  }
+
+  // Helpers untuk finalize wallet-only payment
+  private async finalizeUpcharge(userId: string, bookingId: string, upchargeId: string) {
+    // Reuse logic dari /bookings/:id/upcharges/:upchargeId/approve - panggil endpoint internal.
+    // Sederhana: inline minimal logic agar tidak circular dependency.
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ amount: number; cleaner_id: string }[]>`
+        SELECT amount, cleaner_id FROM booking_upcharges WHERE id = ${upchargeId}::uuid AND booking_id = ${bookingId}::uuid AND status = 'pending' LIMIT 1
+      `;
+      const u = rows[0];
+      if (!u) throw new BadRequestException('Upcharge tidak ditemukan/sudah diproses.');
+      const amount = Number(u.amount);
+      const totalRow = await tx.$queryRaw<{ total_amount: number }[]>`SELECT total_amount FROM bookings WHERE id = ${bookingId}::uuid LIMIT 1`;
+      const currentTotal = Number(totalRow[0]?.total_amount ?? 0);
+      const profRow = await tx.$queryRaw<{ brings_tools: boolean }[]>`SELECT brings_tools FROM cleaner_profiles WHERE user_id = ${u.cleaner_id}::uuid LIMIT 1`;
+      const bringsTools = !!profRow[0]?.brings_tools;
+      const tiersRow = await tx.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+        SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+      `;
+      const tier = tiersRow.find((t) => currentTotal >= Number(t.range_min ?? 0) && (t.range_max == null || currentTotal <= Number(t.range_max)));
+      const pct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+      const cleanerShare = Math.round(amount * pct / 100);
+      const platformFee = amount - cleanerShare;
+      await tx.$executeRaw`UPDATE booking_upcharges SET status = 'approved', decided_at = NOW(), decided_by_user_id = ${userId}::uuid WHERE id = ${upchargeId}::uuid`;
+      await tx.$executeRaw`UPDATE bookings SET total_amount = total_amount + ${amount}, cleaner_payout = COALESCE(cleaner_payout,0) + ${cleanerShare}, platform_fee = COALESCE(platform_fee,0) + ${platformFee} WHERE id = ${bookingId}::uuid`;
+      await tx.$executeRaw`INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description) VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${bookingId}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${amount.toLocaleString('id-ID')}`})`;
+    });
+  }
+
+  private async finalizeTip(userId: string, bookingId: string, cleanerId: string, amount: number) {
+    // Tip masuk ke cleaner earnings (CLEARED langsung, gak ada escrow utk tip) +
+    // record di ratings.tip_amount. Kalau rating belum ada, buat row baru tanpa rating value.
+    await this.prisma.$executeRaw`
+      INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+      VALUES (${cleanerId}::uuid, 'earnings', ${amount}, 'tip', ${bookingId}::uuid, 'CLEARED', NOW(), ${'Tip dari customer'})
+    `;
+    await this.prisma.$executeRaw`
+      INSERT INTO ratings (booking_id, rater_id, ratee_id, tip_amount)
+      VALUES (${bookingId}::uuid, ${userId}::uuid, ${cleanerId}::uuid, ${amount})
+      ON CONFLICT (booking_id) DO UPDATE SET tip_amount = COALESCE(ratings.tip_amount, 0) + ${amount}
+    `;
+  }
+
   // Flip webhook. Flip POSTs application/x-www-form-urlencoded with `data` (JSON)
   // and `token` (validation token). No HMAC — just string-equal token check.
   private readonly flipLog = new Logger('FlipCallback');
@@ -442,8 +649,8 @@ export class PaymentsController {
 
     if (!linkId) return { ok: false, reason: 'no link id' };
 
-    const payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string; amount: number }[]>`
-      SELECT id, booking_id, user_id, status, amount FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
+    const payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string; amount: number; payment_type: string | null; extra_metadata: any }[]>`
+      SELECT id, booking_id, user_id, status, amount, payment_type, extra_metadata FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
     `;
     const p = payRows[0];
     if (!p) { this.flipLog.warn(`payment not found for linkId=${linkId} (this is expected for Flip test buttons)`); return { ok: false, reason: 'payment not found' }; }
@@ -474,29 +681,59 @@ export class PaymentsController {
     }
 
     if (status === 'SUCCESSFUL' && p.status !== 'paid') {
-      await this.prisma.$transaction([
-        this.prisma.$executeRaw`
+      const isExtra = p.payment_type === 'upcharge' || p.payment_type === 'tip';
+      if (isExtra) {
+        // Extra payment (upcharge/tip): mark paid + finalize via helpers, jangan UPDATE bookings.status
+        await this.prisma.$executeRaw`
           UPDATE payments SET status = 'paid', paid_at = NOW(),
             flip_bill_id = ${String(data.id ?? '')},
             callback_payload = ${raw}::jsonb
             WHERE id = ${p.id}::uuid
-        `,
-        ...(p.booking_id ? [
+        `;
+        try {
+          const meta = typeof p.extra_metadata === 'string' ? JSON.parse(p.extra_metadata) : p.extra_metadata;
+          if (p.payment_type === 'upcharge' && meta?.upchargeId && p.user_id && p.booking_id) {
+            await this.finalizeUpcharge(p.user_id, p.booking_id, meta.upchargeId);
+          } else if (p.payment_type === 'tip' && meta?.cleanerId && p.booking_id && p.user_id) {
+            await this.finalizeTip(p.user_id, p.booking_id, meta.cleanerId, Number(p.amount));
+          }
+        } catch (e: any) {
+          this.flipLog.error(`extra payment finalize failed payId=${p.id}: ${e?.message ?? e}`);
+        }
+        if (p.user_id) {
+          void this.push.send({
+            userId: p.user_id, channel: 'booking',
+            title: 'Pembayaran berhasil',
+            body: p.payment_type === 'upcharge' ? 'Charge tambahan terbayar. Cleaner sudah dapat notifikasi.' : 'Tip terkirim ke cleaner. Terima kasih!',
+            data: { type: `payment_${p.payment_type}_paid`, bookingId: p.booking_id, paymentId: p.id },
+          }).catch(() => {});
+        }
+      } else {
+        // Regular booking payment - flow lama
+        await this.prisma.$transaction([
           this.prisma.$executeRaw`
-            UPDATE bookings SET status = 'searching', paid_at = NOW()
-              WHERE id = ${p.booking_id}::uuid AND status = 'pending_payment'
+            UPDATE payments SET status = 'paid', paid_at = NOW(),
+              flip_bill_id = ${String(data.id ?? '')},
+              callback_payload = ${raw}::jsonb
+              WHERE id = ${p.id}::uuid
           `,
-        ] : []),
-      ]);
-      if (p.user_id) {
-        void this.push.send({
-          userId: p.user_id, channel: 'booking',
-          title: 'Pembayaran berhasil',
-          body: 'Kami sedang mencari cleaner untuk kamu.',
-          data: { type: 'payment_paid', bookingId: p.booking_id, paymentId: p.id },
-        }).catch(() => {});
+          ...(p.booking_id ? [
+            this.prisma.$executeRaw`
+              UPDATE bookings SET status = 'searching', paid_at = NOW()
+                WHERE id = ${p.booking_id}::uuid AND status = 'pending_payment'
+            `,
+          ] : []),
+        ]);
+        if (p.user_id) {
+          void this.push.send({
+            userId: p.user_id, channel: 'booking',
+            title: 'Pembayaran berhasil',
+            body: 'Kami sedang mencari cleaner untuk kamu.',
+            data: { type: 'payment_paid', bookingId: p.booking_id, paymentId: p.id },
+          }).catch(() => {});
+        }
+        if (p.booking_id) void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
       }
-      if (p.booking_id) void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
     } else if ((status === 'FAILED' || status === 'CANCELLED') && !['failed', 'cancelled'].includes(p.status)) {
       const next = status.toLowerCase();
       await this.prisma.$executeRaw`

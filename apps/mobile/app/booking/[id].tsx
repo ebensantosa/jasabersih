@@ -957,8 +957,11 @@ function BookingDetail() {
                     )}
                     {isPending && !isCleaner && (
                       <View className="mt-2 flex-row gap-2">
-                        <Pressable onPress={() => approveUpcharge(u.id)} className="flex-1 items-center rounded-lg bg-emerald-600 py-2">
-                          <Text className="font-bold text-xs text-white">Setujui</Text>
+                        <Pressable
+                          onPress={() => router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id, extra: `upcharge:${u.id}` } })}
+                          className="flex-1 items-center rounded-lg bg-emerald-600 py-2"
+                        >
+                          <Text className="font-bold text-xs text-white">Bayar</Text>
                         </Pressable>
                         <Pressable onPress={() => rejectUpcharge(u.id)} className="flex-1 items-center rounded-lg border border-red-300 bg-white py-2">
                           <Text className="font-bold text-xs text-red-700">Tolak</Text>
@@ -1219,53 +1222,27 @@ function BookingDetail() {
           <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
             <Text className="font-extrabold text-lg text-ink-900">🎁 Beri Tip Cleaner</Text>
             <Text className="font-medium mt-1 text-[12px] text-ink-600">
-              Apresiasi cleaner yang kerja bagus. Tip akan langsung masuk ke saldo cleaner.
+              Pilih nominal tip. Bayar pakai saldo wallet atau transfer/QRIS lewat halaman pembayaran berikutnya.
             </Text>
-            <View className="mt-3 rounded-xl bg-ink-50 p-3">
-              <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">Saldo Wallet Kamu</Text>
-              <Text className="font-extrabold mt-0.5 text-base text-brand-700">{formatRupiah(walletBalance)}</Text>
-            </View>
             {(() => {
               const options = [10000, 20000, 50000, 100000];
               return (
-                <View className="mt-3 flex-row flex-wrap gap-2">
-                  {options.map((amt) => {
-                    const canAfford = walletBalance >= amt;
-                    return (
-                      <Pressable
-                        key={amt}
-                        disabled={!canAfford}
-                        onPress={async () => {
-                          try {
-                            const { api } = await import('../../src/lib/api');
-                            await api.post(`/bookings/${booking?.id}/tip`, { amount: amt });
-                            toast.success(`Tip ${formatRupiah(amt)} terkirim ke cleaner!`);
-                            setTipGiven(amt);
-                            setShowTip(false);
-                          } catch (e: any) {
-                            toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim tip');
-                          }
-                        }}
-                        style={!canAfford ? { opacity: 0.4 } : undefined}
-                        className={`min-w-[80px] items-center rounded-xl border px-3 py-2.5 ${canAfford ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-ink-50'}`}
-                      >
-                        <Text className={`font-extrabold text-[13px] ${canAfford ? 'text-brand-700' : 'text-ink-400'}`}>
-                          {formatRupiah(amt)}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                <View className="mt-4 flex-row flex-wrap gap-2">
+                  {options.map((amt) => (
+                    <Pressable
+                      key={amt}
+                      onPress={() => {
+                        setShowTip(false);
+                        router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking?.id ?? '', extra: 'tip', amount: String(amt) } });
+                      }}
+                      className="min-w-[80px] items-center rounded-xl border border-brand-600 bg-brand-50 px-3 py-2.5"
+                    >
+                      <Text className="font-extrabold text-[13px] text-brand-700">{formatRupiah(amt)}</Text>
+                    </Pressable>
+                  ))}
                 </View>
               );
             })()}
-            {walletBalance < 10000 && (
-              <View className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
-                <Text className="font-bold text-[11px] text-amber-900">Saldo wallet kurang</Text>
-                <Text className="font-medium mt-1 text-[11px] text-amber-800">
-                  Top-up wallet biar bisa kasih tip. Hubungi CS via WA untuk top-up sementara.
-                </Text>
-              </View>
-            )}
             <Pressable onPress={() => setShowTip(false)} className="mt-4 py-2">
               <Text className="font-semibold text-center text-xs text-ink-500">Lain Kali</Text>
             </Pressable>

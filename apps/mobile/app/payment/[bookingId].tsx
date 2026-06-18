@@ -109,7 +109,20 @@ const METHOD_META: Record<string, { logo?: any; label?: string }> = {
 
 function PaymentScreen() {
   const router = useRouter();
-  const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const params = useLocalSearchParams<{ bookingId: string; extra?: string; amount?: string }>();
+  const bookingId = params.bookingId;
+  // Extra mode: bayar tagihan tambahan (upcharge) atau tip - bukan pelunasan booking.
+  // Format: extra="upcharge:UUID" atau extra="tip"; amount=Rp untuk tip.
+  const extraType: 'upcharge' | 'tip' | null = (() => {
+    if (!params.extra) return null;
+    const head = params.extra.split(':')[0];
+    if (head === 'upcharge') return 'upcharge';
+    if (head === 'tip') return 'tip';
+    return null;
+  })();
+  const extraUpchargeId = extraType === 'upcharge' ? (params.extra?.split(':')[1] ?? null) : null;
+  const extraAmount = params.amount ? Number(params.amount) : 0;
+
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === bookingId));
   const syncBookings = useBookingsStore((s) => s.syncFromApi);
   const fetchOne = useBookingsStore((s) => s.fetchOne);
@@ -119,7 +132,11 @@ function PaymentScreen() {
   const [direct, setDirect] = useState<DirectResult | null>(null);
   const [paid, setPaid] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [upchargeAmount, setUpchargeAmount] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const totalToPay = extraType === 'upcharge' ? upchargeAmount : extraType === 'tip' ? extraAmount : (booking?.totalPrice ?? 0);
+  const headerLabel = extraType === 'upcharge' ? 'Bayar Charge Tambahan' : extraType === 'tip' ? 'Bayar Tip Cleaner' : 'Pilih Metode';
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
@@ -142,6 +159,16 @@ function PaymentScreen() {
     }
   }, [direct]);
 
+  // Fetch upcharge amount kalau mode extra=upcharge
+  useEffect(() => {
+    if (extraType !== 'upcharge' || !extraUpchargeId || !bookingId) return;
+    void api.get(`/bookings/${bookingId}/upcharges`).then((r) => {
+      const list = (r.data?.data ?? r.data ?? []) as any[];
+      const found = list.find((u) => u.id === extraUpchargeId);
+      if (found) setUpchargeAmount(Number(found.amount ?? 0));
+    }).catch(() => {});
+  }, [bookingId, extraType, extraUpchargeId]);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -162,10 +189,19 @@ function PaymentScreen() {
   }, [bookingId]);
 
   async function payWithSaldo() {
-    if (!bookingId || !booking) return;
+    if (!bookingId) return;
     setCreating(true);
     try {
-      await api.post(`/bookings/${bookingId}/pay`, { useCredit: true });
+      if (extraType === 'upcharge' && extraUpchargeId) {
+        // Pakai endpoint upcharge approve langsung (auto-deduct wallet kalau cukup)
+        await api.post(`/bookings/${bookingId}/upcharges/${extraUpchargeId}/approve`);
+        toast.success('Charge tambahan disetujui');
+      } else if (extraType === 'tip') {
+        await api.post(`/bookings/${bookingId}/tip`, { amount: extraAmount });
+        toast.success('Tip terkirim');
+      } else if (booking) {
+        await api.post(`/bookings/${bookingId}/pay`, { useCredit: true });
+      } else { return; }
       finishAndRedirect();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal bayar dengan saldo');
@@ -183,7 +219,21 @@ function PaymentScreen() {
     setPickingCode(senderBank);
     setCreating(true);
     try {
-      const res = await api.post('/payments/flip/create-direct', { bookingId, senderBank, senderBankType, useCredit });
+      const endpoint = extraType ? '/payments/flip/create-direct-extra' : '/payments/flip/create-direct';
+      const payload: any = extraType
+        ? {
+            bookingId,
+            type: extraType,
+            ...(extraType === 'upcharge' ? { upchargeId: extraUpchargeId } : { tipAmount: extraAmount }),
+            senderBank, senderBankType, useCredit,
+          }
+        : { bookingId, senderBank, senderBankType, useCredit };
+      const res = await api.post(endpoint, payload);
+      // Wallet covers full - backend balikin paidViaWallet=true, gak ada Flip QR.
+      if (res.data?.data?.paidViaWallet || res.data?.paidViaWallet) {
+        finishAndRedirect();
+        return;
+      }
       const data: DirectResult = res.data?.data ?? res.data;
       const hasNativeInstructions =
         Boolean(data.accountNumber)
@@ -199,14 +249,16 @@ function PaymentScreen() {
         const { Track } = await import('../../src/lib/analytics');
         Track.paymentStarted(String(bookingId), senderBank, data.amount);
       } catch {}
-      // Poll status
+      // Poll status. Extra mode: cuma cek payment status karena booking.status gak berubah.
       pollRef.current = setInterval(async () => {
         try {
-          await fetchOne(String(bookingId));
-          const latestBooking = useBookingsStore.getState().list.find((b) => b.id === bookingId);
-          if (latestBooking && latestBooking.status !== 'pending_payment') {
-            finishAndRedirect();
-            return;
+          if (!extraType) {
+            await fetchOne(String(bookingId));
+            const latestBooking = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+            if (latestBooking && latestBooking.status !== 'pending_payment') {
+              finishAndRedirect();
+              return;
+            }
           }
           const r = await api.get(`/payments/${data.paymentId}`);
           const status = (r.data?.data ?? r.data)?.status;
@@ -254,11 +306,12 @@ function PaymentScreen() {
   }
 
   useEffect(() => {
+    if (extraType) return; // Extra mode tidak terikat booking.status
     if (!booking || paid) return;
     if (booking.status !== 'pending_payment') {
       finishAndRedirect();
     }
-  }, [booking?.status, paid]);
+  }, [booking?.status, paid, extraType]);
 
   async function copyVa() {
     if (!direct?.accountNumber) return;
@@ -275,8 +328,8 @@ function PaymentScreen() {
             <ArrowLeft color="#0F172A" size={22} />
           </Pressable>
           <View className="flex-1">
-            <Text className="font-bold text-base text-ink-900">{paid ? 'Pembayaran Diterima' : direct ? 'Selesaikan Pembayaran' : 'Pilih Metode'}</Text>
-            {booking && <Text className="font-sans text-[11px] text-ink-500">Total: {formatRupiah(booking.totalPrice)}</Text>}
+            <Text className="font-bold text-base text-ink-900">{paid ? 'Pembayaran Diterima' : direct ? 'Selesaikan Pembayaran' : headerLabel}</Text>
+            {totalToPay > 0 && <Text className="font-sans text-[11px] text-ink-500">Total: {formatRupiah(totalToPay)}</Text>}
           </View>
           {direct?.expiredAt && !paid && <CountdownBadge expiredAt={direct.expiredAt} />}
         </View>
@@ -306,7 +359,7 @@ function PaymentScreen() {
             pickingCode={pickingCode}
             onPick={pickMethod}
             walletBalance={walletBalance}
-            total={booking?.totalPrice ?? 0}
+            total={totalToPay}
             onPaySaldo={payWithSaldo}
             useCredit={useCredit}
             setUseCredit={setUseCredit}
