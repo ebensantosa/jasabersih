@@ -192,10 +192,12 @@ function CustomBooking() {
     return d;
   }, [dateOptions, dateIdx, timeSlot, useNowTime]);
 
-  const { subtotal, totalBeforeOvertime, discount, totalMin, itemCount, summaryRows } = useMemo(() => {
-    let runningSubtotal = 0;
+  const { subtotal, totalBeforeOvertime, discount, totalMin, itemCount, mainItemCount, summaryRows } = useMemo(() => {
+    let runningMainSubtotal = 0;
+    let runningAddonSubtotal = 0;
     let runningMinutes = 0;
     let runningCount = 0;
+    let runningMainCount = 0;
     const rows: Array<{ key: string; label: string; qty: number; totalPrice: number }> = [];
 
     for (const room of rooms) {
@@ -208,9 +210,10 @@ function CustomBooking() {
           qty: selection.general,
           totalPrice,
         });
-        runningSubtotal += totalPrice;
+        runningMainSubtotal += totalPrice;
         runningMinutes += selection.general * room.durationMin;
         runningCount += selection.general;
+        runningMainCount += selection.general;
       }
       if (selection.deep > 0) {
         const deepPrice = applyCleanMode(room.price, 'deep', deepMultiplier);
@@ -221,9 +224,10 @@ function CustomBooking() {
           qty: selection.deep,
           totalPrice,
         });
-        runningSubtotal += totalPrice;
+        runningMainSubtotal += totalPrice;
         runningMinutes += selection.deep * Math.ceil(room.durationMin * deepMultiplier);
         runningCount += selection.deep;
+        runningMainCount += selection.deep;
       }
     }
 
@@ -237,19 +241,21 @@ function CustomBooking() {
           qty,
           totalPrice,
         });
-        runningSubtotal += totalPrice;
+        runningAddonSubtotal += totalPrice;
         runningMinutes += qty * extra.durationMin;
         runningCount += qty;
       }
     }
 
-    const discountValue = emptyHouse ? Math.round((runningSubtotal * emptyHouseDiscountRate) / 1000) * 1000 : 0;
+    const subtotalValue = runningMainSubtotal + runningAddonSubtotal;
+    const discountValue = emptyHouse ? Math.round((runningMainSubtotal * emptyHouseDiscountRate) / 1000) * 1000 : 0;
     return {
-      subtotal: runningSubtotal,
-      totalBeforeOvertime: runningSubtotal - discountValue,
+      subtotal: subtotalValue,
+      totalBeforeOvertime: subtotalValue - discountValue,
       discount: discountValue,
       totalMin: runningMinutes,
       itemCount: runningCount,
+      mainItemCount: runningMainCount,
       summaryRows: rows,
     };
   }, [rooms, extras, roomCounts, extraCounts, emptyHouse, deepMultiplier]);
@@ -361,8 +367,8 @@ function CustomBooking() {
   }
 
   async function submit() {
-    if (itemCount === 0) {
-      toast.error('Pilih minimal 1 layanan');
+    if (mainItemCount === 0) {
+      toast.error('Pilih minimal 1 layanan utama. Add-on tidak bisa dipesan sendiri.');
       return;
     }
     if (!address.trim()) {
@@ -797,15 +803,18 @@ function CustomBooking() {
                 <Text className="text-lg font-extrabold text-brand-700">{formatRupiah(total)}</Text>
               </View>
               {itemCount > 0 && <Text className="text-[10px] text-ink-500">{itemCount} item dipilih</Text>}
+              {mainItemCount === 0 && itemCount > 0 && (
+                <Text className="text-[10px] text-amber-700">Add-on tidak bisa dipesan tanpa layanan utama.</Text>
+              )}
             </View>
             <View className="p-4">
               <Pressable
                 onPress={submit}
-                disabled={submitting || itemCount === 0}
-                className={`h-12 items-center justify-center rounded-2xl ${itemCount === 0 ? 'bg-ink-300' : 'bg-brand-600'}`}
+                disabled={submitting || mainItemCount === 0}
+                className={`h-12 items-center justify-center rounded-2xl ${mainItemCount === 0 ? 'bg-ink-300' : 'bg-brand-600'}`}
               >
                 <Text className="text-sm font-bold text-white">
-                  {submitting ? 'Memproses...' : itemCount === 0 ? 'Pilih layanan dulu' : 'Buat Pesanan'}
+                  {submitting ? 'Memproses...' : mainItemCount === 0 ? 'Pilih layanan utama dulu' : 'Buat Pesanan'}
                 </Text>
               </Pressable>
             </View>
