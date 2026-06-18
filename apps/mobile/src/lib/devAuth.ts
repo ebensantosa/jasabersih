@@ -9,7 +9,7 @@ const API_BASE =
 
 export type AuthResult = {
   tokens: AuthTokens;
-  user: { email: string; name: string; mode: 'customer' | 'freelancer' };
+  user: { email: string; name: string; mode: 'customer' | 'freelancer'; kycStatus?: string | null };
 };
 
 // AbortSignal.timeout() not in Hermes - pakai manual controller.
@@ -42,7 +42,7 @@ export async function login(email: string, password: string): Promise<AuthResult
   }
 
   // Fetch real profile using the freshly-issued access token
-  let user: AuthResult['user'] = { email, name: email, mode: 'customer' };
+  let user: AuthResult['user'] = { email, name: email, mode: 'customer', kycStatus: null };
   try {
     const me = await fetch(`${API_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
@@ -55,7 +55,24 @@ export async function login(email: string, password: string): Promise<AuthResult
         email: p.email ?? email,
         name: p.name ?? p.phone ?? email,
         mode: p.mode === 'freelancer' ? 'freelancer' : 'customer',
+        kycStatus: null,
       };
+
+      if (user.mode === 'freelancer') {
+        try {
+          const cleanerProfile = await fetch(`${API_BASE}/cleaner/profile`, {
+            headers: { Authorization: `Bearer ${tokens.accessToken}` },
+            signal: timeoutSignal(8_000),
+          });
+          if (cleanerProfile.ok) {
+            const cleanerJson = await cleanerProfile.json();
+            const cp = cleanerJson.data ?? cleanerJson;
+            user.kycStatus = cp?.kycStatus ?? null;
+          }
+        } catch {
+          // fall back to gate/overlay when profile fetch is unavailable
+        }
+      }
     }
   } catch { /* ignore - fall back to placeholder */ }
 

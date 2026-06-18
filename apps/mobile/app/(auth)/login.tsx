@@ -11,6 +11,7 @@ import { useT } from '../../src/lib/i18n';
 import { login } from '../../src/lib/devAuth';
 import { useAuthStore } from '../../src/stores/auth';
 import { useCleanerStore } from '../../src/stores/cleaner';
+import { useCleanerKycStore } from '../../src/stores/cleanerKyc';
 import { useModeStore } from '../../src/stores/mode';
 import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
@@ -23,6 +24,7 @@ export default function Login() {
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
   const setCleanerName = useCleanerStore((s) => s.setName);
+  const setCleanerKycStatus = useCleanerKycStore((s) => s.setStatus);
   const fetchUser = useUserStore((s) => s.fetch);
 
   const [loginAs, setLoginAs] = useState<'customer' | 'freelancer'>('customer');
@@ -78,7 +80,10 @@ export default function Login() {
       setMode(result.user.mode);
       // Fetch full profile from /auth/me - populates name/phone/email/photo for Profile tab
       void fetchUser();
-      if (result.user.mode === 'freelancer') setCleanerName(result.user.name);
+      if (result.user.mode === 'freelancer') {
+        setCleanerName(result.user.name);
+        setCleanerKycStatus(result.user.kycStatus ?? null);
+      }
       // Toast 'Selamat datang' hanya untuk customer.
       // Cleaner: skip - KYC gate akan show context yang lebih relevant
       if (result.user.mode === 'customer') {
@@ -87,7 +92,11 @@ export default function Login() {
       // Cleaner: jangan ke (tabs) dulu - CleanerLockOverlay handle routing
       // berdasarkan KYC status (approved → tabs/jobs, else → cleaner/kyc)
       const safeNext = getSafeNextPath(next);
-      router.replace(result.user.mode === 'freelancer' ? '/cleaner/kyc' : (safeNext ?? '/(tabs)'));
+      if (result.user.mode === 'freelancer') {
+        router.replace(result.user.kycStatus === 'approved' ? '/(tabs)/jobs' : '/cleaner/kyc');
+      } else {
+        router.replace(safeNext ?? '/(tabs)');
+      }
     } catch (e) {
       const raw = (e as Error).message ?? 'Login gagal';
       // Map pesan teknis backend ke pesan ramah user.
