@@ -3,10 +3,8 @@ module.exports = {
     {
       name: 'jasabersih-api',
       cwd: '/var/www/jasabersih/apps/api',
-      script: 'pnpm',
-      args: 'exec node -r ts-node/register src/main.ts',
-      interpreter: 'none',
-      node_args: '--no-warnings --dns-result-order=ipv4first',
+      script: '/bin/bash',
+      args: "-lc 'cd /var/www/jasabersih/apps/api && exec node --no-warnings --dns-result-order=ipv4first -r ts-node/register src/main.ts'",
       instances: 1,
       exec_mode: 'fork',
       env: {
