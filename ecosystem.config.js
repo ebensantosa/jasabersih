@@ -22,7 +22,7 @@ module.exports = {
       name: 'jasabersih-admin',
       cwd: '/var/www/jasabersih/apps/admin',
       script: 'pnpm',
-      args: 'exec next start -p 3000',
+      args: 'exec next start -p 3001',
       interpreter: 'none',
       instances: 1,
       exec_mode: 'fork',
