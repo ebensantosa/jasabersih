@@ -233,7 +233,9 @@ function BookingDetail() {
     api.get(`/ratings/booking/${id}`).then((r) => {
       const data = (r.data?.data ?? r.data) as BookingRating;
       setBookingRating(data ?? null);
-      setHasRated(!!data);
+      // Cek rating value, bukan object existence - backend bisa return object kosong
+      // (e.g. row exists tapi rating null kalau cuma tip diberi tanpa rating).
+      setHasRated(!!(data && typeof data.rating === 'number' && data.rating > 0));
       if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
     }).catch(() => {});
   }, [id, booking?.status]);
@@ -507,7 +509,7 @@ function BookingDetail() {
           </View>
         </SafeAreaView>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingBottom: booking.status === 'completed' ? 200 : 120 }} showsVerticalScrollIndicator={false}>
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <View className="flex-row items-center gap-3">
               <CategoryIcon
