@@ -117,7 +117,7 @@ function CleanerBankAccounts() {
 
   async function setDefault(id: string) {
     try {
-      await api.patch(`/cleaner/bank-accounts/${id}/default`);
+      await api.patch(`/cleaner/bank-accounts/${id}/set-default`);
       toast.success('Rekening utama di-update');
       void load();
     } catch (e: any) {
