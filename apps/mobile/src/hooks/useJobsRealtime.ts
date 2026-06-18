@@ -18,8 +18,21 @@ export function useJobsRealtime() {
   const areas = useCleanerStore((s) => s.serviceAreas);
   const [incoming, setIncoming] = useState<IncomingJob | null>(null);
   const [takenIds, setTakenIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const onlineRef = useRef(false);
   const lastSurfacedIdRef = useRef<string | null>(null);
+  const SEARCH_TIMEOUT_SEC = 15 * 60;
+
+  function isPopupEligible(job: IncomingJob): boolean {
+    if (!job?.id) return false;
+    if (takenIds.has(job.id)) return false;
+    if (dismissedIds.has(job.id)) return false;
+    if (!matchesArea(job)) return false;
+    const createdAtMs = job.createdAt ? Date.parse(job.createdAt) : Date.now();
+    if (!Number.isFinite(createdAtMs)) return true;
+    const elapsedSec = Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000));
+    return elapsedSec < SEARCH_TIMEOUT_SEC;
+  }
 
   function matchesArea(job: IncomingJob): boolean {
     const normalizedAreas = areas
@@ -49,7 +62,7 @@ export function useJobsRealtime() {
       });
     }
     function onIncoming(job: IncomingJob) {
-      if (!matchesArea(job)) return;
+      if (!isPopupEligible(job)) return;
       lastSurfacedIdRef.current = job.id;
       setIncoming((prev) => prev ?? job); // Don't replace if already showing one
     }
@@ -78,12 +91,7 @@ export function useJobsRealtime() {
     if (incoming) return;
     try {
       const r = await api.get('/cleaner/jobs/available');
-      const list = ((r.data?.data ?? r.data ?? []) as IncomingJob[]).filter((job) => {
-        if (!job?.id) return false;
-        if (takenIds.has(job.id)) return false;
-        if (!matchesArea(job)) return false;
-        return true;
-      });
+      const list = ((r.data?.data ?? r.data ?? []) as IncomingJob[]).filter((job) => isPopupEligible(job));
       const next = list.find((job) => job.id !== lastSurfacedIdRef.current) ?? list[0];
       if (!next) return;
       lastSurfacedIdRef.current = next.id;
@@ -97,13 +105,25 @@ export function useJobsRealtime() {
   }, [fallbackEnabled]);
   useVisiblePoll(pullAvailableFallback, 12_000, fallbackEnabled);
 
-  function dismiss() { setIncoming(null); }
+  function dismiss(bookingId?: string) {
+    if (bookingId) {
+      setDismissedIds((prev) => new Set(prev).add(bookingId));
+    }
+    setIncoming(null);
+  }
 
   function accept(bookingId: string): Promise<{ ok: boolean; error?: string }> {
     const socket = getJobsSocket();
     return new Promise((resolve) => {
       socket.emit('accept-job', { bookingId }, (res: { ok: boolean; error?: string }) => {
-        if (res?.ok) setIncoming(null);
+        if (res?.ok) {
+          setIncoming(null);
+          setDismissedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(bookingId);
+            return next;
+          });
+        }
         resolve(res ?? { ok: false, error: 'no response' });
       });
     });

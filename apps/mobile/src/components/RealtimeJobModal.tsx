@@ -33,7 +33,7 @@ export function RealtimeJobModal() {
   }, [incoming?.id]);
 
   useEffect(() => {
-    if (incoming && secLeft <= 0) dismiss();
+    if (incoming && secLeft <= 0) dismiss(incoming.id);
   }, [secLeft, incoming, dismiss]);
 
   if (!incoming) return null;
@@ -58,7 +58,7 @@ export function RealtimeJobModal() {
   const remainingLabel = secLeft >= 60 ? `${minLeft} menit` : `${secLeft} detik`;
 
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={dismiss}>
+    <Modal visible animationType="slide" transparent onRequestClose={() => dismiss(incoming.id)}>
       <View className="flex-1 justify-end bg-black/60">
         <View className="rounded-t-3xl bg-white">
           <LinearGradient colors={['#1D4ED8', '#0F766E']} className="rounded-t-3xl px-5 pb-5 pt-4">
@@ -115,7 +115,7 @@ export function RealtimeJobModal() {
 
           <SafeAreaView edges={['bottom']} className="border-t border-ink-100 bg-white">
             <View className="flex-row gap-3 px-5 pb-4 pt-4">
-              <Pressable onPress={dismiss} className="flex-1 items-center justify-center rounded-2xl border border-ink-300 bg-white py-3.5">
+              <Pressable onPress={() => dismiss(incoming.id)} className="flex-1 items-center justify-center rounded-2xl border border-ink-300 bg-white py-3.5">
                 <View className="flex-row items-center gap-1.5">
                   <X color="#475569" size={16} />
                   <Text className="font-semibold text-sm text-ink-700">Lewati</Text>
