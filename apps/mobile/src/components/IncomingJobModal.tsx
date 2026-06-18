@@ -159,6 +159,8 @@ export function IncomingJobModal() {
   const earning = calculateCleanerEarning(incoming.totalPrice, bringsTools);
   const sharePct = Math.round(calculateCleanerShare(incoming.totalPrice, bringsTools) * 100);
   const minuteLeft = Math.floor(secondsLeft / 60);
+  const secondPart = secondsLeft % 60;
+  const remainingLabel = `${String(minuteLeft).padStart(2, '0')}:${String(secondPart).padStart(2, '0')}`;
 
   return (
     <Modal visible animationType="slide" presentationStyle="overFullScreen" transparent>
@@ -184,8 +186,8 @@ export function IncomingJobModal() {
                 </Text>
               </View>
               <View className="items-center justify-center rounded-full bg-white/15 px-3 py-2">
-                <Text className="font-bold text-lg text-white">{secondsLeft >= 60 ? minuteLeft : secondsLeft}</Text>
-                <Text className="font-medium text-[9px] text-white/70">{secondsLeft >= 60 ? 'menit' : 'detik'}</Text>
+                <Text className="font-bold text-lg text-white">{remainingLabel}</Text>
+                <Text className="font-medium text-[9px] text-white/70">menit : detik</Text>
               </View>
             </View>
           </LinearGradient>
@@ -298,7 +300,7 @@ export function IncomingJobModal() {
               <View className="flex-row items-center gap-1.5">
                 <Wallet color="#94A3B8" size={11} />
                 <Text className="font-medium text-[10px] text-ink-500">
-                  Offer ini mengikuti sisa waktu pencarian customer: {secondsLeft >= 60 ? `${minuteLeft} menit` : `${secondsLeft} detik`}
+                  Offer ini mengikuti sisa waktu pencarian customer: {remainingLabel}
                 </Text>
               </View>
             </View>

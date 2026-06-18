@@ -55,7 +55,8 @@ export function RealtimeJobModal() {
   const payout = Number(incoming.cleanerPayout ?? 0);
   const pct = (secLeft / SEARCH_TIMEOUT_SEC) * 100;
   const minLeft = Math.floor(secLeft / 60);
-  const remainingLabel = secLeft >= 60 ? `${minLeft} menit` : `${secLeft} detik`;
+  const secPart = secLeft % 60;
+  const remainingLabel = `${String(minLeft).padStart(2, '0')}:${String(secPart).padStart(2, '0')}`;
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={() => dismiss(incoming.id)}>
@@ -82,8 +83,8 @@ export function RealtimeJobModal() {
                 </Text>
               </View>
               <View className="min-w-[70px] rounded-2xl bg-white/15 px-3 py-2">
-                <Text className="text-center font-extrabold text-2xl text-white">{secLeft >= 60 ? minLeft : secLeft}</Text>
-                <Text className="text-center text-[10px] text-white/75">{secLeft >= 60 ? 'menit' : 'detik'}</Text>
+                <Text className="text-center font-extrabold text-2xl text-white">{remainingLabel}</Text>
+                <Text className="text-center text-[10px] text-white/75">menit : detik</Text>
               </View>
             </View>
           </LinearGradient>
