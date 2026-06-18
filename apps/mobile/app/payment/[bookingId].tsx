@@ -447,7 +447,11 @@ function MethodPicker({
   const getMethod = (code: string) => methods.find((method) => method.senderBank === code || method.code === code.toUpperCase());
   const getStatus = (code: string): 'normal' | 'delayed' | 'down' => getMethod(code)?.status ?? 'normal';
   const getMessage = (code: string) => getMethod(code)?.message ?? '';
-  const vaMethods = VA_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'virtual_account');
+  // Flip VA minimum Rp 10.000 - hide VA section kalau remaining di bawah itu.
+  // E-wallet & QRIS support nominal lebih kecil jadi tetap ditampilkan.
+  const VA_MIN_AMOUNT = 10000;
+  const belowVaMin = remaining > 0 && remaining < VA_MIN_AMOUNT;
+  const vaMethods = belowVaMin ? [] : VA_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'virtual_account');
   const ewalletMethods = EWALLET_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'wallet_account');
 
   return (
@@ -556,6 +560,15 @@ function MethodPicker({
           );
         })()}
       </View>
+      )}
+
+      {belowVaMin && (
+        <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <Text className="font-bold text-[11px] text-amber-900">Transfer Bank disembunyikan</Text>
+          <Text className="font-medium mt-1 text-[11px] text-amber-800">
+            Minimum transaksi VA bank Rp 10.000. Untuk nominal lebih kecil pakai QRIS atau e-wallet.
+          </Text>
+        </View>
       )}
 
       {vaMethods.length > 0 && (
