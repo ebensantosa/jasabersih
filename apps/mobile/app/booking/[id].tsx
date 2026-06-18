@@ -16,7 +16,7 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -80,6 +80,14 @@ function getCleanerHeaderLabel(status: BookingStatus) {
   }
 }
 
+type BookingRating = {
+  id: string;
+  rating: number;
+  review?: string | null;
+  tipAmount?: number;
+  createdAt?: string;
+} | null;
+
 function BookingDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -100,6 +108,7 @@ function BookingDetail() {
   const [showDispute, setShowDispute] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  const [bookingRating, setBookingRating] = useState<BookingRating>(null);
   const [advancing, setAdvancing] = useState(false);
   const [photoSummary, setPhotoSummary] = useState({ beforeCount: 0, afterCount: 0, damageCount: 0 });
   const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
@@ -187,9 +196,22 @@ function BookingDetail() {
   useEffect(() => {
     if (!id || id.startsWith('bk_') || booking?.status !== 'completed') return;
     api.get(`/ratings/booking/${id}`).then((r) => {
-      if (r.data?.data) setHasRated(true);
+      const data = (r.data?.data ?? r.data) as BookingRating;
+      setBookingRating(data ?? null);
+      setHasRated(!!data);
+      if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
     }).catch(() => {});
   }, [id, booking?.status]);
+  const previousStatusRef = useRef<string | undefined>(booking?.status);
+  useEffect(() => {
+    const prev = previousStatusRef.current;
+    const next = booking?.status;
+    if (!next) return;
+    if (!isCleaner && prev && prev !== 'completed' && next === 'completed') {
+      router.replace('/(tabs)/bookings');
+    }
+    previousStatusRef.current = next;
+  }, [booking?.status, isCleaner, router]);
   // Dispute hanya bisa dilaporkan setelah booking ada cleaner_id (matched/in_progress/completed)
   const canDispute = booking
     && !id?.startsWith('bk_')
@@ -790,6 +812,55 @@ function BookingDetail() {
           {!booking.id.startsWith('bk_') && booking.status !== 'searching' && (
             <View className="mx-4 mt-3">
               <BookingTimeline bookingId={booking.id} status={booking.status} />
+            </View>
+          )}
+
+          {isCleaner && booking.status === 'completed' && (
+            <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
+              <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
+                Rating Customer
+              </Text>
+              {bookingRating ? (
+                <View className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <View className="flex-row items-center justify-between gap-3">
+                    <View>
+                      <Text className="font-bold text-sm text-amber-950">Penilaian untuk pekerjaan ini</Text>
+                      <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                        Customer sudah mengirim rating setelah job selesai.
+                      </Text>
+                    </View>
+                    <View className="rounded-2xl bg-white px-3 py-2">
+                      <Text className="text-center font-extrabold text-lg text-amber-700">
+                        {Number(bookingRating.rating).toFixed(1)}
+                      </Text>
+                      <Text className="text-center font-medium text-[10px] text-amber-700">dari 5</Text>
+                    </View>
+                  </View>
+                  {!!bookingRating.review && (
+                    <View className="mt-3 rounded-xl bg-white/80 p-3">
+                      <Text className="font-semibold text-[11px] uppercase tracking-wider text-ink-400">Ulasan</Text>
+                      <Text className="font-sans mt-1 text-sm leading-5 text-ink-800">
+                        {bookingRating.review}
+                      </Text>
+                    </View>
+                  )}
+                  {Number(bookingRating.tipAmount ?? 0) > 0 && (
+                    <View className="mt-3 flex-row items-center justify-between rounded-xl bg-emerald-50 px-3 py-2.5">
+                      <Text className="font-semibold text-sm text-emerald-900">Tip tambahan</Text>
+                      <Text className="font-bold text-sm text-emerald-700">
+                        {formatRupiah(Number(bookingRating.tipAmount ?? 0))}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View className="rounded-2xl border border-ink-200 bg-ink-50 p-4">
+                  <Text className="font-bold text-sm text-ink-800">Rating belum masuk</Text>
+                  <Text className="font-medium mt-1 text-[11px] leading-4 text-ink-500">
+                    Kalau customer sudah memberi rating nanti akan tampil di halaman detail job ini.
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 

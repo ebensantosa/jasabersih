@@ -147,9 +147,24 @@ export class RatingsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async forBooking(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const bookings = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string | null }[]>`
+      SELECT customer_id, cleaner_id
+        FROM bookings
+       WHERE id = ${id}::uuid
+       LIMIT 1
+    `;
+    const booking = bookings[0];
+    if (!booking) throw new NotFoundException('Booking tidak ditemukan.');
+    if (booking.customer_id !== user.id && booking.cleaner_id !== user.id) {
+      throw new ForbiddenException('Kamu tidak punya akses ke rating booking ini.');
+    }
+
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, rating, review, tip_amount AS "tipAmount", created_at AS "createdAt"
-        FROM ratings WHERE booking_id = ${id}::uuid AND rater_id = ${user.id}::uuid LIMIT 1
+        FROM ratings
+       WHERE booking_id = ${id}::uuid
+       ORDER BY created_at DESC
+       LIMIT 1
     `;
     return rows[0] ?? null;
   }
