@@ -149,33 +149,12 @@ export default function RootLayout() {
       if (!useAuthStore.getState().tokens) {
         useAuthStore.getState().logout();
         setAuthReady(true);
+        return;
       }
-      // Validate token via /auth/me first; only fire other syncs if profile fetch succeeds
-      setTimeout(() => {
-        if (!useAuthStore.getState().tokens) return;
-        void (async () => {
-          try {
-            await refreshAuth();
-          } catch {
-            useAuthStore.getState().logout();
-            setAuthReady(true);
-            return;
-          }
-          const profile = await fetchUser();
-          if (!profile) {
-            useAuthStore.getState().logout();
-            setAuthReady(true);
-            return;
-          }
-          await syncSessionData(profile);
-          void registerForPushAsync().catch(() => {});
-          setAuthReady(true);
-        })();
-      }, 500);
+      setAuthReady(false);
     });
   }, [
     hydrateAuth,
-    refreshAuth,
     hydrateMode,
     hydrateCleaner,
     hydrateBookings,
@@ -206,8 +185,16 @@ export default function RootLayout() {
     lastBootstrappedTokenRef.current = accessToken;
     trackEvent('app_open');
     void (async () => {
+      try {
+        await refreshAuth();
+      } catch {
+        useAuthStore.getState().logout();
+        setAuthReady(true);
+        return;
+      }
       const profile = await fetchUser();
       if (!profile) {
+        useAuthStore.getState().logout();
         setAuthReady(true);
         return;
       }
@@ -216,7 +203,7 @@ export default function RootLayout() {
       void registerForPushAsync().catch(() => {});
       setAuthReady(true);
     })();
-  }, [accessToken, fetchUser, syncAddresses, syncBookings, syncWallet]);
+  }, [accessToken, refreshAuth, fetchUser, syncAddresses, syncBookings, syncWallet]);
 
   // Notification tap → deep link
   useEffect(() => {

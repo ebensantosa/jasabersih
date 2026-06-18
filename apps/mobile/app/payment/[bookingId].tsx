@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Building2, CheckCircle2, Copy, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
@@ -149,8 +150,13 @@ function PaymentScreen() {
       } catch { /* ignore */ }
       try {
         const { storage } = await import('../../src/lib/storage');
-        const flag = storage.getString(`useCredit:${bookingId}`);
+        const key = `useCredit:${bookingId}`;
+        const flag = storage.getString(key) ?? await AsyncStorage.getItem(key) ?? undefined;
         if (flag === '1') setUseCredit(true);
+        storage.delete(key);
+        const allKeys = await AsyncStorage.getAllKeys();
+        const staleKeys = allKeys.filter((item) => item.startsWith('useCredit:'));
+        if (staleKeys.length > 0) await AsyncStorage.multiRemove(staleKeys);
       } catch { /* ignore */ }
     })();
   }, [bookingId]);
