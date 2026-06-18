@@ -9,7 +9,8 @@ export function getAllowedOrigins(): string[] {
     'http://localhost:8082',
     'http://localhost:19006',
   ];
-  return (process.env.CORS_ORIGINS ?? defaultOrigins.join(','))
+  const rawOrigins = process.env.CORS_ORIGINS?.trim();
+  return (rawOrigins ? rawOrigins : defaultOrigins.join(','))
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
@@ -17,6 +18,10 @@ export function getAllowedOrigins(): string[] {
 
 function normalizeOrigin(origin: string): string {
   return origin.trim().replace(/\/$/, '').toLowerCase();
+}
+
+function isTrustedJasaBersihHost(hostname: string): boolean {
+  return hostname === 'jasabersih.com' || hostname.endsWith('.jasabersih.com');
 }
 
 export function isAllowedOrigin(origin?: string): boolean {
@@ -29,6 +34,9 @@ export function isAllowedOrigin(origin?: string): boolean {
     const url = new URL(normalized);
     const isLocalDevHost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
     if (isLocalDevHost) return true;
+    if ((url.protocol === 'http:' || url.protocol === 'https:') && isTrustedJasaBersihHost(url.hostname)) {
+      return true;
+    }
   } catch {
     return false;
   }
