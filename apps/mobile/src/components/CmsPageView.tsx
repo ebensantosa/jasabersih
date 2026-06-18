@@ -5,6 +5,112 @@ import { api } from '../lib/api';
 
 type Page = { slug: string; title: string; bodyMarkdown: string; updatedAt: string };
 
+const LOCAL_CMS_FALLBACKS: Record<string, Page> = {
+  about: {
+    slug: 'about',
+    title: 'Tentang JasaBersih',
+    updatedAt: '2026-06-18T00:00:00.000Z',
+    bodyMarkdown: `# Tentang JasaBersih
+
+JasaBersih.com adalah platform marketplace cleaning service di Indonesia yang menghubungkan customer dengan cleaner profesional terverifikasi.
+
+## Misi Kami
+Menyediakan layanan kebersihan **berkualitas, transparan, dan aman** untuk semua orang.
+
+## Kenapa JasaBersih
+- Cleaner terverifikasi
+- Harga jelas
+- Garansi pekerjaan
+- Pembayaran aman
+- Proses booking praktis
+
+## Kontak
+- Email: halo@jasabersih.com
+- WhatsApp: 6285124363374`,
+  },
+  faq: {
+    slug: 'faq',
+    title: 'FAQ',
+    updatedAt: '2026-06-18T00:00:00.000Z',
+    bodyMarkdown: `# Frequently Asked Questions
+
+## Pembatalan dan Refund
+
+### Bagaimana cara membatalkan pesanan?
+Buka halaman pesanan, pilih order yang ingin dibatalkan, lalu tekan tombol batal jika status masih memungkinkan.
+
+### Apakah ada biaya pembatalan?
+- Pembatalan sesuai ketentuan waktu yang berlaku tidak dikenakan biaya.
+- Pembatalan mendadak dapat dikenakan potongan sesuai syarat layanan.
+
+## Cleaner dan Pekerjaan
+
+### Bagaimana kalau cleaner tidak datang?
+Gunakan fitur chat atau laporkan masalah melalui aplikasi agar tim kami bisa bantu tindak lanjut.
+
+### Bisa pilih cleaner tertentu?
+Penugasan cleaner mengikuti sistem dan ketersediaan area, tetapi preferensi tertentu bisa disampaikan saat pemesanan.
+
+## Pembayaran
+
+### Metode pembayaran apa saja yang tersedia?
+Metode pembayaran mengikuti yang aktif di aplikasi, termasuk VA, QRIS, dan e-wallet yang tersedia.
+
+### Kenapa harus bayar lewat aplikasi?
+Pembayaran melalui aplikasi menjaga keamanan transaksi, pencatatan pesanan, dan proses bantuan jika ada kendala.`,
+  },
+  privacy: {
+    slug: 'privacy',
+    title: 'Kebijakan Privasi',
+    updatedAt: '2026-06-18T00:00:00.000Z',
+    bodyMarkdown: `# Kebijakan Privasi
+
+Kami menjaga data pribadi pelanggan dan cleaner sesuai kebutuhan operasional layanan.
+
+## Data yang Kami Kumpulkan
+- Nama
+- Nomor HP
+- Email
+- Alamat
+- Data transaksi dan riwayat pesanan
+
+## Penggunaan Data
+- Memproses pesanan
+- Menghubungkan customer dengan cleaner
+- Mengirim notifikasi layanan
+- Meningkatkan keamanan dan kualitas sistem
+
+## Perlindungan Data
+Kami tidak menjual data pribadi ke pihak ketiga. Data hanya digunakan untuk operasional layanan dan kewajiban hukum yang berlaku.`,
+  },
+  terms: {
+    slug: 'terms',
+    title: 'Syarat & Ketentuan',
+    updatedAt: '2026-06-18T00:00:00.000Z',
+    bodyMarkdown: `# Syarat dan Ketentuan Layanan JasaBersih.com
+
+Dengan melakukan pemesanan, pelanggan menyetujui seluruh syarat dan ketentuan layanan JasaBersih.com.
+
+## Ringkasan Utama
+- Pemesanan dilakukan melalui kanal resmi JasaBersih.com
+- Pembayaran mengikuti metode yang tersedia di aplikasi atau kanal resmi
+- Komplain dan garansi layanan harus diajukan melalui chat resmi
+- Komunikasi atau transaksi di luar kanal resmi berada di luar tanggung jawab management
+
+## Pembatalan dan Reschedule
+- Pembatalan mengikuti kebijakan waktu yang berlaku
+- Reschedule tergantung ketersediaan jadwal
+
+## Garansi
+- Keluhan hasil kerja dapat diajukan maksimal 1 x 24 jam sesuai ketentuan layanan
+
+## Keamanan
+- Pelanggan disarankan tidak memberikan nomor pribadi atau melakukan transaksi langsung ke cleaner
+
+Untuk versi lengkap terbaru, halaman ini akan otomatis memakai konten CMS saat server tersedia.`,
+  },
+};
+
 // Lightweight markdown renderer - handles headings (#, ##, ###), bullets (- or *),
 // bold (**text**), and paragraphs. Cukup untuk halaman statis CMS.
 function renderMarkdown(md: string): React.ReactNode {
@@ -69,13 +175,18 @@ export function CmsPageView({ slug, fallbackTitle }: { slug: string; fallbackTit
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    const localFallback = LOCAL_CMS_FALLBACKS[slug] ?? null;
     api.get(`/app/pages/${slug}`)
       .then((r) => {
         const data = r.data?.data ?? r.data;
         if (data) setPage(data as Page);
+        else if (localFallback) setPage(localFallback);
         else setNotFound(true);
       })
-      .catch(() => setNotFound(true))
+      .catch(() => {
+        if (localFallback) setPage(localFallback);
+        else setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 

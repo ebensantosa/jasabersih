@@ -118,22 +118,23 @@ function BookingDetail() {
   async function loadUpcharges() {
     if (!id || id.startsWith('bk_')) return;
     try {
-      const r = await api.get(`/bookings/${id}/upcharges`);
+      const path = isCleaner ? `/cleaner/jobs/${id}/upcharges` : `/bookings/${id}/upcharges`;
+      const r = await api.get(path);
       setUpcharges((r.data?.data ?? r.data ?? []) as any[]);
     } catch { /* silent */ }
   }
-  useEffect(() => { void loadUpcharges(); }, [id]);
+  useEffect(() => { void loadUpcharges(); }, [id, isCleaner]);
 
   // Fetch subscription child visits kalau parent
   async function loadSubscriptionVisits() {
-    if (!id || id.startsWith('bk_')) return;
+    if (!id || id.startsWith('bk_') || isCleaner) return;
     try {
       const r = await api.get(`/bookings/${id}/subscription-visits`);
       const list = (r.data?.data ?? r.data ?? []) as any[];
       if (list.length > 0) setSubscriptionVisits(list as any);
     } catch { /* silent - not a subscription parent */ }
   }
-  useEffect(() => { void loadSubscriptionVisits(); }, [id]);
+  useEffect(() => { void loadSubscriptionVisits(); }, [id, isCleaner]);
 
   async function approveUpcharge(upchargeId: string) {
     try {
