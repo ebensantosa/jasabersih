@@ -106,7 +106,7 @@ export default function Bookings() {
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 16, gap: 10 }}
-          refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void syncFromApi()} />}
+          refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void syncFromApi(true)} />}
         >
           {visibleList.map((b) => {
             const c = STATUS_COLOR[b.status] ?? { bg: '#F1F5F9', fg: '#475569' };

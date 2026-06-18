@@ -7,6 +7,10 @@ import { useModeStore } from './mode';
 
 const BOOKINGS_KEY = 'bookings.list';
 const MAX_PERSISTED_BOOKINGS = 30;
+const BOOKINGS_SYNC_STALE_MS = 10_000;
+
+let bookingsSyncPromise: Promise<void> | null = null;
+let bookingsLastSyncedAt = 0;
 
 function safeIsoDate(v: any): string {
   if (typeof v === 'string' && v) {
@@ -161,7 +165,7 @@ type State = {
   hydrate: () => void;
   setListInternal: (list: Booking[]) => void;
   // API integration - pull server state, push local mutations
-  syncFromApi: () => Promise<void>;
+  syncFromApi: (force?: boolean) => Promise<void>;
   /** Fetch a single booking by id from server (works for cleaner too) and seed into list. */
   fetchOne: (id: string) => Promise<void>;
   syncing: boolean;
@@ -201,9 +205,12 @@ export const useBookingsStore = create<State>((set, get) => ({
     storage.delete(BOOKINGS_KEY);
     set({ list: [], hydrated: true, syncError: null });
   },
-  async syncFromApi() {
+  async syncFromApi(force = false) {
+    if (!force && bookingsSyncPromise) return bookingsSyncPromise;
+    if (!force && bookingsLastSyncedAt && Date.now() - bookingsLastSyncedAt < BOOKINGS_SYNC_STALE_MS) return;
     set({ syncing: true, syncError: null });
-    try {
+    bookingsSyncPromise = (async () => {
+      try {
       const mode = useModeStore.getState().mode;
       const items: any[] = mode === 'freelancer'
         ? await (async () => {
@@ -273,10 +280,15 @@ export const useBookingsStore = create<State>((set, get) => ({
       const localOnly = local.filter((b) => !serverIds.has(b.id));
       const merged = [...serverMapped, ...localOnly].slice(0, MAX_PERSISTED_BOOKINGS);
       persist(merged);
+      bookingsLastSyncedAt = Date.now();
       set({ list: merged, syncing: false });
-    } catch (e: any) {
-      set({ syncing: false, syncError: e?.message ?? 'gagal sync' });
-    }
+      } catch (e: any) {
+        set({ syncing: false, syncError: e?.message ?? 'gagal sync' });
+      } finally {
+        bookingsSyncPromise = null;
+      }
+    })();
+    await bookingsSyncPromise;
   },
   hydrate: () => {
     const raw = storage.getString(BOOKINGS_KEY);

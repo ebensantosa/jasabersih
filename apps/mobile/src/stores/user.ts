@@ -18,14 +18,18 @@ type State = {
   profile: UserProfile | null;
   loading: boolean;
   setProfile: (p: UserProfile | null) => void;
-  fetch: () => Promise<UserProfile | null>;
+  fetch: (force?: boolean) => Promise<UserProfile | null>;
   hydrate: () => void;
   clear: () => void;
 };
 
 const STORAGE_KEY = 'user.profile';
+const USER_FETCH_STALE_MS = 10_000;
 
-export const useUserStore = create<State>((set) => ({
+let userFetchPromise: Promise<UserProfile | null> | null = null;
+let userLastFetchedAt = 0;
+
+export const useUserStore = create<State>((set, get) => ({
   profile: null,
   loading: false,
   setProfile: (p) => {
@@ -33,26 +37,39 @@ export const useUserStore = create<State>((set) => ({
     else storage.delete(STORAGE_KEY);
     set({ profile: p });
   },
-  async fetch() {
-    set({ loading: true });
-    try {
-      const res = await api.get('/auth/me');
-      const profile: UserProfile = res.data?.data ?? res.data;
-      storage.set(STORAGE_KEY, JSON.stringify(profile));
-      set({ profile, loading: false });
-      return profile;
-    } catch (e: any) {
-      set({ loading: false });
-      // 404 = endpoint not deployed yet (or removed) → don't trash session
-      // 401/403 = token invalid → interceptor already handles logout
-      // Other errors → just bail, keep cached profile
-      return null;
+  async fetch(force = false): Promise<UserProfile | null> {
+    if (!force && userFetchPromise) return userFetchPromise;
+    if (!force && userLastFetchedAt && Date.now() - userLastFetchedAt < USER_FETCH_STALE_MS) {
+      return get().profile;
     }
+
+    set({ loading: true });
+    userFetchPromise = (async () => {
+      try {
+        const res = await api.get('/auth/me');
+        const profile: UserProfile = res.data?.data ?? res.data;
+        storage.set(STORAGE_KEY, JSON.stringify(profile));
+        userLastFetchedAt = Date.now();
+        set({ profile, loading: false });
+        return profile;
+      } catch {
+        set({ loading: false });
+        return null;
+      } finally {
+        userFetchPromise = null;
+      }
+    })();
+
+    return userFetchPromise;
   },
   hydrate() {
     const raw = storage.getString(STORAGE_KEY);
     if (raw) {
-      try { set({ profile: JSON.parse(raw) as UserProfile }); } catch { storage.delete(STORAGE_KEY); }
+      try {
+        set({ profile: JSON.parse(raw) as UserProfile });
+      } catch {
+        storage.delete(STORAGE_KEY);
+      }
     }
   },
   clear() {
@@ -61,5 +78,4 @@ export const useUserStore = create<State>((set) => ({
   },
 }));
 
-// keep persistKeys list informational; STORAGE_KEY mirrors the key used here
 void persistKeys;

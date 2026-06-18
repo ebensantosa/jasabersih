@@ -4,6 +4,10 @@ import { api } from '../lib/api';
 import { storage } from '../lib/storage';
 
 const KEY = 'addresses.list';
+const ADDRESSES_SYNC_STALE_MS = 10_000;
+
+let addressesSyncPromise: Promise<void> | null = null;
+let addressesLastSyncedAt = 0;
 
 export type SavedAddress = {
   id: string;
@@ -26,7 +30,7 @@ type State = {
   setDefault: (id: string) => void;
   getDefault: () => SavedAddress | null;
   hydrate: () => void;
-  syncFromApi: () => Promise<void>;
+  syncFromApi: (force?: boolean) => Promise<void>;
   syncing: boolean;
   clearLocal: () => void;
 };
@@ -43,27 +47,35 @@ export const useAddressesStore = create<State>((set, get) => ({
     storage.delete(KEY);
     set({ list: [], hydrated: true });
   },
-  async syncFromApi() {
+  async syncFromApi(force = false) {
+    if (!force && addressesSyncPromise) return addressesSyncPromise;
+    if (!force && addressesLastSyncedAt && Date.now() - addressesLastSyncedAt < ADDRESSES_SYNC_STALE_MS) return;
     set({ syncing: true });
-    try {
-      const res = await api.get('/addresses');
-      const items: any[] = res.data?.data ?? [];
-      const list: SavedAddress[] = items.map((a) => ({
-        id: a.id,
-        label: a.label ?? 'Alamat',
-        recipientName: a.recipientName ?? '',
-        recipientPhone: a.recipientPhone ?? '',
-        addressLine: a.addressLine ?? '',
-        detailNote: a.detailNote ?? undefined,
-        lat: Number(a.lat ?? 0),
-        lng: Number(a.lng ?? 0),
-        isDefault: !!a.isDefault,
-      }));
-      persist(list);
-      set({ list, syncing: false });
-    } catch {
-      set({ syncing: false });
-    }
+    addressesSyncPromise = (async () => {
+      try {
+        const res = await api.get('/addresses');
+        const items: any[] = res.data?.data ?? [];
+        const list: SavedAddress[] = items.map((a) => ({
+          id: a.id,
+          label: a.label ?? 'Alamat',
+          recipientName: a.recipientName ?? '',
+          recipientPhone: a.recipientPhone ?? '',
+          addressLine: a.addressLine ?? '',
+          detailNote: a.detailNote ?? undefined,
+          lat: Number(a.lat ?? 0),
+          lng: Number(a.lng ?? 0),
+          isDefault: !!a.isDefault,
+        }));
+        persist(list);
+        addressesLastSyncedAt = Date.now();
+        set({ list, syncing: false });
+      } catch {
+        set({ syncing: false });
+      } finally {
+        addressesSyncPromise = null;
+      }
+    })();
+    await addressesSyncPromise;
   },
   hydrate: () => {
     const raw = storage.getString(KEY);

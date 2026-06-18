@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { withAuth } from '../../src/components/AuthGate';
 import { SearchingCleanerView } from '../../src/components/SearchingCleanerView';
 import {
@@ -16,7 +16,7 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,6 +42,7 @@ import {
 } from '../../src/stores/bookings';
 import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
+import { useVisiblePoll } from '../../src/lib/useVisiblePoll';
 
 const FREE_CANCEL_WINDOW_SEC = 10;
 const PENALTY_PCT = 0.25;
@@ -74,7 +75,7 @@ function getCleanerHeaderLabel(status: BookingStatus) {
   switch (status) {
     case 'completed':
       return 'JOB SELESAI';
-    case 'cancelled':
+    case 'canceled':
       return 'JOB DIBATALKAN';
     default:
       return 'JOB AKTIF';
@@ -272,20 +273,27 @@ function BookingDetail() {
   }, [booking?.status]);
 
   const [broadcastedTo, setBroadcastedTo] = useState<number | undefined>(undefined);
+  const searchStatusMountedRef = useRef(true);
   useEffect(() => {
+    searchStatusMountedRef.current = true;
+    return () => {
+      searchStatusMountedRef.current = false;
+    };
+  }, []);
+  const pollSearchStatus = useCallback(async () => {
     if (!id || booking?.status !== 'searching' || id.startsWith('bk_')) return;
-    let cancelled = false;
-    async function poll() {
-      try {
-        const r = await api.get(`/bookings/${id}/search-status`);
-        const d = r.data?.data ?? r.data;
-        if (!cancelled) setBroadcastedTo(Number(d?.broadcastedTo ?? 0));
-      } catch { /* silent */ }
-    }
-    void poll();
-    const t = setInterval(poll, 10_000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [id, booking?.status]);
+    try {
+      const r = await api.get(`/bookings/${id}/search-status`);
+      const d = r.data?.data ?? r.data;
+      if (searchStatusMountedRef.current) setBroadcastedTo(Number(d?.broadcastedTo ?? 0));
+    } catch { /* silent */ }
+  }, [booking?.status, id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (booking?.status === 'searching') void pollSearchStatus();
+    }, [booking?.status, pollSearchStatus]),
+  );
+  useVisiblePoll(pollSearchStatus, 10_000, booking?.status === 'searching' && !!id && !id.startsWith('bk_'));
 
   // Saat booking belum ada di store + bukan local stub: kasih kesempatan
   // fetchOne (~1-2 detik). Tanpa loading state, user kena flash "tidak ditemukan"

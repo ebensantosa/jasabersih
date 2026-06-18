@@ -5,6 +5,10 @@ import { storage } from '../lib/storage';
 
 const KEY = 'cleaner.wallet';
 export const MIN_WITHDRAW = 50_000;
+const CLEANER_WALLET_SYNC_STALE_MS = 10_000;
+
+let cleanerWalletSyncPromise: Promise<void> | null = null;
+let cleanerWalletLastSyncedAt = 0;
 
 /**
  * Bagi hasil cleaner (rate JasaBersih.com):
@@ -53,7 +57,7 @@ type State = {
   serverPendingAmount: number;
   syncing: boolean;
   syncError: string | null;
-  syncFromApi: () => Promise<void>;
+  syncFromApi: (force?: boolean) => Promise<void>;
   /** Request withdrawal via API. Returns server response or throws.
    *  Kalau bankAccountId di-provide & rekening verified & amount ≤ threshold → auto-Flip transfer.
    *  Otherwise (legacy inline fields atau amount > threshold) → admin manual approve. */
@@ -79,9 +83,12 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
     storage.delete(KEY);
     set({ entries: [], hydrated: true, serverBalance: 0, serverPendingAmount: 0, syncError: null });
   },
-  async syncFromApi() {
+  async syncFromApi(force = false) {
+    if (!force && cleanerWalletSyncPromise) return cleanerWalletSyncPromise;
+    if (!force && cleanerWalletLastSyncedAt && Date.now() - cleanerWalletLastSyncedAt < CLEANER_WALLET_SYNC_STALE_MS) return;
     set({ syncing: true, syncError: null });
-    try {
+    cleanerWalletSyncPromise = (async () => {
+      try {
       const res = await api.get('/cleaner/wallet');
       const data = res.data?.data ?? res.data;
       // Convert server ledger ke WalletEntry shape (untuk compat dengan UI existing)
@@ -114,15 +121,20 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
         } as WalletEntry;
       });
       persist(entries);
+      cleanerWalletLastSyncedAt = Date.now();
       set({
         entries,
         serverBalance: Number(data.balance ?? 0),
         serverPendingAmount: Number(data.pendingWithdrawalAmount ?? 0),
         syncing: false,
       });
-    } catch (e: any) {
-      set({ syncing: false, syncError: e?.message ?? 'gagal sync' });
-    }
+      } catch (e: any) {
+        set({ syncing: false, syncError: e?.message ?? 'gagal sync' });
+      } finally {
+        cleanerWalletSyncPromise = null;
+      }
+    })();
+    await cleanerWalletSyncPromise;
   },
   async requestWithdrawalApi(amount, destination) {
     const body: Record<string, any> = { amount };

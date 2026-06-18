@@ -13,7 +13,7 @@ function NotificationsScreen() {
   const { list, loading, fetch, markAllRead } = useNotifications();
 
   useEffect(() => {
-    void fetch();
+    void fetch(true);
     return () => { void markAllRead(); }; // mark read saat keluar
   }, []);
 
