@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { SERVICE_CATEGORIES } from '../data/catalog';
 import { api } from '../lib/api';
 import { storage } from '../lib/storage';
 import { useModeStore } from './mode';
@@ -37,6 +38,31 @@ function pickBookingTitle(source: any): string {
     ?? source?.form_snapshot?.packageName
     ?? source?.form_snapshot?.hourlyTierName
     ?? 'Layanan';
+}
+
+function resolveBookingImage(source: any, fallback?: string): string {
+  const direct = source?.serviceIcon
+    ?? source?.service_icon
+    ?? source?.categoryImage
+    ?? fallback;
+  if (typeof direct === 'string' && direct.trim().length > 0) return direct;
+
+  const categoryCode = source?.categoryCode
+    ?? source?.category_code
+    ?? source?.formSnapshot?.categoryCode
+    ?? source?.form_snapshot?.categoryCode;
+  if (typeof categoryCode === 'string' && categoryCode) {
+    const byCode = SERVICE_CATEGORIES.find((item) => item.code === categoryCode);
+    if (byCode?.imageUrl) return byCode.imageUrl;
+  }
+
+  const title = String(pickBookingTitle(source)).toLowerCase();
+  const byName = SERVICE_CATEGORIES.find((item) =>
+    item.name.toLowerCase() === title || title.includes(item.name.toLowerCase()),
+  );
+  if (byName?.imageUrl) return byName.imageUrl;
+
+  return SERVICE_CATEGORIES[0]?.imageUrl ?? '';
 }
 
 export type PricingMode = 'package' | 'hourly' | 'wa_survey';
@@ -111,6 +137,7 @@ export type Booking = {
   basePrice: number;
   dirtSurcharge: number;
   totalPrice: number;
+  cleanerPayout?: number;
   // Anti-fraud snapshot
   formSnapshot?: FormSnapshot;
   // Cleaner (assigned later)
@@ -203,19 +230,23 @@ export const useBookingsStore = create<State>((set, get) => ({
       const serverIds = new Set(items.map((i) => i.id));
       const serverMapped: Booking[] = items.map((s) => {
         const existing = local.find((b) => b.id === s.id);
-        const total = Number(s.total ?? 0);
-        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId, cleanerName: s.cleanerName ?? existing.cleanerName, cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? existing.cleanerPhotoUrl, scheduledAt: s.scheduledAt ?? existing.scheduledAt, categoryImage: s.serviceIcon ?? existing.categoryImage }
+        const total = Number(s.total ?? existing?.totalPrice ?? 0);
+        const cleanerPayout = (s as any).cleanerPayout != null
+          ? Number((s as any).cleanerPayout)
+          : existing?.cleanerPayout;
+        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerPayout, cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId, cleanerName: s.cleanerName ?? existing.cleanerName, cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? existing.cleanerPhotoUrl, scheduledAt: s.scheduledAt ?? existing.scheduledAt, categoryImage: resolveBookingImage(s, existing.categoryImage) }
           : {
               id: s.id,
               pricingMode: (s.pricingMode ?? 'package') as PricingMode,
-              categoryCode: '',
+              categoryCode: s.categoryCode ?? s.category_code ?? s.formSnapshot?.categoryCode ?? s.form_snapshot?.categoryCode ?? '',
               categoryName: pickBookingTitle(s),
-              categoryImage: s.serviceIcon ?? '',
-              addressLine: s.address ?? '',
+              categoryImage: resolveBookingImage(s),
+              addressLine: s.addressLine ?? s.address_line ?? s.address ?? '',
               scheduledAt: safeIsoDate(s.scheduledAt),
               status: mapServerStatus(s.status),
               createdAt: safeTimestamp(s.createdAt),
               addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
+              cleanerPayout,
               cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? undefined,
               cleanerName: s.cleanerName ?? undefined,
               cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? undefined,
@@ -260,12 +291,13 @@ export const useBookingsStore = create<State>((set, get) => ({
         pricingMode: (s.pricing_mode ?? s.pricingMode ?? 'package') as PricingMode,
         categoryCode: s.category_code ?? s.categoryCode ?? snapshot.categoryCode ?? '',
         categoryName: pickBookingTitle({ ...s, formSnapshot: snapshot }),
-        categoryImage: s.service_icon ?? s.serviceIcon ?? '',
+        categoryImage: resolveBookingImage({ ...s, formSnapshot: snapshot }),
         addressLine: s.address_line ?? s.address ?? '',
         scheduledAt: safeIsoDate(s.scheduled_at ?? s.scheduledAt),
         status: mapServerStatus(s.status),
         createdAt: safeTimestamp(s.created_at),
         addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
+        cleanerPayout: (s.cleaner_payout ?? s.cleanerPayout) != null ? Number(s.cleaner_payout ?? s.cleanerPayout) : undefined,
         cleanerId: s.cleaner_id ?? s.cleanerId ?? undefined,
         cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
         cleanerPhotoUrl: s.cleaner_photo_url ?? s.cleanerPhotoUrl ?? undefined,

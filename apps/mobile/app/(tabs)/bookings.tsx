@@ -141,8 +141,8 @@ export default function Bookings() {
                       </Text>
                     </View>
                     <Text className="font-bold text-xs text-brand-600">
-                      {isCleaner && (b as any).cleanerPayout != null
-                        ? formatRupiah(Number((b as any).cleanerPayout))
+                      {isCleaner && b.cleanerPayout != null
+                        ? formatRupiah(Number(b.cleanerPayout))
                         : formatRupiah(b.totalPrice)}
                     </Text>
                   </View>
