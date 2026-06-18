@@ -37,6 +37,7 @@ const HOLDER_NAME_NOISE = new Set([
   'gopay',
   'gopaylater',
   'ovo',
+  'ovopremier',
   'shopeepay',
   'shopee',
   'linkaja',
@@ -49,6 +50,10 @@ const HOLDER_NAME_NOISE = new Set([
   'disbursement',
 ]);
 
+function isMaskedToken(token: string): boolean {
+  return token.length >= 4 && /x{2,}/i.test(token);
+}
+
 function normalizeName(raw: string | null | undefined): string[] {
   return String(raw ?? '')
     .toLowerCase()
@@ -57,7 +62,7 @@ function normalizeName(raw: string | null | undefined): string[] {
     .map((part) => part.trim())
     .filter((part) => part.length >= 2)
     .filter((part) => !HOLDER_NAME_NOISE.has(part))
-    .filter((part) => !/^x{2,}$/i.test(part));
+    .filter((part) => !isMaskedToken(part));
 }
 
 function tokenMatches(a: string, b: string): boolean {
@@ -80,6 +85,7 @@ function namesLikelyMatch(userName: string | null | undefined, holderName: strin
   const secondMatched = secondToken ? holderTokens.some((holderToken) => tokenMatches(secondToken, holderToken)) : false;
 
   if (firstMatched && (secondMatched || userTokens.length === 1)) return true;
+  if (matched.length >= 1 && holderTokens.length === 1) return true;
   return matched.length / userTokens.length >= 0.6;
 }
 
