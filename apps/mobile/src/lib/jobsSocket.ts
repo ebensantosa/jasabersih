@@ -11,11 +11,11 @@ function getBase(): string {
 let socket: Socket | null = null;
 
 export function getJobsSocket(): Socket {
-  if (socket && socket.connected) return socket;
+  if (socket) return socket;
   const token = useAuthStore.getState().tokens?.accessToken;
   socket = io(`${getBase()}/jobs`, {
     auth: { token },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,
   });

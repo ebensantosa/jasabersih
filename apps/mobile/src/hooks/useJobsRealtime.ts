@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { getJobsSocket, type IncomingJob } from '../lib/jobsSocket';
+import { useVisiblePoll } from '../lib/useVisiblePoll';
+import { api } from '../lib/api';
 import { useAuthStore } from '../stores/auth';
 import { useCleanerStore } from '../stores/cleaner';
 import { useModeStore } from '../stores/mode';
@@ -17,6 +19,16 @@ export function useJobsRealtime() {
   const [incoming, setIncoming] = useState<IncomingJob | null>(null);
   const [takenIds, setTakenIds] = useState<Set<string>>(new Set());
   const onlineRef = useRef(false);
+  const lastSurfacedIdRef = useRef<string | null>(null);
+
+  function matchesArea(job: IncomingJob): boolean {
+    const normalizedAreas = areas
+      .map((area) => String(area).trim().toLowerCase())
+      .filter(Boolean);
+    const address = String(job.addressLine ?? '').toLowerCase();
+    if (normalizedAreas.length === 0) return true;
+    return normalizedAreas.some((area) => address.includes(area));
+  }
 
   useEffect(() => {
     const shouldBeOnline = !!tokens && mode === 'freelancer';
@@ -37,13 +49,8 @@ export function useJobsRealtime() {
       });
     }
     function onIncoming(job: IncomingJob) {
-      const normalizedAreas = areas
-        .map((area) => String(area).trim().toLowerCase())
-        .filter(Boolean);
-      const address = String(job.addressLine ?? '').toLowerCase();
-      if (normalizedAreas.length > 0 && !normalizedAreas.some((area) => address.includes(area))) {
-        return;
-      }
+      if (!matchesArea(job)) return;
+      lastSurfacedIdRef.current = job.id;
       setIncoming((prev) => prev ?? job); // Don't replace if already showing one
     }
     function onTaken(payload: { bookingId: string }) {
@@ -64,6 +71,31 @@ export function useJobsRealtime() {
       socket.off('job-taken', onTaken);
     };
   }, [tokens, mode, areas]);
+
+  const fallbackEnabled = !!tokens && mode === 'freelancer';
+  const pullAvailableFallback = async () => {
+    if (!fallbackEnabled) return;
+    if (incoming) return;
+    try {
+      const r = await api.get('/cleaner/jobs/available');
+      const list = ((r.data?.data ?? r.data ?? []) as IncomingJob[]).filter((job) => {
+        if (!job?.id) return false;
+        if (takenIds.has(job.id)) return false;
+        if (!matchesArea(job)) return false;
+        return true;
+      });
+      const next = list.find((job) => job.id !== lastSurfacedIdRef.current) ?? list[0];
+      if (!next) return;
+      lastSurfacedIdRef.current = next.id;
+      setIncoming(next);
+    } catch {
+      // silent fallback
+    }
+  };
+  useEffect(() => {
+    if (fallbackEnabled) void pullAvailableFallback();
+  }, [fallbackEnabled]);
+  useVisiblePoll(pullAvailableFallback, 12_000, fallbackEnabled);
 
   function dismiss() { setIncoming(null); }
 
