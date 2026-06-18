@@ -40,6 +40,78 @@ export class AdminUsersController {
     return rows;
   }
 
+  // === Cleaner area requests ===
+  // PENTING: routes static (cleaner-area-requests) HARUS sebelum @Get(':id')
+  // supaya NestJS gak interpret string sebagai param :id (UUID parse error).
+  @Get('cleaner-area-requests')
+  @Roles('super_admin', 'ops')
+  async listCleanerAreaRequests(@Query('status') status?: string) {
+    const statusFilter = status && ['pending', 'approved', 'rejected'].includes(status) ? status : 'pending';
+    return this.prisma.$queryRawUnsafe(
+      `SELECT r.id, r.city, r.notes, r.status, r.created_at AS "createdAt",
+              r.reviewed_at AS "reviewedAt", r.reject_reason AS "rejectReason",
+              u.id AS "cleanerId", u.name AS "cleanerName", u.phone AS "cleanerPhone",
+              cp.service_areas AS "currentAreas", cp.domicile_city AS "domicileCity"
+         FROM cleaner_area_requests r
+         JOIN users u ON u.id = r.cleaner_id
+         LEFT JOIN cleaner_profiles cp ON cp.user_id = r.cleaner_id
+        WHERE r.status = $1
+        ORDER BY r.created_at DESC LIMIT 200`,
+      statusFilter,
+    );
+  }
+
+  @Post('cleaner-area-requests/:id/approve')
+  @Roles('super_admin', 'ops')
+  async approveCleanerAreaRequest(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const rows = await this.prisma.$queryRaw<{ cleaner_id: string; city: string; status: string }[]>`
+      SELECT cleaner_id, city, status FROM cleaner_area_requests WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const r = rows[0];
+    if (!r) throw new BadRequestException('Request tidak ditemukan');
+    if (r.status !== 'pending') throw new BadRequestException('Request sudah diputuskan');
+
+    await this.prisma.$transaction([
+      this.prisma.$executeRawUnsafe(
+        `UPDATE cleaner_profiles
+           SET service_areas = COALESCE(service_areas, '[]'::jsonb) || to_jsonb($1::text),
+               updated_at = NOW()
+         WHERE user_id = $2::uuid
+           AND NOT (service_areas @> to_jsonb($1::text))`,
+        r.city, r.cleaner_id,
+      ),
+      this.prisma.$executeRaw`
+        UPDATE cleaner_area_requests
+           SET status = 'approved', reviewed_at = NOW(), reviewed_by_admin_id = ${admin.id}::uuid
+         WHERE id = ${id}::uuid
+      `,
+    ]);
+    await this.audit.log({ adminId: admin.id, action: 'cleaner_area_request.approve', resourceType: 'cleaner_area_requests', resourceId: id, changes: { city: r.city, cleanerId: r.cleaner_id }, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
+  @Post('cleaner-area-requests/:id/reject')
+  @Roles('super_admin', 'ops')
+  async rejectCleanerAreaRequest(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    await this.prisma.$executeRaw`
+      UPDATE cleaner_area_requests
+         SET status = 'rejected', reviewed_at = NOW(), reviewed_by_admin_id = ${admin.id}::uuid,
+             reject_reason = ${body?.reason ?? null}
+       WHERE id = ${id}::uuid AND status = 'pending'
+    `;
+    await this.audit.log({ adminId: admin.id, action: 'cleaner_area_request.reject', resourceType: 'cleaner_area_requests', resourceId: id, changes: { reason: body?.reason ?? null }, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
   @Get(':id')
   @Roles('super_admin', 'ops', 'support', 'fraud_analyst')
   async detail(@Param('id') id: string) {
@@ -152,77 +224,6 @@ export class AdminUsersController {
       resourceId: id,
       ipAddress: req.ip ?? null,
     });
-    return { ok: true };
-  }
-
-  // List semua area requests cleaner (cross-cleaner) buat halaman admin
-  @Get('cleaner-area-requests')
-  @Roles('super_admin', 'ops')
-  async listCleanerAreaRequests(@Query('status') status?: string) {
-    const statusFilter = status && ['pending', 'approved', 'rejected'].includes(status) ? status : 'pending';
-    return this.prisma.$queryRawUnsafe(
-      `SELECT r.id, r.city, r.notes, r.status, r.created_at AS "createdAt",
-              r.reviewed_at AS "reviewedAt", r.reject_reason AS "rejectReason",
-              u.id AS "cleanerId", u.name AS "cleanerName", u.phone AS "cleanerPhone",
-              cp.service_areas AS "currentAreas", cp.domicile_city AS "domicileCity"
-         FROM cleaner_area_requests r
-         JOIN users u ON u.id = r.cleaner_id
-         LEFT JOIN cleaner_profiles cp ON cp.user_id = r.cleaner_id
-        WHERE r.status = $1
-        ORDER BY r.created_at DESC LIMIT 200`,
-      statusFilter,
-    );
-  }
-
-  // Approve: tambahin city ke service_areas cleaner
-  @Post('cleaner-area-requests/:id/approve')
-  @Roles('super_admin', 'ops')
-  async approveCleanerAreaRequest(
-    @Param('id') id: string,
-    @CurrentAdmin() admin: AdminPrincipal,
-    @Req() req: Request,
-  ) {
-    const rows = await this.prisma.$queryRaw<{ cleaner_id: string; city: string; status: string }[]>`
-      SELECT cleaner_id, city, status FROM cleaner_area_requests WHERE id = ${id}::uuid LIMIT 1
-    `;
-    const r = rows[0];
-    if (!r) throw new BadRequestException('Request tidak ditemukan');
-    if (r.status !== 'pending') throw new BadRequestException('Request sudah diputuskan');
-
-    await this.prisma.$transaction([
-      this.prisma.$executeRawUnsafe(
-        `UPDATE cleaner_profiles
-           SET service_areas = COALESCE(service_areas, '[]'::jsonb) || to_jsonb($1::text),
-               updated_at = NOW()
-         WHERE user_id = $2::uuid
-           AND NOT (service_areas @> to_jsonb($1::text))`,
-        r.city, r.cleaner_id,
-      ),
-      this.prisma.$executeRaw`
-        UPDATE cleaner_area_requests
-           SET status = 'approved', reviewed_at = NOW(), reviewed_by_admin_id = ${admin.id}::uuid
-         WHERE id = ${id}::uuid
-      `,
-    ]);
-    await this.audit.log({ adminId: admin.id, action: 'cleaner_area_request.approve', resourceType: 'cleaner_area_requests', resourceId: id, changes: { city: r.city, cleanerId: r.cleaner_id }, ipAddress: req.ip ?? null });
-    return { ok: true };
-  }
-
-  @Post('cleaner-area-requests/:id/reject')
-  @Roles('super_admin', 'ops')
-  async rejectCleanerAreaRequest(
-    @Param('id') id: string,
-    @Body() body: { reason?: string },
-    @CurrentAdmin() admin: AdminPrincipal,
-    @Req() req: Request,
-  ) {
-    await this.prisma.$executeRaw`
-      UPDATE cleaner_area_requests
-         SET status = 'rejected', reviewed_at = NOW(), reviewed_by_admin_id = ${admin.id}::uuid,
-             reject_reason = ${body?.reason ?? null}
-       WHERE id = ${id}::uuid AND status = 'pending'
-    `;
-    await this.audit.log({ adminId: admin.id, action: 'cleaner_area_request.reject', resourceType: 'cleaner_area_requests', resourceId: id, changes: { reason: body?.reason ?? null }, ipAddress: req.ip ?? null });
     return { ok: true };
   }
 
