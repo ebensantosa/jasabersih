@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 
 import type { AuthTokens } from '@jasabersih/shared-types';
 import { getDeviceId } from './deviceIdentity';
+import { api } from './api';
 
 const API_BASE =
   (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? 'http://localhost:3000/v1';
@@ -21,19 +22,24 @@ function timeoutSignal(ms: number): AbortSignal {
 /** Login real ke backend NestJS - no mock. */
 export async function login(email: string, password: string): Promise<AuthResult> {
   const deviceId = await getDeviceId();
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-device-id': deviceId },
-    body: JSON.stringify({ phone: email, password }),
-    signal: timeoutSignal(10_000),
-  });
-
-  if (!res.ok) {
-    const json = await res.json().catch(() => null);
-    throw new Error(json?.error?.message ?? `Login gagal (${res.status})`);
+  let tokens: AuthTokens;
+  try {
+    const res = await api.post<{ data: AuthTokens }>(
+      '/auth/login',
+      { phone: email, password },
+      {
+        signal: timeoutSignal(10_000),
+        headers: { 'x-device-id': deviceId },
+      },
+    );
+    tokens = res.data.data;
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.error?.message
+      ?? error?.message
+      ?? 'Tidak bisa terhubung ke server';
+    throw new Error(message);
   }
-  const json = await res.json();
-  const tokens = json.data as AuthTokens;
 
   // Fetch real profile using the freshly-issued access token
   let user: AuthResult['user'] = { email, name: email, mode: 'customer' };

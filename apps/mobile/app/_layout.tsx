@@ -76,6 +76,18 @@ export default function RootLayout() {
   const [startupError, setStartupError] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
+  function isIgnorableRuntimeError(err: any): boolean {
+    const text = String(err?.message ?? err ?? '').toLowerCase();
+    return (
+      text.includes('failed to fetch')
+      || text.includes('network request failed')
+      || text.includes('network error')
+      || text.includes('load failed')
+      || text.includes('timeout')
+      || text.includes('abort')
+    );
+  }
+
   useEffect(() => {
     const t = setTimeout(() => setSplashHold(false), 800);
     return () => clearTimeout(t);
@@ -85,6 +97,10 @@ export default function RootLayout() {
   useEffect(() => {
     const orig = (globalThis as any).ErrorUtils?.getGlobalHandler?.();
     (globalThis as any).ErrorUtils?.setGlobalHandler?.((err: any, isFatal: boolean) => {
+      if (isIgnorableRuntimeError(err)) {
+        orig?.(err, false);
+        return;
+      }
       const msg = `${isFatal ? 'FATAL' : 'ERROR'}: ${err?.message ?? String(err)}\n${(err?.stack ?? '').slice(0, 500)}`;
       setStartupError(msg);
       orig?.(err, isFatal);
