@@ -36,6 +36,7 @@ import { useModeStore } from '../../src/stores/mode';
 import {
   STATUS_COLOR,
   STATUS_LABEL,
+  type Booking,
   type BookingStatus,
   useBookingsStore,
 } from '../../src/stores/bookings';
@@ -78,6 +79,38 @@ function getCleanerHeaderLabel(status: BookingStatus) {
     default:
       return 'JOB AKTIF';
   }
+}
+
+function deriveCleanerCarryReminders(booking: Booking | undefined): string[] {
+  if (!booking) return [];
+
+  const texts = [
+    booking.categoryName,
+    booking.packageName,
+    booking.surveyDescription,
+    booking.formSnapshot?.notes,
+    booking.formSnapshot?.propertyType,
+    Array.isArray(booking.formSnapshot?.dirtCharacters) ? booking.formSnapshot?.dirtCharacters.join(' ') : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const reminders: string[] = [];
+
+  if (/(vacuum|vakum|kasur|sofa|hydro)/.test(texts)) {
+    reminders.push('Bawa vacuum atau alat hisap yang sesuai dengan kebutuhan job ini.');
+  }
+
+  if (/(tangga|plafon|lampu|kaca atas|jendela atas|tinggi)/.test(texts)) {
+    reminders.push('Siapkan tangga lipat atau alat bantu jangkau bila kamu punya.');
+  }
+
+  if (/(jamur|kerak|noda tebal|bekas renovasi|semen|cat)/.test(texts)) {
+    reminders.push('Pastikan bawa perlengkapan deep clean yang cocok untuk noda berat.');
+  }
+
+  return Array.from(new Set(reminders));
 }
 
 type BookingRating = {
@@ -400,6 +433,7 @@ function BookingDetail() {
     typeof bookingRating?.rating === 'number' && Number.isFinite(bookingRating.rating)
       ? bookingRating.rating
       : null;
+  const cleanerCarryReminders = deriveCleanerCarryReminders(booking);
 
   async function doReschedule(newDate: Date) {
     if (!booking) return;
@@ -559,6 +593,22 @@ function BookingDetail() {
           {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
               <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} onSummaryChange={setPhotoSummary} />
+            </View>
+          )}
+
+          {isCleaner && cleanerCarryReminders.length > 0 && (
+            <View className="mx-4 mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <Text className="font-semibold mb-2 text-xs uppercase tracking-wider text-emerald-800">
+                Pengingat Perlengkapan
+              </Text>
+              {cleanerCarryReminders.map((item) => (
+                <Text key={item} className="mb-1 text-[12px] leading-5 text-emerald-900">
+                  - {item}
+                </Text>
+              ))}
+              <Text className="mt-1 text-[11px] leading-4 text-emerald-800">
+                Cek lagi catatan customer sebelum berangkat agar perlengkapan yang dibutuhkan tidak tertinggal.
+              </Text>
             </View>
           )}
 
