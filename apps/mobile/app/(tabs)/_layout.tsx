@@ -9,12 +9,14 @@ import { useModeStore } from '../../src/stores/mode';
 import { useAuthStore } from '../../src/stores/auth';
 import { api } from '../../src/lib/api';
 import { useVisiblePoll } from '../../src/lib/useVisiblePoll';
+import { useUserStore } from '../../src/stores/user';
 
 export default function TabsLayout() {
   const mode = useModeStore((s) => s.mode);
   const isFreelancer = mode === 'freelancer';
   const t = useT();
   const tokens = useAuthStore((s) => s.tokens);
+  const profile = useUserStore((s) => s.profile);
   const insets = useSafeAreaInsets();
   const [chatUnread, setChatUnread] = useState(0);
 
@@ -25,8 +27,8 @@ export default function TabsLayout() {
       setChatUnread(Number((r.data?.data ?? r.data)?.count ?? 0));
     } catch { /* silent */ }
   }, []);
-  useVisiblePoll(fetchChatUnread, 30_000, !!tokens);
-  useEffect(() => { if (!tokens) setChatUnread(0); }, [tokens]);
+  useVisiblePoll(fetchChatUnread, 30_000, !!tokens && !!profile);
+  useEffect(() => { if (!tokens || !profile) setChatUnread(0); }, [tokens, profile]);
 
   return (
     <Tabs

@@ -45,6 +45,7 @@ import { useModeStore } from '../src/stores/mode';
 
 export default function RootLayout() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
+  const refreshAuth = useAuthStore((s) => s.refresh);
   const hydrateMode = useModeStore((s) => s.hydrate);
   const hydrateCleaner = useCleanerStore((s) => s.hydrate);
   const hydrateBookings = useBookingsStore((s) => s.hydrate);
@@ -59,6 +60,7 @@ export default function RootLayout() {
   const hydrateCleaningMode = useCleaningModeStore((s) => s.hydrate);
   const hydrateUser = useUserStore((s) => s.hydrate);
   const fetchUser = useUserStore((s) => s.fetch);
+  const profile = useUserStore((s) => s.profile);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -72,6 +74,7 @@ export default function RootLayout() {
   const [splashHold, setSplashHold] = useState(true);
   // Visible diagnostic - kalau ada error startup, tampilin di layar (bukan silent blank)
   const [startupError, setStartupError] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSplashHold(false), 800);
@@ -115,26 +118,36 @@ export default function RootLayout() {
       // Anonymous users: ensure no stale user-bound data leaks to UI
       if (!useAuthStore.getState().tokens) {
         useAuthStore.getState().logout();
+        setAuthReady(true);
       }
       // Validate token via /auth/me first; only fire other syncs if profile fetch succeeds
       setTimeout(() => {
         if (!useAuthStore.getState().tokens) return;
-        void fetchUser().then((profile) => {
-          if (!profile) {
-            // /auth/me failed - token bogus (orphan from old fake-register flow).
-            // Force logout so user gets a clean state instead of seeing "Pengguna" forever.
+        void (async () => {
+          try {
+            await refreshAuth();
+          } catch {
             useAuthStore.getState().logout();
+            setAuthReady(true);
+            return;
+          }
+          const profile = await fetchUser();
+          if (!profile) {
+            useAuthStore.getState().logout();
+            setAuthReady(true);
             return;
           }
           void syncBookings();
           void syncAddresses();
           void syncWallet();
           void registerForPushAsync().catch(() => {});
-        });
+          setAuthReady(true);
+        })();
       }, 500);
     });
   }, [
     hydrateAuth,
+    refreshAuth,
     hydrateMode,
     hydrateCleaner,
     hydrateBookings,
@@ -155,17 +168,29 @@ export default function RootLayout() {
   // are immediately refetched once tokens are available.
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
   useEffect(() => {
-    if (!accessToken) { setUserId(null); return; }
+    if (!accessToken) { setUserId(null); setAuthReady(true); return; }
     trackEvent('app_open');
-    void fetchUser().then((profile) => {
-      if (!profile) return;
+    void (async () => {
+      try {
+        await refreshAuth();
+      } catch {
+        useAuthStore.getState().logout();
+        setAuthReady(true);
+        return;
+      }
+      const profile = await fetchUser();
+      if (!profile) {
+        setAuthReady(true);
+        return;
+      }
       setUserId(String((profile as any).id ?? (profile as any).userId ?? ''));
       void syncAddresses();
       void syncBookings();
       void syncWallet();
       void registerForPushAsync().catch(() => {});
-    });
-  }, [accessToken, fetchUser, syncAddresses, syncBookings, syncWallet]);
+      setAuthReady(true);
+    })();
+  }, [accessToken, fetchUser, refreshAuth, syncAddresses, syncBookings, syncWallet]);
 
   // Notification tap → deep link
   useEffect(() => {
@@ -268,7 +293,7 @@ export default function RootLayout() {
         <UpdatePromptHost />
         <IncomingJobModal />
         <RealtimeJobModal />
-        <PopupRenderer event="app_open" />
+        {authReady && profile ? <PopupRenderer event="app_open" /> : null}
         <SuspendedOverlay />
         <CleanerLockOverlay />
         <SplashOverlay visible={splashVisible} />
