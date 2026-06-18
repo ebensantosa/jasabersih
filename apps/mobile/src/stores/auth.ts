@@ -35,6 +35,7 @@ export const useAuthStore = create<State>((set, get) => ({
     // Wipe all user-bound caches so next session starts clean.
     // Lazy-import to avoid module cycles.
     void Promise.all([
+      import('./mode').then((m) => m.useModeStore.getState().setMode('customer')),
       import('./addresses').then((m) => m.useAddressesStore.getState().clearLocal?.()),
       import('./bookings').then((m) => m.useBookingsStore.getState().clearLocal?.()),
       import('./cleanerWallet').then((m) => m.useCleanerWalletStore.getState().clearLocal?.()),

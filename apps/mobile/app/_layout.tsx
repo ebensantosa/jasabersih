@@ -15,7 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
@@ -75,6 +75,21 @@ export default function RootLayout() {
   // Visible diagnostic - kalau ada error startup, tampilin di layar (bukan silent blank)
   const [startupError, setStartupError] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const lastBootstrappedTokenRef = useRef<string | null>(null);
+
+  async function syncSessionData(nextProfile?: any): Promise<void> {
+    const activeMode = useModeStore.getState().mode;
+    const profileMode = nextProfile?.role === 'freelancer' ? 'freelancer' : activeMode;
+
+    if (profileMode === 'freelancer') {
+      void syncBookings();
+      void syncWallet();
+      return;
+    }
+
+    void syncBookings();
+    void syncAddresses();
+  }
 
   function isIgnorableRuntimeError(err: any): boolean {
     const text = String(err?.message ?? err ?? '').toLowerCase();
@@ -153,9 +168,7 @@ export default function RootLayout() {
             setAuthReady(true);
             return;
           }
-          void syncBookings();
-          void syncAddresses();
-          void syncWallet();
+          await syncSessionData(profile);
           void registerForPushAsync().catch(() => {});
           setAuthReady(true);
         })();
@@ -184,29 +197,27 @@ export default function RootLayout() {
   // are immediately refetched once tokens are available.
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
   useEffect(() => {
-    if (!accessToken) { setUserId(null); setAuthReady(true); return; }
+    if (!accessToken) {
+      lastBootstrappedTokenRef.current = null;
+      setUserId(null);
+      setAuthReady(true);
+      return;
+    }
+    if (lastBootstrappedTokenRef.current === accessToken) return;
+    lastBootstrappedTokenRef.current = accessToken;
     trackEvent('app_open');
     void (async () => {
-      try {
-        await refreshAuth();
-      } catch {
-        useAuthStore.getState().logout();
-        setAuthReady(true);
-        return;
-      }
       const profile = await fetchUser();
       if (!profile) {
         setAuthReady(true);
         return;
       }
       setUserId(String((profile as any).id ?? (profile as any).userId ?? ''));
-      void syncAddresses();
-      void syncBookings();
-      void syncWallet();
+      await syncSessionData(profile);
       void registerForPushAsync().catch(() => {});
       setAuthReady(true);
     })();
-  }, [accessToken, fetchUser, refreshAuth, syncAddresses, syncBookings, syncWallet]);
+  }, [accessToken, fetchUser, syncAddresses, syncBookings, syncWallet]);
 
   // Notification tap → deep link
   useEffect(() => {
