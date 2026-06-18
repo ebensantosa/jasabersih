@@ -28,7 +28,7 @@ export default function CleanerAreaRequestsPage() {
   async function load() {
     setLoading(true);
     try {
-      setList((await api.admin.cleanerAreaRequests('pending')) as Req[]);
+      setList((await api.admin.cleanerAreaRequests()) as Req[]);
     } catch (e: any) { toast.error(e?.message ?? 'Gagal load'); }
     setLoading(false);
   }

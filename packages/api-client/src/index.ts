@@ -338,8 +338,7 @@ export function createClient(opts: ClientOptions) {
       deletePopup: (id: string) => request<unknown>('DELETE', `/admin/app/popups/${id}`),
 
       // Cleaner area requests
-      cleanerAreaRequests: (status?: 'pending' | 'approved' | 'rejected') =>
-        request<any[]>('GET', `/admin/users/cleaner-area-requests${status ? `?status=${status}` : ''}`),
+      cleanerAreaRequests: () => request<any[]>('GET', '/admin/users/cleaner-area-requests'),
       approveCleanerAreaRequest: (id: string) =>
         request<{ ok: true }>('POST', `/admin/users/cleaner-area-requests/${id}/approve`),
       rejectCleanerAreaRequest: (id: string, reason?: string) =>
