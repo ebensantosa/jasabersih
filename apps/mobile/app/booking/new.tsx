@@ -43,6 +43,7 @@ import { useAddressesStore } from '../../src/stores/addresses';
 import { useApiAddons, useApiPackagesForService, useAppContent, useConfig } from '../../src/stores/appContent';
 import { checkCoverage } from '../../src/lib/coverage';
 import { useServices } from '../../src/hooks/useServices';
+import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -504,8 +505,19 @@ function NewBooking() {
 
   const addonTotal = useMemo(
     () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + a.price, 0),
-    [selectedAddons],
+    [ADDONS, selectedAddons],
   );
+  const addonDurationMin = useMemo(
+    () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + Number(a.durationMin ?? 0), 0),
+    [ADDONS, selectedAddons],
+  );
+  const packageDurationMin = useMemo(() => {
+    const rawDuration = Math.max(0, Number(pkg?.durationMin ?? 0));
+    if (!rawDuration) return 0;
+    if (isPerMeter || isLargeScale || isPostReno || isSubscription) return rawDuration;
+    if (cleanMode === 'deep') return Math.ceil(rawDuration * deepMultiplier);
+    return rawDuration;
+  }, [pkg?.durationMin, isPerMeter, isLargeScale, isPostReno, isSubscription, cleanMode, deepMultiplier]);
   // basePrice sudah include deepSurcharge (via applyCleanMode). Surcharge lain = additive di atasnya.
   // Subscription: addon dikali jumlah kunjungan (paket bulanan = layanan tambahan per visit).
   const subscriptionAddonTotal = isSubscription && subscriptionVisits > 0 ? addonTotal * subscriptionVisits : addonTotal;
@@ -519,7 +531,22 @@ function NewBooking() {
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherChecking, setVoucherChecking] = useState(false);
-  const total = subtotal - (voucher?.discount ?? 0);
+  const totalBeforeOvertime = subtotal - (voucher?.discount ?? 0);
+  const estimatedDurationMin = packageDurationMin + addonDurationMin;
+  const overtimeQuote = useMemo(() => quoteNightOvertime(scheduleAt, estimatedDurationMin), [scheduleAt, estimatedDurationMin]);
+  const total = totalBeforeOvertime + overtimeQuote.surcharge;
+  const shouldRecommendExtraWorker =
+    !isLargeScale
+    && !isPostReno
+    && !isSubscription
+    && (
+      totalBeforeOvertime >= 800_000
+      || estimatedDurationMin >= 270
+      || areaM2 >= 180
+      || extraBedrooms + extraBathrooms >= 5
+      || ['Ruko', 'Kantor', 'Villa'].includes(propertyType)
+    );
+  const needsWaConsultation = ((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1;
 
   async function applyVoucher() {
     if (!voucherInput.trim()) return;
@@ -658,6 +685,9 @@ function NewBooking() {
         cleanMode,
         cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
         voucherCode: voucher?.code,
+        overtimeSurcharge: overtimeQuote.surcharge,
+        overtimeHours: overtimeQuote.overtimeHours,
+        estimatedEndAt: overtimeQuote.estimatedEnd.toISOString(),
         conditionPhotos: photos.map((p) => p.url).filter(Boolean),
       },
       initialStatus: 'pending_payment',
@@ -1140,11 +1170,29 @@ function NewBooking() {
                   <Label className="mb-0">Jumlah Petugas</Label>
                   <Stepper value={workers} onChange={setWorkers} min={1} max={10} />
                 </View>
+                {shouldRecommendExtraWorker && workers === 1 && (
+                  <View className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                    <Text className="font-bold text-xs text-amber-900">
+                      Disarankan 2 petugas
+                    </Text>
+                    <Text className="mt-1 text-[11px] leading-4 text-amber-900">
+                      Estimasi pekerjaan cukup panjang atau area cukup besar. Dengan 2 petugas, pekerjaan bisa selesai lebih cepat dan lebih nyaman untuk jadwal malam.
+                    </Text>
+                    <Pressable
+                      onPress={() => setWorkers(2)}
+                      className="mt-2 self-start rounded-full bg-amber-500 px-3 py-1.5"
+                    >
+                      <Text className="font-bold text-[11px] text-white">Pakai 2 Petugas</Text>
+                    </Pressable>
+                  </View>
+                )}
                 {workers > 1 && (
-                  <View className="mt-2 flex-row items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
-                    <Text className="text-base">💬</Text>
-                    <Text className="flex-1 font-bold text-xs text-emerald-900">
-                      {workers} petugas - perlu konsultasi. Pakai tombol "Chat WA" di bawah.
+                  <View className="mt-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+                    <Text className="font-bold text-xs text-emerald-900">
+                      {workers} petugas dipilih
+                    </Text>
+                    <Text className="mt-1 text-[11px] leading-4 text-emerald-900">
+                      Tim customer service akan bantu finalisasi pembagian petugas dan penyesuaian jadwal melalui WhatsApp.
                     </Text>
                   </View>
                 )}
@@ -1900,18 +1948,18 @@ function NewBooking() {
                 <Pressable
                   onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
                   className={`flex-row items-start gap-3 rounded-xl border p-3 ${
-                    cleanMode === 'deep' ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
+                    cleanMode === 'deep' ? 'border-emerald-600 bg-emerald-50' : 'border-ink-200 bg-white'
                   }`}
                 >
                   <View
                     className={`mt-0.5 h-5 w-5 items-center justify-center rounded border-2 ${
-                      cleanMode === 'deep' ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                      cleanMode === 'deep' ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'
                     }`}
                   >
                     {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
                   </View>
                   <View className="flex-1">
-                    <Text className={`font-bold text-sm ${cleanMode === 'deep' ? 'text-brand-700' : 'text-ink-900'}`}>
+                    <Text className={`font-bold text-sm ${cleanMode === 'deep' ? 'text-emerald-700' : 'text-ink-900'}`}>
                       Pakai Deep Cleaning
                     </Text>
                     <Text className="font-sans mt-1 text-[11px] leading-4 text-ink-600">
@@ -2020,6 +2068,9 @@ function NewBooking() {
                 <View className="mt-3 border-t border-ink-100 pt-3">
                   <Row label="Subtotal" value={formatRupiah(subtotal)} />
                   {voucher && <Row label={`Voucher (${voucher.code})`} value={`-${formatRupiah(voucher.discount)}`} />}
+                  {overtimeQuote.surcharge > 0 && (
+                    <Row label={`Biaya lembur malam (${overtimeQuote.overtimeHours} jam)`} value={formatRupiah(overtimeQuote.surcharge)} />
+                  )}
                   {travelQuote && travelQuote.enabled && (
                     <Row
                       label={`Transport (${travelQuote.distanceKm.toFixed(1)} km${travelQuote.distanceKm <= travelQuote.freeKm ? ' · gratis' : ''})`}
@@ -2033,6 +2084,13 @@ function NewBooking() {
                     <Row label="Total" value={formatRupiah(total + (travelQuote?.travelFee ?? 0))} bold />
                   </View>
                 </View>
+                {overtimeQuote.surcharge > 0 && (
+                  <View className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <Text className="font-medium text-[10px] text-amber-800">
+                      Estimasi selesai {formatEndTime(overtimeQuote.estimatedEnd)}. Waktu lewat 21:00 dikenakan biaya lembur Rp 50.000 per jam.
+                    </Text>
+                  </View>
+                )}
                 {walletBalance > 0 && (() => {
                   const creditUsed = useCredit ? Math.min(walletBalance, total) : 0;
                   const afterCredit = total - creditUsed;
@@ -2078,19 +2136,19 @@ function NewBooking() {
               <Pressable
                 onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
                 className={`border-b border-ink-100 px-4 py-3 ${
-                  cleanMode === 'deep' ? 'bg-amber-50' : ''
+                  cleanMode === 'deep' ? 'bg-emerald-50' : ''
                 }`}
               >
                 {/* Row 1: checkbox + judul + badge + harga */}
                 <View className="flex-row items-center gap-3">
                   <View
                     className={`h-5 w-5 items-center justify-center rounded border-2 ${
-                      cleanMode === 'deep' ? 'border-amber-600 bg-amber-600' : 'border-ink-300 bg-white'
+                      cleanMode === 'deep' ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'
                     }`}
                   >
                     {cleanMode === 'deep' && <Check color="white" size={14} strokeWidth={3} />}
                   </View>
-                  <Text className={`font-extrabold text-[13px] ${cleanMode === 'deep' ? 'text-amber-800' : 'text-ink-900'}`}>
+                  <Text className={`font-extrabold text-[13px] ${cleanMode === 'deep' ? 'text-emerald-800' : 'text-ink-900'}`}>
                     Deep Cleaning
                   </Text>
                   <View className="rounded bg-amber-200 px-1.5 py-0.5">
@@ -2108,7 +2166,7 @@ function NewBooking() {
                 </Text>
               </Pressable>
             )}
-            {(pkg || isLargeScale || isPostReno) && !(((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1) && (
+            {(pkg || isLargeScale || isPostReno) && !needsWaConsultation && (
               <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-3">
                 <View className="flex-1 pr-2">
                   <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
@@ -2133,7 +2191,7 @@ function NewBooking() {
                   {step === 1 ? 'Batal' : 'Kembali'}
                 </Text>
               </Pressable>
-              {((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1 ? (
+              {needsWaConsultation ? (
                 <Pressable
                   onPress={() => router.push({
                     pathname: '/booking/wa-survey',

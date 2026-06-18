@@ -9,6 +9,7 @@ import { AddressField } from '../../src/components/AddressField';
 import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { formatRupiah } from '../../src/data/catalog';
+import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { safeBack } from '../../src/lib/safeBack';
 import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
 import { useAddressesStore } from '../../src/stores/addresses';
@@ -60,10 +61,10 @@ function QtyControl({
   value: number;
   onMinus: () => void;
   onPlus: () => void;
-  tone?: 'brand' | 'amber';
+  tone?: 'brand' | 'deep';
 }) {
-  const activeBg = tone === 'amber' ? 'bg-amber-50' : 'bg-brand-50';
-  const activeColor = tone === 'amber' ? '#D97706' : '#1D4ED8';
+  const activeBg = tone === 'deep' ? 'bg-emerald-50' : 'bg-brand-50';
+  const activeColor = tone === 'deep' ? '#059669' : '#1D4ED8';
   return (
     <View className="flex-row items-center gap-2">
       <Pressable
@@ -191,7 +192,7 @@ function CustomBooking() {
     return d;
   }, [dateOptions, dateIdx, timeSlot, useNowTime]);
 
-  const { subtotal, total, discount, totalMin, itemCount, summaryRows } = useMemo(() => {
+  const { subtotal, totalBeforeOvertime, discount, totalMin, itemCount, summaryRows } = useMemo(() => {
     let runningSubtotal = 0;
     let runningMinutes = 0;
     let runningCount = 0;
@@ -245,13 +246,15 @@ function CustomBooking() {
     const discountValue = emptyHouse ? Math.round((runningSubtotal * emptyHouseDiscountRate) / 1000) * 1000 : 0;
     return {
       subtotal: runningSubtotal,
-      total: runningSubtotal - discountValue,
+      totalBeforeOvertime: runningSubtotal - discountValue,
       discount: discountValue,
       totalMin: runningMinutes,
       itemCount: runningCount,
       summaryRows: rows,
     };
   }, [rooms, extras, roomCounts, extraCounts, emptyHouse, deepMultiplier]);
+  const overtimeQuote = useMemo(() => quoteNightOvertime(scheduleAt, totalMin), [scheduleAt, totalMin]);
+  const total = totalBeforeOvertime + overtimeQuote.surcharge;
 
   function bumpExtra(key: string, delta: number) {
     setExtraCounts((prev) => ({ ...prev, [key]: Math.max(0, Math.min(50, (prev[key] ?? 0) + delta)) }));
@@ -467,6 +470,9 @@ function CustomBooking() {
           mode: 'custom',
           items,
           totalMin,
+          overtimeSurcharge: overtimeQuote.surcharge,
+          overtimeHours: overtimeQuote.overtimeHours,
+          estimatedEndAt: overtimeQuote.estimatedEnd.toISOString(),
           notes,
           emptyHouse,
           emptyHouseDiscount: discount,
@@ -519,21 +525,21 @@ function CustomBooking() {
 
         <View
           className={`rounded-2xl border p-3 ${
-            isDeep ? 'border-amber-300 bg-amber-50' : totalSelected > 0 ? 'border-brand-300 bg-brand-50' : 'border-ink-200 bg-white'
+            isDeep ? 'border-emerald-300 bg-emerald-50' : totalSelected > 0 ? 'border-brand-300 bg-brand-50' : 'border-ink-200 bg-white'
           }`}
         >
           <View className="flex-row items-start justify-between gap-2">
             <View className="flex-1">
               <View className="flex-row items-center gap-2">
                 <Text className="text-sm font-semibold text-ink-900">{formatRupiah(activePrice)}</Text>
-                <View className={`rounded-full px-2 py-1 ${isDeep ? 'bg-amber-100' : 'bg-ink-100'}`}>
-                  <Text className={`text-[10px] font-bold ${isDeep ? 'text-amber-800' : 'text-ink-700'}`}>
+                <View className={`rounded-full px-2 py-1 ${isDeep ? 'bg-emerald-100' : 'bg-ink-100'}`}>
+                  <Text className={`text-[10px] font-bold ${isDeep ? 'text-emerald-800' : 'text-ink-700'}`}>
                     {isDeep ? 'Deep Clean' : 'General'}
                   </Text>
                 </View>
               </View>
               <Text className="mt-0.5 text-[11px] text-ink-500">Estimasi {activeDuration} menit</Text>
-              <Text className={`mt-1 text-[10px] ${isDeep ? 'text-amber-700' : 'text-ink-500'}`}>
+              <Text className={`mt-1 text-[10px] ${isDeep ? 'text-emerald-700' : 'text-ink-500'}`}>
                 {isDeep
                   ? 'Deep Clean untuk area lebih kotor atau butuh hasil lebih detail.'
                   : 'General untuk pembersihan rutin dan kondisi normal.'}
@@ -543,7 +549,7 @@ function CustomBooking() {
               value={count}
               onMinus={() => bumpRoom(room.key, activeMode, -1)}
               onPlus={() => bumpRoom(room.key, activeMode, 1)}
-              tone={isDeep ? 'amber' : 'brand'}
+              tone={isDeep ? 'deep' : 'brand'}
             />
           </View>
 
@@ -551,10 +557,10 @@ function CustomBooking() {
             onPress={() => setRoomMode(room.key, isDeep ? 'general' : 'deep')}
             className="mt-3 flex-row items-center gap-2 border-t border-ink-100 pt-3"
           >
-            <View className={`h-5 w-5 items-center justify-center rounded border ${isDeep ? 'border-amber-400 bg-amber-500' : 'border-ink-300 bg-white'}`}>
+            <View className={`h-5 w-5 items-center justify-center rounded border ${isDeep ? 'border-emerald-500 bg-emerald-500' : 'border-ink-300 bg-white'}`}>
               {isDeep && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
             </View>
-            <Text className={`flex-1 text-[11px] font-semibold ${isDeep ? 'text-amber-700' : 'text-ink-600'}`}>
+            <Text className={`flex-1 text-[11px] font-semibold ${isDeep ? 'text-emerald-700' : 'text-ink-600'}`}>
               {isDeep ? 'Deep Clean aktif untuk ruangan ini' : 'Centang jika ruangan ini perlu Deep Clean'}
             </Text>
           </Pressable>
@@ -762,6 +768,17 @@ function CustomBooking() {
                 <View className="flex-row justify-between py-1">
                   <Text className="text-xs text-emerald-700">Diskon Rumah Kosong</Text>
                   <Text className="text-xs font-bold text-emerald-700">-{formatRupiah(discount)}</Text>
+                </View>
+              )}
+              {overtimeQuote.surcharge > 0 && (
+                <View className="border-t border-ink-100 pt-2">
+                  <View className="flex-row justify-between py-1">
+                    <Text className="text-xs text-amber-700">Biaya Lembur Malam</Text>
+                    <Text className="text-xs font-bold text-amber-700">{formatRupiah(overtimeQuote.surcharge)}</Text>
+                  </View>
+                  <Text className="text-[10px] text-amber-700">
+                    Estimasi selesai {formatEndTime(overtimeQuote.estimatedEnd)}. Waktu lewat 21:00 dikenakan Rp 50.000 per jam.
+                  </Text>
                 </View>
               )}
               <View className={`flex-row justify-between border-t border-ink-100 pt-2 ${discount > 0 ? '' : 'mt-2'}`}>

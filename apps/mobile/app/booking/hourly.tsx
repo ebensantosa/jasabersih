@@ -11,6 +11,7 @@ import { AddressField } from '../../src/components/AddressField';
 import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { useServices } from '../../src/hooks/useServices';
+import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { safeBack } from '../../src/lib/safeBack';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { useApiHourlyTiers } from '../../src/stores/appContent';
@@ -94,7 +95,8 @@ export default function HourlyBooking() {
   const maxH = tier?.maxHours ?? 8;
   const clampedHours = Math.min(Math.max(hours, minH), maxH);
   const subtotal = tier ? tier.pricePerHour * clampedHours : 0;
-  const total = subtotal;
+  const overtimeQuote = useMemo(() => quoteNightOvertime(scheduleAt, clampedHours * 60), [scheduleAt, clampedHours]);
+  const total = subtotal + overtimeQuote.surcharge;
 
   function dec() { setHours((h) => Math.max(minH, h - 1)); }
   function inc() { setHours((h) => Math.min(maxH, h + 1)); }
@@ -128,6 +130,9 @@ export default function HourlyBooking() {
           tierName: tier.name,
           hours: clampedHours,
           pricePerHour: tier.pricePerHour,
+          overtimeSurcharge: overtimeQuote.surcharge,
+          overtimeHours: overtimeQuote.overtimeHours,
+          estimatedEndAt: overtimeQuote.estimatedEnd.toISOString(),
           lat: coords.lat,
           lng: coords.lng,
           customerNotes: notes.trim() || undefined,
@@ -359,6 +364,9 @@ export default function HourlyBooking() {
                   <Text className="font-sans mt-0.5 text-[11px] leading-4 text-amber-900">
                     Pekerjaan selesai mengikuti estimasi waktu sejak cleaner mulai bekerja. Countdown durasi nanti tampil di aplikasi customer dan cleaner agar waktu kerja tercatat sama.
                   </Text>
+                  <Text className="font-sans mt-1 text-[11px] leading-4 text-amber-900">
+                    Jika estimasi pekerjaan lewat jam 21:00, biaya lembur otomatis ditambahkan Rp 50.000 per jam.
+                  </Text>
                 </View>
               </View>
 
@@ -373,6 +381,19 @@ export default function HourlyBooking() {
                       </Text>
                       <Text className="font-semibold text-[13px] text-ink-900">{rupiah(subtotal)}</Text>
                     </View>
+                    {overtimeQuote.surcharge > 0 && (
+                      <View className="flex-row justify-between gap-3">
+                        <View className="flex-1">
+                          <Text className="font-sans text-[13px] text-ink-600">
+                            Biaya lembur malam ({overtimeQuote.overtimeHours} jam)
+                          </Text>
+                          <Text className="font-sans mt-0.5 text-[10px] text-amber-700">
+                            Estimasi selesai {formatEndTime(overtimeQuote.estimatedEnd)}. Waktu lewat 21:00 dikenakan Rp 50.000 per jam.
+                          </Text>
+                        </View>
+                        <Text className="font-semibold text-[13px] text-ink-900">{rupiah(overtimeQuote.surcharge)}</Text>
+                      </View>
+                    )}
                     <View className="my-2 h-px bg-ink-100" />
                     <View className="flex-row items-center justify-between">
                       <Text className="font-bold text-sm text-ink-900">Total</Text>
