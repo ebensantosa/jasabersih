@@ -47,7 +47,7 @@ export class AdminUsersController {
   @Roles('super_admin', 'ops')
   async listCleanerAreaRequests() {
     return this.prisma.$queryRaw`
-      SELECT r.id, r.city, r.notes, r.created_at AS "createdAt",
+      SELECT r.id, r.city, r.action, r.notes, r.created_at AS "createdAt",
              u.id AS "cleanerId", u.name AS "cleanerName", u.phone AS "cleanerPhone",
              cp.service_areas AS "currentAreas", cp.domicile_city AS "domicileCity"
         FROM cleaner_area_requests r
@@ -64,26 +64,44 @@ export class AdminUsersController {
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
-    const rows = await this.prisma.$queryRaw<{ cleaner_id: string; city: string }[]>`
-      SELECT cleaner_id, city FROM cleaner_area_requests WHERE id = ${id}::uuid LIMIT 1
+    const rows = await this.prisma.$queryRaw<{ cleaner_id: string; city: string; action: string }[]>`
+      SELECT cleaner_id, city, action FROM cleaner_area_requests WHERE id = ${id}::uuid LIMIT 1
     `;
     const r = rows[0];
     if (!r) throw new BadRequestException('Request tidak ditemukan');
 
-    // Tambahin city ke service_areas cleaner + delete request (no soft-keep,
-    // audit trail udah ke-capture di admin_audit_log).
-    await this.prisma.$transaction([
-      this.prisma.$executeRawUnsafe(
-        `UPDATE cleaner_profiles
-           SET service_areas = COALESCE(service_areas, '[]'::jsonb) || to_jsonb($1::text),
-               updated_at = NOW()
-         WHERE user_id = $2::uuid
-           AND NOT (service_areas @> to_jsonb($1::text))`,
-        r.city, r.cleaner_id,
-      ),
-      this.prisma.$executeRaw`DELETE FROM cleaner_area_requests WHERE id = ${id}::uuid`,
-    ]);
-    await this.audit.log({ adminId: admin.id, action: 'cleaner_area_request.approve', resourceType: 'cleaner_area_requests', resourceId: id, changes: { city: r.city, cleanerId: r.cleaner_id }, ipAddress: req.ip ?? null });
+    // Audit trail di-capture di admin_audit_log, jadi row request langsung delete.
+    if (r.action === 'remove') {
+      // Hapus city dari service_areas (filter elements yang != city, case-insensitive)
+      await this.prisma.$transaction([
+        this.prisma.$executeRawUnsafe(
+          `UPDATE cleaner_profiles
+             SET service_areas = COALESCE(
+               (SELECT jsonb_agg(elem) FROM jsonb_array_elements_text(service_areas) AS elem
+                 WHERE lower(trim(elem)) <> lower(trim($1))),
+               '[]'::jsonb
+             ),
+             updated_at = NOW()
+           WHERE user_id = $2::uuid`,
+          r.city, r.cleaner_id,
+        ),
+        this.prisma.$executeRaw`DELETE FROM cleaner_area_requests WHERE id = ${id}::uuid`,
+      ]);
+    } else {
+      // Default add: tambahin city ke service_areas
+      await this.prisma.$transaction([
+        this.prisma.$executeRawUnsafe(
+          `UPDATE cleaner_profiles
+             SET service_areas = COALESCE(service_areas, '[]'::jsonb) || to_jsonb($1::text),
+                 updated_at = NOW()
+           WHERE user_id = $2::uuid
+             AND NOT (service_areas @> to_jsonb($1::text))`,
+          r.city, r.cleaner_id,
+        ),
+        this.prisma.$executeRaw`DELETE FROM cleaner_area_requests WHERE id = ${id}::uuid`,
+      ]);
+    }
+    await this.audit.log({ adminId: admin.id, action: `cleaner_area_request.approve_${r.action}`, resourceType: 'cleaner_area_requests', resourceId: id, changes: { city: r.city, cleanerId: r.cleaner_id, action: r.action }, ipAddress: req.ip ?? null });
     return { ok: true };
   }
 

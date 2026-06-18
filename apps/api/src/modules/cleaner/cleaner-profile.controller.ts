@@ -110,54 +110,56 @@ export class CleanerProfileController {
     return { ok: true };
   }
 
-  // List request area cleaner sendiri (pending + history)
+  // List request area cleaner sendiri (pending - history udah ke-delete)
   @Get('area-requests')
   async listAreaRequests(@CurrentUser() user: AuthenticatedUser) {
     return this.prisma.$queryRaw`
-      SELECT id, city, notes, status, created_at AS "createdAt",
-             reviewed_at AS "reviewedAt", reject_reason AS "rejectReason"
+      SELECT id, city, notes, action, status, created_at AS "createdAt"
         FROM cleaner_area_requests
        WHERE cleaner_id = ${user.id}::uuid
        ORDER BY created_at DESC LIMIT 50
     `;
   }
 
-  // Cleaner kirim request tambah area kerja
+  // Cleaner kirim request: action='add' utk tambah area, 'remove' utk hapus.
   @Post('area-requests')
   async createAreaRequest(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { city: string; notes?: string },
+    @Body() body: { city: string; notes?: string; action?: 'add' | 'remove' },
   ) {
     const city = body?.city?.trim();
+    const action = body?.action === 'remove' ? 'remove' : 'add';
     if (!city || city.length < 2) throw new BadRequestException('Nama kota wajib (min 2 karakter).');
     if (city.length > 100) throw new BadRequestException('Nama kota terlalu panjang.');
 
-    // Cek kota ada di service_areas aktif
-    const areaRows = await this.prisma.$queryRawUnsafe<{ c: number }[]>(
-      `SELECT COUNT(*)::int AS c FROM service_areas WHERE is_active = TRUE AND lower(trim(city)) = lower(trim($1))`,
-      city,
-    );
-    if (Number(areaRows[0]?.c ?? 0) === 0) {
-      throw new BadRequestException('Kota belum dibuka. Kalau mau usul buka kota, pakai menu "Request Kota Baru".');
-    }
-
-    // Cek udah ada di service_areas cleaner
     const profRows = await this.prisma.$queryRaw<{ service_areas: any }[]>`
       SELECT service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
     `;
     const existing = Array.isArray(profRows[0]?.service_areas) ? (profRows[0]!.service_areas as string[]) : [];
-    if (existing.map((s) => s.toLowerCase().trim()).includes(city.toLowerCase())) {
-      throw new BadRequestException('Kota ini sudah ada di area kerja kamu.');
+    const hasArea = existing.map((s) => s.toLowerCase().trim()).includes(city.toLowerCase());
+
+    if (action === 'add') {
+      const areaRows = await this.prisma.$queryRawUnsafe<{ c: number }[]>(
+        `SELECT COUNT(*)::int AS c FROM service_areas WHERE is_active = TRUE AND lower(trim(city)) = lower(trim($1))`,
+        city,
+      );
+      if (Number(areaRows[0]?.c ?? 0) === 0) {
+        throw new BadRequestException('Kota belum dibuka. Kalau mau usul buka kota, pakai menu "Request Kota Baru".');
+      }
+      if (hasArea) throw new BadRequestException('Kota ini sudah ada di area kerja kamu.');
+    } else {
+      // remove: harus area yang udah ada
+      if (!hasArea) throw new BadRequestException('Kota ini bukan area kerja kamu.');
     }
 
     try {
       await this.prisma.$executeRaw`
-        INSERT INTO cleaner_area_requests (cleaner_id, city, notes)
-        VALUES (${user.id}::uuid, ${city}, ${body.notes ?? null})
+        INSERT INTO cleaner_area_requests (cleaner_id, city, action, notes)
+        VALUES (${user.id}::uuid, ${city}, ${action}, ${body.notes ?? null})
       `;
     } catch (e: any) {
       if (e?.code === '23505') {
-        throw new BadRequestException('Kamu sudah pernah request kota ini, masih menunggu review admin.');
+        throw new BadRequestException(`Kamu sudah submit request ${action === 'add' ? 'tambah' : 'hapus'} kota ini, masih menunggu review admin.`);
       }
       throw e;
     }

@@ -9,8 +9,8 @@ import { Badge, Button, useConfirm, useToast } from '../../../components/ui';
 type Req = {
   id: string;
   city: string;
+  action: 'add' | 'remove';
   notes: string | null;
-  status: string;
   createdAt: string;
   cleanerId: string;
   cleanerName: string | null;
@@ -35,7 +35,8 @@ export default function CleanerAreaRequestsPage() {
   useEffect(() => { void load(); }, []);
 
   async function approve(r: Req) {
-    const ok = await confirm({ title: 'Approve request', message: `Tambahkan area "${r.city}" untuk cleaner ${r.cleanerName ?? r.cleanerId.slice(0,8)}?` });
+    const verb = r.action === 'remove' ? 'Hapus' : 'Tambahkan';
+    const ok = await confirm({ title: `Approve request ${r.action === 'remove' ? 'hapus' : 'tambah'}`, message: `${verb} area "${r.city}" ${r.action === 'remove' ? 'dari' : 'untuk'} cleaner ${r.cleanerName ?? r.cleanerId.slice(0,8)}?` });
     if (!ok) return;
     try {
       await api.admin.approveCleanerAreaRequest(r.id);
@@ -76,7 +77,7 @@ export default function CleanerAreaRequestsPage() {
                 <th className="px-3 py-2 text-left">Cleaner</th>
                 <th className="px-3 py-2 text-left">Domisili</th>
                 <th className="px-3 py-2 text-left">Area Sekarang</th>
-                <th className="px-3 py-2 text-left">Request Area</th>
+                <th className="px-3 py-2 text-left">Request</th>
                 <th className="px-3 py-2 text-left">Tanggal</th>
                 <th className="px-3 py-2 text-right">Aksi</th>
               </tr>
@@ -95,7 +96,12 @@ export default function CleanerAreaRequestsPage() {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <Badge variant="blue">{r.city}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={r.action === 'remove' ? 'amber' : 'green'}>
+                        {r.action === 'remove' ? '− Hapus' : '+ Tambah'}
+                      </Badge>
+                      <Badge variant="blue">{r.city}</Badge>
+                    </div>
                     {r.notes && <div className="mt-0.5 text-xs text-slate-500">{r.notes}</div>}
                   </td>
                   <td className="px-3 py-2 text-xs text-slate-500">{new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>

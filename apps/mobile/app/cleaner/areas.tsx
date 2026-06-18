@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
-import { ArrowLeft, Check, Lightbulb, MapPin, Plus } from 'lucide-react-native';
+import { ArrowLeft, Check, Lightbulb, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -14,29 +14,64 @@ import { safeBack } from '../../src/lib/safeBack';
 
 function CleanerAreas() {
   const areas = useCleanerStore((s) => s.serviceAreas);
+  const setAreas = useCleanerStore((s) => s.setAreas);
   const [showRequestArea, setShowRequestArea] = useState(false);
   const [showRequestNewCity, setShowRequestNewCity] = useState(false);
   const [requestCityName, setRequestCityName] = useState('');
-  const [pendingRequests, setPendingRequests] = useState<{ id: string; city: string; status: string }[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<{ id: string; city: string; action: 'add' | 'remove' }[]>([]);
+
+  // Refresh dari backend tiap kali screen mount - supaya area yang admin baru
+  // approve langsung kelihatan, gak stuck di cache lama.
+  async function refreshAreasFromServer() {
+    try {
+      const r = await api.get('/cleaner/profile');
+      const data = (r.data?.data ?? r.data) as any;
+      const fromServer = Array.isArray(data?.serviceAreas) ? data.serviceAreas as string[] : [];
+      setAreas(fromServer);
+    } catch { /* ignore */ }
+  }
 
   async function loadPending() {
     try {
       const r = await api.get('/cleaner/profile/area-requests');
       const list = (r.data?.data ?? r.data ?? []) as any[];
-      setPendingRequests(list.filter((x) => x.status === 'pending'));
+      setPendingRequests(list.map((x) => ({ id: x.id, city: x.city, action: x.action ?? 'add' })));
     } catch { /* ignore */ }
   }
-  useEffect(() => { void loadPending(); }, []);
+  useEffect(() => { void refreshAreasFromServer(); void loadPending(); }, []);
 
   async function requestAddArea(city: string) {
     try {
-      await api.post('/cleaner/profile/area-requests', { city });
+      await api.post('/cleaner/profile/area-requests', { city, action: 'add' });
       toast.success(`Permintaan tambah area "${city}" terkirim. Tunggu approval admin.`);
       setShowRequestArea(false);
       void loadPending();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
     }
+  }
+
+  function requestRemoveArea(city: string) {
+    Alert.alert(
+      'Hapus Area',
+      `Yakin mau hapus "${city}" dari area kerja? Admin akan review dulu sebelum benar-benar dihapus.`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Kirim Request',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post('/cleaner/profile/area-requests', { city, action: 'remove' });
+              toast.success(`Permintaan hapus area "${city}" terkirim. Tunggu approval admin.`);
+              void loadPending();
+            } catch (e: any) {
+              toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function requestNewCity() {
@@ -110,18 +145,32 @@ function CleanerAreas() {
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl bg-white">
-              {areas.map((c, i) => (
-                <View
-                  key={c}
-                  className={`flex-row items-center gap-3 px-4 py-3.5 ${i < areas.length - 1 ? 'border-b border-ink-100' : ''}`}
-                >
-                  <View className="h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
-                    <Check color="#047857" size={16} strokeWidth={2.4} />
+              {areas.map((c, i) => {
+                const hasPendingRemove = pendingRequests.some((r) => r.action === 'remove' && r.city.toLowerCase() === c.toLowerCase());
+                return (
+                  <View
+                    key={c}
+                    className={`flex-row items-center gap-3 px-4 py-3.5 ${i < areas.length - 1 ? 'border-b border-ink-100' : ''}`}
+                  >
+                    <View className="h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
+                      <Check color="#047857" size={16} strokeWidth={2.4} />
+                    </View>
+                    <Text className="font-medium flex-1 text-sm text-ink-800">{c}</Text>
+                    {hasPendingRemove ? (
+                      <Text className="font-bold text-[10px] uppercase tracking-wider text-amber-700">hapus pending</Text>
+                    ) : (
+                      <Pressable
+                        onPress={() => requestRemoveArea(c)}
+                        hitSlop={10}
+                        className="flex-row items-center gap-1 rounded-lg bg-rose-50 px-2 py-1"
+                      >
+                        <Trash2 color="#B91C1C" size={12} />
+                        <Text className="font-bold text-[10px] text-rose-700">Hapus</Text>
+                      </Pressable>
+                    )}
                   </View>
-                  <Text className="font-medium flex-1 text-sm text-ink-800">{c}</Text>
-                  <Text className="font-bold text-[10px] uppercase tracking-wider text-emerald-700">aktif</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
 
@@ -136,11 +185,15 @@ function CleanerAreas() {
                     key={r.id}
                     className={`flex-row items-center gap-3 px-4 py-3.5 ${i < pendingRequests.length - 1 ? 'border-b border-ink-100' : ''}`}
                   >
-                    <View className="h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
-                      <MapPin color="#B45309" size={16} strokeWidth={2.2} />
+                    <View className={`h-9 w-9 items-center justify-center rounded-xl ${r.action === 'remove' ? 'bg-rose-100' : 'bg-amber-100'}`}>
+                      {r.action === 'remove' ? <Trash2 color="#B91C1C" size={16} strokeWidth={2.2} /> : <MapPin color="#B45309" size={16} strokeWidth={2.2} />}
                     </View>
-                    <Text className="font-medium flex-1 text-sm text-ink-800">{r.city}</Text>
-                    <Text className="font-bold text-[10px] uppercase tracking-wider text-amber-700">menunggu</Text>
+                    <View className="flex-1">
+                      <Text className="font-medium text-sm text-ink-800">{r.city}</Text>
+                      <Text className={`font-bold text-[10px] uppercase tracking-wider ${r.action === 'remove' ? 'text-rose-700' : 'text-amber-700'}`}>
+                        {r.action === 'remove' ? 'Minta Dihapus' : 'Minta Ditambah'}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </View>
