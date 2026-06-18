@@ -1,0 +1,133 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Check, MapPin, X } from 'lucide-react';
+
+import { api } from '../../../lib/api';
+import { Badge, Button, useConfirm, useToast } from '../../../components/ui';
+
+type Req = {
+  id: string;
+  city: string;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  cleanerId: string;
+  cleanerName: string | null;
+  cleanerPhone: string | null;
+  currentAreas: string[] | null;
+  domicileCity: string | null;
+};
+
+export default function CleanerAreaRequestsPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [tab, setTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [list, setList] = useState<Req[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      setList((await api.admin.cleanerAreaRequests(tab)) as Req[]);
+    } catch (e: any) { toast.error(e?.message ?? 'Gagal load'); }
+    setLoading(false);
+  }
+  useEffect(() => { void load(); }, [tab]);
+
+  async function approve(r: Req) {
+    const ok = await confirm({ title: 'Approve request', message: `Tambahkan area "${r.city}" untuk cleaner ${r.cleanerName ?? r.cleanerId.slice(0,8)}?` });
+    if (!ok) return;
+    try {
+      await api.admin.approveCleanerAreaRequest(r.id);
+      toast.success('Area di-approve');
+      void load();
+    } catch (e: any) { toast.error(e?.message); }
+  }
+
+  async function reject(r: Req) {
+    const reason = window.prompt('Alasan tolak (opsional):') ?? undefined;
+    if (reason === null) return; // user batal lewat ESC
+    try {
+      await api.admin.rejectCleanerAreaRequest(r.id, reason);
+      toast.success('Request ditolak');
+      void load();
+    } catch (e: any) { toast.error(e?.message); }
+  }
+
+  return (
+    <div>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Permintaan Area Cleaner</h1>
+        <p className="text-sm text-slate-500">Cleaner request tambah area kerja. Admin yang putuskan accept/reject.</p>
+      </div>
+
+      <div className="mt-5 flex gap-2 border-b">
+        {(['pending', 'approved', 'rejected'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-semibold ${tab === t ? 'border-b-2 border-blue-600 text-blue-700' : 'text-slate-500'}`}
+          >
+            {t === 'pending' ? 'Menunggu' : t === 'approved' ? 'Disetujui' : 'Ditolak'}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+      ) : list.length === 0 ? (
+        <div className="mt-4 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
+          <MapPin size={28} className="mx-auto mb-2 text-slate-400" />
+          Belum ada request {tab === 'pending' ? 'menunggu' : tab === 'approved' ? 'yang disetujui' : 'yang ditolak'}.
+        </div>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-md border bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+              <tr>
+                <th className="px-3 py-2 text-left">Cleaner</th>
+                <th className="px-3 py-2 text-left">Domisili</th>
+                <th className="px-3 py-2 text-left">Area Sekarang</th>
+                <th className="px-3 py-2 text-left">Request Area</th>
+                <th className="px-3 py-2 text-left">Tanggal</th>
+                <th className="px-3 py-2 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {list.map((r) => (
+                <tr key={r.id}>
+                  <td className="px-3 py-2">
+                    <div className="font-semibold">{r.cleanerName ?? '-'}</div>
+                    <div className="text-xs text-slate-500">{r.cleanerPhone ?? '-'}</div>
+                  </td>
+                  <td className="px-3 py-2 text-xs">{r.domicileCity ?? '-'}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {(r.currentAreas ?? []).map((a) => <Badge key={a}>{a}</Badge>)}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge variant="blue">{r.city}</Badge>
+                    {r.notes && <div className="mt-0.5 text-xs text-slate-500">{r.notes}</div>}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-500">{new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                  <td className="px-3 py-2 text-right">
+                    {tab === 'pending' ? (
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="primary" icon={<Check size={12} />} onClick={() => approve(r)}>Approve</Button>
+                        <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => reject(r)}>Tolak</Button>
+                      </div>
+                    ) : (
+                      <Badge variant={tab === 'approved' ? 'green' : 'amber'}>{tab}</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

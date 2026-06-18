@@ -74,7 +74,17 @@ export class CleanerProfileController {
     `;
 
     if (body.bio !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET bio = ${body.bio}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
-    if (body.serviceAreas !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET service_areas = ${JSON.stringify(body.serviceAreas)}::jsonb, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+    // serviceAreas LOCKED untuk cleaner: cuma bisa di-set saat profile masih kosong (initial dari register).
+    // Setelah ada minimal 1 area, cleaner gak boleh ubah - admin yang assign via dashboard.
+    if (body.serviceAreas !== undefined) {
+      const cur = await this.prisma.$queryRaw<{ service_areas: any }[]>`SELECT service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1`;
+      const existing = Array.isArray(cur[0]?.service_areas) ? cur[0]!.service_areas as string[] : [];
+      if (existing.length === 0) {
+        await this.prisma.$executeRaw`UPDATE cleaner_profiles SET service_areas = ${JSON.stringify(body.serviceAreas)}::jsonb, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+      } else {
+        throw new BadRequestException('Area layanan dikelola admin. Kirim request tambah area lewat halaman Area Layananku.');
+      }
+    }
     if (body.domicileCity !== undefined) await this.prisma.$executeRaw`UPDATE cleaner_profiles SET domicile_city = ${body.domicileCity.trim()}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     if (body.languages !== undefined) {
       // text[] requires array literal — use raw param
@@ -97,6 +107,60 @@ export class CleanerProfileController {
       await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = ${body.isAvailable}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     }
 
+    return { ok: true };
+  }
+
+  // List request area cleaner sendiri (pending + history)
+  @Get('area-requests')
+  async listAreaRequests(@CurrentUser() user: AuthenticatedUser) {
+    return this.prisma.$queryRaw`
+      SELECT id, city, notes, status, created_at AS "createdAt",
+             reviewed_at AS "reviewedAt", reject_reason AS "rejectReason"
+        FROM cleaner_area_requests
+       WHERE cleaner_id = ${user.id}::uuid
+       ORDER BY created_at DESC LIMIT 50
+    `;
+  }
+
+  // Cleaner kirim request tambah area kerja
+  @Post('area-requests')
+  async createAreaRequest(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { city: string; notes?: string },
+  ) {
+    const city = body?.city?.trim();
+    if (!city || city.length < 2) throw new BadRequestException('Nama kota wajib (min 2 karakter).');
+    if (city.length > 100) throw new BadRequestException('Nama kota terlalu panjang.');
+
+    // Cek kota ada di service_areas aktif
+    const areaRows = await this.prisma.$queryRawUnsafe<{ c: number }[]>(
+      `SELECT COUNT(*)::int AS c FROM service_areas WHERE is_active = TRUE AND lower(trim(city)) = lower(trim($1))`,
+      city,
+    );
+    if (Number(areaRows[0]?.c ?? 0) === 0) {
+      throw new BadRequestException('Kota belum dibuka. Kalau mau usul buka kota, pakai menu "Request Kota Baru".');
+    }
+
+    // Cek udah ada di service_areas cleaner
+    const profRows = await this.prisma.$queryRaw<{ service_areas: any }[]>`
+      SELECT service_areas FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1
+    `;
+    const existing = Array.isArray(profRows[0]?.service_areas) ? (profRows[0]!.service_areas as string[]) : [];
+    if (existing.map((s) => s.toLowerCase().trim()).includes(city.toLowerCase())) {
+      throw new BadRequestException('Kota ini sudah ada di area kerja kamu.');
+    }
+
+    try {
+      await this.prisma.$executeRaw`
+        INSERT INTO cleaner_area_requests (cleaner_id, city, notes)
+        VALUES (${user.id}::uuid, ${city}, ${body.notes ?? null})
+      `;
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        throw new BadRequestException('Kamu sudah pernah request kota ini, masih menunggu review admin.');
+      }
+      throw e;
+    }
     return { ok: true };
   }
 }

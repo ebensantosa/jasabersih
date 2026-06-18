@@ -337,6 +337,14 @@ export function createClient(opts: ClientOptions) {
       updatePopup: (id: string, body: any) => request<unknown>('PATCH', `/admin/app/popups/${id}`, body),
       deletePopup: (id: string) => request<unknown>('DELETE', `/admin/app/popups/${id}`),
 
+      // Cleaner area requests
+      cleanerAreaRequests: (status?: 'pending' | 'approved' | 'rejected') =>
+        request<any[]>('GET', `/admin/users/cleaner-area-requests${status ? `?status=${status}` : ''}`),
+      approveCleanerAreaRequest: (id: string) =>
+        request<{ ok: true }>('POST', `/admin/users/cleaner-area-requests/${id}/approve`),
+      rejectCleanerAreaRequest: (id: string, reason?: string) =>
+        request<{ ok: true }>('POST', `/admin/users/cleaner-area-requests/${id}/reject`, { reason }),
+
       // Hourly tiers (per-jam booking pricing)
       hourlyTiers: () => request<any[]>('GET', '/admin/app/hourly-tiers'),
       createHourlyTier: (body: any) => request<{ id: string }>('POST', '/admin/app/hourly-tiers', body),

@@ -1,6 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { ArrowLeft, Check, Lightbulb, MapPin, Plus } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,12 +13,31 @@ import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 import { safeBack } from '../../src/lib/safeBack';
 
 function CleanerAreas() {
-  const router = useRouter();
   const areas = useCleanerStore((s) => s.serviceAreas);
-  const toggle = useCleanerStore((s) => s.toggleArea);
-  const setAreas = useCleanerStore((s) => s.setAreas);
-  const [showRequestCity, setShowRequestCity] = useState(false);
+  const [showRequestArea, setShowRequestArea] = useState(false);
+  const [showRequestNewCity, setShowRequestNewCity] = useState(false);
   const [requestCityName, setRequestCityName] = useState('');
+  const [pendingRequests, setPendingRequests] = useState<{ id: string; city: string; status: string }[]>([]);
+
+  async function loadPending() {
+    try {
+      const r = await api.get('/cleaner/profile/area-requests');
+      const list = (r.data?.data ?? r.data ?? []) as any[];
+      setPendingRequests(list.filter((x) => x.status === 'pending'));
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { void loadPending(); }, []);
+
+  async function requestAddArea(city: string) {
+    try {
+      await api.post('/cleaner/profile/area-requests', { city });
+      toast.success(`Permintaan tambah area "${city}" terkirim. Tunggu approval admin.`);
+      setShowRequestArea(false);
+      void loadPending();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
+    }
+  }
 
   async function requestNewCity() {
     const name = requestCityName.trim();
@@ -27,10 +46,10 @@ function CleanerAreas() {
       await api.post('/app/city-requests', {
         city: name,
         source: 'cleaner',
-        notes: 'Cleaner request kota tambahan dari halaman Area Layananku',
+        notes: 'Cleaner request kota belum dibuka',
       });
-      toast.success(`Permintaan kota "${name}" dikirim. Admin akan review.`);
-      setShowRequestCity(false);
+      toast.success(`Permintaan buka kota "${name}" dikirim. Admin akan review.`);
+      setShowRequestNewCity(false);
       setRequestCityName('');
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
@@ -47,20 +66,7 @@ function CleanerAreas() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [serviceAreas]);
 
-  async function save() {
-    if (areas.length === 0) {
-      toast.warning('Pilih minimal 1 area');
-      return;
-    }
-    try {
-      // Sync to backend so /cleaner/jobs/available filters by these.
-      await api.patch('/cleaner/profile', { serviceAreas: areas });
-      toast.success(`${areas.length} area tersimpan`);
-      safeBack();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal simpan ke server');
-    }
-  }
+  const requestableCities = cities.filter((c) => !areas.includes(c) && !pendingRequests.some((r) => r.city === c));
 
   return (
     <>
@@ -74,14 +80,9 @@ function CleanerAreas() {
             <View className="ml-1 flex-1">
               <Text className="font-bold text-base text-ink-900">Area Layananku</Text>
               <Text className="font-medium text-[11px] text-ink-500">
-                {areas.length} dari {cities.length} kota dipilih
+                {areas.length} area aktif {pendingRequests.length > 0 ? `· ${pendingRequests.length} pending` : ''}
               </Text>
             </View>
-            {areas.length > 0 && (
-              <Pressable onPress={() => setAreas([])} className="px-2 py-1">
-                <Text className="font-semibold text-xs text-danger">Reset</Text>
-              </Pressable>
-            )}
           </View>
         </SafeAreaView>
 
@@ -89,80 +90,115 @@ function CleanerAreas() {
           <View className="flex-row items-start gap-2 rounded-2xl bg-brand-50 p-3">
             <Lightbulb color="#1D4ED8" size={16} />
             <View className="flex-1">
-              <Text className="font-semibold text-xs text-brand-900">Tips</Text>
+              <Text className="font-semibold text-xs text-brand-900">Info</Text>
               <Text className="font-sans mt-1 text-[11px] leading-4 text-brand-900">
-                Pilih kota yang kamu sanggup datangi. Kamu hanya akan menerima job dari area ini.
+                Area kerja kamu di-set oleh admin. Kalau mau nambah area, kirim request lewat tombol di bawah.
               </Text>
             </View>
           </View>
 
           <Text className="font-semibold mt-4 mb-2 text-[11px] uppercase tracking-wider text-ink-500">
-            Pilih Kota
+            Area Aktif ({areas.length})
           </Text>
-          {cities.length === 0 ? (
+          {areas.length === 0 ? (
             <View className="rounded-2xl bg-white p-6 items-center">
-              <Text className="font-sans text-center text-[11px] text-ink-500">
-                Belum ada kota yang dilayani. Hubungi admin untuk konfirmasi.
+              <MapPin color="#94A3B8" size={28} />
+              <Text className="font-bold mt-2 text-sm text-ink-700">Belum ada area aktif</Text>
+              <Text className="font-sans mt-1 text-center text-[11px] text-ink-500">
+                Kirim request ke admin untuk dapat area kerja pertama kamu.
               </Text>
-              <Pressable
-                onPress={() => setShowRequestCity(true)}
-                className="mt-3 flex-row items-center gap-2 rounded-xl bg-brand-50 px-4 py-2.5"
-              >
-                <Plus color="#1D4ED8" size={14} />
-                <Text className="font-bold text-[12px] text-brand-700">Request Kota Baru</Text>
-              </Pressable>
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl bg-white">
-              {cities.map((c, i) => {
-                const active = areas.includes(c);
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => toggle(c)}
-                    className={`flex-row items-center gap-3 px-4 py-3.5 ${
-                      i < cities.length - 1 ? 'border-b border-ink-100' : ''
-                    }`}
-                  >
-                    <View
-                      className={`h-9 w-9 items-center justify-center rounded-xl ${
-                        active ? 'bg-brand-600' : 'bg-ink-100'
-                      }`}
-                    >
-                      <MapPin color={active ? 'white' : '#64748B'} size={16} strokeWidth={2.2} />
-                    </View>
-                    <Text
-                      className={`font-medium flex-1 text-sm ${
-                        active ? 'text-brand-700' : 'text-ink-800'
-                      }`}
-                    >
-                      {c}
-                    </Text>
-                    <View
-                      className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
-                        active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'
-                      }`}
-                    >
-                      {active && <Check color="white" size={14} strokeWidth={3} />}
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {areas.map((c, i) => (
+                <View
+                  key={c}
+                  className={`flex-row items-center gap-3 px-4 py-3.5 ${i < areas.length - 1 ? 'border-b border-ink-100' : ''}`}
+                >
+                  <View className="h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
+                    <Check color="#047857" size={16} strokeWidth={2.4} />
+                  </View>
+                  <Text className="font-medium flex-1 text-sm text-ink-800">{c}</Text>
+                  <Text className="font-bold text-[10px] uppercase tracking-wider text-emerald-700">aktif</Text>
+                </View>
+              ))}
             </View>
           )}
 
-          {cities.length > 0 && (
-            <Pressable
-              onPress={() => setShowRequestCity(true)}
-              className="mt-3 flex-row items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 py-3"
-            >
-              <Plus color="#1D4ED8" size={14} />
-              <Text className="font-bold text-[12px] text-brand-700">Kota saya belum ada? Request ke admin</Text>
-            </Pressable>
+          {pendingRequests.length > 0 && (
+            <>
+              <Text className="font-semibold mt-5 mb-2 text-[11px] uppercase tracking-wider text-ink-500">
+                Menunggu Approval Admin ({pendingRequests.length})
+              </Text>
+              <View className="overflow-hidden rounded-2xl bg-white">
+                {pendingRequests.map((r, i) => (
+                  <View
+                    key={r.id}
+                    className={`flex-row items-center gap-3 px-4 py-3.5 ${i < pendingRequests.length - 1 ? 'border-b border-ink-100' : ''}`}
+                  >
+                    <View className="h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
+                      <MapPin color="#B45309" size={16} strokeWidth={2.2} />
+                    </View>
+                    <Text className="font-medium flex-1 text-sm text-ink-800">{r.city}</Text>
+                    <Text className="font-bold text-[10px] uppercase tracking-wider text-amber-700">menunggu</Text>
+                  </View>
+                ))}
+              </View>
+            </>
           )}
+
+          <Pressable
+            onPress={() => setShowRequestArea(true)}
+            className="mt-5 flex-row items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 py-3"
+          >
+            <Plus color="#1D4ED8" size={14} />
+            <Text className="font-bold text-[12px] text-brand-700">Request Tambah Area Kerja</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setShowRequestNewCity(true)}
+            className="mt-2 flex-row items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white py-3"
+          >
+            <Text className="font-medium text-[11px] text-ink-600">Kotamu belum dibuka? Usul buka kota →</Text>
+          </Pressable>
         </ScrollView>
 
-        <Modal visible={showRequestCity} transparent animationType="fade" onRequestClose={() => setShowRequestCity(false)}>
+        {/* Modal pilih area dari kota aktif */}
+        <Modal visible={showRequestArea} transparent animationType="slide" onRequestClose={() => setShowRequestArea(false)}>
+          <Pressable onPress={() => setShowRequestArea(false)} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+            <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%' }}>
+              <View className="p-5 pb-2">
+                <Text className="font-extrabold text-lg text-ink-900">Request Tambah Area</Text>
+                <Text className="font-medium mt-1 text-[11px] text-ink-500">
+                  Pilih kota dari list di bawah. Admin akan review & approve kalau kamu cocok untuk area itu.
+                </Text>
+              </View>
+              <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+                {requestableCities.length === 0 ? (
+                  <View className="mx-5 rounded-xl bg-ink-50 p-4 items-center">
+                    <Text className="font-sans text-center text-[11px] text-ink-500">
+                      Semua kota aktif sudah jadi area kerja kamu (atau sudah di-request).
+                    </Text>
+                  </View>
+                ) : (
+                  requestableCities.map((c, i) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => requestAddArea(c)}
+                      className={`flex-row items-center gap-3 px-5 py-3.5 ${i < requestableCities.length - 1 ? 'border-b border-ink-100' : ''}`}
+                    >
+                      <MapPin color="#1D4ED8" size={18} />
+                      <Text className="font-semibold flex-1 text-sm text-ink-900">{c}</Text>
+                      <Plus color="#1D4ED8" size={16} />
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={showRequestNewCity} transparent animationType="fade" onRequestClose={() => setShowRequestCity(false)}>
           <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
             <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
               <Text className="font-extrabold text-lg text-ink-900">Request Kota Baru</Text>
@@ -191,17 +227,6 @@ function CleanerAreas() {
           </Pressable>
         </Modal>
 
-        <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
-          <SafeAreaView edges={['bottom']}>
-            <View className="p-4">
-              <Pressable onPress={save} className="rounded-2xl bg-brand-600 py-3.5">
-                <Text className="font-bold text-center text-sm text-white">
-                  Simpan ({areas.length} area)
-                </Text>
-              </Pressable>
-            </View>
-          </SafeAreaView>
-        </View>
       </View>
     </>
   );
