@@ -92,9 +92,10 @@ async function bootstrap() {
   }
 
   const port = Number(process.env.PORT ?? 3000);
-  await app.listen(port);
+  const host = process.env.HOST ?? '0.0.0.0';
+  await app.listen(port, host);
   // eslint-disable-next-line no-console
-  console.warn(`[api] listening on http://localhost:${port} (docs: /docs)`);
+  console.warn(`[api] listening on http://${host}:${port} (docs: /docs)`);
 }
 
 void bootstrap();
