@@ -9,16 +9,12 @@ import { formatRupiah } from '../../src/data/catalog';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useAuthStore } from '../../src/stores/auth';
 import { STATUS_COLOR, STATUS_LABEL, useBookingsStore } from '../../src/stores/bookings';
-import { useCleanerStore } from '../../src/stores/cleaner';
 import { useModeStore } from '../../src/stores/mode';
-import { useUserStore } from '../../src/stores/user';
 
 export default function Bookings() {
   const router = useRouter();
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
-  const cleanerName = useCleanerStore((s) => s.name);
-  const myUserId = useUserStore((s) => s.profile?.id);
   const allList = useBookingsStore((s) => s.list);
   const syncFromApi = useBookingsStore((s) => s.syncFromApi);
   const syncing = useBookingsStore((s) => s.syncing);
@@ -34,10 +30,7 @@ export default function Bookings() {
   //   Match by cleanerId (paling reliable) atau fallback cleanerName.
   // Customer mode: semua booking customer.
   const list = isCleaner
-    ? allList.filter((b) =>
-        (myUserId && (b as any).cleanerId === myUserId) ||
-        (cleanerName && b.cleanerName === cleanerName),
-      )
+    ? allList
     : allList;
   const activeStatuses = useMemo(() => new Set(['pending_payment', 'searching', 'matched', 'on_the_way', 'in_progress', 'wa_survey_pending', 'subscription_parent', 'scheduled_future']), []);
   const activeList = useMemo(() => list.filter((b) => activeStatuses.has(b.status)), [list, activeStatuses]);

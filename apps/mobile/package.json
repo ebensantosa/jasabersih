@@ -69,6 +69,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@babel/plugin-transform-react-jsx": "^7.27.1",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",
     "typescript": "~5.9.2",

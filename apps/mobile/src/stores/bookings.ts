@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { api } from '../lib/api';
 import { storage } from '../lib/storage';
+import { useModeStore } from './mode';
 
 const BOOKINGS_KEY = 'bookings.list';
 
@@ -175,8 +176,27 @@ export const useBookingsStore = create<State>((set, get) => ({
   async syncFromApi() {
     set({ syncing: true, syncError: null });
     try {
-      const res = await api.get('/bookings');
-      const items: any[] = res.data?.data ?? [];
+      const mode = useModeStore.getState().mode;
+      const items: any[] = mode === 'freelancer'
+        ? await (async () => {
+            const [activeRes, historyRes] = await Promise.all([
+              api.get('/cleaner/jobs/active'),
+              api.get('/cleaner/jobs/history'),
+            ]);
+            const activeItems: any[] = activeRes.data?.data ?? activeRes.data ?? [];
+            const historyItems: any[] = historyRes.data?.data ?? historyRes.data ?? [];
+            const seen = new Set<string>();
+            return [...activeItems, ...historyItems].filter((item) => {
+              const id = String(item?.id ?? '');
+              if (!id || seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            });
+          })()
+        : await (async () => {
+            const res = await api.get('/bookings');
+            return res.data?.data ?? [];
+          })();
       // Merge with local list - server entries take precedence on conflict (id match);
       // entries that exist only locally (not yet pushed) stay.
       const local = get().list;

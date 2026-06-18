@@ -233,6 +233,7 @@ export class CleanerJobsController {
              b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
              COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             s.icon_url AS "serviceIcon",
              pp.name AS "packageName",
              u.name AS "customerName"
         FROM bookings b
@@ -242,6 +243,30 @@ export class CleanerJobsController {
        WHERE b.cleaner_id = ${user.id}::uuid
          AND b.status IN ('matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started')
        ORDER BY b.scheduled_at ASC LIMIT 50
+    `;
+  }
+
+  @Get('history')
+  async history(@CurrentUser() user: AuthenticatedUser) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
+             b.scheduled_at AS "scheduledAt",
+             b.cleaner_payout AS "cleanerPayout",
+             b.completed_at AS "completedAt",
+             b.canceled_at AS "canceledAt",
+             b.created_at AS "createdAt",
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             s.icon_url AS "serviceIcon",
+             pp.name AS "packageName",
+             u.name AS "customerName"
+        FROM bookings b
+        LEFT JOIN services s ON s.id = b.service_id
+        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN users u ON u.id = b.customer_id
+       WHERE b.cleaner_id = ${user.id}::uuid
+         AND b.status IN ('completed', 'canceled', 'cancelled', 'failed', 'rejected')
+       ORDER BY COALESCE(b.completed_at, b.canceled_at, b.created_at) DESC
+       LIMIT 100
     `;
   }
 
