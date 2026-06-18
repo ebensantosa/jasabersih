@@ -1142,7 +1142,7 @@ function BookingDetail() {
                         <Text className="font-bold text-sm text-amber-900">Beri Tip ke Cleaner</Text>
                       </Pressable>
                     )}
-                    {tipGiven && (
+                    {tipGiven > 0 && (
                       <View className="mt-2 flex-row items-center justify-center gap-1.5 rounded-2xl bg-amber-50 py-3">
                         <Text className="text-base">🎁</Text>
                         <Text className="font-semibold text-sm text-amber-900">Tip {formatRupiah(tipGiven)} terkirim</Text>
