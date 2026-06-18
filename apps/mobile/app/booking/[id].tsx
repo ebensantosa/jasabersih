@@ -395,6 +395,10 @@ function BookingDetail() {
     && rescheduleCount < 1
     && hoursToSchedule >= 48
     && !['canceled', 'completed', 'in_progress', 'started'].includes(booking.status);
+  const cleanerRatingValue =
+    typeof bookingRating?.rating === 'number' && Number.isFinite(bookingRating.rating)
+      ? bookingRating.rating
+      : null;
 
   async function doReschedule(newDate: Date) {
     if (!booking) return;
@@ -822,16 +826,16 @@ function BookingDetail() {
               </Text>
               {bookingRating ? (
                 <View className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <View className="flex-row items-center justify-between gap-3">
-                    <View>
+                  <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1 pr-1">
                       <Text className="font-bold text-sm text-amber-950">Penilaian untuk pekerjaan ini</Text>
-                      <Text className="font-medium mt-1 text-[11px] text-amber-800">
+                      <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
                         Customer sudah mengirim rating setelah job selesai.
                       </Text>
                     </View>
-                    <View className="rounded-2xl bg-white px-3 py-2">
+                    <View className="min-w-[72px] rounded-2xl border border-amber-100 bg-white px-3 py-2">
                       <Text className="text-center font-extrabold text-lg text-amber-700">
-                        {Number(bookingRating.rating).toFixed(1)}
+                        {cleanerRatingValue != null ? cleanerRatingValue.toFixed(1) : '-'}
                       </Text>
                       <Text className="text-center font-medium text-[10px] text-amber-700">dari 5</Text>
                     </View>
