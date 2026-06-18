@@ -6,6 +6,7 @@ import { storage } from '../lib/storage';
 import { useModeStore } from './mode';
 
 const BOOKINGS_KEY = 'bookings.list';
+const MAX_PERSISTED_BOOKINGS = 30;
 
 function safeIsoDate(v: any): string {
   if (typeof v === 'string' && v) {
@@ -169,7 +170,7 @@ type State = {
 };
 
 function persist(list: Booking[]): void {
-  storage.set(BOOKINGS_KEY, JSON.stringify(list));
+  storage.set(BOOKINGS_KEY, JSON.stringify(list.slice(0, MAX_PERSISTED_BOOKINGS)));
 }
 
 // Map server status (from API) to mobile UI status
@@ -234,7 +235,22 @@ export const useBookingsStore = create<State>((set, get) => ({
         const cleanerPayout = (s as any).cleanerPayout != null
           ? Number((s as any).cleanerPayout)
           : existing?.cleanerPayout;
-        return existing ? { ...existing, status: mapServerStatus(s.status), totalPrice: total, cleanerPayout, cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId, cleanerName: s.cleanerName ?? existing.cleanerName, cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? existing.cleanerPhotoUrl, scheduledAt: s.scheduledAt ?? existing.scheduledAt, categoryImage: resolveBookingImage(s, existing.categoryImage) }
+        return existing ? {
+          ...existing,
+          status: mapServerStatus(s.status),
+          categoryCode: s.categoryCode ?? s.category_code ?? s.formSnapshot?.categoryCode ?? s.form_snapshot?.categoryCode ?? existing.categoryCode,
+          categoryName: pickBookingTitle(s),
+          categoryImage: resolveBookingImage(s, existing.categoryImage),
+          addressLine: s.addressLine ?? s.address_line ?? s.address ?? existing.addressLine,
+          scheduledAt: safeIsoDate(s.scheduledAt ?? existing.scheduledAt),
+          createdAt: safeTimestamp(s.createdAt ?? existing.createdAt),
+          completedAt: (s.completedAt ?? s.completed_at) ? safeTimestamp(s.completedAt ?? s.completed_at) : existing.completedAt,
+          totalPrice: total,
+          cleanerPayout,
+          cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId,
+          cleanerName: s.cleanerName ?? existing.cleanerName,
+          cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? existing.cleanerPhotoUrl,
+        }
           : {
               id: s.id,
               pricingMode: (s.pricingMode ?? 'package') as PricingMode,
@@ -255,7 +271,7 @@ export const useBookingsStore = create<State>((set, get) => ({
       });
       // Keep local-only (not yet on server - likely fresh creates not synced)
       const localOnly = local.filter((b) => !serverIds.has(b.id));
-      const merged = [...serverMapped, ...localOnly];
+      const merged = [...serverMapped, ...localOnly].slice(0, MAX_PERSISTED_BOOKINGS);
       persist(merged);
       set({ list: merged, syncing: false });
     } catch (e: any) {
@@ -267,7 +283,9 @@ export const useBookingsStore = create<State>((set, get) => ({
     if (raw) {
       try {
         const list = JSON.parse(raw) as Booking[];
-        set({ list, hydrated: true });
+        const trimmed = list.slice(0, MAX_PERSISTED_BOOKINGS);
+        if (trimmed.length !== list.length) persist(trimmed);
+        set({ list: trimmed, hydrated: true });
         return;
       } catch {
         storage.delete(BOOKINGS_KEY);
@@ -315,7 +333,7 @@ export const useBookingsStore = create<State>((set, get) => ({
       };
       const cur = get().list;
       const without = cur.filter((b) => b.id !== mapped.id);
-      const next = [mapped, ...without];
+      const next = [mapped, ...without].slice(0, MAX_PERSISTED_BOOKINGS);
       persist(next);
       set({ list: next });
     } catch { /* silent */ }
@@ -330,7 +348,7 @@ export const useBookingsStore = create<State>((set, get) => ({
       createdAt: Date.now(),
       messages: [],
     };
-    const next = [booking, ...get().list];
+    const next = [booking, ...get().list].slice(0, MAX_PERSISTED_BOOKINGS);
     persist(next);
     set({ list: next });
 
@@ -365,7 +383,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         const res = await api.post('/bookings', payload);
         const serverId = res.data?.data?.id ?? res.data?.id;
         if (serverId) {
-          const updated = get().list.map((row) => row.id === tempId ? { ...row, id: serverId } : row);
+          const updated = get().list.map((row) => row.id === tempId ? { ...row, id: serverId } : row).slice(0, MAX_PERSISTED_BOOKINGS);
           persist(updated);
           set({ list: updated });
           return { ...booking, id: serverId };
@@ -389,8 +407,9 @@ export const useBookingsStore = create<State>((set, get) => ({
   setStatus: (id, status) => {
     const before = get().list.find((b) => b.id === id);
     const next = get().list.map((b) => (b.id === id ? { ...b, status } : b));
-    persist(next);
-    set({ list: next });
+    const trimmed = next.slice(0, MAX_PERSISTED_BOOKINGS);
+    persist(trimmed);
+    set({ list: trimmed });
     // Auto-credit cleaner wallet saat job baru saja completed
     if (status === 'completed' && before && before.status !== 'completed' && before.cleanerName) {
       // Lazy import untuk hindari circular dependency
@@ -413,8 +432,9 @@ export const useBookingsStore = create<State>((set, get) => ({
     const next = get().list.map((b) =>
       b.id === id ? { ...b, paidAt: Date.now(), status: 'searching' as const } : b,
     );
-    persist(next);
-    set({ list: next });
+    const trimmed = next.slice(0, MAX_PERSISTED_BOOKINGS);
+    persist(trimmed);
+    set({ list: trimmed });
     // Push to API (server-side: status 'pending_payment' → 'searching')
     if (!id.startsWith('bk_')) {
       api.post(`/bookings/${id}/pay`).catch(() => {});
@@ -424,15 +444,17 @@ export const useBookingsStore = create<State>((set, get) => ({
     const next = get().list.map((b) =>
       b.id === id ? { ...b, status: 'canceled' as const, cancelRefund: refund } : b,
     );
-    persist(next);
-    set({ list: next });
+    const trimmed = next.slice(0, MAX_PERSISTED_BOOKINGS);
+    persist(trimmed);
+    set({ list: trimmed });
     if (!id.startsWith('bk_')) {
       api.post(`/bookings/${id}/cancel`).catch(async (e: any) => {
         const { toast } = await import('./ui');
         // Rollback optimistic update kalau server tolak
         const rolled = get().list.map((b) => b.id === id ? { ...b, status: 'pending_payment' as const, cancelRefund: undefined } : b);
-        persist(rolled);
-        set({ list: rolled });
+        const trimmed = rolled.slice(0, MAX_PERSISTED_BOOKINGS);
+        persist(trimmed);
+        set({ list: trimmed });
         toast.error(e?.response?.data?.error?.message ?? 'Gagal batalkan pesanan');
       });
     }
@@ -449,8 +471,9 @@ export const useBookingsStore = create<State>((set, get) => ({
           }
         : b,
     );
-    persist(next);
-    set({ list: next });
+    const trimmed = next.slice(0, MAX_PERSISTED_BOOKINGS);
+    persist(trimmed);
+    set({ list: trimmed });
   },
 }));
 
