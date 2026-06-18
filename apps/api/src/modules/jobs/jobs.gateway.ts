@@ -151,6 +151,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       pricingMode: string;
       addressLine: string;
       scheduledAt: Date;
+      createdAt: Date;
       totalAmount: number;
       cleanerPayout: number | null;
       serviceName: string | null;
@@ -159,6 +160,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
              b.pricing_mode AS "pricingMode",
              b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
+             b.created_at AS "createdAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
              s.name AS "serviceName"

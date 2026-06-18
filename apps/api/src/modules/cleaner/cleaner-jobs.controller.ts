@@ -188,9 +188,10 @@ export class CleanerJobsController {
       return Math.round(total * pct / 100);
     }
 
-    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null; formSnapshot: any; customerNotes: string | null }[]>`
+    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; createdAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null; formSnapshot: any; customerNotes: string | null }[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
+             b.created_at AS "createdAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
              COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",

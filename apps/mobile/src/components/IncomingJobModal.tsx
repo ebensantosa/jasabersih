@@ -14,7 +14,7 @@ import { calculateCleanerEarning, calculateCleanerShare } from '../stores/cleane
 import { useModeStore } from '../stores/mode';
 import { toast } from '../stores/ui';
 
-const COUNTDOWN_SEC = 30;
+const SEARCH_TIMEOUT_SEC = 15 * 60;
 
 export function IncomingJobModal() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export function IncomingJobModal() {
   const cleanerName = useCleanerStore((s) => s.name);
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-  const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SEC);
+  const [secondsLeft, setSecondsLeft] = useState(SEARCH_TIMEOUT_SEC);
   /** ID job yang sedang ditampilkan di modal - track untuk detect kalau ke-take cleaner lain */
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [takenByOther, setTakenByOther] = useState(false);
@@ -69,17 +69,19 @@ export function IncomingJobModal() {
   // Reset countdown setiap ada job baru
   useEffect(() => {
     if (incoming) {
-      setSecondsLeft(COUNTDOWN_SEC);
-      tickRef.current = setInterval(() => {
-        setSecondsLeft((s) => {
-          if (s <= 1) {
-            // auto reject (timeout)
-            setDismissedIds((d) => new Set(d).add(incoming.id));
-            return 0;
-          }
-          return s - 1;
-        });
-      }, 1000);
+      const createdAtMs = typeof incoming.createdAt === 'number'
+        ? incoming.createdAt
+        : incoming.createdAt
+          ? Date.parse(incoming.createdAt)
+          : Date.now();
+      const syncCountdown = () => {
+        const elapsedSec = Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000));
+        const remaining = Math.max(0, SEARCH_TIMEOUT_SEC - elapsedSec);
+        setSecondsLeft(remaining);
+        if (remaining <= 0) setDismissedIds((d) => new Set(d).add(incoming.id));
+      };
+      syncCountdown();
+      tickRef.current = setInterval(syncCountdown, 1000);
       return () => {
         if (tickRef.current) clearInterval(tickRef.current);
       };
@@ -156,6 +158,7 @@ export function IncomingJobModal() {
 
   const earning = calculateCleanerEarning(incoming.totalPrice, bringsTools);
   const sharePct = Math.round(calculateCleanerShare(incoming.totalPrice, bringsTools) * 100);
+  const minuteLeft = Math.floor(secondsLeft / 60);
 
   return (
     <Modal visible animationType="slide" presentationStyle="overFullScreen" transparent>
@@ -181,8 +184,8 @@ export function IncomingJobModal() {
                 </Text>
               </View>
               <View className="items-center justify-center rounded-full bg-white/15 px-3 py-2">
-                <Text className="font-bold text-lg text-white">{secondsLeft}</Text>
-                <Text className="font-medium text-[9px] text-white/70">detik</Text>
+                <Text className="font-bold text-lg text-white">{secondsLeft >= 60 ? minuteLeft : secondsLeft}</Text>
+                <Text className="font-medium text-[9px] text-white/70">{secondsLeft >= 60 ? 'menit' : 'detik'}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -295,7 +298,7 @@ export function IncomingJobModal() {
               <View className="flex-row items-center gap-1.5">
                 <Wallet color="#94A3B8" size={11} />
                 <Text className="font-medium text-[10px] text-ink-500">
-                  Auto-tolak dalam {secondsLeft}s · job akan ditawarkan ke cleaner lain
+                  Offer ini mengikuti sisa waktu pencarian customer: {secondsLeft >= 60 ? `${minuteLeft} menit` : `${secondsLeft} detik`}
                 </Text>
               </View>
             </View>

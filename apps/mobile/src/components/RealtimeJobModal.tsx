@@ -9,21 +9,26 @@ import { useJobsRealtime } from '../hooks/useJobsRealtime';
 import { formatScheduleWithTz } from '../lib/datetime';
 import { toast } from '../stores/ui';
 
-const COUNTDOWN_SEC = 30;
+const SEARCH_TIMEOUT_SEC = 15 * 60;
 
 export function RealtimeJobModal() {
   const router = useRouter();
   const { incoming, dismiss, accept } = useJobsRealtime();
   const [accepting, setAccepting] = useState(false);
-  const [secLeft, setSecLeft] = useState(COUNTDOWN_SEC);
+  const [secLeft, setSecLeft] = useState(SEARCH_TIMEOUT_SEC);
 
   useEffect(() => {
     if (!incoming) {
-      setSecLeft(COUNTDOWN_SEC);
+      setSecLeft(SEARCH_TIMEOUT_SEC);
       return;
     }
-    setSecLeft(COUNTDOWN_SEC);
-    const id = setInterval(() => setSecLeft((s) => s - 1), 1000);
+    const createdAtMs = incoming.createdAt ? Date.parse(incoming.createdAt) : Date.now();
+    const syncCountdown = () => {
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000));
+      setSecLeft(Math.max(0, SEARCH_TIMEOUT_SEC - elapsedSec));
+    };
+    syncCountdown();
+    const id = setInterval(syncCountdown, 1000);
     return () => clearInterval(id);
   }, [incoming?.id]);
 
@@ -48,7 +53,9 @@ export function RealtimeJobModal() {
 
   const total = Number(incoming.totalAmount ?? 0);
   const payout = Number(incoming.cleanerPayout ?? 0);
-  const pct = (secLeft / COUNTDOWN_SEC) * 100;
+  const pct = (secLeft / SEARCH_TIMEOUT_SEC) * 100;
+  const minLeft = Math.floor(secLeft / 60);
+  const remainingLabel = secLeft >= 60 ? `${minLeft} menit` : `${secLeft} detik`;
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={dismiss}>
@@ -75,8 +82,8 @@ export function RealtimeJobModal() {
                 </Text>
               </View>
               <View className="min-w-[70px] rounded-2xl bg-white/15 px-3 py-2">
-                <Text className="text-center font-extrabold text-2xl text-white">{secLeft}</Text>
-                <Text className="text-center text-[10px] text-white/75">detik</Text>
+                <Text className="text-center font-extrabold text-2xl text-white">{secLeft >= 60 ? minLeft : secLeft}</Text>
+                <Text className="text-center text-[10px] text-white/75">{secLeft >= 60 ? 'menit' : 'detik'}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -128,6 +135,11 @@ export function RealtimeJobModal() {
                   </View>
                 )}
               </Pressable>
+            </View>
+            <View className="px-5 pb-3">
+              <Text className="text-center text-[11px] text-ink-500">
+                Tawaran ini mengikuti sisa waktu pencarian customer: {remainingLabel}.
+              </Text>
             </View>
           </SafeAreaView>
         </View>

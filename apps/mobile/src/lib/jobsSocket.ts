@@ -31,6 +31,7 @@ export type IncomingJob = {
   pricingMode: string;
   addressLine: string;
   scheduledAt: string;
+  createdAt?: string;
   totalAmount: number;
   cleanerPayout: number | null;
   serviceName: string | null;
