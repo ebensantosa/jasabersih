@@ -155,10 +155,10 @@ function CleanerAreas() {
                       <Pressable
                         onPress={() => setConfirmRemove(c)}
                         hitSlop={10}
-                        className="flex-row items-center gap-1 rounded-lg bg-rose-50 px-2 py-1"
+                        className="flex-row items-center gap-1 rounded-lg bg-red-50 px-2 py-1"
                       >
                         <Trash2 color="#B91C1C" size={12} />
-                        <Text className="font-bold text-[10px] text-rose-700">Hapus</Text>
+                        <Text className="font-bold text-[10px] text-red-700">Hapus</Text>
                       </Pressable>
                     )}
                   </View>
@@ -178,12 +178,12 @@ function CleanerAreas() {
                     key={r.id}
                     className={`flex-row items-center gap-3 px-4 py-3.5 ${i < pendingRequests.length - 1 ? 'border-b border-ink-100' : ''}`}
                   >
-                    <View className={`h-9 w-9 items-center justify-center rounded-xl ${r.action === 'remove' ? 'bg-rose-100' : 'bg-amber-100'}`}>
+                    <View className={`h-9 w-9 items-center justify-center rounded-xl ${r.action === 'remove' ? 'bg-red-100' : 'bg-amber-100'}`}>
                       {r.action === 'remove' ? <Trash2 color="#B91C1C" size={16} strokeWidth={2.2} /> : <MapPin color="#B45309" size={16} strokeWidth={2.2} />}
                     </View>
                     <View className="flex-1">
                       <Text className="font-medium text-sm text-ink-800">{r.city}</Text>
-                      <Text className={`font-bold text-[10px] uppercase tracking-wider ${r.action === 'remove' ? 'text-rose-700' : 'text-amber-700'}`}>
+                      <Text className={`font-bold text-[10px] uppercase tracking-wider ${r.action === 'remove' ? 'text-red-700' : 'text-amber-700'}`}>
                         {r.action === 'remove' ? 'Minta Dihapus' : 'Minta Ditambah'}
                       </Text>
                     </View>
@@ -278,7 +278,7 @@ function CleanerAreas() {
           <Pressable onPress={() => !submittingRemove && setConfirmRemove(null)} className="flex-1 items-center justify-center bg-black/50 px-6">
             <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
               <View className="flex-row items-center gap-2">
-                <View className="h-10 w-10 items-center justify-center rounded-xl bg-rose-100">
+                <View className="h-10 w-10 items-center justify-center rounded-xl bg-red-100">
                   <Trash2 color="#B91C1C" size={18} strokeWidth={2.2} />
                 </View>
                 <Text className="font-extrabold text-base text-ink-900">Hapus Area</Text>
@@ -300,10 +300,10 @@ function CleanerAreas() {
                 <Pressable
                   onPress={() => confirmRemove && submitRemoveArea(confirmRemove)}
                   disabled={submittingRemove}
-                  className="flex-1 rounded-xl bg-rose-600 py-3"
-                  style={submittingRemove ? { opacity: 0.6 } : undefined}
+                  className="flex-1 rounded-xl py-3"
+                  style={{ backgroundColor: '#DC2626', opacity: submittingRemove ? 0.6 : 1 }}
                 >
-                  <Text className="font-bold text-center text-sm text-white">
+                  <Text className="font-bold text-center text-sm" style={{ color: 'white' }}>
                     {submittingRemove ? 'Mengirim…' : 'Kirim Request'}
                   </Text>
                 </Pressable>
