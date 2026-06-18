@@ -141,11 +141,15 @@ function JobsScreen() {
         return;
       }
       const contentType = 'image/jpeg';
-      const presign = await api.post('/cleaner/profile/photo-upload-url', { contentType });
-      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
-      const blob = await (await fetch(c.uri)).blob();
-      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
-      if (!up.ok) throw new Error('Upload ke storage gagal');
+      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
+      const { publicUrl } = await uploadWithSignedUrl(
+        async () => {
+          const presign = await api.post('/cleaner/profile/photo-upload-url', { contentType });
+          return (presign.data?.data ?? presign.data) as { uploadUrl: string; publicUrl: string };
+        },
+        c.uri,
+        contentType,
+      );
       await api.patch('/cleaner/profile', { photoUrl: publicUrl });
       toast.success(`Foto tersimpan (${formatBytes(c.size)})`);
       setShowPhotoModal(false);

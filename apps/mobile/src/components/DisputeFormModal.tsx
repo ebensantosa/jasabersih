@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { uploadWithSignedUrl } from '../lib/signedUpload';
 import { toast } from '../stores/ui';
 
 const CUSTOMER_TYPES: { code: string; label: string }[] = [
@@ -70,12 +71,15 @@ export function DisputeFormModal({
 
     setUploading(true);
     try {
-      const urlRes = await api.post('/disputes/upload-url', { contentType: asset.mimeType ?? 'image/jpeg' });
-      const { uploadUrl, key } = urlRes.data?.data ?? urlRes.data;
-      const fileRes = await fetch(asset.uri);
-      const blob = await fileRes.blob();
-      const putRes = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'content-type': asset.mimeType ?? 'image/jpeg' } });
-      if (!putRes.ok) throw new Error('Upload gagal');
+      const contentType = asset.mimeType ?? 'image/jpeg';
+      const { key } = await uploadWithSignedUrl(
+        async () => {
+          const urlRes = await api.post('/disputes/upload-url', { contentType });
+          return (urlRes.data?.data ?? urlRes.data) as { uploadUrl: string; key: string };
+        },
+        asset.uri,
+        contentType,
+      );
       setEvidenceKeys([...evidenceKeys, { key, uri: asset.uri }]);
     } catch (e: any) {
       toast.error(e?.message ?? 'Upload gagal');

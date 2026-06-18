@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { uploadWithSignedUrl } from '../lib/signedUpload';
 import { toast } from '../stores/ui';
 
 export function UpchargeFormModal({
@@ -53,11 +54,14 @@ export function UpchargeFormModal({
       const { compressImage } = await import('../lib/imageCompress');
       const c = await compressImage(r.assets[0].uri);
       if (c.oversize) { toast.error('Foto >5MB setelah compress'); return; }
-      const presign = await api.post(`/cleaner/jobs/${bookingId}/upcharge-photo-upload-url`, { contentType: 'image/jpeg' });
-      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
-      const blob = await (await fetch(c.uri)).blob();
-      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
-      if (!up.ok) throw new Error('Upload gagal');
+      const { publicUrl } = await uploadWithSignedUrl(
+        async () => {
+          const presign = await api.post(`/cleaner/jobs/${bookingId}/upcharge-photo-upload-url`, { contentType: 'image/jpeg' });
+          return (presign.data?.data ?? presign.data) as { uploadUrl: string; publicUrl: string };
+        },
+        c.uri,
+        'image/jpeg',
+      );
       setPhotoUrl(publicUrl);
       setPhotoUri(c.uri);
     } catch (e: any) {

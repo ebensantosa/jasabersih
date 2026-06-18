@@ -12,6 +12,7 @@ export class StorageService implements OnModuleInit {
   private readonly client: S3Client;
   private readonly buckets: Record<BucketKind, string>;
   private readonly publicBaseUrl: string;
+  private readonly endpointOrigin: string;
 
   constructor(config: ConfigService) {
     this.client = new S3Client({
@@ -26,6 +27,7 @@ export class StorageService implements OnModuleInit {
       private: config.getOrThrow<string>('R2_BUCKET_PRIVATE'),
       public: config.getOrThrow<string>('R2_BUCKET_PUBLIC'),
     };
+    this.endpointOrigin = new URL(config.getOrThrow<string>('R2_ENDPOINT')).origin;
     this.publicBaseUrl = config.getOrThrow<string>('R2_PUBLIC_BASE_URL').replace(/\/$/, '');
   }
 
@@ -126,6 +128,30 @@ export class StorageService implements OnModuleInit {
 
   async deleteObject(bucket: BucketKind, key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.buckets[bucket], Key: key }));
+  }
+
+  isTrustedUploadUrl(uploadUrl: string): boolean {
+    try {
+      const candidate = new URL(uploadUrl);
+      const endpoint = new URL(this.endpointOrigin);
+      if (candidate.protocol !== 'https:') return false;
+      if (candidate.origin !== endpoint.origin) return false;
+      return candidate.searchParams.has('X-Amz-Algorithm') && candidate.searchParams.has('X-Amz-Signature');
+    } catch {
+      return false;
+    }
+  }
+
+  async proxySignedUpload(uploadUrl: string, body: Buffer, contentType: string): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'content-type': contentType },
+      body,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Proxy upload gagal (${res.status})${text ? `: ${text.slice(0, 160)}` : ''}`);
+    }
   }
 }
 

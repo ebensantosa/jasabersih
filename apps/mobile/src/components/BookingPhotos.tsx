@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { uploadWithSignedUrl } from '../lib/signedUpload';
 import { toast } from '../stores/ui';
 
 type Photo = { id: string; photoType: 'before' | 'after' | 'damage'; url: string; uploadedAt: string };
@@ -74,12 +75,14 @@ export function BookingPhotos({
       const compressed = await compressImage(asset.uri);
       if (compressed.oversize) throw new Error(`Foto terlalu besar (${formatBytes(compressed.size)} > 5MB). Coba foto ulang.`);
 
-      const r = await api.post(`/cleaner/jobs/${bookingId}/photo-upload-url`, { photoType: type, contentType: 'image/jpeg' });
-      const { uploadUrl, key } = r.data?.data ?? r.data;
-      const fileRes = await fetch(compressed.uri);
-      const blob = await fileRes.blob();
-      const putRes = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'content-type': 'image/jpeg' } });
-      if (!putRes.ok) throw new Error(`Upload gagal (HTTP ${putRes.status}). Cek koneksi.`);
+      const { key } = await uploadWithSignedUrl(
+        async () => {
+          const r = await api.post(`/cleaner/jobs/${bookingId}/photo-upload-url`, { photoType: type, contentType: 'image/jpeg' });
+          return (r.data?.data ?? r.data) as { uploadUrl: string; key: string };
+        },
+        compressed.uri,
+        'image/jpeg',
+      );
       await api.post(`/cleaner/jobs/${bookingId}/photos`, {
         photoType: type,
         storagePath: key,

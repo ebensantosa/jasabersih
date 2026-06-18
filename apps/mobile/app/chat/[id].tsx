@@ -196,7 +196,7 @@ function Chat() {
     if (uploadingPhoto) return;
     try {
       const ImagePicker = await import('expo-image-picker');
-      let picked: ImagePicker.ImagePickerResult;
+      let picked;
       if (source === 'camera') {
         const cam = await ImagePicker.requestCameraPermissionsAsync();
         if (!cam.granted) {
@@ -232,12 +232,15 @@ function Chat() {
       }
 
       const { api } = await import('../../src/lib/api');
-      const presign = await api.post(`/chat/booking/${id}/image-upload-url`, { contentType: 'image/jpeg' });
-      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
-
-      const blob = await (await fetch(compressed.uri)).blob();
-      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
-      if (!up.ok) throw new Error('Upload ke storage gagal');
+      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
+      const { publicUrl } = await uploadWithSignedUrl(
+        async () => {
+          const presign = await api.post(`/chat/booking/${id}/image-upload-url`, { contentType: 'image/jpeg' });
+          return (presign.data?.data ?? presign.data) as { uploadUrl: string; publicUrl: string };
+        },
+        compressed.uri,
+        'image/jpeg',
+      );
 
       // Kirim sebagai chat message dgn messageType='image'. Content = URL (utk
       // backward compat sama backend yg validate content non-empty).

@@ -89,19 +89,12 @@ function CleanerKycScreen() {
         docType,
         contentType: 'image/jpeg',
       });
-      const { uploadUrl, key } = urlRes.data?.data ?? urlRes.data;
-
-      // 3. PUT compressed file
-      const fileRes = await fetch(compressed.uri);
-      const blob = await fileRes.blob();
-      const putRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: blob,
-        headers: { 'content-type': 'image/jpeg' },
-      });
-      if (!putRes.ok) {
-        throw new Error(`Upload ke storage gagal (HTTP ${putRes.status}). Cek koneksi internet.`);
-      }
+      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
+      const { key } = await uploadWithSignedUrl(
+        async () => (urlRes.data?.data ?? urlRes.data) as { uploadUrl: string; key: string },
+        compressed.uri,
+        'image/jpeg',
+      );
 
       // 4. Register doc
       await api.post('/cleaner/kyc/documents', { docType, storagePath: key });

@@ -348,15 +348,15 @@ function CustomBooking() {
       const { compressImage } = await import('../../src/lib/imageCompress');
       const compressed = await compressImage(asset.uri);
       const { api } = await import('../../src/lib/api');
-      const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });
-      const { uploadUrl, publicUrl } = presign.data?.data ?? presign.data;
-      const blob = await (await fetch(compressed.uri)).blob();
-      const upload = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'image/jpeg' },
-        body: blob,
-      });
-      if (!upload.ok) throw new Error('Upload gagal');
+      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
+      const { publicUrl } = await uploadWithSignedUrl(
+        async () => {
+          const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });
+          return (presign.data?.data ?? presign.data) as { uploadUrl: string; publicUrl: string };
+        },
+        compressed.uri,
+        'image/jpeg',
+      );
 
       setPhotos((prev) => [...prev, { uri: compressed.uri, url: publicUrl }]);
     } catch (error: any) {

@@ -42,6 +42,9 @@ async function bootstrap() {
   app.use('/v1/payments/flip/disbursement-callback', urlencoded({ extended: true, limit: '1mb' }));
   app.use('/v1/payments/flip/bank-status', urlencoded({ extended: true, limit: '1mb' }));
   app.use('/v1/payments/flip/inquiry-callback', urlencoded({ extended: true, limit: '1mb' }));
+  // Web fallback upload: raw binary body supaya browser bisa kirim file via API
+  // kalau direct PUT ke signed R2 URL kena preflight/CORS.
+  app.use('/v1/storage/proxy-upload', raw({ type: '*/*', limit: '8mb' }));
   // Default JSON parser untuk semua route lain
   app.use(json({ limit: '5mb' }));
   http.set('trust proxy', process.env.TRUST_PROXY ?? 1);
