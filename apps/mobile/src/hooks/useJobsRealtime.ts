@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { getJobsSocket, type IncomingJob } from '../lib/jobsSocket';
 import { useAuthStore } from '../stores/auth';
+import { useCleanerStore } from '../stores/cleaner';
 import { useModeStore } from '../stores/mode';
 
 // Connect to /jobs socket when:
@@ -12,6 +13,7 @@ import { useModeStore } from '../stores/mode';
 export function useJobsRealtime() {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
+  const areas = useCleanerStore((s) => s.serviceAreas);
   const [incoming, setIncoming] = useState<IncomingJob | null>(null);
   const [takenIds, setTakenIds] = useState<Set<string>>(new Set());
   const onlineRef = useRef(false);
@@ -35,6 +37,13 @@ export function useJobsRealtime() {
       });
     }
     function onIncoming(job: IncomingJob) {
+      const normalizedAreas = areas
+        .map((area) => String(area).trim().toLowerCase())
+        .filter(Boolean);
+      const address = String(job.addressLine ?? '').toLowerCase();
+      if (normalizedAreas.length > 0 && !normalizedAreas.some((area) => address.includes(area))) {
+        return;
+      }
       setIncoming((prev) => prev ?? job); // Don't replace if already showing one
     }
     function onTaken(payload: { bookingId: string }) {
@@ -54,7 +63,7 @@ export function useJobsRealtime() {
       socket.off('incoming-job', onIncoming);
       socket.off('job-taken', onTaken);
     };
-  }, [tokens, mode]);
+  }, [tokens, mode, areas]);
 
   function dismiss() { setIncoming(null); }
 

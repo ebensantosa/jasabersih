@@ -1,15 +1,15 @@
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BellRing, MapPin, Search, Sparkles, Users } from 'lucide-react-native';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { Animated, Easing, Text, View } from 'react-native';
 
-const STATUS_MESSAGES = [
-  { min: 0,  text: 'Mencari cleaner terdekat dari lokasimu…' },
-  { min: 1,  text: 'Mengirim notifikasi ke cleaner aktif di area kamu…' },
-  { min: 3,  text: 'Cleaner butuh waktu untuk respons. Mohon tunggu sebentar.' },
-  { min: 7,  text: 'Sedang ekspand pencarian ke area sekitar…' },
-  { min: 12, text: 'Hampir batas waktu. Kalau gak match, tim CS akan ambil alih.' },
+const STATUS_MESSAGES: { min: number; text: string }[] = [
+  { min: 0, text: 'Mencari cleaner terdekat dari lokasi kamu.' },
+  { min: 1, text: 'Mengirim notifikasi ke cleaner aktif di area kamu.' },
+  { min: 3, text: 'Cleaner butuh waktu untuk respons. Mohon tunggu sebentar.' },
+  { min: 7, text: 'Pencarian diperluas ke area sekitar.' },
+  { min: 12, text: 'Hampir batas waktu. Jika belum cocok, customer service akan membantu manual.' },
 ];
 
 type Props = {
@@ -18,23 +18,18 @@ type Props = {
   broadcastedTo?: number;
 };
 
-/**
- * Performance-optimized "finding cleaner" view:
- * - 2 pulse rings (was 3) - visually still good, half the work
- * - useNativeDriver: true - animasi jalan di UI thread, gak block JS thread
- * - Auto-pause kalau screen unfocused (lewat useFocusEffect)
- * - Slow rotate (8s loop) - barely consumes CPU
- */
 export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo }: Props) {
-  // Defense in depth: guard NaN/Infinity propagation ke style width yg bikin crash.
   const safeElapsed = Number.isFinite(elapsedSec) ? Math.max(0, elapsedSec) : 0;
   const safeTimeout = Number.isFinite(timeoutSec) && timeoutSec > 0 ? timeoutSec : 15 * 60;
   const remainingSec = Math.max(0, safeTimeout - safeElapsed);
+  const reachedManualAssist = remainingSec === 0;
   const minLeft = Math.floor(remainingSec / 60);
   const secLeft = remainingSec % 60;
   const elapsedMin = Math.floor(safeElapsed / 60);
   const progressPct = Math.max(0, Math.min(100, (safeElapsed / safeTimeout) * 100));
-  const statusMsg = [...STATUS_MESSAGES].reverse().find((s) => elapsedMin >= s.min)?.text ?? STATUS_MESSAGES[0].text;
+  const statusMsg = reachedManualAssist
+    ? 'Customer service sedang membantu mencarikan cleaner secara manual. Kamu tidak perlu mengulang pesanan.'
+    : ([...STATUS_MESSAGES].reverse().find((s) => elapsedMin >= s.min)?.text ?? 'Mencari cleaner terdekat dari lokasi kamu.');
 
   const pulse1 = useRef(new Animated.Value(0)).current;
   const pulse2 = useRef(new Animated.Value(0)).current;
@@ -42,7 +37,6 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
   const dotWave = useRef(new Animated.Value(0)).current;
   const animsRef = useRef<Animated.CompositeAnimation[]>([]);
 
-  // Auto-pause animasi saat screen unfocus (gak buang battery di background)
   useFocusEffect(
     useCallback(() => {
       function makePulse(val: Animated.Value, delay: number) {
@@ -66,10 +60,16 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
         ]),
       );
       animsRef.current = [a1, a2, r, d];
-      a1.start(); a2.start(); r.start(); d.start();
+      a1.start();
+      a2.start();
+      r.start();
+      d.start();
       return () => {
         animsRef.current.forEach((a) => a.stop());
-        pulse1.setValue(0); pulse2.setValue(0); rotate.setValue(0); dotWave.setValue(0);
+        pulse1.setValue(0);
+        pulse2.setValue(0);
+        rotate.setValue(0);
+        dotWave.setValue(0);
       };
     }, [dotWave, pulse1, pulse2, rotate]),
   );
@@ -77,7 +77,10 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
   function ringStyle(val: Animated.Value) {
     return {
       position: 'absolute' as const,
-      left: 0, top: 0, right: 0, bottom: 0,
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
       borderRadius: 50,
       borderWidth: 2,
       borderColor: 'rgba(255,255,255,0.5)',
@@ -85,14 +88,15 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
       transform: [{ scale: val.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
     };
   }
+
   const rotateInterpolate = rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const dotOpacity = (index: number) =>
     dotWave.interpolate({
       inputRange: [0, 0.33, 0.66, 1],
       outputRange:
         index === 0 ? [0.35, 1, 0.45, 0.35]
-        : index === 1 ? [0.45, 0.35, 1, 0.45]
-        : [1, 0.45, 0.35, 1],
+          : index === 1 ? [0.45, 0.35, 1, 0.45]
+            : [1, 0.45, 0.35, 1],
     });
 
   return (
@@ -111,11 +115,12 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
         </View>
 
         <Text style={{ color: 'white', textAlign: 'center', fontFamily: 'Inter_700Bold', fontSize: 16 }}>
-          Mencari Cleaner
+          {reachedManualAssist ? 'Pencarian Manual Berjalan' : 'Mencari Cleaner'}
         </Text>
         <Text style={{ color: 'rgba(255,255,255,0.85)', textAlign: 'center', fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 6, lineHeight: 18, paddingHorizontal: 8 }}>
           {statusMsg}
         </Text>
+
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12 }}>
           {[0, 1, 2].map((index) => (
             <Animated.View
@@ -157,7 +162,9 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
               </Text>
             </View>
             <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 14 }}>
-              Cleaner yang cocok akan menerima notifikasi dan bisa ambil pesanan ini.
+              {reachedManualAssist
+                ? 'Jika belum ada yang ambil, customer service melanjutkan follow up manual ke cleaner yang sesuai.'
+                : 'Cleaner yang cocok akan menerima notifikasi dan bisa ambil pesanan ini.'}
             </Text>
           </View>
         </View>
@@ -169,7 +176,7 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
               Cleaner dihubungi
             </Text>
             <Text style={{ color: 'white', fontSize: 18, fontFamily: 'Inter_800ExtraBold', marginTop: 2 }}>
-              {broadcastedTo ?? '…'}
+              {broadcastedTo ?? '...'}
             </Text>
           </View>
           <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 10, alignItems: 'center' }}>
@@ -188,7 +195,9 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             <View style={{ height: '100%', width: `${progressPct}%`, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 3 }} />
           </View>
           <Text style={{ marginTop: 6, textAlign: 'right', color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_500Medium' }}>
-            Sisa {minLeft}:{String(secLeft).padStart(2, '0')} sebelum tim CS ambil alih
+            {reachedManualAssist
+              ? 'Customer service sedang melanjutkan pencarian manual'
+              : `Sisa ${minLeft}:${String(secLeft).padStart(2, '0')} sebelum customer service mengambil alih`}
           </Text>
         </View>
       </LinearGradient>

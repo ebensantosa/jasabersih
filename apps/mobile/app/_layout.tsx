@@ -19,7 +19,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
-import { IncomingJobModal } from '../src/components/IncomingJobModal';
 import { PopupRenderer } from '../src/components/PopupRenderer';
 import { OfflineBanner } from '../src/components/OfflineBanner';
 import { SuspendedOverlay } from '../src/components/SuspendedOverlay';
@@ -318,7 +317,6 @@ export default function RootLayout() {
         <ToastHost />
         <OfflineBanner />
         <UpdatePromptHost />
-        <IncomingJobModal />
         <RealtimeJobModal />
         {authReady && profile ? <PopupRenderer event="app_open" /> : null}
         <SuspendedOverlay />
