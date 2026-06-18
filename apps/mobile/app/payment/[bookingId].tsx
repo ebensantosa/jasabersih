@@ -58,13 +58,13 @@ const TRANSFER_BANK_METHODS: { code: string; name: string; label: string; logo?:
   { code: 'bni_syariah', name: 'Transfer dari BNI Syariah', label: 'BNI Syariah' },
 ] as const;
 
-const RETAIL_METHODS: { code: string; name: string; label: string }[] = [
+const RETAIL_METHODS: { code: string; name: string; label: string; logo?: any }[] = [
   { code: 'alfamart', name: 'Alfamart', label: 'Alfamart' },
   { code: 'indomaret', name: 'Indomaret', label: 'Indomaret' },
 ] as const;
 
-const CARD_METHODS: { code: string; name: string; label: string }[] = [
-  { code: 'credit_card', name: 'Kartu Kredit', label: 'CARD' },
+const CARD_METHODS: { code: string; name: string; label: string; logo?: any }[] = [
+  { code: 'credit_card', name: 'Kartu Kredit / Debit', label: 'CARD' },
 ] as const;
 
 const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
@@ -240,11 +240,23 @@ function PaymentScreen() {
         || Boolean(data.qrString)
         || Boolean(data.walletUrl);
 
-      if (data.fellBackToCheckout || !hasNativeInstructions) {
-        throw new Error('Metode ini belum bisa ditampilkan langsung di aplikasi. Silakan pilih QRIS atau Virtual Account.');
+      // Retail / Credit Card: gak ada native VA/QR, pakai hosted checkout (paymentUrl).
+      // Open external/in-app browser ke Flip page, polling tetap jalan untuk detect bayar.
+      const needsHostedCheckout = ['retail', 'credit_card'].includes(senderBankType);
+      if (needsHostedCheckout && data.paymentUrl) {
+        setDirect(data);
+        try { await Linking.openURL(data.paymentUrl); } catch {}
+      } else if (data.fellBackToCheckout || !hasNativeInstructions) {
+        if (data.paymentUrl) {
+          // Tetep show direct view + open URL untuk method yg backend fallback ke checkout
+          setDirect(data);
+          try { await Linking.openURL(data.paymentUrl); } catch {}
+        } else {
+          throw new Error('Metode ini belum bisa ditampilkan langsung di aplikasi. Silakan pilih QRIS atau Virtual Account.');
+        }
+      } else {
+        setDirect(data);
       }
-
-      setDirect(data);
       try {
         const { Track } = await import('../../src/lib/analytics');
         Track.paymentStarted(String(bookingId), senderBank, data.amount);
@@ -453,6 +465,10 @@ function MethodPicker({
   const belowVaMin = remaining > 0 && remaining < VA_MIN_AMOUNT;
   const vaMethods = belowVaMin ? [] : VA_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'virtual_account');
   const ewalletMethods = EWALLET_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'wallet_account');
+  // Retail: min biasanya 10rb juga (sama dgn VA), skip kalau di bawah.
+  const retailMethods = belowVaMin ? [] : RETAIL_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'retail');
+  // Credit/Debit Card: min biasanya 10rb (Flip charge bigger). Skip kalau di bawah.
+  const cardMethods = belowVaMin ? [] : CARD_METHODS.filter((method) => getMethod(method.code)?.senderBankType === 'credit_card');
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -626,6 +642,70 @@ function MethodPicker({
                   {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
                 </View>
                 <WalletIcon color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+      )}
+
+      {retailMethods.length > 0 && (
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Bayar di Minimarket</Text>
+        <View className="overflow-hidden rounded-2xl bg-white">
+          {retailMethods.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            const delayed = st === 'delayed';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'retail')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  <Text className={`font-extrabold text-[10px] ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.label}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  <Text className="font-medium text-[10px] text-ink-500">Bayar tunai di kasir, dapat kode pembayaran</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
+                </View>
+                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+      )}
+
+      {cardMethods.length > 0 && (
+      <View>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">Kartu Kredit / Debit</Text>
+        <View className="overflow-hidden rounded-2xl bg-white">
+          {cardMethods.map((m, i) => {
+            const st = getStatus(m.code);
+            const down = st === 'down';
+            const delayed = st === 'delayed';
+            return (
+              <Pressable
+                key={m.code}
+                disabled={disabled || down}
+                onPress={() => onPick(m.code, 'credit_card')}
+                className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
+              >
+                <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
+                  <Text className={`font-extrabold text-[10px] ${down ? 'text-ink-400' : 'text-ink-900'}`}>VISA/MC</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
+                  <Text className="font-medium text-[10px] text-ink-500">Visa, Mastercard, JCB - input langsung di halaman Flip</Text>
+                  {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
+                  {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
+                </View>
+                <Building2 color={down ? '#CBD5E1' : '#94A3B8'} size={16} />
               </Pressable>
             );
           })}
