@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { ArrowLeft, Check, Lightbulb, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -19,6 +19,8 @@ function CleanerAreas() {
   const [showRequestNewCity, setShowRequestNewCity] = useState(false);
   const [requestCityName, setRequestCityName] = useState('');
   const [pendingRequests, setPendingRequests] = useState<{ id: string; city: string; action: 'add' | 'remove' }[]>([]);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [submittingRemove, setSubmittingRemove] = useState(false);
 
   // Refresh dari backend tiap kali screen mount - supaya area yang admin baru
   // approve langsung kelihatan, gak stuck di cache lama.
@@ -51,27 +53,18 @@ function CleanerAreas() {
     }
   }
 
-  function requestRemoveArea(city: string) {
-    Alert.alert(
-      'Hapus Area',
-      `Yakin mau hapus "${city}" dari area kerja? Admin akan review dulu sebelum benar-benar dihapus.`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Kirim Request',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post('/cleaner/profile/area-requests', { city, action: 'remove' });
-              toast.success(`Permintaan hapus area "${city}" terkirim. Tunggu approval admin.`);
-              void loadPending();
-            } catch (e: any) {
-              toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
-            }
-          },
-        },
-      ],
-    );
+  async function submitRemoveArea(city: string) {
+    setSubmittingRemove(true);
+    try {
+      await api.post('/cleaner/profile/area-requests', { city, action: 'remove' });
+      toast.success(`Permintaan hapus area "${city}" terkirim. Tunggu approval admin.`);
+      setConfirmRemove(null);
+      void loadPending();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim request');
+    } finally {
+      setSubmittingRemove(false);
+    }
   }
 
   async function requestNewCity() {
@@ -160,7 +153,7 @@ function CleanerAreas() {
                       <Text className="font-bold text-[10px] uppercase tracking-wider text-amber-700">hapus pending</Text>
                     ) : (
                       <Pressable
-                        onPress={() => requestRemoveArea(c)}
+                        onPress={() => setConfirmRemove(c)}
                         hitSlop={10}
                         className="flex-row items-center gap-1 rounded-lg bg-rose-50 px-2 py-1"
                       >
@@ -274,6 +267,45 @@ function CleanerAreas() {
                 </Pressable>
                 <Pressable onPress={requestNewCity} className="flex-1 rounded-xl bg-brand-600 py-3">
                   <Text className="font-bold text-center text-sm text-white">Kirim Request</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Confirm Hapus Area - cross-platform (Alert RN gak jalan di web) */}
+        <Modal visible={!!confirmRemove} transparent animationType="fade" onRequestClose={() => setConfirmRemove(null)}>
+          <Pressable onPress={() => !submittingRemove && setConfirmRemove(null)} className="flex-1 items-center justify-center bg-black/50 px-6">
+            <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
+              <View className="flex-row items-center gap-2">
+                <View className="h-10 w-10 items-center justify-center rounded-xl bg-rose-100">
+                  <Trash2 color="#B91C1C" size={18} strokeWidth={2.2} />
+                </View>
+                <Text className="font-extrabold text-base text-ink-900">Hapus Area</Text>
+              </View>
+              <Text className="font-medium mt-3 text-[13px] leading-5 text-ink-700">
+                Yakin mau hapus <Text className="font-bold">{confirmRemove}</Text> dari area kerja kamu?
+              </Text>
+              <Text className="font-sans mt-2 text-[12px] leading-4 text-ink-500">
+                Admin akan review request ini. Setelah disetujui, kamu gak akan dapat order dari area itu lagi.
+              </Text>
+              <View className="mt-4 flex-row gap-2">
+                <Pressable
+                  onPress={() => setConfirmRemove(null)}
+                  disabled={submittingRemove}
+                  className="flex-1 rounded-xl border border-ink-200 bg-white py-3"
+                >
+                  <Text className="font-bold text-center text-sm text-ink-700">Batal</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => confirmRemove && submitRemoveArea(confirmRemove)}
+                  disabled={submittingRemove}
+                  className="flex-1 rounded-xl bg-rose-600 py-3"
+                  style={submittingRemove ? { opacity: 0.6 } : undefined}
+                >
+                  <Text className="font-bold text-center text-sm text-white">
+                    {submittingRemove ? 'Mengirim…' : 'Kirim Request'}
+                  </Text>
                 </Pressable>
               </View>
             </Pressable>
