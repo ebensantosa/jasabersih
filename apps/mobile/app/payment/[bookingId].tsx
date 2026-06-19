@@ -865,7 +865,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
         <View style={{ backgroundColor: 'white', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 }}>
           <Text style={{ fontSize: 28, color: '#0F172A', fontWeight: '800' }}>Lakukan Pembayaran</Text>
           <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <Text style={{ flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '700' }}>
+            <Text style={{ flex: 1, fontSize: 13, lineHeight: 18, color: '#0F172A', fontWeight: '700' }}>
               Bayar sebelum {formatExpiredHeader(data.expiredAt)}.
             </Text>
             {data.expiredAt ? <CountdownBadge expiredAt={data.expiredAt} /> : null}
