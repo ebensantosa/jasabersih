@@ -23,6 +23,7 @@ type DirectResult = {
   senderBankType: 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer' | 'retail' | 'credit_card';
   accountNumber: string | null;
   qrString: string | null;
+  qrUrl?: string | null;
   walletUrl?: string | null;
   expiredAt: string | null;
   paymentUrl?: string | null;
@@ -238,6 +239,7 @@ function PaymentScreen() {
       const hasNativeInstructions =
         Boolean(data.accountNumber)
         || Boolean(data.qrString)
+        || Boolean(data.qrUrl)
         || Boolean(data.walletUrl);
 
       // Retail / Credit Card: gak ada native VA/QR, pakai hosted checkout (paymentUrl).
@@ -836,7 +838,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
     );
   }
 
-  if ((data.senderBankType === 'qris' || data.senderBank === 'qris') && data.qrString) {
+  if ((data.senderBankType === 'qris' || data.senderBank === 'qris') && (data.qrString || data.qrUrl)) {
     return (
       <ScrollView contentContainerStyle={{ padding: 0, backgroundColor: '#F1F5F9' }}>
         {/* Header dengan tanggal expired */}
@@ -862,10 +864,18 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           {/* QR code centered */}
           <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
             <View style={{ padding: 12, backgroundColor: 'white', borderRadius: 8 }}>
-              {Platform.OS === 'web' ? (
-                <QRCodeWeb value={data.qrString} size={260} />
+              {data.qrString ? (
+                Platform.OS === 'web' ? (
+                  <QRCodeWeb value={data.qrString} size={260} />
+                ) : (
+                  <QRCode value={data.qrString} size={260} />
+                )
               ) : (
-                <QRCode value={data.qrString} size={260} />
+                <Image
+                  source={{ uri: data.qrUrl! }}
+                  style={{ width: 260, height: 260, backgroundColor: 'white' }}
+                  contentFit="contain"
+                />
               )}
             </View>
           </View>

@@ -368,6 +368,13 @@ export class PaymentsController {
         ?? billPayment?.qrcode_string
         ?? result?.qr_code_data
         ?? result?.qr_string;
+      const qrUrl: string | undefined =
+        receiverAcc?.qr_url
+        ?? receiverAcc?.qr_image_url
+        ?? billPayment?.qr_url
+        ?? billPayment?.qr_image_url
+        ?? result?.qr_url
+        ?? result?.qr_image_url;
       const walletUrl: string | undefined =
         billPayment?.customer?.payment_url
         ?? billPayment?.redirect_url
@@ -377,13 +384,21 @@ export class PaymentsController {
         ?? result?.payment_url;
       const expiredAt = result?.expired_date ?? null;
 
-      this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
+      this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} qrUrl=${qrUrl ? 'YES' : 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
 
       await this.prisma.$executeRaw`
         UPDATE payments
            SET flip_link_id = ${String(result.link_id ?? '')},
                pay_code = ${accountNumber ?? null},
-               payment_url = ${result.link_url ?? null}
+               payment_url = ${result.link_url ?? null},
+               extra_metadata = COALESCE(extra_metadata, '{}'::jsonb) || ${JSON.stringify({
+                 senderBank: body.senderBank,
+                 senderBankType: body.senderBankType,
+                 qrString: qrString ?? null,
+                 qrUrl: qrUrl ?? null,
+                 walletUrl: walletUrl ?? null,
+                 fellBackToCheckout,
+               })}::jsonb
          WHERE id = ${paymentId}::uuid
       `;
 
@@ -398,6 +413,7 @@ export class PaymentsController {
         senderBankType: body.senderBankType,
         accountNumber: accountNumber ?? null,
         qrString: qrString ?? null,
+        qrUrl: qrUrl ?? null,
         walletUrl: walletUrl ?? null,
         paymentUrl: checkoutUrl,
         expiredAt,
@@ -549,13 +565,22 @@ export class PaymentsController {
       const receiverAcc = billPayment?.receiver_bank_account ?? {};
       const accountNumber: string | undefined = receiverAcc?.account_number ?? billPayment?.account_number ?? result?.account_number;
       const qrString: string | undefined = receiverAcc?.qr_code_data ?? receiverAcc?.qr_string ?? billPayment?.qr_code_data ?? billPayment?.qr_string ?? billPayment?.qrcode_string ?? result?.qr_code_data ?? result?.qr_string;
+      const qrUrl: string | undefined = receiverAcc?.qr_url ?? receiverAcc?.qr_image_url ?? billPayment?.qr_url ?? billPayment?.qr_image_url ?? result?.qr_url ?? result?.qr_image_url;
       const walletUrl: string | undefined = billPayment?.customer?.payment_url ?? billPayment?.redirect_url ?? billPayment?.payment_url ?? billPayment?.url ?? result?.customer_url ?? result?.payment_url;
       const expiredAt = result?.expired_date ?? null;
 
       await this.prisma.$executeRaw`
         UPDATE payments SET flip_link_id = ${String(result.link_id ?? '')},
               pay_code = ${accountNumber ?? null},
-              payment_url = ${result.link_url ?? null}
+              payment_url = ${result.link_url ?? null},
+              extra_metadata = COALESCE(extra_metadata, '{}'::jsonb) || ${JSON.stringify({
+                senderBank: body.senderBank,
+                senderBankType: body.senderBankType,
+                qrString: qrString ?? null,
+                qrUrl: qrUrl ?? null,
+                walletUrl: walletUrl ?? null,
+                fellBackToCheckout: false,
+              })}::jsonb
          WHERE id = ${paymentId}::uuid
       `;
 
@@ -564,6 +589,7 @@ export class PaymentsController {
         senderBank: body.senderBank, senderBankType: body.senderBankType,
         accountNumber: accountNumber ?? null,
         qrString: qrString ?? null,
+        qrUrl: qrUrl ?? null,
         walletUrl: walletUrl ?? null,
         paymentUrl: result.link_url ? (/^https?:\/\//i.test(result.link_url) ? result.link_url : `https://${result.link_url}`) : null,
         expiredAt, linkId: result.link_id,
@@ -1180,10 +1206,20 @@ export class PaymentsController {
       SELECT id, booking_id AS "bookingId", amount, payment_method AS "paymentMethod",
              status, paid_at AS "paidAt", tripay_reference AS "reference",
              pay_code AS "payCode", payment_url AS "paymentUrl",
-             expired_at AS "expiredAt", created_at AS "createdAt"
+             expired_at AS "expiredAt", created_at AS "createdAt",
+             extra_metadata AS "extraMetadata"
         FROM payments WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid LIMIT 1
     `;
     if (!rows[0]) throw new NotFoundException();
-    return rows[0];
+    const meta = (rows[0].extraMetadata && typeof rows[0].extraMetadata === 'object' ? rows[0].extraMetadata : {}) as Record<string, unknown>;
+    return {
+      ...rows[0],
+      senderBank: typeof meta.senderBank === 'string' ? meta.senderBank : null,
+      senderBankType: typeof meta.senderBankType === 'string' ? meta.senderBankType : null,
+      qrString: typeof meta.qrString === 'string' ? meta.qrString : null,
+      qrUrl: typeof meta.qrUrl === 'string' ? meta.qrUrl : null,
+      walletUrl: typeof meta.walletUrl === 'string' ? meta.walletUrl : null,
+      fellBackToCheckout: Boolean(meta.fellBackToCheckout),
+    };
   }
 }
