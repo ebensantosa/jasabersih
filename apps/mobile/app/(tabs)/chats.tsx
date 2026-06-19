@@ -26,16 +26,17 @@ type ChatRow = {
 
 function ChatsScreen() {
   const router = useRouter();
-  const tokens = useAuthStore((s) => s.tokens);
+  // Pakai selector string (bukan object) supaya ref stable - mencegah
+  // fetchChats useCallback ke-recreate tiap zustand update.
+  const accessToken = useAuthStore((s) => s.tokens?.accessToken);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
 
-  if (!tokens) {
+  if (!accessToken) {
     return <Redirect href="/(auth)/login" />;
   }
 
   const fetchChats = useCallback(async () => {
-    if (!tokens) return;
     setLoading(true);
     try {
       const res = await api.get('/chat/conversations');
@@ -46,7 +47,7 @@ function ChatsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [tokens]);
+  }, []); // tanpa deps - stable
 
   useFocusEffect(useCallback(() => { void fetchChats(); }, [fetchChats]));
 

@@ -85,7 +85,20 @@ export function useJobsRealtime() {
     };
   }, [tokens, mode, areas]);
 
-  const fallbackEnabled = !!tokens && mode === 'freelancer';
+  // Polling fallback HANYA kalau websocket gak connect - kalau socket online,
+  // server push job real-time, polling jadi noise (request /available tiap 12s).
+  const [socketConnected, setSocketConnected] = useState(false);
+  useEffect(() => {
+    const socket = getJobsSocket();
+    const onConn = () => setSocketConnected(true);
+    const onDisc = () => setSocketConnected(false);
+    setSocketConnected(socket.connected);
+    socket.on('connect', onConn);
+    socket.on('disconnect', onDisc);
+    return () => { socket.off('connect', onConn); socket.off('disconnect', onDisc); };
+  }, []);
+
+  const fallbackEnabled = !!tokens && mode === 'freelancer' && !socketConnected;
   const pullAvailableFallback = async () => {
     if (!fallbackEnabled) return;
     if (incoming) return;
@@ -103,7 +116,8 @@ export function useJobsRealtime() {
   useEffect(() => {
     if (fallbackEnabled) void pullAvailableFallback();
   }, [fallbackEnabled]);
-  useVisiblePoll(pullAvailableFallback, 12_000, fallbackEnabled);
+  // 30s (bukan 12s) - tetep fallback tapi gak agresif. Real-time tetep dari socket.
+  useVisiblePoll(pullAvailableFallback, 30_000, fallbackEnabled);
 
   function dismiss(bookingId?: string) {
     if (bookingId) {
