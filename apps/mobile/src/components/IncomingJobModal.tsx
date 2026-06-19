@@ -27,6 +27,7 @@ export function IncomingJobModal() {
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [secondsLeft, setSecondsLeft] = useState(SEARCH_TIMEOUT_SEC);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   /** ID job yang sedang ditampilkan di modal - track untuk detect kalau ke-take cleaner lain */
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [takenByOther, setTakenByOther] = useState(false);
@@ -275,6 +276,36 @@ export function IncomingJobModal() {
               </View>
             )}
 
+            {/* Foto kondisi dari customer - bantu cleaner assess scope sebelum ambil */}
+            {Array.isArray(incoming.formSnapshot?.conditionPhotos) && incoming.formSnapshot.conditionPhotos.length > 0 && (
+              <View className="rounded-xl bg-white p-3" style={{ borderWidth: 1, borderColor: '#F1F5F9' }}>
+                <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">
+                  📸 Foto Kondisi ({incoming.formSnapshot.conditionPhotos.length})
+                </Text>
+                <Text className="font-sans mt-0.5 mb-2 text-[10px] text-ink-500">
+                  Tap untuk lihat besar
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row gap-2">
+                    {incoming.formSnapshot.conditionPhotos.map((url: string, i: number) => (
+                      <Pressable
+                        key={`${url}-${i}`}
+                        onPress={() => setPreviewPhoto(url)}
+                        className="overflow-hidden rounded-lg bg-ink-100"
+                        style={{ width: 90, height: 90 }}
+                      >
+                        <Image
+                          source={{ uri: url }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
             {/* Catatan customer */}
             {incoming.formSnapshot?.notes && (
               <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -348,6 +379,31 @@ export function IncomingJobModal() {
               <Text className="font-semibold text-center text-xs text-ink-500">Batal</Text>
             </Pressable>
           </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Fullscreen preview foto kondisi */}
+      <Modal visible={!!previewPhoto} transparent animationType="fade" onRequestClose={() => setPreviewPhoto(null)}>
+        <Pressable
+          onPress={() => setPreviewPhoto(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 12 }}
+        >
+          {previewPhoto && (
+            <Image
+              source={{ uri: previewPhoto }}
+              style={{ width: '100%', height: '80%' }}
+              contentFit="contain"
+            />
+          )}
+          <Pressable
+            onPress={() => setPreviewPhoto(null)}
+            style={{ position: 'absolute', top: 50, right: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 999 }}
+          >
+            <X color="white" size={22} />
+          </Pressable>
+          <Text style={{ position: 'absolute', bottom: 40, color: 'white', fontSize: 11 }}>
+            Tap di luar foto untuk tutup
+          </Text>
         </Pressable>
       </Modal>
     </Modal>
