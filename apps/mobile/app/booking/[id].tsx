@@ -916,6 +916,32 @@ function BookingDetail() {
             </View>
           )}
 
+          {/* Cleaner yang menangani pesanan - tampil juga setelah completed
+              supaya customer tetap tau siapa yang kerjain (cuma gak ada
+              tombol chat lagi). */}
+          {!isCleaner && booking.cleanerName && booking.status === 'completed' && (
+            <View className="mx-4 mt-3 flex-row items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+              <View className="h-12 w-12 overflow-hidden rounded-full bg-emerald-100 items-center justify-center">
+                {booking.cleanerPhotoUrl ? (
+                  <Image source={{ uri: booking.cleanerPhotoUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                ) : (
+                  <Text className="font-bold text-base text-emerald-700">
+                    {booking.cleanerName.slice(0, 1).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <View className="flex-1">
+                <Text className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+                  Cleaner yang Menangani
+                </Text>
+                <Text className="mt-0.5 text-sm font-bold text-emerald-900">{booking.cleanerName}</Text>
+                <Text className="mt-0.5 text-[11px] leading-4 text-emerald-800">
+                  Pesanan selesai. Chat sudah ditutup, terima kasih sudah pakai JasaBersih.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {isCleaner && booking.status === 'completed' && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
