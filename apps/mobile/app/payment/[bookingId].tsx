@@ -548,7 +548,7 @@ function MethodPicker({
 
       {getMethod('qris') && (
       <View>
-        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS (rekomendasi)</Text>
+        <Text className="font-bold mb-2 text-xs uppercase tracking-wider text-ink-500">QRIS</Text>
         {(() => {
           const st = getStatus('qris');
           const down = st === 'down';
@@ -563,13 +563,13 @@ function MethodPicker({
                 <Image source={QRIS_LOGO} style={{ width: 40, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
               </View>
               <View className="flex-1">
-                <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS - Semua e-wallet & m-banking</Text>
+                <Text className={`font-bold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>QRIS</Text>
                 {down ? (
                   <Text className="font-bold mt-0.5 text-[11px] text-rose-600">{getMessage('qris') || 'Metode ini sedang tidak tersedia'}</Text>
                 ) : delayed ? (
                   <Text className="font-bold mt-0.5 text-[11px] text-amber-600">Transaksi mungkin tertunda</Text>
                 ) : (
-                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500">GoPay, OVO, DANA, ShopeePay, dan mobile banking</Text>
+                  <Text className="font-medium mt-0.5 text-[11px] text-ink-500">Scan QR dari e-wallet atau m-banking</Text>
                 )}
               </View>
             </Pressable>
