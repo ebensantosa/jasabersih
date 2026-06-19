@@ -400,6 +400,14 @@ export class AdminBookingsController {
     const nextStatus = booking.status === 'pending_payment' ? 'searching' : booking.status;
     const method = body.method ?? 'manual_admin';
     const reference = body.reference ?? `admin:${admin.id}`;
+    const manualPayload = JSON.stringify({
+      source: 'admin_force_mark_paid',
+      reason: body.reason,
+      adminId: admin.id,
+      method,
+      reference,
+      markedAt: new Date().toISOString(),
+    });
 
     await this.prisma.$transaction([
       this.prisma.$executeRaw`
@@ -411,6 +419,14 @@ export class AdminBookingsController {
       this.prisma.$executeRaw`
         INSERT INTO payments (booking_id, amount, status, paid_at, payment_method, tripay_reference)
         VALUES (${id}::uuid, ${booking.total_amount}::bigint, 'paid', NOW(), ${method}, ${reference})
+      `,
+      this.prisma.$executeRaw`
+        UPDATE payments
+           SET status = 'paid',
+               paid_at = COALESCE(paid_at, NOW()),
+               callback_payload = COALESCE(callback_payload, ${manualPayload}::jsonb)
+         WHERE booking_id = ${id}::uuid
+           AND status = 'pending'
       `,
     ]);
 

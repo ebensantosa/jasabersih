@@ -1358,17 +1358,31 @@ export class PaymentsController {
         FROM payments WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid LIMIT 1
     `;
     if (!rows[0]) throw new NotFoundException();
-    const meta = (rows[0].extraMetadata && typeof rows[0].extraMetadata === 'object' ? rows[0].extraMetadata : {}) as Record<string, unknown>;
-    const createdAt = rows[0].createdAt instanceof Date ? rows[0].createdAt : new Date(String(rows[0].createdAt));
-    const storedExpiredAt = rows[0].expiredAt instanceof Date ? rows[0].expiredAt : (rows[0].expiredAt ? new Date(String(rows[0].expiredAt)) : null);
+    const row = { ...rows[0] };
+    const meta = (row.extraMetadata && typeof row.extraMetadata === 'object' ? row.extraMetadata : {}) as Record<string, unknown>;
+    const createdAt = row.createdAt instanceof Date ? row.createdAt : new Date(String(row.createdAt));
+    const storedExpiredAt = row.expiredAt instanceof Date ? row.expiredAt : (row.expiredAt ? new Date(String(row.expiredAt)) : null);
     const resolvedExpiredAt =
       storedExpiredAt && !Number.isNaN(storedExpiredAt.getTime())
         ? storedExpiredAt.toISOString()
         : createdAt && !Number.isNaN(createdAt.getTime())
           ? new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString()
           : null;
+    if (row.bookingId && row.status === 'pending') {
+      const bookingRows = await this.prisma.$queryRaw<{ status: string; paidAt: Date | null }[]>`
+        SELECT status, paid_at AS "paidAt"
+          FROM bookings
+         WHERE id = ${String(row.bookingId)}::uuid
+         LIMIT 1
+      `;
+      const booking = bookingRows[0];
+      if (booking?.paidAt || (booking?.status && booking.status !== 'pending_payment')) {
+        row.status = 'paid';
+        row.paidAt = booking.paidAt ?? new Date();
+      }
+    }
     return {
-      ...rows[0],
+      ...row,
       expiredAt: resolvedExpiredAt,
       senderBank: typeof meta.senderBank === 'string' ? meta.senderBank : null,
       senderBankType: typeof meta.senderBankType === 'string' ? meta.senderBankType : null,
