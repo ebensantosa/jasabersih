@@ -12,13 +12,6 @@ export type AuthResult = {
   user: { email: string; name: string; mode: 'customer' | 'freelancer'; kycStatus?: string | null };
 };
 
-// AbortSignal.timeout() not in Hermes - pakai manual controller.
-function timeoutSignal(ms: number): AbortSignal {
-  const c = new AbortController();
-  setTimeout(() => c.abort(), ms);
-  return c.signal;
-}
-
 /** Login real ke backend NestJS - no mock. */
 export async function login(email: string, password: string): Promise<AuthResult> {
   const deviceId = await getDeviceId();
@@ -28,7 +21,7 @@ export async function login(email: string, password: string): Promise<AuthResult
       '/auth/login',
       { phone: email, password },
       {
-        signal: timeoutSignal(10_000),
+        timeout: 20_000,
         headers: { 'x-device-id': deviceId },
       },
     );
@@ -44,13 +37,12 @@ export async function login(email: string, password: string): Promise<AuthResult
   // Fetch real profile using the freshly-issued access token
   let user: AuthResult['user'] = { email, name: email, mode: 'customer', kycStatus: null };
   try {
-    const me = await fetch(`${API_BASE}/auth/me`, {
+    const me = await api.get('/auth/me', {
+      timeout: 12_000,
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
-      signal: timeoutSignal(8_000),
     });
-    if (me.ok) {
-      const meJson = await me.json();
-      const p = meJson.data ?? meJson;
+    const p = me.data?.data ?? me.data;
+    if (p) {
       user = {
         email: p.email ?? email,
         name: p.name ?? p.phone ?? email,
@@ -60,15 +52,12 @@ export async function login(email: string, password: string): Promise<AuthResult
 
       if (user.mode === 'freelancer') {
         try {
-          const cleanerProfile = await fetch(`${API_BASE}/cleaner/profile`, {
+          const cleanerProfile = await api.get('/cleaner/profile', {
+            timeout: 12_000,
             headers: { Authorization: `Bearer ${tokens.accessToken}` },
-            signal: timeoutSignal(8_000),
           });
-          if (cleanerProfile.ok) {
-            const cleanerJson = await cleanerProfile.json();
-            const cp = cleanerJson.data ?? cleanerJson;
-            user.kycStatus = cp?.kycStatus ?? null;
-          }
+          const cp = cleanerProfile.data?.data ?? cleanerProfile.data;
+          user.kycStatus = cp?.kycStatus ?? null;
         } catch {
           // fall back to gate/overlay when profile fetch is unavailable
         }
