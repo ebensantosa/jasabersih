@@ -1,24 +1,17 @@
-import * as ImageManipulator from 'expo-image-manipulator';
+import { Platform } from 'react-native';
 
-const MAX_DIMENSION = 1600; // max width or height (px)
+const MAX_DIMENSION = 1600;
 const COMPRESS_QUALITY = 0.7;
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB hard limit (post-compression)
+const MAX_BYTES = 5 * 1024 * 1024;
 
 export type CompressResult = {
   uri: string;
   width: number;
   height: number;
   size: number;
-  /** True kalau hasil masih > MAX_BYTES (caller harus reject upload) */
   oversize: boolean;
 };
 
-/**
- * Compress + resize image biar upload cepat & R2 storage hemat.
- * - Resize ke max 1600px sisi terpanjang (preserve aspect ratio)
- * - JPEG quality 0.7 (sweet spot kualitas vs ukuran)
- * - Throw kalau original > 20MB (probably bukan foto, tapi video/raw)
- */
 export async function compressImage(uri: string): Promise<CompressResult> {
   const head = await fetch(uri);
   const blob = await head.blob();
@@ -28,14 +21,21 @@ export async function compressImage(uri: string): Promise<CompressResult> {
     throw new Error('File terlalu besar (max 20MB sebelum kompresi). Coba foto ulang atau pilih gambar lain.');
   }
 
-  // Probe dimension via image manipulator (resize 0 op)
+  if (Platform.OS === 'web') {
+    return compressOnWeb(blob);
+  }
+
+  return compressOnNative(uri);
+}
+
+async function compressOnNative(uri: string): Promise<CompressResult> {
+  const ImageManipulator = await import('expo-image-manipulator');
   const result = await ImageManipulator.manipulateAsync(
     uri,
-    [{ resize: { width: MAX_DIMENSION } }], // resize by width; aspect preserved; if portrait this still works (taller stays proportional)
+    [{ resize: { width: MAX_DIMENSION } }],
     { compress: COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
   );
 
-  // Re-fetch compressed file to know size
   const cBlob = await fetch(result.uri).then((r) => r.blob());
   const finalSize = cBlob.size;
 
@@ -48,7 +48,66 @@ export async function compressImage(uri: string): Promise<CompressResult> {
   };
 }
 
-/** Format bytes ke human-readable (1.2 MB, 450 KB). */
+async function compressOnWeb(blob: Blob): Promise<CompressResult> {
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const image = await loadImage(objectUrl);
+    const { width, height } = fitSize(image.naturalWidth, image.naturalHeight, MAX_DIMENSION);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Browser tidak mendukung canvas image processing.');
+    ctx.drawImage(image, 0, 0, width, height);
+
+    const compressedBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (out) => {
+          if (!out) {
+            reject(new Error('Gagal memproses gambar di browser.'));
+            return;
+          }
+          resolve(out);
+        },
+        'image/jpeg',
+        COMPRESS_QUALITY,
+      );
+    });
+
+    const compressedUrl = URL.createObjectURL(compressedBlob);
+    return {
+      uri: compressedUrl,
+      width,
+      height,
+      size: compressedBlob.size,
+      oversize: compressedBlob.size > MAX_BYTES,
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function fitSize(width: number, height: number, maxDimension: number) {
+  if (width <= maxDimension && height <= maxDimension) {
+    return { width, height };
+  }
+  if (width >= height) {
+    const ratio = maxDimension / width;
+    return { width: maxDimension, height: Math.round(height * ratio) };
+  }
+  const ratio = maxDimension / height;
+  return { width: Math.round(width * ratio), height: maxDimension };
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Gagal membaca gambar.'));
+    img.src = src;
+  });
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
