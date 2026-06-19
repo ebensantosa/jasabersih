@@ -179,9 +179,9 @@ function ProfileScreen() {
                   { icon: MapPin, label: t('profile.addresses'), onPress: () => router.push('/account/addresses') },
                   { icon: Wallet, label: 'Saldo Saya', onPress: () => router.push('/account/wallet') },
                   { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
+                  { icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') },
                 ]
               : []),
-            { icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') },
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}
         />
