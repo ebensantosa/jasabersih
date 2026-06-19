@@ -448,6 +448,30 @@ function BookingDetail() {
       ? bookingRating.rating
       : null;
   const cleanerCarryReminders = deriveCleanerCarryReminders(booking);
+  const snapshotConditionPhotos = Array.isArray((booking.formSnapshot as any)?.conditionPhotos)
+    ? ((booking.formSnapshot as any).conditionPhotos as string[]).filter((url) => typeof url === 'string' && url.trim().length > 0)
+    : [];
+  const snapshotCustomerNotes =
+    booking.formSnapshot?.customerNotes
+    ?? booking.formSnapshot?.notes
+    ?? booking.customerNotes
+    ?? '';
+  const hasSnapshotDetails = Boolean(
+    booking.formSnapshot?.propertyType
+    || booking.formSnapshot?.floor
+    || booking.formSnapshot?.bedrooms
+    || booking.formSnapshot?.bathrooms
+    || booking.formSnapshot?.areaM2
+    || booking.formSnapshot?.dirtLevel
+    || booking.formSnapshot?.dirtCharacters?.length
+    || booking.formSnapshot?.floorType
+    || booking.formSnapshot?.furnitureDensity
+    || booking.formSnapshot?.hasWater != null
+    || booking.formSnapshot?.hasElectricity != null
+    || booking.formSnapshot?.hasPet
+    || snapshotCustomerNotes
+    || snapshotConditionPhotos.length > 0,
+  );
 
   async function doReschedule(newDate: Date) {
     if (!booking) return;
@@ -769,10 +793,10 @@ function BookingDetail() {
             </View>
           )}
 
-          {booking.formSnapshot && booking.pricingMode === 'package' && (
+          {booking.formSnapshot && hasSnapshotDetails && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
-                Detail Properti (Snapshot)
+                {isCleaner ? 'Info dari Customer' : 'Detail Properti'}
               </Text>
               <View className="gap-1.5">
                 <Snap label="Tipe Properti" value={booking.formSnapshot.propertyType} />
@@ -807,15 +831,17 @@ function BookingDetail() {
                 {booking.formSnapshot.hasPet && (
                   <Snap label="Hewan" value={booking.formSnapshot.petNote || 'Ada'} />
                 )}
-                {booking.formSnapshot.notes && (
-                  <Snap label="Catatan" value={booking.formSnapshot.notes} />
+                {snapshotCustomerNotes && booking.pricingMode !== 'hourly' && (
+                  <Snap label="Catatan" value={snapshotCustomerNotes} />
                 )}
               </View>
-              {Array.isArray((booking.formSnapshot as any).conditionPhotos) && (booking.formSnapshot as any).conditionPhotos.length > 0 && (
+              {snapshotConditionPhotos.length > 0 && (
                 <View className="mt-3">
-                  <Text className="font-semibold text-xs uppercase tracking-wider text-ink-500 mb-2">Foto Kondisi</Text>
+                  <Text className="font-semibold text-xs uppercase tracking-wider text-ink-500 mb-2">
+                    Foto Kondisi dari Customer
+                  </Text>
                   <View className="flex-row flex-wrap gap-2">
-                    {((booking.formSnapshot as any).conditionPhotos as string[]).map((url, i) => (
+                    {snapshotConditionPhotos.map((url, i) => (
                       <Image
                         key={i}
                         source={{ uri: url }}
@@ -829,12 +855,12 @@ function BookingDetail() {
             </View>
           )}
 
-          {booking.formSnapshot?.notes && booking.pricingMode === 'hourly' && (
+          {booking.pricingMode === 'hourly' && snapshotCustomerNotes && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-2 text-xs uppercase tracking-wider text-ink-400">
                 Checklist Tugas
               </Text>
-              <Text className="font-sans text-sm text-ink-700">{booking.formSnapshot.notes}</Text>
+              <Text className="font-sans text-sm text-ink-700">{snapshotCustomerNotes}</Text>
             </View>
           )}
 

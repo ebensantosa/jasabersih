@@ -109,7 +109,9 @@ export type FormSnapshot = {
   hasPet?: boolean;
   petNote?: string;
   notes?: string;
+  customerNotes?: string;
   photoCount?: number;
+  conditionPhotos?: string[];
 };
 
 export type Booking = {
@@ -143,6 +145,7 @@ export type Booking = {
   dirtSurcharge: number;
   totalPrice: number;
   cleanerPayout?: number;
+  customerNotes?: string;
   // Anti-fraud snapshot
   formSnapshot?: FormSnapshot;
   // Cleaner (assigned later)
@@ -260,6 +263,7 @@ export const useBookingsStore = create<State>((set, get) => ({
           cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId,
           cleanerName: s.cleanerName ?? existing.cleanerName,
           cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? existing.cleanerPhotoUrl,
+          customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? existing.customerNotes,
         }
           : {
               id: s.id,
@@ -277,6 +281,7 @@ export const useBookingsStore = create<State>((set, get) => ({
               cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? undefined,
               cleanerName: s.cleanerName ?? undefined,
               cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? undefined,
+              customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? undefined,
               messages: [],
             } as Booking;
       });
@@ -335,6 +340,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         cleanerId: s.cleaner_id ?? s.cleanerId ?? undefined,
         cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
         cleanerPhotoUrl: s.cleaner_photo_url ?? s.cleanerPhotoUrl ?? undefined,
+        customerNotes: s.customer_notes ?? s.customerNotes ?? undefined,
         paidAt: s.paid_at ? (Number.isFinite(Date.parse(s.paid_at)) ? Date.parse(s.paid_at) : undefined) : undefined,
         startedAt: (s.started_at ?? s.startedAt) ? (Number.isFinite(Date.parse(s.started_at ?? s.startedAt)) ? Date.parse(s.started_at ?? s.startedAt) : undefined) : undefined,
         pauseStartedAt: (s.pause_started_at ?? s.pauseStartedAt) ? (Number.isFinite(Date.parse(s.pause_started_at ?? s.pauseStartedAt)) ? Date.parse(s.pause_started_at ?? s.pauseStartedAt) : undefined) : undefined,
@@ -393,7 +399,7 @@ export const useBookingsStore = create<State>((set, get) => ({
           categoryCode: b.categoryCode ?? null,
         },
         voucherCode: (b.formSnapshot as any)?.voucherCode ?? undefined,
-        customerNotes: undefined,
+        customerNotes: b.customerNotes ?? (b.formSnapshot as any)?.customerNotes ?? undefined,
       };
       try {
         const res = await api.post('/bookings', payload);
