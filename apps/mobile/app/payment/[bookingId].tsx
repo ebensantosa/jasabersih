@@ -109,6 +109,27 @@ const METHOD_META: Record<string, { logo?: any; label?: string }> = {
   credit_card: { label: 'Card' },
 };
 
+function parseExpiredAt(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  if (value.includes('T')) {
+    const isoDate = new Date(value);
+    return Number.isNaN(isoDate.getTime()) ? null : isoDate;
+  }
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  const [, year, month, day, hour, minute, second] = m;
+  const localDate = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second ?? '0'),
+    0,
+  );
+  return Number.isNaN(localDate.getTime()) ? null : localDate;
+}
+
 function PaymentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ bookingId: string; extra?: string; amount?: string }>();
@@ -392,13 +413,7 @@ function CountdownBadge({ expiredAt }: { expiredAt: string }) {
     return () => clearInterval(id);
   }, []);
   // Parse Flip's "YYYY-MM-DD HH:mm" sebagai WIB (server timezone)
-  const target = (() => {
-    if (!expiredAt) return null;
-    // ISO format kalau dari fallback createBill, native parse
-    if (expiredAt.includes('T')) return new Date(expiredAt).getTime();
-    // Flip format "2026-06-08 00:00" - treat as local server time
-    return new Date(expiredAt.replace(' ', 'T') + ':00').getTime();
-  })();
+  const target = parseExpiredAt(expiredAt)?.getTime() ?? null;
   if (!target) return null;
   const remainingMs = Math.max(0, target - now);
   const totalSec = Math.floor(remainingMs / 1000);
@@ -746,9 +761,8 @@ function BigCountdown({ expiredAt }: { expiredAt: string }) {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const target = expiredAt.includes('T')
-    ? new Date(expiredAt).getTime()
-    : new Date(expiredAt.replace(' ', 'T') + ':00').getTime();
+  const target = parseExpiredAt(expiredAt)?.getTime() ?? null;
+  if (!target) return null;
   const remainingMs = Math.max(0, target - now);
   const totalSec = Math.floor(remainingMs / 1000);
   const h = Math.floor(totalSec / 3600);
@@ -777,13 +791,11 @@ function BigCountdown({ expiredAt }: { expiredAt: string }) {
 function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () => void }) {
   const CountdownBanner = data.expiredAt ? <BigCountdown expiredAt={data.expiredAt} /> : null;
   const formatExpiredHeader = (ex: string | null | undefined) => {
-    if (!ex) return '';
-    try {
-      const d = ex.includes('T') ? new Date(ex) : new Date(ex.replace(' ', 'T') + ':00');
-      const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
-    } catch { return ex; }
+    const d = parseExpiredAt(ex);
+    if (!d) return ex ?? '';
+    const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())} WIB`;
   };
 
   // E-wallet (DANA, ShopeePay, LinkAja, GoPay): buka deep link langsung ke app wallet
