@@ -181,7 +181,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
           includes: pkgIncludes.filter((s) => s.trim().length > 0),
           price: pkgPrice > 0 ? pkgPrice : undefined,
           durationMin: pkgDuration > 0 ? pkgDuration : undefined,
-        }).catch(() => {/* non-fatal */});
+        });
       }
       toast.success(isEdit ? 'Di-update.' : 'Dibuat.');
       onSaved();

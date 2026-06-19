@@ -160,7 +160,12 @@ export class SystemConfigController {
     @Req() req: Request,
   ) {
     const pkg = await this.prisma.$queryRaw<{ id: string; scope: any }[]>`
-      SELECT id, scope FROM pricing_packages WHERE service_id = ${id}::uuid AND is_active = true LIMIT 1
+      SELECT id, scope
+        FROM pricing_packages
+       WHERE service_id = ${id}::uuid
+         AND is_active = true
+       ORDER BY price ASC, duration_min ASC, created_at ASC
+       LIMIT 1
     `;
     if (!pkg[0]) {
       // Auto-create kalau belum ada package aktif
@@ -199,7 +204,9 @@ export class SystemConfigController {
   async getServicePackage(@Param('id') id: string) {
     const rows = await this.prisma.$queryRaw<{ id: string; name: string; price: bigint; durationMin: number; scope: any }[]>`
       SELECT id, name, price, duration_min AS "durationMin", scope FROM pricing_packages
-       WHERE service_id = ${id}::uuid AND is_active = true LIMIT 1
+       WHERE service_id = ${id}::uuid AND is_active = true
+       ORDER BY price ASC, duration_min ASC, created_at ASC
+       LIMIT 1
     `;
     if (!rows[0]) return { id: null, name: null, price: 0, durationMin: 0, note: '', includes: [] };
     const p = rows[0];
