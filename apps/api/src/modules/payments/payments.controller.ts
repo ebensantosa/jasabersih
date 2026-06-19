@@ -67,6 +67,67 @@ export class PaymentsController {
     private readonly jobs: JobsGateway,
   ) {}
 
+  private findFirstNestedString(value: unknown, matcher: (key: string, str: string) => boolean): string | undefined {
+    const visit = (node: unknown): string | undefined => {
+      if (!node || typeof node !== 'object') return undefined;
+      if (Array.isArray(node)) {
+        for (const item of node) {
+          const found = visit(item);
+          if (found) return found;
+        }
+        return undefined;
+      }
+      for (const [key, child] of Object.entries(node)) {
+        if (typeof child === 'string' && matcher(key, child)) return child;
+        const found = visit(child);
+        if (found) return found;
+      }
+      return undefined;
+    };
+    return visit(value);
+  }
+
+  private extractQrNative(result: any): { qrString: string | null; qrUrl: string | null; nmid: string | null } {
+    const billPayment = result?.bill_payment ?? {};
+    const receiverAcc = billPayment?.receiver_bank_account ?? {};
+
+    const qrString =
+      receiverAcc?.qr_code_data
+      ?? receiverAcc?.qr_string
+      ?? billPayment?.qr_code_data
+      ?? billPayment?.qr_string
+      ?? billPayment?.qrcode_string
+      ?? result?.qr_code_data
+      ?? result?.qr_string
+      ?? this.findFirstNestedString(result, (key, str) => {
+        const k = key.toLowerCase();
+        return k.includes('qr') && /^000201/i.test(str.trim());
+      })
+      ?? null;
+
+    const qrUrl =
+      receiverAcc?.qr_url
+      ?? receiverAcc?.qr_image_url
+      ?? billPayment?.qr_url
+      ?? billPayment?.qr_image_url
+      ?? result?.qr_url
+      ?? result?.qr_image_url
+      ?? this.findFirstNestedString(result, (key, str) => {
+        const k = key.toLowerCase();
+        return k.includes('qr') && /^https?:\/\//i.test(str.trim());
+      })
+      ?? null;
+
+    const nmid =
+      receiverAcc?.nmid
+      ?? billPayment?.nmid
+      ?? result?.nmid
+      ?? this.findFirstNestedString(result, (key, str) => key.toLowerCase() === 'nmid')
+      ?? null;
+
+    return { qrString, qrUrl, nmid };
+  }
+
   private normalizeDisabledMethodCode(code: string, type?: CheckoutSenderBankType): string {
     const normalized = String(code ?? '').trim().toLowerCase();
     if (type === 'virtual_account') {
@@ -360,21 +421,7 @@ export class PaymentsController {
         receiverAcc?.account_number
         ?? billPayment?.account_number
         ?? result?.account_number;
-      const qrString: string | undefined =
-        receiverAcc?.qr_code_data
-        ?? receiverAcc?.qr_string
-        ?? billPayment?.qr_code_data
-        ?? billPayment?.qr_string
-        ?? billPayment?.qrcode_string
-        ?? result?.qr_code_data
-        ?? result?.qr_string;
-      const qrUrl: string | undefined =
-        receiverAcc?.qr_url
-        ?? receiverAcc?.qr_image_url
-        ?? billPayment?.qr_url
-        ?? billPayment?.qr_image_url
-        ?? result?.qr_url
-        ?? result?.qr_image_url;
+      const { qrString, qrUrl, nmid } = this.extractQrNative(result);
       const walletUrl: string | undefined =
         billPayment?.customer?.payment_url
         ?? billPayment?.redirect_url
@@ -384,7 +431,7 @@ export class PaymentsController {
         ?? result?.payment_url;
       const expiredAt = result?.expired_date ?? null;
 
-      this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} qrUrl=${qrUrl ? 'YES' : 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
+      this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} qrUrl=${qrUrl ? 'YES' : 'NO'} nmid=${nmid ?? 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
 
       await this.prisma.$executeRaw`
         UPDATE payments
@@ -396,6 +443,7 @@ export class PaymentsController {
                  senderBankType: body.senderBankType,
                  qrString: qrString ?? null,
                  qrUrl: qrUrl ?? null,
+                 nmid: nmid ?? null,
                  walletUrl: walletUrl ?? null,
                  fellBackToCheckout,
                })}::jsonb
@@ -414,6 +462,7 @@ export class PaymentsController {
         accountNumber: accountNumber ?? null,
         qrString: qrString ?? null,
         qrUrl: qrUrl ?? null,
+        nmid: nmid ?? null,
         walletUrl: walletUrl ?? null,
         paymentUrl: checkoutUrl,
         expiredAt,
@@ -564,8 +613,7 @@ export class PaymentsController {
       const billPayment = result?.bill_payment ?? {};
       const receiverAcc = billPayment?.receiver_bank_account ?? {};
       const accountNumber: string | undefined = receiverAcc?.account_number ?? billPayment?.account_number ?? result?.account_number;
-      const qrString: string | undefined = receiverAcc?.qr_code_data ?? receiverAcc?.qr_string ?? billPayment?.qr_code_data ?? billPayment?.qr_string ?? billPayment?.qrcode_string ?? result?.qr_code_data ?? result?.qr_string;
-      const qrUrl: string | undefined = receiverAcc?.qr_url ?? receiverAcc?.qr_image_url ?? billPayment?.qr_url ?? billPayment?.qr_image_url ?? result?.qr_url ?? result?.qr_image_url;
+      const { qrString, qrUrl, nmid } = this.extractQrNative(result);
       const walletUrl: string | undefined = billPayment?.customer?.payment_url ?? billPayment?.redirect_url ?? billPayment?.payment_url ?? billPayment?.url ?? result?.customer_url ?? result?.payment_url;
       const expiredAt = result?.expired_date ?? null;
 
@@ -578,6 +626,7 @@ export class PaymentsController {
                 senderBankType: body.senderBankType,
                 qrString: qrString ?? null,
                 qrUrl: qrUrl ?? null,
+                nmid: nmid ?? null,
                 walletUrl: walletUrl ?? null,
                 fellBackToCheckout: false,
               })}::jsonb
@@ -590,6 +639,7 @@ export class PaymentsController {
         accountNumber: accountNumber ?? null,
         qrString: qrString ?? null,
         qrUrl: qrUrl ?? null,
+        nmid: nmid ?? null,
         walletUrl: walletUrl ?? null,
         paymentUrl: result.link_url ? (/^https?:\/\//i.test(result.link_url) ? result.link_url : `https://${result.link_url}`) : null,
         expiredAt, linkId: result.link_id,
@@ -1218,6 +1268,7 @@ export class PaymentsController {
       senderBankType: typeof meta.senderBankType === 'string' ? meta.senderBankType : null,
       qrString: typeof meta.qrString === 'string' ? meta.qrString : null,
       qrUrl: typeof meta.qrUrl === 'string' ? meta.qrUrl : null,
+      nmid: typeof meta.nmid === 'string' ? meta.nmid : null,
       walletUrl: typeof meta.walletUrl === 'string' ? meta.walletUrl : null,
       fellBackToCheckout: Boolean(meta.fellBackToCheckout),
     };

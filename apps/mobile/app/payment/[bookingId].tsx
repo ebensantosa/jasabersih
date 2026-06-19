@@ -24,6 +24,7 @@ type DirectResult = {
   accountNumber: string | null;
   qrString: string | null;
   qrUrl?: string | null;
+  nmid?: string | null;
   walletUrl?: string | null;
   expiredAt: string | null;
   paymentUrl?: string | null;
@@ -839,30 +840,31 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
   }
 
   if ((data.senderBankType === 'qris' || data.senderBank === 'qris') && (data.qrString || data.qrUrl)) {
+    const saveQr = async () => {
+      if (data.qrUrl && Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.open(data.qrUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (data.qrString) {
+        await Clipboard.setStringAsync(data.qrString);
+        toast.success('Kode QRIS disalin');
+      }
+    };
     return (
       <ScrollView contentContainerStyle={{ padding: 0, backgroundColor: '#F1F5F9' }}>
-        {/* Header dengan tanggal expired */}
-        <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
-          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Selesaikan Pembayaran Sebelum</Text>
-          <Text style={{ fontSize: 16, color: '#0F172A', fontWeight: '700', marginTop: 4 }}>
-            {formatExpiredHeader(data.expiredAt)}
-          </Text>
+        <View style={{ backgroundColor: 'white', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 }}>
+          <Text style={{ fontSize: 28, color: '#0F172A', fontWeight: '800' }}>Lakukan Pembayaran</Text>
+          <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <Text style={{ flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '700' }}>
+              Bayar sebelum {formatExpiredHeader(data.expiredAt)}.
+            </Text>
+            {data.expiredAt ? <CountdownBadge expiredAt={data.expiredAt} /> : null}
+          </View>
         </View>
 
-        {/* QRIS card */}
-        <View style={{ backgroundColor: 'white', padding: 20, marginTop: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A' }}>QRIS</Text>
-            <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}>
-              <Image source={QRIS_LOGO} style={{ width: 36, height: 18 }} contentFit="contain" />
-            </View>
-          </View>
-          <Text style={{ fontSize: 13, color: '#475569', marginTop: 12, lineHeight: 20 }}>
-            Scan QRIS di bawah ini untuk melanjutkan pembayaran Anda.
-          </Text>
-
-          {/* QR code centered */}
-          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
+        <View style={{ backgroundColor: 'white', paddingHorizontal: 24, paddingBottom: 28, alignItems: 'center' }}>
+          <Image source={QRIS_LOGO} style={{ width: 70, height: 34, marginTop: 6, marginBottom: 18 }} contentFit="contain" />
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
             <View style={{ padding: 12, backgroundColor: 'white', borderRadius: 8 }}>
               {data.qrString ? (
                 Platform.OS === 'web' ? (
@@ -879,34 +881,32 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
               )}
             </View>
           </View>
-        </View>
-
-        {/* Nominal card */}
-        <View style={{ backgroundColor: 'white', padding: 16, marginTop: 10, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, marginHorizontal: 16 }}>
-          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Nominal Pembayaran</Text>
-          <Text style={{ fontSize: 22, color: '#0F172A', fontWeight: '800', marginTop: 4 }}>
+          {data.nmid ? (
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginTop: 8 }}>
+              NMID: {data.nmid}
+            </Text>
+          ) : null}
+          <Pressable
+            onPress={saveQr}
+            style={{ marginTop: 20, paddingVertical: 10, paddingHorizontal: 12 }}
+          >
+            <Text style={{ fontSize: 15, color: '#FF5A36', fontWeight: '700' }}>Unduh kode QR</Text>
+          </Pressable>
+          <View style={{ width: '100%', marginTop: 18, borderWidth: 1.5, borderColor: '#FF5A36', borderRadius: 2 }}>
+            <Pressable
+              onPress={() => toast.success('Status transaksi dicek otomatis')}
+              style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 16, color: '#FF5A36', fontWeight: '700' }}>Cek Status Transaksi</Text>
+            </Pressable>
+          </View>
+          <Text style={{ marginTop: 18, fontSize: 13, color: '#475569', textAlign: 'center', lineHeight: 20 }}>
+            Status pembayaran dicek otomatis. Halaman ini akan pindah ke detail pesanan saat pembayaran masuk.
+          </Text>
+          <Text style={{ marginTop: 12, fontSize: 22, color: '#0F172A', fontWeight: '800' }}>
             {formatRupiah(data.amount)}
           </Text>
         </View>
-
-        {/* Status info */}
-        <View style={{ marginHorizontal: 16, marginTop: 16, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 10, flexDirection: 'row', gap: 8 }}>
-          <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 18 }}>
-            Status pembayaran kami cek otomatis tiap beberapa detik. Halaman ini akan otomatis pindah ke pesanan saat sudah lunas.
-          </Text>
-        </View>
-
-        {CountdownBanner ? <View style={{ marginHorizontal: 16, marginTop: 12 }}>{CountdownBanner}</View> : null}
-
-        {/* Order ref footer */}
-        {data.paymentId && (
-          <View style={{ paddingHorizontal: 20, paddingVertical: 16, marginTop: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 12, color: '#64748B' }}>Kode Order</Text>
-            <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600' }} selectable>
-              {data.paymentId.slice(0, 16)}
-            </Text>
-          </View>
-        )}
       </ScrollView>
     );
   }
