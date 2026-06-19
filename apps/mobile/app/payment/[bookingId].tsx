@@ -907,6 +907,12 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           <Text style={{ marginTop: 18, fontSize: 13, color: '#475569', textAlign: 'center', lineHeight: 20 }}>
             Kalau pembayaran belum masuk, status tetap menunggu. Setelah pembayaran diterima, halaman ini akan berpindah otomatis ke detail pesanan.
           </Text>
+          <View style={{ marginTop: 14, alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>ID Order</Text>
+            <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '700' }} selectable>
+              {data.paymentId}
+            </Text>
+          </View>
           <Text style={{ marginTop: 12, fontSize: 22, color: '#0F172A', fontWeight: '800' }}>
             {formatRupiah(data.amount)}
           </Text>
