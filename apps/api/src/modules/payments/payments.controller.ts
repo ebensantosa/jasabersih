@@ -138,6 +138,35 @@ export class PaymentsController {
     return new Date(Date.now() + 24 * 60 * 60 * 1000);
   }
 
+  private mapDirectPaymentRow(row: Record<string, unknown>) {
+    const meta = (row.extraMetadata && typeof row.extraMetadata === 'object' ? row.extraMetadata : {}) as Record<string, unknown>;
+    const createdAt = row.createdAt instanceof Date ? row.createdAt : new Date(String(row.createdAt));
+    const storedExpiredAt = row.expiredAt instanceof Date ? row.expiredAt : (row.expiredAt ? new Date(String(row.expiredAt)) : null);
+    const resolvedExpiredAt =
+      storedExpiredAt && !Number.isNaN(storedExpiredAt.getTime())
+        ? storedExpiredAt.toISOString()
+        : createdAt && !Number.isNaN(createdAt.getTime())
+          ? new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString()
+          : null;
+    return {
+      paymentId: String(row.id),
+      provider: 'flip',
+      amount: Number(row.amount ?? 0),
+      senderBank: typeof meta.senderBank === 'string' ? meta.senderBank : null,
+      senderBankType: typeof meta.senderBankType === 'string' ? meta.senderBankType : null,
+      accountNumber: typeof row.payCode === 'string' ? row.payCode : null,
+      qrString: typeof meta.qrString === 'string' ? meta.qrString : null,
+      qrUrl: typeof meta.qrUrl === 'string' ? meta.qrUrl : null,
+      nmid: typeof meta.nmid === 'string' ? meta.nmid : null,
+      walletUrl: typeof meta.walletUrl === 'string' ? meta.walletUrl : null,
+      paymentUrl: typeof row.paymentUrl === 'string' ? row.paymentUrl : null,
+      expiredAt: resolvedExpiredAt,
+      linkId: typeof row.flipLinkId === 'string' || typeof row.flipLinkId === 'number' ? row.flipLinkId : null,
+      fellBackToCheckout: Boolean(meta.fellBackToCheckout),
+      reused: true,
+    };
+  }
+
   private normalizeDisabledMethodCode(code: string, type?: CheckoutSenderBankType): string {
     const normalized = String(code ?? '').trim().toLowerCase();
     if (type === 'virtual_account') {
@@ -352,6 +381,28 @@ export class PaymentsController {
     const merchantRef = `JBSIH-${b.id.slice(0, 8)}-${Date.now().toString(36)}`;
     const total = Number(b.total_amount);
 
+    if (!body.useCredit) {
+      const reusable = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT id, amount, pay_code AS "payCode", payment_url AS "paymentUrl",
+               flip_link_id AS "flipLinkId", expired_at AS "expiredAt",
+               created_at AS "createdAt", extra_metadata AS "extraMetadata"
+          FROM payments
+         WHERE booking_id = ${b.id}::uuid
+           AND user_id = ${user.id}::uuid
+           AND payment_method = ${`flip_${body.senderBankType}_${body.senderBank}`}
+           AND provider = 'flip'
+           AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1
+      `;
+      const existing = reusable[0];
+      if (existing) {
+        const mapped = this.mapDirectPaymentRow(existing);
+        const expiryTime = mapped.expiredAt ? new Date(mapped.expiredAt).getTime() : 0;
+        if (expiryTime > Date.now()) return mapped;
+      }
+    }
+
     // Pakai saldo (partial): kurangi tagihan PG sebesar min(balance, total)
     let creditUsed = 0;
     if (body.useCredit) {
@@ -550,6 +601,29 @@ export class PaymentsController {
     `;
     const u = userRows[0]!;
     const merchantRef = `JBSIH-${body.type.toUpperCase()}-${b.id.slice(0, 8)}-${Date.now().toString(36)}`;
+
+    if (!body.useCredit) {
+      const reusable = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT id, amount, pay_code AS "payCode", payment_url AS "paymentUrl",
+               flip_link_id AS "flipLinkId", expired_at AS "expiredAt",
+               created_at AS "createdAt", extra_metadata AS "extraMetadata"
+          FROM payments
+         WHERE booking_id = ${b.id}::uuid
+           AND user_id = ${user.id}::uuid
+           AND payment_method = ${`flip_${body.senderBankType}_${body.senderBank}`}
+           AND provider = 'flip'
+           AND status = 'pending'
+           AND payment_type = ${body.type}
+         ORDER BY created_at DESC
+         LIMIT 1
+      `;
+      const existing = reusable[0];
+      if (existing) {
+        const mapped = this.mapDirectPaymentRow(existing);
+        const expiryTime = mapped.expiredAt ? new Date(mapped.expiredAt).getTime() : 0;
+        if (expiryTime > Date.now()) return mapped;
+      }
+    }
 
     // Pakai saldo (partial): kurangi tagihan PG sebesar min(balance, amount)
     let creditUsed = 0;
