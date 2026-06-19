@@ -6,6 +6,8 @@ import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
+import { compressImage, formatBytes } from '../../src/lib/imageCompress';
+import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
@@ -49,14 +51,12 @@ function CleanerProfileScreen() {
       if (r.canceled || !r.assets?.[0]) return;
       const asset = r.assets[0];
       setUploadingPhoto(true);
-      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
       const c = await compressImage(asset.uri);
       if (c.oversize) {
         toast.error(`Foto tetap > 5MB setelah kompresi (${formatBytes(c.size)}). Pilih foto lain.`);
         return;
       }
       const contentType = 'image/jpeg';
-      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
       const { publicUrl } = await uploadWithSignedUrl(
         async () => {
           const presign = await api.post('/cleaner/profile/photo-upload-url', { contentType });

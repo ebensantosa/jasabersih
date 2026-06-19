@@ -11,6 +11,8 @@ import { Dropdown } from '../../src/components/Dropdown';
 import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { Stepper } from '../../src/components/Stepper';
 import { StepProgress } from '../../src/components/StepWizard';
+import { compressImage, formatBytes } from '../../src/lib/imageCompress';
+import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import {
   ADDONS as LOCAL_ADDONS,
   DIRT_CHARACTERS,
@@ -322,7 +324,6 @@ function NewBooking() {
       }
 
       setPhotoUploading(true);
-      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
       const c = await compressImage(asset.uri);
       if (c.oversize) {
         toast.error(`Foto >5MB setelah compress (${formatBytes(c.size)}). Pilih foto lain.`);
@@ -330,7 +331,6 @@ function NewBooking() {
       }
       // Upload ke R2 (public)
       const { api } = await import('../../src/lib/api');
-      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
       const { publicUrl } = await uploadWithSignedUrl(
         async () => {
           const presign = await api.post('/bookings/condition-photo-upload-url', { contentType: 'image/jpeg' });

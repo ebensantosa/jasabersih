@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { compressImage } from '../lib/imageCompress';
 import { uploadWithSignedUrl } from '../lib/signedUpload';
 import { toast } from '../stores/ui';
 
@@ -51,7 +52,6 @@ export function UpchargeFormModal({
       });
       if (r.canceled || !r.assets?.[0]) return;
       setUploading(true);
-      const { compressImage } = await import('../lib/imageCompress');
       const c = await compressImage(r.assets[0].uri);
       if (c.oversize) { toast.error('Foto >5MB setelah compress'); return; }
       const { publicUrl } = await uploadWithSignedUrl(

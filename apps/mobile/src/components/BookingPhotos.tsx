@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { compressImage, formatBytes } from '../lib/imageCompress';
 import { uploadWithSignedUrl } from '../lib/signedUpload';
 import { toast } from '../stores/ui';
 
@@ -71,7 +72,6 @@ export function BookingPhotos({
     setUploading(type);
     try {
       // Compress dulu (max 1600px, JPEG 0.7) - cleaner sering upload via 4G, irit data
-      const { compressImage, formatBytes } = await import('../lib/imageCompress');
       const compressed = await compressImage(asset.uri);
       if (compressed.oversize) throw new Error(`Foto terlalu besar (${formatBytes(compressed.size)} > 5MB). Coba foto ulang.`);
 

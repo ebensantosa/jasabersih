@@ -17,6 +17,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatSocket } from '../../src/hooks/useChatSocket';
+import { compressImage, formatBytes } from '../../src/lib/imageCompress';
+import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -224,7 +226,6 @@ function Chat() {
       const asset = picked.assets[0];
 
       setUploadingPhoto(true);
-      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
       const compressed = await compressImage(asset.uri);
       if (compressed.oversize) {
         toast.error(`Foto terlalu besar (${formatBytes(compressed.size)}). Coba foto lain.`);
@@ -232,7 +233,6 @@ function Chat() {
       }
 
       const { api } = await import('../../src/lib/api');
-      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
       const { publicUrl } = await uploadWithSignedUrl(
         async () => {
           const presign = await api.post(`/chat/booking/${id}/image-upload-url`, { contentType: 'image/jpeg' });
