@@ -852,16 +852,6 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
   }
 
   if ((data.senderBankType === 'qris' || data.senderBank === 'qris') && (data.qrString || data.qrUrl)) {
-    const saveQr = async () => {
-      if (data.qrUrl && Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.open(data.qrUrl, '_blank', 'noopener,noreferrer');
-        return;
-      }
-      if (data.qrString) {
-        await Clipboard.setStringAsync(data.qrString);
-        toast.success('Kode QRIS disalin');
-      }
-    };
     return (
       <ScrollView contentContainerStyle={{ padding: 0, backgroundColor: '#F1F5F9' }}>
         <View style={{ backgroundColor: 'white', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 }}>
@@ -898,12 +888,6 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
               NMID: {data.nmid}
             </Text>
           ) : null}
-          <Pressable
-            onPress={saveQr}
-            style={{ marginTop: 20, paddingVertical: 10, paddingHorizontal: 12 }}
-          >
-            <Text style={{ fontSize: 15, color: '#FF5A36', fontWeight: '700' }}>Unduh kode QR</Text>
-          </Pressable>
           <View style={{ width: '100%', marginTop: 18, borderWidth: 1.5, borderColor: '#FF5A36', borderRadius: 2 }}>
             <Pressable
               onPress={() => toast.success('Status transaksi dicek otomatis')}
