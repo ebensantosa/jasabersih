@@ -103,11 +103,14 @@ export default function Register() {
     setLoading(true);
     try {
       // Request OTP - backend kirim 6-digit code ke email user via Resend
+      const normalizedReferralCode = !isFreelancer && referralCode.trim()
+        ? referralCode.trim().toUpperCase()
+        : '';
       const reg = await api.post('/auth/register', {
         phone: phone.trim(),
         mode: targetMode,
         email: email.trim().toLowerCase(),
-        ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
+        ...(normalizedReferralCode ? { referralCode: normalizedReferralCode } : {}),
       });
       const data = reg.data?.data ?? reg.data;
       const emailSent: boolean = !!data?.emailSent;
@@ -124,7 +127,7 @@ export default function Register() {
             password,
             mode: targetMode,
             ...(domicileCity.trim() ? { domicileCity: domicileCity.trim() } : {}),
-            ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
+            ...(normalizedReferralCode ? { referralCode: normalizedReferralCode } : {}),
             ...(devOtp ? { devOtp } : {}),
           },
         });
@@ -299,17 +302,19 @@ export default function Register() {
               </Field>
             )}
 
-            <Field label="Kode Referral (opsional)" hint="Punya kode dari teman? Dapatkan bonus untuk order pertama.">
-              <TextInput
-                value={referralCode}
-                onChangeText={(v) => setReferralCode(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))}
-                placeholder="Contoh: 4P2F9Z3"
-                placeholderTextColor="#94A3B8"
-                autoCapitalize="characters"
-                className="font-sans flex-1 text-sm text-ink-900"
-                style={{ letterSpacing: 1 }}
-              />
-            </Field>
+            {!isFreelancer && (
+              <Field label="Kode Referral (opsional)" hint="Punya kode dari teman? Dapatkan bonus untuk order pertama.">
+                <TextInput
+                  value={referralCode}
+                  onChangeText={(v) => setReferralCode(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))}
+                  placeholder="Contoh: 4P2F9Z3"
+                  placeholderTextColor="#94A3B8"
+                  autoCapitalize="characters"
+                  className="font-sans flex-1 text-sm text-ink-900"
+                  style={{ letterSpacing: 1 }}
+                />
+              </Field>
+            )}
           </View>
 
           {/* City picker modal */}

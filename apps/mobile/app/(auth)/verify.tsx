@@ -36,10 +36,11 @@ export default function Verify() {
   }>();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setMode = useModeStore((s) => s.setMode);
+  const isFreelancer = modeParam === 'freelancer';
 
   const [otp, setOtp] = useState(devOtp ?? '');
-  const [referralCode, setReferralCode] = useState(referralCodeParam ?? '');
-  const [showReferral, setShowReferral] = useState(!!referralCodeParam);
+  const [referralCode, setReferralCode] = useState(isFreelancer ? '' : (referralCodeParam ?? ''));
+  const [showReferral, setShowReferral] = useState(!isFreelancer && !!referralCodeParam);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(devOtp ? 0 : RESEND_COOLDOWN_SEC);
@@ -58,20 +59,23 @@ export default function Verify() {
     }
     setLoading(true);
     try {
+      const normalizedReferralCode = !isFreelancer && referralCode.trim()
+        ? referralCode.trim().toUpperCase()
+        : '';
       const res = await api.post('/auth/verify-otp', {
         phone,
         otp,
         password: passwordParam ?? '',
         fullName: nameParam ?? '',
-        mode: modeParam === 'freelancer' ? 'freelancer' : 'customer',
+        mode: isFreelancer ? 'freelancer' : 'customer',
         ...(emailParam ? { email: emailParam } : {}),
-        ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
+        ...(normalizedReferralCode ? { referralCode: normalizedReferralCode } : {}),
       });
       setTokens(res.data?.data ?? res.data);
       // Sync mode store dgn role yg dipilih saat register, supaya post-verify
       // navigate ke tab yg benar (cleaner -> /jobs, customer -> /home).
       // Tanpa ini, cleaner stuck di home tab customer = keliatan blank.
-      const targetMode = modeParam === 'freelancer' ? 'freelancer' : 'customer';
+      const targetMode = isFreelancer ? 'freelancer' : 'customer';
       setMode(targetMode);
       // Cleaner domisili dari register form - set ke cleaner_profile via /cleaner/profile.
       // Non-blocking: kalau gagal, KYC step bisa minta ulang.
@@ -97,7 +101,7 @@ export default function Verify() {
     try {
       await api.post('/auth/register', {
         phone,
-        mode: modeParam === 'freelancer' ? 'freelancer' : 'customer',
+        mode: isFreelancer ? 'freelancer' : 'customer',
         ...(emailParam ? { email: emailParam } : {}),
       });
       toast.success(`Kode baru dikirim ke ${emailParam}`);
@@ -192,36 +196,38 @@ export default function Verify() {
         </View>
 
         {/* Referral toggle */}
-        <View className="mt-6">
-          {!showReferral ? (
-            <Pressable
-              onPress={() => setShowReferral(true)}
-              className="flex-row items-center justify-center gap-1.5"
-            >
-              <Tag color="#1D4ED8" size={14} />
-              <Text className="font-semibold text-[12px] text-brand-600">Punya kode referral?</Text>
-            </Pressable>
-          ) : (
-            <View className="rounded-xl border border-ink-200 bg-ink-50 p-3">
-              <Text className="font-semibold mb-1.5 text-[11px] text-ink-700">Kode Referral (opsional)</Text>
-              <View className="flex-row items-center gap-2">
-                <TextInput
-                  value={referralCode}
-                  onChangeText={(v) => setReferralCode(v.toUpperCase())}
-                  placeholder="JB12345"
-                  placeholderTextColor="#94A3B8"
-                  autoCapitalize="characters"
-                  maxLength={20}
-                  className="font-mono flex-1 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900"
-                />
-                <Pressable onPress={() => { setShowReferral(false); setReferralCode(''); }}>
-                  <Text className="font-medium text-[11px] text-ink-500">Batal</Text>
-                </Pressable>
+        {!isFreelancer && (
+          <View className="mt-6">
+            {!showReferral ? (
+              <Pressable
+                onPress={() => setShowReferral(true)}
+                className="flex-row items-center justify-center gap-1.5"
+              >
+                <Tag color="#1D4ED8" size={14} />
+                <Text className="font-semibold text-[12px] text-brand-600">Punya kode referral?</Text>
+              </Pressable>
+            ) : (
+              <View className="rounded-xl border border-ink-200 bg-ink-50 p-3">
+                <Text className="font-semibold mb-1.5 text-[11px] text-ink-700">Kode Referral (opsional)</Text>
+                <View className="flex-row items-center gap-2">
+                  <TextInput
+                    value={referralCode}
+                    onChangeText={(v) => setReferralCode(v.toUpperCase())}
+                    placeholder="JB12345"
+                    placeholderTextColor="#94A3B8"
+                    autoCapitalize="characters"
+                    maxLength={20}
+                    className="font-mono flex-1 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900"
+                  />
+                  <Pressable onPress={() => { setShowReferral(false); setReferralCode(''); }}>
+                    <Text className="font-medium text-[11px] text-ink-500">Batal</Text>
+                  </Pressable>
+                </View>
+                <Text className="font-sans mt-1.5 text-[10px] text-ink-500">Dapat bonus saat orderan pertama selesai</Text>
               </View>
-              <Text className="font-sans mt-1.5 text-[10px] text-ink-500">Dapat bonus saat orderan pertama selesai</Text>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        )}
 
         <Pressable
           onPress={onSubmit}

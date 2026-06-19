@@ -139,8 +139,9 @@ export class AuthService {
       },
     });
 
-    // Auto-apply referral code (best-effort, ignore errors)
-    if (input.referralCode) {
+    // Referral hanya relevan untuk customer baru.
+    // Cleaner tidak melakukan order customer, jadi kode referral diabaikan.
+    if (mode === 'customer' && input.referralCode) {
       const code = input.referralCode.trim().toUpperCase();
       try {
         const ref = await this.prisma.$queryRaw<{ user_id: string }[]>`
