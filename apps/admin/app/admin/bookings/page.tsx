@@ -571,7 +571,29 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
               <div><b>Jadwal:</b> {formatDateTimeWithTz((data.booking as any)?.scheduled_at, (data.booking as any)?.address_line)}</div>
               <div><b>Bayar:</b> {(data.booking as any)?.paid_at ? new Date((data.booking as any).paid_at).toLocaleString('id-ID') : '—'}</div>
             </div>
-            <div className="mt-2 text-xs"><b>Alamat:</b> {(data.booking as any)?.address_line}</div>
+            <div className="mt-2 text-xs">
+              <b>Alamat:</b> {(data.booking as any)?.address_line}
+              {(() => {
+                const lat = (data.booking as any)?.lat;
+                const lng = (data.booking as any)?.lng;
+                const addr = (data.booking as any)?.address_line;
+                const mapsUrl = lat && lng
+                  ? `https://www.google.com/maps?q=${lat},${lng}`
+                  : addr
+                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+                    : null;
+                return mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-2 inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-100"
+                  >
+                    📍 Buka di Maps
+                  </a>
+                ) : null;
+              })()}
+            </div>
           </div>
 
           {(() => {

@@ -92,7 +92,10 @@ export default function HourlyBooking() {
 
   const tier = useMemo(() => tiers.find((t) => t.id === tierId) ?? null, [tiers, tierId]);
   const minH = tier?.minHours ?? 2;
-  const maxH = tier?.maxHours ?? 8;
+  // Hard cap di 8 jam buat 1 sesi realistic - lebih dari itu cleaner kecapean +
+  // satu sesi gak harus marathon. Walau admin set tier maxHours lebih besar,
+  // mobile tetep batasi 8.
+  const maxH = Math.min(tier?.maxHours ?? 8, 8);
   const clampedHours = Math.min(Math.max(hours, minH), maxH);
   const subtotal = tier ? tier.pricePerHour * clampedHours : 0;
   const overtimeQuote = useMemo(() => quoteNightOvertime(scheduleAt, clampedHours * 60), [scheduleAt, clampedHours]);

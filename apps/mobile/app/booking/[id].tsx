@@ -17,7 +17,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -227,18 +227,19 @@ function BookingDetail() {
     } finally { setAdvancing(false); }
   }
 
-  // Check if booking already rated
-  useEffect(() => {
-    if (!id || id.startsWith('bk_') || booking?.status !== 'completed') return;
-    api.get(`/ratings/booking/${id}`).then((r) => {
-      const data = (r.data?.data ?? r.data) as BookingRating;
-      setBookingRating(data ?? null);
-      // Cek rating value, bukan object existence - backend bisa return object kosong
-      // (e.g. row exists tapi rating null kalau cuma tip diberi tanpa rating).
-      setHasRated(!!(data && typeof data.rating === 'number' && data.rating > 0));
-      if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
-    }).catch(() => {});
-  }, [id, booking?.status]);
+  // Check if booking already rated. Pakai useFocusEffect supaya re-fetch tiap balik
+  // ke screen (misal dari halaman bayar tip - tip baru langsung kelihatan).
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || id.startsWith('bk_') || booking?.status !== 'completed') return;
+      api.get(`/ratings/booking/${id}`).then((r) => {
+        const data = (r.data?.data ?? r.data) as BookingRating;
+        setBookingRating(data ?? null);
+        setHasRated(!!(data && typeof data.rating === 'number' && data.rating > 0));
+        if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
+      }).catch(() => {});
+    }, [id, booking?.status])
+  );
   const previousStatusRef = useRef<string | undefined>(booking?.status);
   useEffect(() => {
     const prev = previousStatusRef.current;
@@ -314,6 +315,7 @@ function BookingDetail() {
 
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [showTip, setShowTip] = useState(false);
+  const [customTipAmount, setCustomTipAmount] = useState('');
   const [tipGiven, setTipGiven] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   useEffect(() => {
@@ -926,7 +928,7 @@ function BookingDetail() {
                       <Text className="font-bold text-sm text-amber-950">Penilaian untuk pekerjaan ini</Text>
                       <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
                         {cleanerRatingValue != null
-                          ? 'Customer sudah mengirim rating setelah job selesai.'
+                          ? `Customer kasih nilai ${cleanerRatingValue.toFixed(1)} bintang${bookingRating.review ? ' + ulasan' : ''}${Number(bookingRating.tipAmount ?? 0) > 0 ? ' + tip' : ''}.`
                           : 'Customer belum mengirim rating untuk job ini.'}
                       </Text>
                     </View>
@@ -1256,7 +1258,7 @@ function BookingDetail() {
           <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
             <Text className="font-extrabold text-lg text-ink-900">🎁 Beri Tip Cleaner</Text>
             <Text className="font-medium mt-1 text-[12px] text-ink-600">
-              Pilih nominal tip. Bayar pakai saldo wallet atau transfer/QRIS lewat halaman pembayaran berikutnya.
+              Pilih nominal tip atau input manual. Bayar pakai saldo wallet atau transfer/QRIS di halaman pembayaran berikutnya.
             </Text>
             {(() => {
               const options = [10000, 20000, 50000, 100000];
@@ -1277,6 +1279,38 @@ function BookingDetail() {
                 </View>
               );
             })()}
+
+            {/* Manual input - kalau customer mau kasih nominal lain */}
+            <View className="mt-4">
+              <Text className="font-semibold mb-1.5 text-[11px] uppercase tracking-wider text-ink-500">Nominal Lain</Text>
+              <View className="flex-row items-center gap-2 rounded-xl border border-ink-200 bg-white p-3">
+                <Text className="font-bold text-sm text-ink-500">Rp</Text>
+                <TextInput
+                  value={customTipAmount}
+                  onChangeText={(v) => setCustomTipAmount(v.replace(/\D/g, '').slice(0, 8))}
+                  keyboardType="number-pad"
+                  placeholder="Contoh: 75000"
+                  placeholderTextColor="#94A3B8"
+                  className="font-sans flex-1 text-sm text-ink-900"
+                />
+                <Pressable
+                  disabled={!customTipAmount || Number(customTipAmount) < 5000}
+                  onPress={() => {
+                    const amt = Number(customTipAmount);
+                    if (!amt || amt < 5000) return;
+                    setShowTip(false);
+                    setCustomTipAmount('');
+                    router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking?.id ?? '', extra: 'tip', amount: String(amt) } });
+                  }}
+                  className="rounded-lg bg-brand-600 px-3 py-1.5"
+                  style={{ opacity: !customTipAmount || Number(customTipAmount) < 5000 ? 0.4 : 1 }}
+                >
+                  <Text className="font-bold text-[12px] text-white">Lanjut</Text>
+                </Pressable>
+              </View>
+              <Text className="font-sans mt-1 text-[10px] text-ink-500">Minimum Rp 5.000</Text>
+            </View>
+
             <Pressable onPress={() => setShowTip(false)} className="mt-4 py-2">
               <Text className="font-semibold text-center text-xs text-ink-500">Lain Kali</Text>
             </Pressable>

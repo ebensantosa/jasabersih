@@ -125,7 +125,7 @@ function ChatsScreen() {
             pointerEvents="none"
           />
 
-          <View className="mb-3 flex-row items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <View className="mb-3 mt-3 flex-row items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
             <ShieldCheck color="#B45309" size={16} strokeWidth={2.4} />
             <View className="flex-1">
               <Text className="font-bold text-[12px] text-amber-900">Chat hanya di JasaBersih</Text>
