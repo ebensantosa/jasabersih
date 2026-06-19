@@ -59,12 +59,12 @@ const TRANSFER_BANK_METHODS: { code: string; name: string; label: string; logo?:
 ] as const;
 
 const RETAIL_METHODS: { code: string; name: string; label: string; logo?: any }[] = [
-  { code: 'alfamart', name: 'Alfamart', label: 'Alfamart' },
-  { code: 'indomaret', name: 'Indomaret', label: 'Indomaret' },
+  { code: 'alfamart', name: 'Alfamart', label: 'Alfamart', logo: require('../../assets/payment-logos/alfamart.png') },
+  { code: 'indomaret', name: 'Indomaret', label: 'Indomaret', logo: require('../../assets/payment-logos/indomaret.png') },
 ] as const;
 
 const CARD_METHODS: { code: string; name: string; label: string; logo?: any }[] = [
-  { code: 'credit_card', name: 'Kartu Kredit / Debit', label: 'CARD' },
+  { code: 'credit_card', name: 'Kartu Kredit / Debit', label: 'CARD', logo: require('../../assets/payment-logos/debit.png') },
 ] as const;
 
 const QRIS_LOGO = require('../../assets/payment-logos/qris.png');
@@ -665,7 +665,11 @@ function MethodPicker({
                 className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
               >
                 <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  <Text className={`font-extrabold text-[10px] ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.label}</Text>
+                  {m.logo ? (
+                    <Image source={m.logo} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                  ) : (
+                    <Text className={`font-extrabold text-[10px] ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.label}</Text>
+                  )}
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
@@ -697,7 +701,11 @@ function MethodPicker({
                 className={`flex-row items-center gap-3 p-4 ${i > 0 ? 'border-t border-ink-100' : ''} ${down ? 'opacity-50 bg-ink-50' : ''}`}
               >
                 <View className={`h-10 w-14 items-center justify-center rounded border ${down ? 'bg-ink-200 border-ink-300' : 'bg-white border-ink-100'}`}>
-                  <Text className={`font-extrabold text-[10px] ${down ? 'text-ink-400' : 'text-ink-900'}`}>VISA/MC</Text>
+                  {m.logo ? (
+                    <Image source={m.logo} style={{ width: 44, height: 28, opacity: down ? 0.4 : 1 }} contentFit="contain" />
+                  ) : (
+                    <Text className={`font-extrabold text-[10px] ${down ? 'text-ink-400' : 'text-ink-900'}`}>VISA/MC</Text>
+                  )}
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
