@@ -1022,7 +1022,7 @@ function NewBooking() {
                   </View>
                 </Section>
               )}
-              {(!isSimpleService && !isPerMeter && !isPostReno && !isSubscription && categoryPackages.length > 0) && (
+              {(!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length > 0) && (
                 <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {
@@ -1389,8 +1389,10 @@ function NewBooking() {
                 </Section>
               )}
               {/* Tier Selector subscription - 4 tier: Basic/Standard/Premium/Ultimate.
-                  Bedanya scope layanan tiap kunjungan. Harga auto-multiplier. */}
-              {isSubscription && (
+                  Disembunyikan karena duplikat dgn section 'Pilih Paket' di step 1.
+                  Customer udah pilih paket di sana, jangan disuruh pilih lagi di step 2.
+                  Set false supaya logic hitung price tetep jalan tapi gak render. */}
+              {false && isSubscription && (
                 <Section title="Pilih Tier Langganan">
                   <View className="gap-2">
                     {SUBSCRIPTION_TIERS.map((t) => {
