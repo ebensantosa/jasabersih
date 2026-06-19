@@ -114,11 +114,22 @@ export const Track = {
   // Booking funnel
   bookingStarted: (code: string) => trackEvent('booking_started', { service_code: code }),
   addonAdded: (code: string, name: string, price: number) => trackEvent('addon_added', { addon_code: code, addon_name: name, price }),
-  bookingCreated: (bookingId: string, total: number, mode: string) => trackEvent('booking_created', { booking_id: bookingId, total_amount: total, mode }),
+  // GA4 standard 'begin_checkout' supaya Google Ads bisa pakai sebagai mid-funnel signal.
+  // value+currency wajib untuk value-based bidding (tROAS).
+  bookingCreated: (bookingId: string, total: number, mode: string) => {
+    trackEvent('booking_created', { booking_id: bookingId, total_amount: total, mode });
+    trackEvent('begin_checkout', { transaction_id: bookingId, value: total, currency: 'IDR', items: [{ item_id: bookingId, item_category: mode }] });
+  },
 
-  // Payment funnel
-  paymentStarted: (bookingId: string, method: string, amount: number) => trackEvent('payment_started', { booking_id: bookingId, method, amount }),
-  paymentSuccess: (bookingId: string, method: string, amount: number) => trackEvent('payment_success', { booking_id: bookingId, method, amount }),
+  // Payment funnel.
+  // payment_success di-emit bareng dgn GA4 standard 'purchase' event - Google Ads
+  // recognise 'purchase' as transaction utk tROAS bidding & revenue attribution.
+  paymentStarted: (bookingId: string, method: string, amount: number) =>
+    trackEvent('payment_started', { booking_id: bookingId, method, amount, value: amount, currency: 'IDR' }),
+  paymentSuccess: (bookingId: string, method: string, amount: number) => {
+    trackEvent('payment_success', { booking_id: bookingId, method, amount });
+    trackEvent('purchase', { transaction_id: bookingId, value: amount, currency: 'IDR', payment_type: method });
+  },
   paymentFailed: (bookingId: string, method: string, reason?: string) => trackEvent('payment_failed', { booking_id: bookingId, method, reason: reason ?? null }),
 
   // Cleaner flow
