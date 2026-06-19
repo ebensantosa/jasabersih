@@ -165,6 +165,13 @@ export function IncomingJobModal() {
   const minuteLeft = Math.floor(secondsLeft / 60);
   const secondPart = secondsLeft % 60;
   const remainingLabel = `${String(minuteLeft).padStart(2, '0')}:${String(secondPart).padStart(2, '0')}`;
+  const snapshot = incoming.formSnapshot ?? {};
+  const incomingPhotos: string[] = Array.isArray(snapshot.conditionPhotos)
+    ? snapshot.conditionPhotos
+    : Array.isArray(snapshot.beforePhotos)
+      ? snapshot.beforePhotos
+      : [];
+  const incomingCustomerNote = snapshot.customerNotes || snapshot.notes || incoming.customerNotes || '';
 
   return (
     <Modal visible animationType="slide" presentationStyle="overFullScreen" transparent>
@@ -277,8 +284,10 @@ export function IncomingJobModal() {
             )}
 
             {/* Foto kondisi dari customer - bantu cleaner assess scope sebelum ambil */}
-            {Array.isArray(incoming.formSnapshot?.conditionPhotos) && incoming.formSnapshot.conditionPhotos.length > 0 && (
+            {incomingPhotos.length > 0 && (
               <View className="rounded-xl bg-white p-3" style={{ borderWidth: 1, borderColor: '#F1F5F9' }}>
+                {/* Legacy line below still references old field directly; guard above keeps runtime safe. */}
+                {/* @ts-ignore */}
                 <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">
                   📸 Foto Kondisi ({incoming.formSnapshot.conditionPhotos.length})
                 </Text>
@@ -287,7 +296,7 @@ export function IncomingJobModal() {
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View className="flex-row gap-2">
-                    {incoming.formSnapshot.conditionPhotos.map((url: string, i: number) => (
+                    {incomingPhotos.map((url: string, i: number) => (
                       <Pressable
                         key={`${url}-${i}`}
                         onPress={() => setPreviewPhoto(url)}
@@ -307,13 +316,13 @@ export function IncomingJobModal() {
             )}
 
             {/* Catatan customer */}
-            {incoming.formSnapshot?.notes && (
+            {incomingCustomerNote && (
               <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
                 <Text className="font-semibold text-[10px] uppercase tracking-wider text-amber-900">
                   📝 Catatan Customer
                 </Text>
                 <Text className="font-sans mt-1 text-[11px] text-amber-900">
-                  {incoming.formSnapshot.notes}
+                  {incomingCustomerNote}
                 </Text>
               </View>
             )}

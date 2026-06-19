@@ -100,6 +100,14 @@ export type FormSnapshot = {
   bathrooms?: number;
   facilities?: string[];
   areaM2?: number;
+  largeScaleTargets?: string[];
+  postRenoTargets?: string[];
+  postRenoLevel?: string;
+  postRenoHasKitchen?: boolean;
+  subscriptionDates?: string[];
+  subscriptionVisits?: number;
+  subscriptionTier?: string;
+  subscriptionTierMultiplier?: number;
   dirtLevel?: 1 | 2 | 3 | 4 | 5;
   dirtCharacters?: string[];
   floorType?: string;
@@ -112,6 +120,32 @@ export type FormSnapshot = {
   customerNotes?: string;
   photoCount?: number;
   conditionPhotos?: string[];
+  beforePhotos?: string[];
+  cleanMode?: string;
+  cleanModeMultiplier?: number;
+  voucherCode?: string;
+  overtimeSurcharge?: number;
+  overtimeHours?: number;
+  estimatedEndAt?: string;
+  billingMode?: string;
+  tierCode?: string;
+  tierName?: string;
+  hours?: number;
+  pricePerHour?: number;
+  lat?: number;
+  lng?: number;
+  mode?: string;
+  items?: Array<{
+    key: string;
+    label: string;
+    qty: number;
+    pricePerUnit?: number;
+    subtotal?: number;
+    cleaningMode?: string | null;
+  }>;
+  totalMin?: number;
+  emptyHouse?: boolean;
+  emptyHouseDiscount?: number;
 };
 
 export type Booking = {
@@ -399,7 +433,11 @@ export const useBookingsStore = create<State>((set, get) => ({
           categoryCode: b.categoryCode ?? null,
         },
         voucherCode: (b.formSnapshot as any)?.voucherCode ?? undefined,
-        customerNotes: b.customerNotes ?? (b.formSnapshot as any)?.customerNotes ?? undefined,
+        customerNotes:
+          b.customerNotes
+          ?? (b.formSnapshot as any)?.customerNotes
+          ?? (b.formSnapshot as any)?.notes
+          ?? undefined,
       };
       try {
         const res = await api.post('/bookings', payload);

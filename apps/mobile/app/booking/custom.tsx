@@ -472,6 +472,7 @@ function CustomBooking() {
         basePrice: subtotal,
         dirtSurcharge: 0,
         totalPrice: total,
+        customerNotes: notes.trim() || undefined,
         formSnapshot: {
           mode: 'custom',
           items,
@@ -480,9 +481,10 @@ function CustomBooking() {
           overtimeHours: overtimeQuote.overtimeHours,
           estimatedEndAt: overtimeQuote.estimatedEnd.toISOString(),
           notes,
+          customerNotes: notes.trim() || undefined,
           emptyHouse,
           emptyHouseDiscount: discount,
-          beforePhotos: photos.map((photo) => photo.url),
+          conditionPhotos: photos.map((photo) => photo.url).filter(Boolean),
         },
         initialStatus: 'pending_payment',
       } as any);

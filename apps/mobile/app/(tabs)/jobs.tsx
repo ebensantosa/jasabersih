@@ -439,7 +439,11 @@ function JobsScreen() {
 
 function JobDetailContent({ job }: { job: AvailableJob }) {
   const s = job.formSnapshot ?? {};
-  const photos: string[] = Array.isArray(s.conditionPhotos) ? s.conditionPhotos : [];
+  const photos: string[] = Array.isArray(s.conditionPhotos)
+    ? s.conditionPhotos
+    : Array.isArray(s.beforePhotos)
+      ? s.beforePhotos
+      : [];
   const customerNote = s.customerNotes || s.notes || job.customerNotes || '';
   return (
     <View className="gap-3">

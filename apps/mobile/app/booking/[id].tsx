@@ -448,9 +448,13 @@ function BookingDetail() {
       ? bookingRating.rating
       : null;
   const cleanerCarryReminders = deriveCleanerCarryReminders(booking);
-  const snapshotConditionPhotos = Array.isArray((booking.formSnapshot as any)?.conditionPhotos)
-    ? ((booking.formSnapshot as any).conditionPhotos as string[]).filter((url) => typeof url === 'string' && url.trim().length > 0)
-    : [];
+  const snapshotConditionPhotos = (
+    Array.isArray((booking.formSnapshot as any)?.conditionPhotos)
+      ? (booking.formSnapshot as any).conditionPhotos
+      : Array.isArray((booking.formSnapshot as any)?.beforePhotos)
+        ? (booking.formSnapshot as any).beforePhotos
+        : []
+  ).filter((url: unknown) => typeof url === 'string' && url.trim().length > 0) as string[];
   const snapshotCustomerNotes =
     booking.formSnapshot?.customerNotes
     ?? booking.formSnapshot?.notes
