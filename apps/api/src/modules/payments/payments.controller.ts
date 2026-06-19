@@ -913,14 +913,9 @@ export class PaymentsController {
         UPDATE payments SET status = ${next}, callback_payload = ${raw}::jsonb
           WHERE id = ${p.id}::uuid
       `;
-      if (p.user_id) {
-        void this.push.send({
-          userId: p.user_id, channel: 'booking',
-          title: 'Pembayaran gagal',
-          body: 'Silakan coba lagi atau pilih metode lain.',
-          data: { type: `payment_${next}`, bookingId: p.booking_id },
-        }).catch(() => {});
-      }
+      // Notif "Pembayaran gagal" suppressed - user lagi di payment screen ngebayar
+      // bakal liat in-app error toast langsung. Push notif duplikat noisy
+      // kalau user coba multiple methods.
     }
     return { ok: true };
   }

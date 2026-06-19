@@ -32,15 +32,19 @@ export class PaymentSyncService {
     private readonly push: PushService,
   ) {}
 
-  // Every 3 minutes (CronExpression.EVERY_3_MINUTES gak ada di nestjs/schedule).
-  @Cron('*/3 * * * *')
+  // Every 30 seconds — fallback agresif kalau webhook Flip gagal terkirim
+  // (kasus: "Callback Gagal Terkirim" di Flip dashboard). Tanpa ini customer
+  // bisa nunggu lama kalau webhook nyangkut sampai 3 menit polling berikutnya.
+  // Filter umur < 1 menit di-relax jadi 10 detik biar bayar baru langsung
+  // ke-detect di tick berikutnya.
+  @Cron('*/30 * * * * *')
   async syncPending(): Promise<void> {
     const pending = await this.prisma.$queryRaw<{ id: string; booking_id: string; user_id: string; amount: number; provider: string | null; flip_bill_id: string | null; tripay_merchant_ref: string | null }[]>`
       SELECT id, booking_id, user_id, amount,
              provider, flip_bill_id, tripay_merchant_ref
         FROM payments
        WHERE status = 'pending'
-         AND created_at < NOW() - INTERVAL '1 minute'
+         AND created_at < NOW() - INTERVAL '10 seconds'
          AND created_at > NOW() - INTERVAL '3 hours'
        LIMIT 30
     `;

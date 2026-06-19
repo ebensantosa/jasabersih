@@ -164,7 +164,7 @@ export class SystemConfigController {
         FROM pricing_packages
        WHERE service_id = ${id}::uuid
          AND is_active = true
-       ORDER BY price ASC, duration_min ASC, created_at ASC
+       ORDER BY price ASC, duration_min ASC
        LIMIT 1
     `;
     if (!pkg[0]) {
@@ -205,7 +205,7 @@ export class SystemConfigController {
     const rows = await this.prisma.$queryRaw<{ id: string; name: string; price: bigint; durationMin: number; scope: any }[]>`
       SELECT id, name, price, duration_min AS "durationMin", scope FROM pricing_packages
        WHERE service_id = ${id}::uuid AND is_active = true
-       ORDER BY price ASC, duration_min ASC, created_at ASC
+       ORDER BY price ASC, duration_min ASC
        LIMIT 1
     `;
     if (!rows[0]) return { id: null, name: null, price: 0, durationMin: 0, note: '', includes: [] };

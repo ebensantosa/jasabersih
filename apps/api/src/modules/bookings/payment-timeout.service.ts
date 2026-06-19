@@ -42,13 +42,9 @@ export class PaymentTimeoutService {
         UPDATE payments SET status = 'expired'
          WHERE booking_id = ${b.id}::uuid AND status = 'pending'
       `;
-      void this.push.send({
-        userId: b.customer_id,
-        channel: 'booking',
-        title: `Pesanan #${b.id.slice(0, 8)} dibatalkan`,
-        body: `Pesanan #${b.id.slice(0, 8)} otomatis dibatalkan karena belum dibayar dalam 24 jam. Silakan buat pesanan baru.`,
-        data: { type: 'payment_timeout_cancel', bookingId: b.id },
-      }).catch(() => {});
+      // Notif auto-cancel disabled - user sebelumnya gak follow-up bayar,
+      // notif ini bikin spam noise (tampil banyak kalau banyak booking expired
+      // bersamaan). Status update aja di app, gak perlu push.
     }
   }
 }

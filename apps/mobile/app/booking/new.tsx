@@ -1011,7 +1011,7 @@ function NewBooking() {
                   </View>
                 </Section>
               )}
-              {(!isSimpleService && !isPerMeter && !isPostReno && categoryPackages.length > 0) && (
+              {(!isSimpleService && !isPerMeter && !isPostReno && !isSubscription && categoryPackages.length > 0) && (
                 <Section title={categoryPackages.length === 1 ? `Cakupan Layanan ${category?.name ?? ''}` : 'Pilih Paket'}>
                   <View className="gap-2">
                     {categoryPackages.map((p) => {

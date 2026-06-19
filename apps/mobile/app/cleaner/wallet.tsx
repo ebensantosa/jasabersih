@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -8,7 +8,7 @@ import {
   TrendingUp,
   XCircle,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -50,6 +50,10 @@ function CleanerWallet() {
     } catch { /* ignore */ } finally { setRefreshing(false); }
   }
   useEffect(() => { void refresh(); }, []);
+
+  // Re-fetch tiap balik ke halaman ini (misal dari withdraw). Tanpa ini
+  // saldo tampilkan angka stale dulu sebelum API merespon - kelihatan flicker.
+  useFocusEffect(useCallback(() => { void refresh(); }, []));
 
   const totalEarning = entries
     .filter((e) => e.type === 'earning')

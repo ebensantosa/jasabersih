@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 
 import { PrismaService } from '../../common/prisma.service';
 import { FlipService } from '../payments/flip.service';
@@ -27,7 +27,10 @@ export class WithdrawalSyncService {
     private readonly push: PushService,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  // Tiap 1 menit fallback - kalau webhook disbursement gagal terkirim,
+  // status tetep ke-update dalam <=1 menit. Atomic UPDATE prevent
+  // duplicate notif kalau webhook + cron sync paralel.
+  @Cron('0 * * * * *')
   async syncPending(): Promise<void> {
     const pending = await this.prisma.$queryRaw<{ id: string; user_id: string; amount: number; flip_disbursement_id: string }[]>`
       SELECT id, user_id, amount, flip_disbursement_id
