@@ -375,7 +375,18 @@ function NewBooking() {
 
   const savedLocation = useLocationStore((s) => s.current);
   const addressList = useAddressesStore((s) => s.list);
+  const addressesHydrated = useAddressesStore((s) => s.hydrated);
   const defaultAddress = addressList.find((a) => a.isDefault) ?? addressList[0] ?? null;
+
+  // Kalau cleaner/customer hapus semua alamat tersimpan, redirect ke halaman
+  // tambah alamat dulu. Tanpa ini user dipaksa input manual via map picker
+  // padahal expectation-nya UI formal "tambah alamat".
+  useEffect(() => {
+    if (!addressesHydrated) return;
+    if (addressList.length === 0) {
+      router.replace({ pathname: '/addresses/edit', params: { returnTo: `/booking/new?category=${categoryCode ?? ''}` } });
+    }
+  }, [addressesHydrated, addressList.length, categoryCode, router]);
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     defaultAddress?.id ?? null,

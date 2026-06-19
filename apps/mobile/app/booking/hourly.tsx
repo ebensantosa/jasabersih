@@ -60,7 +60,16 @@ export default function HourlyBooking() {
   const tiers = useApiHourlyTiers();
   const savedLocation = useLocationStore((s) => s.current);
   const addressList = useAddressesStore((s) => s.list);
+  const addressesHydrated = useAddressesStore((s) => s.hydrated);
   const defaultAddress = addressList.find((a) => a.isDefault) ?? addressList[0] ?? null;
+
+  // Sama dgn booking/new: redirect ke halaman tambah alamat kalau kosong.
+  useEffect(() => {
+    if (!addressesHydrated) return;
+    if (addressList.length === 0) {
+      router.replace({ pathname: '/addresses/edit', params: { returnTo: `/booking/hourly?category=${categoryCode ?? ''}` } });
+    }
+  }, [addressesHydrated, addressList.length, categoryCode, router]);
   const create = useBookingsStore((s) => s.create);
 
   const [tierId, setTierId] = useState<string | null>(tiers[0]?.id ?? null);

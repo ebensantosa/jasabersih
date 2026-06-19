@@ -15,7 +15,7 @@ const LABEL_PRESETS = ['Rumah', 'Kantor', 'Kos', 'Apartemen', 'Lainnya'];
 
 function EditAddress() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, returnTo } = useLocalSearchParams<{ id?: string; returnTo?: string }>();
   const list = useAddressesStore((s) => s.list);
   const add = useAddressesStore((s) => s.add);
   const update = useAddressesStore((s) => s.update);
@@ -79,6 +79,12 @@ function EditAddress() {
         isDefault,
       });
       toast.success('Alamat tersimpan');
+    }
+    // Kalau dipanggil dari booking flow (returnTo), redirect balik ke sana
+    // biar user lanjut flow tanpa perlu start ulang dari menu.
+    if (returnTo) {
+      router.replace(returnTo as any);
+      return;
     }
     safeBack();
   }
