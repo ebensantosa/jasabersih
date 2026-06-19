@@ -367,7 +367,6 @@ function PaymentScreen() {
             <Text className="font-bold text-base text-ink-900">{paid ? 'Pembayaran Diterima' : direct ? 'Selesaikan Pembayaran' : headerLabel}</Text>
             {totalToPay > 0 && <Text className="font-sans text-[11px] text-ink-500">Total: {formatRupiah(totalToPay)}</Text>}
           </View>
-          {direct?.expiredAt && !paid && <CountdownBadge expiredAt={direct.expiredAt} />}
         </View>
 
         {/* Loading overlay saat create payment */}
