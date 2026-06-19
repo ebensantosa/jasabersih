@@ -66,6 +66,7 @@ function JobsScreen() {
   const noAreaPicked = cleanerAreas.length === 0;
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   // Track per-job accept in-flight supaya double-tap gak bikin race ke server
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   // Job detail modal sebelum cleaner accept - tampilin formSnapshot + foto kondisi
@@ -377,7 +378,7 @@ function JobsScreen() {
           <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' }}>
             <View className="self-center my-2 h-1 w-10 rounded-full bg-ink-200" />
             <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-              {previewJob && <JobDetailContent job={previewJob} />}
+              {previewJob && <JobDetailContent job={previewJob} onPreviewPhoto={setPreviewPhotoUrl} />}
             </ScrollView>
             <View className="border-t border-ink-100 p-3 flex-row gap-2">
               <Pressable onPress={() => setPreviewJob(null)} className="flex-1 items-center rounded-xl border border-ink-300 py-3">
@@ -392,6 +393,30 @@ function JobsScreen() {
               </Pressable>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!previewPhotoUrl} transparent animationType="fade" onRequestClose={() => setPreviewPhotoUrl(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+          <Pressable
+            onPress={() => setPreviewPhotoUrl(null)}
+            style={{ position: 'absolute', top: 56, right: 20, zIndex: 2 }}
+            className="rounded-full bg-white/15 px-3 py-2"
+          >
+            <Text className="font-bold text-xs text-white">Tutup</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setPreviewPhotoUrl(null)}
+            style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 48 }}
+          >
+            {previewPhotoUrl ? (
+              <ExpoImage
+                source={{ uri: previewPhotoUrl }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+              />
+            ) : null}
+          </Pressable>
         </View>
       </Modal>
 
@@ -437,7 +462,13 @@ function JobsScreen() {
 }
 
 
-function JobDetailContent({ job }: { job: AvailableJob }) {
+function JobDetailContent({
+  job,
+  onPreviewPhoto,
+}: {
+  job: AvailableJob;
+  onPreviewPhoto: (url: string) => void;
+}) {
   const s = job.formSnapshot ?? {};
   const photos: string[] = Array.isArray(s.conditionPhotos)
     ? s.conditionPhotos
@@ -489,10 +520,13 @@ function JobDetailContent({ job }: { job: AvailableJob }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-2">
               {photos.map((url, i) => (
-                <ExpoImage key={i} source={{ uri: url }} style={{ width: 110, height: 110, borderRadius: 12 }} contentFit="cover" />
+                <Pressable key={i} onPress={() => onPreviewPhoto(url)}>
+                  <ExpoImage source={{ uri: url }} style={{ width: 110, height: 110, borderRadius: 12 }} contentFit="cover" />
+                </Pressable>
               ))}
             </View>
           </ScrollView>
+          <Text className="font-medium mt-2 text-[10px] text-ink-500">Tap foto untuk perbesar.</Text>
         </View>
       )}
     </View>
