@@ -86,11 +86,16 @@ export class ReferralController {
     const code = body.code.trim().toUpperCase();
 
     // Cek code valid
-    const ref = await this.prisma.$queryRaw<{ user_id: string }[]>`
-      SELECT user_id FROM referral_codes WHERE code = ${code} LIMIT 1
+    const ref = await this.prisma.$queryRaw<{ user_id: string; is_customer: boolean; is_freelancer: boolean }[]>`
+      SELECT rc.user_id, u.is_customer, u.is_freelancer
+        FROM referral_codes rc
+        JOIN users u ON u.id = rc.user_id
+       WHERE rc.code = ${code}
+       LIMIT 1
     `;
     if (ref.length === 0) throw new BadRequestException('Kode tidak valid.');
     const referrerId = ref[0]!.user_id;
+    const referrerRole = ref[0]!.is_freelancer ? 'freelancer' : 'customer';
     if (referrerId === user.id) throw new BadRequestException('Tidak bisa pakai kode sendiri.');
 
     // Cek user ini sudah pernah pakai code referral
@@ -108,7 +113,7 @@ export class ReferralController {
     // Insert referral pending
     await this.prisma.$executeRaw`
       INSERT INTO referrals (referrer_id, referred_id, referrer_role, referred_role, status)
-      VALUES (${referrerId}::uuid, ${user.id}::uuid, 'customer', 'customer', 'pending')
+      VALUES (${referrerId}::uuid, ${user.id}::uuid, ${referrerRole}, 'customer', 'pending')
     `;
 
     return {

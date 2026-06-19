@@ -144,11 +144,16 @@ export class AuthService {
     if (mode === 'customer' && input.referralCode) {
       const code = input.referralCode.trim().toUpperCase();
       try {
-        const ref = await this.prisma.$queryRaw<{ user_id: string }[]>`
-          SELECT user_id FROM referral_codes WHERE code = ${code} LIMIT 1
+        const ref = await this.prisma.$queryRaw<{ user_id: string; is_customer: boolean; is_freelancer: boolean }[]>`
+          SELECT rc.user_id, u.is_customer, u.is_freelancer
+            FROM referral_codes rc
+            JOIN users u ON u.id = rc.user_id
+           WHERE rc.code = ${code}
+           LIMIT 1
         `;
         const referrerId = ref[0]?.user_id;
         if (referrerId && referrerId !== user.id) {
+          const referrerRole = ref[0]?.is_freelancer ? 'freelancer' : 'customer';
           // Cek belum pernah punya referral entry
           const exists = await this.prisma.$queryRaw<{ id: string }[]>`
             SELECT id FROM referrals WHERE referred_id = ${user.id}::uuid LIMIT 1
@@ -156,7 +161,7 @@ export class AuthService {
           if (exists.length === 0) {
             await this.prisma.$executeRaw`
               INSERT INTO referrals (referrer_id, referred_id, referrer_role, referred_role, status)
-              VALUES (${referrerId}::uuid, ${user.id}::uuid, 'customer', ${mode}, 'pending')
+              VALUES (${referrerId}::uuid, ${user.id}::uuid, ${referrerRole}, ${mode}, 'pending')
             `;
           }
         }
