@@ -440,6 +440,7 @@ function JobsScreen() {
 function JobDetailContent({ job }: { job: AvailableJob }) {
   const s = job.formSnapshot ?? {};
   const photos: string[] = Array.isArray(s.conditionPhotos) ? s.conditionPhotos : [];
+  const customerNote = s.customerNotes || s.notes || job.customerNotes || '';
   return (
     <View className="gap-3">
       <View>
@@ -471,10 +472,10 @@ function JobDetailContent({ job }: { job: AvailableJob }) {
         </View>
       )}
 
-      {(s.notes || job.customerNotes) && (
+      {customerNote && (
         <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
           <Text className="font-bold text-xs text-amber-900 mb-1">Catatan Customer</Text>
-          <Text className="font-sans text-[12px] leading-4 text-amber-900">{s.notes || job.customerNotes}</Text>
+          <Text className="font-sans text-[12px] leading-4 text-amber-900">{customerNote}</Text>
         </View>
       )}
 
