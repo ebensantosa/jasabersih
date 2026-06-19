@@ -457,4 +457,4 @@ function AddBankModal({ visible, onClose, onDone }: { visible: boolean; onClose:
   );
 }
 
-export default withAuth(withCleanerKyc(CleanerBankAccounts));
+export default withAuth(withCleanerKyc(CleanerBankAccounts), 'freelancer');

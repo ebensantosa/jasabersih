@@ -343,4 +343,4 @@ function ReviewPendingView({ onRefresh }: { onRefresh: () => void | Promise<void
   );
 }
 
-export default withAuth(CleanerKycScreen);
+export default withAuth(CleanerKycScreen, 'freelancer');

@@ -212,4 +212,4 @@ function CleanerCalendar() {
   );
 }
 
-export default withAuth(CleanerCalendar);
+export default withAuth(CleanerCalendar, 'freelancer');

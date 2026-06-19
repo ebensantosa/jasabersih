@@ -54,4 +54,4 @@ function EditProfile() {
   );
 }
 
-export default withAuth(EditProfile);
+export default withAuth(EditProfile, 'customer');

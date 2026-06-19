@@ -145,4 +145,4 @@ function WalletScreen() {
   );
 }
 
-export default withAuth(WalletScreen);
+export default withAuth(WalletScreen, 'customer');
