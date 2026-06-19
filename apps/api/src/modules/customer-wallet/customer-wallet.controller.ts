@@ -21,7 +21,7 @@ export class CustomerWalletController {
   async wallet(@CurrentUser() user: AuthenticatedUser) {
     const rows = await this.prisma.$queryRaw<{ credit_in: number | null; credit_out: number | null }[]>`
       SELECT
-        COALESCE(SUM(CASE WHEN account_type IN ('refund_credit', 'topup') AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS credit_in,
+        COALESCE(SUM(CASE WHEN account_type IN ('refund_credit', 'topup', 'earnings') AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS credit_in,
         COALESCE(SUM(CASE WHEN account_type IN ('credit_use', 'withdrawal', 'admin_debit') AND status IN ('PENDING', 'CLEARED') THEN amount ELSE 0 END), 0) AS credit_out
       FROM wallet_ledger_entries
       WHERE user_id = ${user.id}::uuid
@@ -36,7 +36,7 @@ export class CustomerWalletController {
              status, description, created_at AS "createdAt", cleared_at AS "clearedAt"
         FROM wallet_ledger_entries
        WHERE user_id = ${user.id}::uuid
-         AND account_type IN ('refund_credit', 'topup', 'credit_use', 'withdrawal', 'admin_debit')
+         AND account_type IN ('refund_credit', 'topup', 'earnings', 'credit_use', 'withdrawal', 'admin_debit')
        ORDER BY created_at DESC
        LIMIT 20
     `;
@@ -48,9 +48,9 @@ export class CustomerWalletController {
       ledger,
       // Penanda kompliance: ini store credit, BUKAN e-money (gak butuh izin BI).
       type: 'store_credit',
-      label: 'Saldo Refund',
+      label: 'Saldo Wallet',
       withdrawable: false,
-      notice: 'Saldo ini hanya untuk bayar booking berikutnya. Tidak dapat ditukar uang tunai.',
+      notice: 'Saldo refund dan komisi referral masuk ke wallet ini. Saat ini saldo hanya bisa dipakai untuk booking berikutnya dan belum bisa ditarik tunai.',
     };
   }
 
@@ -64,7 +64,7 @@ export class CustomerWalletController {
              status, description, created_at AS "createdAt", cleared_at AS "clearedAt"
         FROM wallet_ledger_entries
        WHERE user_id = ${user.id}::uuid
-         AND account_type IN ('refund_credit', 'topup', 'credit_use', 'withdrawal', 'admin_debit')
+         AND account_type IN ('refund_credit', 'topup', 'earnings', 'credit_use', 'withdrawal', 'admin_debit')
        ORDER BY created_at DESC
        LIMIT ${limit}::int OFFSET ${offset}::int
     `;

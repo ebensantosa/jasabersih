@@ -175,7 +175,7 @@ function ReferralScreen() {
                 <Text className="font-sans text-xs text-ink-700">2. Teman pakai kodemu saat daftar / booking pertama</Text>
                 <Text className="font-sans text-xs text-ink-700">3. Setiap teman selesai 1 order, kamu dapat <Text className="font-bold text-emerald-700">5% dari nominal order</Text> langsung masuk wallet</Text>
                 <Text className="font-sans text-xs text-ink-700">4. Berlaku untuk SEMUA order, gak cuma order pertama - selama mereka pakai aplikasi</Text>
-                <Text className="font-sans text-xs text-ink-700">5. Bonus bisa langsung kamu tarik (min Rp 50.000)</Text>
+                <Text className="font-sans text-xs text-ink-700">5. Bonus masuk ke wallet customer dan saat ini bisa dipakai untuk booking berikutnya</Text>
               </View>
               <View className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5">
                 <Text className="font-bold text-[11px] text-emerald-900">Contoh:</Text>

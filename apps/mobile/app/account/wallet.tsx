@@ -28,6 +28,7 @@ type WalletData = {
 
 const ACCOUNT_LABEL: Record<string, { label: string; sign: '+' | '-'; color: string }> = {
   refund_credit: { label: 'Refund Pesanan', sign: '+', color: 'text-emerald-600' },
+  earnings: { label: 'Komisi Referral', sign: '+', color: 'text-emerald-600' },
   topup: { label: 'Top-up', sign: '+', color: 'text-emerald-600' },
   credit_use: { label: 'Pakai Saldo', sign: '-', color: 'text-ink-700' },
   withdrawal: { label: 'Tarik Saldo', sign: '-', color: 'text-ink-700' },
