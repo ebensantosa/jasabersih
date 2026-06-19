@@ -646,9 +646,9 @@ function MethodPicker({
 
       {belowVaMin && (
         <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <Text className="font-bold text-[11px] text-amber-900">Transfer Bank disembunyikan</Text>
+          <Text className="font-bold text-[11px] text-amber-900">Transfer Bank tidak tersedia untuk nominal ini</Text>
           <Text className="font-medium mt-1 text-[11px] text-amber-800">
-            Minimum transaksi VA bank Rp 10.000. Untuk nominal lebih kecil pakai QRIS atau e-wallet.
+            Minimum transaksi Virtual Account Rp 10.000. Silakan gunakan QRIS atau e-wallet untuk nominal kecil.
           </Text>
         </View>
       )}
