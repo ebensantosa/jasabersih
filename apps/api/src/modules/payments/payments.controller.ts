@@ -128,6 +128,16 @@ export class PaymentsController {
     return { qrString, qrUrl, nmid };
   }
 
+  private resolvePaymentExpiry(result: any): Date {
+    const raw = result?.expired_date ?? result?.expired_at ?? result?.bill_payment?.expired_date ?? result?.bill_payment?.expired_at;
+    if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
+    if (typeof raw === 'string' && raw.trim()) {
+      const parsed = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'));
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+
   private normalizeDisabledMethodCode(code: string, type?: CheckoutSenderBankType): string {
     const normalized = String(code ?? '').trim().toLowerCase();
     if (type === 'virtual_account') {
@@ -437,7 +447,8 @@ export class PaymentsController {
         ?? billPayment?.url
         ?? result?.customer_url
         ?? result?.payment_url;
-      const expiredAt = result?.expired_date ?? null;
+      const expiresAt = this.resolvePaymentExpiry(result);
+      const expiredAt = expiresAt.toISOString();
 
       this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} qrUrl=${qrUrl ? 'YES' : 'NO'} nmid=${nmid ?? 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
 
@@ -446,6 +457,7 @@ export class PaymentsController {
            SET flip_link_id = ${String(result.link_id ?? '')},
                pay_code = ${accountNumber ?? null},
                payment_url = ${result.link_url ?? null},
+               expired_at = ${expiresAt},
                extra_metadata = COALESCE(extra_metadata, '{}'::jsonb) || ${JSON.stringify({
                  senderBank: body.senderBank,
                  senderBankType: body.senderBankType,
@@ -624,12 +636,14 @@ export class PaymentsController {
       const accountNumber: string | undefined = receiverAcc?.account_number ?? billPayment?.account_number ?? result?.account_number;
       const { qrString, qrUrl, nmid } = this.extractQrNative(result);
       const walletUrl: string | undefined = billPayment?.customer?.payment_url ?? billPayment?.redirect_url ?? billPayment?.payment_url ?? billPayment?.url ?? result?.customer_url ?? result?.payment_url;
-      const expiredAt = result?.expired_date ?? null;
+      const expiresAt = this.resolvePaymentExpiry(result);
+      const expiredAt = expiresAt.toISOString();
 
       await this.prisma.$executeRaw`
         UPDATE payments SET flip_link_id = ${String(result.link_id ?? '')},
               pay_code = ${accountNumber ?? null},
               payment_url = ${result.link_url ?? null},
+              expired_at = ${expiresAt},
               extra_metadata = COALESCE(extra_metadata, '{}'::jsonb) || ${JSON.stringify({
                 senderBank: body.senderBank,
                 senderBankType: body.senderBankType,
@@ -1271,8 +1285,17 @@ export class PaymentsController {
     `;
     if (!rows[0]) throw new NotFoundException();
     const meta = (rows[0].extraMetadata && typeof rows[0].extraMetadata === 'object' ? rows[0].extraMetadata : {}) as Record<string, unknown>;
+    const createdAt = rows[0].createdAt instanceof Date ? rows[0].createdAt : new Date(String(rows[0].createdAt));
+    const storedExpiredAt = rows[0].expiredAt instanceof Date ? rows[0].expiredAt : (rows[0].expiredAt ? new Date(String(rows[0].expiredAt)) : null);
+    const resolvedExpiredAt =
+      storedExpiredAt && !Number.isNaN(storedExpiredAt.getTime())
+        ? storedExpiredAt.toISOString()
+        : createdAt && !Number.isNaN(createdAt.getTime())
+          ? new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString()
+          : null;
     return {
       ...rows[0],
+      expiredAt: resolvedExpiredAt,
       senderBank: typeof meta.senderBank === 'string' ? meta.senderBank : null,
       senderBankType: typeof meta.senderBankType === 'string' ? meta.senderBankType : null,
       qrString: typeof meta.qrString === 'string' ? meta.qrString : null,
