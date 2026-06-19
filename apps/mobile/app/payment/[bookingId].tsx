@@ -4,7 +4,7 @@ import { withAuth } from '../../src/components/AuthGate';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Building2, CheckCircle2, Copy, RefreshCw, Wallet as WalletIcon } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import QRCode from 'react-native-qrcode-svg';
@@ -162,6 +162,25 @@ function PaymentScreen() {
   const headerLabel = extraType === 'upcharge' ? 'Bayar Charge Tambahan' : extraType === 'tip' ? 'Bayar Tip Cleaner' : 'Pilih Metode';
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  // AppState listener - kalau user balik dari Flip checkout / e-wallet redirect,
+  // langsung force sync. Tanpa ini user mungkin nunggu sampai 4s poll berikutnya.
+  useEffect(() => {
+    if (!direct || !bookingId) return;
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state !== 'active') return;
+      try {
+        await api.post(`/payments/flip/sync/${bookingId}`).catch(() => {});
+        await fetchOne(String(bookingId));
+        const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+        if (latest && latest.status !== 'pending_payment') { finishAndRedirect(); return; }
+        const r = await api.get(`/payments/${direct.paymentId}`);
+        const status = (r.data?.data ?? r.data)?.status;
+        if (status === 'paid') finishAndRedirect();
+      } catch {}
+    });
+    return () => sub.remove();
+  }, [direct, bookingId, fetchOne]);
 
   function finishAndRedirect() {
     setPaid(true);
@@ -387,7 +406,28 @@ function PaymentScreen() {
         {paid ? (
           <PaidView />
         ) : direct ? (
-          <PaymentInstructions data={direct} onCopy={copyVa} />
+          <PaymentInstructions
+            data={direct}
+            onCopy={copyVa}
+            bookingId={String(bookingId ?? '')}
+            onManualSync={async () => {
+              if (!bookingId || !direct) return;
+              try {
+                // Trigger backend ke Flip ambil status fresh (instead of polling 4s).
+                await api.post(`/payments/flip/sync/${bookingId}`).catch(() => {});
+                // Re-fetch booking + payment status, kalau udah paid auto redirect.
+                await fetchOne(String(bookingId));
+                const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+                if (latest && latest.status !== 'pending_payment') { finishAndRedirect(); return; }
+                const r = await api.get(`/payments/${direct.paymentId}`);
+                const status = (r.data?.data ?? r.data)?.status;
+                if (status === 'paid') { finishAndRedirect(); return; }
+                toast.info('Pembayaran belum masuk. Halaman akan auto-redirect kalau status sudah lunas.');
+              } catch {
+                toast.error('Gagal cek status. Coba lagi sebentar.');
+              }
+            }}
+          />
         ) : (
           <MethodPicker
             disabled={creating}
@@ -796,7 +836,7 @@ function BigCountdown({ expiredAt }: { expiredAt: string }) {
   );
 }
 
-function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () => void }) {
+function PaymentInstructions({ data, onCopy, bookingId, onManualSync }: { data: DirectResult; onCopy: () => void; bookingId: string; onManualSync?: () => void }) {
   const CountdownBanner = data.expiredAt ? <BigCountdown expiredAt={data.expiredAt} /> : null;
   const formatExpiredHeader = (ex: string | null | undefined) => {
     const d = parseExpiredAt(ex);
@@ -898,7 +938,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           ) : null}
           <View style={{ width: '100%', marginTop: 18, borderRadius: 14, overflow: 'hidden' }}>
             <Pressable
-              onPress={() => toast.info('Kalau pembayaran belum masuk, status masih menunggu. Setelah lunas, halaman ini akan pindah otomatis.')}
+              onPress={() => onManualSync?.()}
               style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1D4ED8' }}
             >
               <Text style={{ fontSize: 16, color: 'white', fontWeight: '800' }}>Cek Status Transaksi</Text>
@@ -910,7 +950,7 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
           <View style={{ marginTop: 14, alignItems: 'center', gap: 4 }}>
             <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>ID Order</Text>
             <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '700' }} selectable>
-              {data.paymentId}
+              {bookingId}
             </Text>
           </View>
           <Text style={{ marginTop: 12, fontSize: 22, color: '#0F172A', fontWeight: '800' }}>
