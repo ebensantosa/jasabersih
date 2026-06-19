@@ -7,6 +7,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
+import { compressImage, formatBytes } from '../../src/lib/imageCompress';
+import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { safeBack } from '../../src/lib/safeBack';
@@ -78,7 +80,6 @@ function CleanerKycScreen() {
     setUploading(docType);
     try {
       // 1. Compress + resize (target max 1600px, quality 0.7) - irit bandwidth & R2 storage
-      const { compressImage, formatBytes } = await import('../../src/lib/imageCompress');
       const compressed = await compressImage(asset.uri);
       if (compressed.oversize) {
         throw new Error(`File masih terlalu besar (${formatBytes(compressed.size)} > 5MB) walau sudah dikompres. Coba foto ulang atau crop dulu.`);
@@ -89,7 +90,6 @@ function CleanerKycScreen() {
         docType,
         contentType: 'image/jpeg',
       });
-      const { uploadWithSignedUrl } = await import('../../src/lib/signedUpload');
       const { key } = await uploadWithSignedUrl(
         async () => (urlRes.data?.data ?? urlRes.data) as { uploadUrl: string; key: string },
         compressed.uri,
