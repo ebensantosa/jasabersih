@@ -128,6 +128,12 @@ function WalletScreen() {
               </Pressable>
             </View>
 
+            <View className="mx-4 mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+              <Text className="text-xs font-medium leading-5 text-blue-900">
+                Minimum penarikan saldo adalah <Text className="font-bold">Rp 50.000</Text>.
+              </Text>
+            </View>
+
             <View className="mx-4 mb-4 rounded-2xl bg-white p-4">
               <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Ringkasan</Text>
               <View className="mt-3 gap-2">

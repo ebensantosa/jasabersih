@@ -142,7 +142,7 @@ function WithdrawCustomer() {
               <Text className="text-sm font-bold text-ink-900">Info Saldo</Text>
             </View>
             <Text className="mt-2 text-2xl font-extrabold text-ink-900">{formatRupiah(wallet.balance)}</Text>
-            <Text className="mt-1 text-xs text-ink-500">Minimum tarik {formatRupiah(minWithdrawal)}.</Text>
+            <Text className="mt-1 text-xs text-ink-500">Minimum penarikan {formatRupiah(minWithdrawal)}.</Text>
             {(wallet.pendingWithdrawalAmount ?? 0) > 0 && (
               <Text className="mt-1 text-xs text-amber-700">
                 {formatRupiah(wallet.pendingWithdrawalAmount ?? 0)} sedang diproses. Tunggu selesai dulu sebelum kirim penarikan baru.
@@ -198,6 +198,9 @@ function WithdrawCustomer() {
 
           <View className="mt-3 rounded-2xl bg-white p-4">
             <Text className="mb-2 text-sm font-bold text-ink-900">Jumlah Penarikan</Text>
+            <Text className="mb-3 text-xs leading-5 text-ink-500">
+              Kamu bisa mulai tarik saldo dari <Text className="font-bold text-ink-700">Rp 50.000</Text>.
+            </Text>
             <View className="flex-row items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-3">
               <Text className="text-base font-bold text-ink-700">Rp</Text>
               <TextInput
