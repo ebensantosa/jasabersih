@@ -32,13 +32,16 @@ export function IncomingJobModal() {
   const [takenByOther, setTakenByOther] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cari job pertama yang match (status searching, area match, belum di-dismiss)
-  const incoming = list.find((b) => {
+  // Filter semua job yang match (status searching, area match, belum di-dismiss).
+  // Pertama yang di-show, sisanya di-queue.
+  const matchingJobs = list.filter((b) => {
     if (b.status !== 'searching') return false;
     if (dismissedIds.has(b.id)) return false;
     if (areas.length === 0) return true;
     return areas.some((a) => b.addressLine.toLowerCase().includes(a.toLowerCase()));
   });
+  const incoming = matchingJobs[0];
+  const otherJobsCount = Math.max(0, matchingJobs.length - 1);
 
   // Track currently displayed booking & detect kalau status berubah dari searching
   // (cleaner lain ambil duluan)
@@ -173,6 +176,16 @@ export function IncomingJobModal() {
             className="rounded-t-3xl"
           >
             <View className="self-center mb-3 h-1 w-10 rounded-full bg-white/30" />
+
+            {/* Queue badge - kalau ada job lain lagi nungguin di belakang */}
+            {otherJobsCount > 0 && (
+              <View className="mb-2 flex-row items-center gap-1.5 self-start rounded-full bg-amber-400 px-2.5 py-1">
+                <Text className="font-extrabold text-[10px] text-amber-900">
+                  + {otherJobsCount} job lain antri
+                </Text>
+              </View>
+            )}
+
             <View className="flex-row items-start justify-between">
               <View className="flex-1">
                 <Text className="font-bold text-[10px] uppercase tracking-wider text-white/70">
