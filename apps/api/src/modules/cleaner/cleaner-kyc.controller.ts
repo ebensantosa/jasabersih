@@ -7,11 +7,12 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { StorageService } from '../storage/storage.service';
 
-// Selfie+KTP dihapus dari requirement - cukup KTP + buku tabungan.
+// Selfie+KTP dihapus dari requirement - sekarang cukup KTP + buku tabungan.
 // `selfie_ktp` masih diterima sebagai value valid biar dokumen historis lama gak bermasalah,
-// tapi gak masuk hitungan submit (lihat /submit di bawah).
+// tapi bukan bagian dari requirement aktif cleaner.
 const ALLOWED_DOC_TYPES = ['ktp', 'selfie_ktp', 'bank_book'] as const;
 type DocType = typeof ALLOWED_DOC_TYPES[number];
+const REQUIRED_DOC_TYPES = ['ktp', 'bank_book'] as const;
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -53,7 +54,7 @@ export class CleanerKycController {
       kycStatus: profile[0]?.kyc_status ?? 'pending',
       rejectionReason: profile[0]?.rejection_reason ?? null,
       documents: docsWithPreview,
-      requiredDocTypes: ALLOWED_DOC_TYPES,
+      requiredDocTypes: REQUIRED_DOC_TYPES,
     };
   }
 
@@ -125,7 +126,7 @@ export class CleanerKycController {
     return { ok: true };
   }
 
-  // Cleaner explicit submit: cek semua 3 dokumen ada → set profile under_review
+  // Cleaner explicit submit: cek semua dokumen wajib ada sebelum masuk review
   @Post('submit')
   async submit(@CurrentUser() user: AuthenticatedUser) {
     const counts = await this.prisma.$queryRaw<{ uploaded: number }[]>`

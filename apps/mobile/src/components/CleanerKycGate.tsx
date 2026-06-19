@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { BadgeCheck, Briefcase, ClipboardCheck, FileText, Wallet } from 'lucide-react-native';
+import { BadgeCheck, Briefcase, FileText, Wallet } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -51,7 +51,6 @@ export function CleanerKycGate({ children }: { children: React.ReactNode }) {
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#0F172A' }}>Yang perlu kamu lengkapi</Text>
           <View style={{ marginTop: 12, gap: 10 }}>
             <Item icon={FileText} label="Foto KTP (jelas, tidak buram)" />
-            <Item icon={ClipboardCheck} label="Selfie pegang KTP" />
             <Item icon={Wallet} label="Buku tabungan (untuk payout)" />
             <Item icon={Briefcase} label="Quiz dasar (10 soal)" />
           </View>

@@ -126,7 +126,7 @@ function CleanerKycScreen() {
           </Pressable>
           <View className="flex-1">
             <Text className="font-bold text-base text-ink-900">Verifikasi KYC</Text>
-            <Text className="font-sans text-[11px] text-ink-500">Wajib upload 3 dokumen sebelum aktif</Text>
+            <Text className="font-sans text-[11px] text-ink-500">Wajib upload 2 dokumen sebelum aktif</Text>
           </View>
         </View>
 
@@ -220,13 +220,12 @@ function CleanerKycScreen() {
               <Text className="font-sans mt-1 text-[11px] text-amber-900">
                 • Pastikan foto jelas, tidak buram, semua tulisan terbaca{'\n'}
                 • Foto KTP tidak boleh di-edit / cropped sebagian{'\n'}
-                • Selfie + KTP: wajah & KTP harus terlihat jelas dalam satu frame{'\n'}
                 • Buku tabungan: nama harus sesuai KTP{'\n'}
                 • Review admin biasanya 1×24 jam kerja
               </Text>
             </View>
 
-            {/* Submit button - enabled hanya kalau 3 doc terupload + status masih pending */}
+            {/* Submit button - enabled hanya kalau semua dokumen wajib terupload + status masih pending */}
             {(() => {
               const uploadedCount = (['ktp', 'bank_book'] as DocType[])
                 .filter((t) => docByType(t)).length;
@@ -237,7 +236,7 @@ function CleanerKycScreen() {
                 <Pressable
                   onPress={async () => {
                     if (!canSubmit) {
-                      toast.warning(`Lengkapi semua dokumen dulu (${uploadedCount}/3 ter-upload)`);
+                      toast.warning(`Lengkapi semua dokumen dulu (${uploadedCount}/2 ter-upload)`);
                       return;
                     }
                     try {
@@ -254,7 +253,7 @@ function CleanerKycScreen() {
                 >
                   <Check color="white" size={18} strokeWidth={2.4} />
                   <Text className="font-bold text-sm text-white">
-                    {canSubmit ? 'Submit untuk Review Admin' : `Submit (${uploadedCount}/3 dokumen)`}
+                    {canSubmit ? 'Submit untuk Review Admin' : `Submit (${uploadedCount}/2 dokumen)`}
                   </Text>
                 </Pressable>
               );
@@ -268,7 +267,7 @@ function CleanerKycScreen() {
 
 function StatusBanner({ status, reason }: { status: string; reason: string | null }) {
   const variants: Record<string, { icon: any; color: string; bg: string; border: string; label: string; sub: string }> = {
-    pending: { icon: Clock, color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', label: 'Belum lengkap', sub: 'Upload semua 3 dokumen untuk submit ke review.' },
+    pending: { icon: Clock, color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', label: 'Belum lengkap', sub: 'Upload KTP dan buku tabungan untuk submit ke review.' },
     under_review: { icon: Clock, color: '#1D4ED8', bg: '#DBEAFE', border: '#93C5FD', label: 'Dalam review admin', sub: 'Tim kami akan verifikasi dalam 1×24 jam kerja.' },
     approved: { icon: BadgeCheck, color: '#047857', bg: '#D1FAE5', border: '#6EE7B7', label: 'Disetujui ✓', sub: 'KYC kamu sudah aktif. Selamat menerima order!' },
     rejected: { icon: X, color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', label: 'Ditolak', sub: reason ?? 'Silakan upload ulang dengan foto yang lebih jelas.' },
@@ -316,7 +315,6 @@ function ReviewPendingView({ onRefresh }: { onRefresh: () => void | Promise<void
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#0F172A', marginBottom: 10 }}>Apa yang dicek admin?</Text>
           {[
             'Foto KTP jelas, tidak buram, semua tulisan terbaca',
-            'Selfie + KTP: wajah & KTP terlihat jelas dalam satu frame',
             'Buku tabungan: nama sesuai KTP',
             'KTP masih aktif & usia 18+',
           ].map((line) => (

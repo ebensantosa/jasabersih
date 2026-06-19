@@ -142,7 +142,7 @@ Transaksi off-platform dilarang demi keamanan + kamu kehilangan asuransi & garan
 ## Cleaner Side
 
 ### Bagaimana cara jadi cleaner?
-Daftar mode "Freelancer" → upload 3 dokumen KYC → tunggu approval admin (1-2 jam kerja) → online di Job Board.
+Daftar mode "Freelancer" → upload 2 dokumen KYC → tunggu approval admin (1-2 jam kerja) → online di Job Board.
 
 ### Berapa komisi cleaner?
 - **Tanpa alat**: 40% flat
