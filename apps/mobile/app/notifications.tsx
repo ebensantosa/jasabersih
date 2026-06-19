@@ -7,9 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotifications, type NotificationItem } from '../src/stores/notifications';
 import { withAuth } from '../src/components/AuthGate';
 import { safeBack } from '../src/lib/safeBack';
+import { useModeStore } from '../src/stores/mode';
 
 function NotificationsScreen() {
   const router = useRouter();
+  const mode = useModeStore((s) => s.mode);
   const { list, loading, fetch, markAllRead } = useNotifications();
 
   useEffect(() => {
@@ -35,7 +37,7 @@ function NotificationsScreen() {
     if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
     else if (bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
     else if (type === 'kyc_approved' || type === 'kyc_rejected') router.push('/cleaner/kyc');
-    else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.push('/cleaner/wallet');
+    else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.push(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
   }
 
   return (

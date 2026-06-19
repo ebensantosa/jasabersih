@@ -1,6 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Wallet as WalletIcon } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { ArrowDownToLine, ArrowLeft, CreditCard, Wallet as WalletIcon } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +23,11 @@ type WalletData = {
   balance: number;
   creditIn: number;
   creditOut: number;
+  minWithdrawal?: number;
+  pendingWithdrawalAmount?: number;
+  pendingWithdrawalCount?: number;
+  notice?: string;
+  withdrawable?: boolean;
   ledger: LedgerEntry[];
 };
 
@@ -44,7 +49,7 @@ function WalletScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const r = await api.get('/customer/wallet');
       setData(r.data?.data ?? r.data);
@@ -54,10 +59,14 @@ function WalletScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
   const onRefresh = () => { setRefreshing(true); void load(); };
+  const minWithdrawal = Number(data?.minWithdrawal ?? 50000);
+  const hasPendingWithdrawal = Number(data?.pendingWithdrawalCount ?? 0) > 0;
+  const canWithdraw = !!data?.withdrawable && !hasPendingWithdrawal && (data?.balance ?? 0) >= minWithdrawal;
 
   return (
     <>
@@ -92,8 +101,53 @@ function WalletScreen() {
                 {formatRupiah(data?.balance ?? 0)}
               </Text>
               <Text className="mt-1 text-xs text-white/70">
-                Saldo bisa dipakai untuk pesanan berikutnya
+                {data?.notice ?? 'Saldo bisa dipakai untuk pesanan berikutnya'}
               </Text>
+              {(data?.pendingWithdrawalAmount ?? 0) > 0 && (
+                <Text className="mt-2 text-xs text-amber-200">
+                  {formatRupiah(data?.pendingWithdrawalAmount ?? 0)} sedang diproses untuk penarikan
+                </Text>
+              )}
+            </View>
+
+            <View className="mx-4 mb-3 flex-row gap-2">
+              <Pressable
+                onPress={() => router.push('/account/withdraw')}
+                disabled={!canWithdraw}
+                className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3 ${canWithdraw ? 'bg-blue-600' : 'bg-ink-300'}`}
+              >
+                <ArrowDownToLine color="white" size={16} />
+                <Text className="text-sm font-bold text-white">Tarik Saldo</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/account/bank-accounts')}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white py-3"
+              >
+                <CreditCard color="#1D4ED8" size={16} />
+                <Text className="text-sm font-bold text-brand-700">Kelola Rekening</Text>
+              </Pressable>
+            </View>
+
+            <View className="mx-4 mb-4 rounded-2xl bg-white p-4">
+              <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Ringkasan</Text>
+              <View className="mt-3 gap-2">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-ink-600">Saldo Masuk</Text>
+                  <Text className="text-sm font-bold text-emerald-600">{formatRupiah(data?.creditIn ?? 0)}</Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-ink-600">Saldo Keluar</Text>
+                  <Text className="text-sm font-bold text-ink-800">{formatRupiah(data?.creditOut ?? 0)}</Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-ink-600">Minimum Penarikan</Text>
+                  <Text className="text-sm font-bold text-ink-900">{formatRupiah(minWithdrawal)}</Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-ink-600">Penarikan Diproses</Text>
+                  <Text className="text-sm font-bold text-ink-900">{Number(data?.pendingWithdrawalCount ?? 0)} transaksi</Text>
+                </View>
+              </View>
             </View>
 
             <View className="mx-4 mb-3">

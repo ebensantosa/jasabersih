@@ -211,9 +211,11 @@ export default function RootLayout() {
       const data = res.notification.request.content.data as Record<string, unknown> | undefined;
       const type = data?.type as string | undefined;
       const bookingId = data?.bookingId as string | undefined;
+      const mode = useModeStore.getState().mode;
       if (type) Track.notificationTapped(type);
       if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
       else if ((type === 'booking_completed' || type === 'wallet_credit') && bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
+      else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.push(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
     });
     return () => sub.remove();
   }, []);
@@ -278,6 +280,8 @@ export default function RootLayout() {
         <Stack.Screen name="account/addresses" />
         <Stack.Screen name="account/edit-profile" />
         <Stack.Screen name="account/wallet" />
+        <Stack.Screen name="account/withdraw" />
+        <Stack.Screen name="account/bank-accounts" />
         <Stack.Screen name="account/notifications" />
         <Stack.Screen name="account/security" />
         <Stack.Screen name="account/change-password" />

@@ -116,12 +116,12 @@ export class AdminWithdrawalsController {
     const rows = await this.prisma.$queryRaw<{
       id: string; user_id: string; amount: number; status: string; review_status: string;
       destination_bank_code: string | null; destination_account_number: string | null;
-      destination_account_name: string | null; bank_account_id: string | null;
+      destination_account_name: string | null; bank_account_id: string | null; customer_bank_account_id: string | null;
       flip_disbursement_id: string | null; flip_idempotency_key: string | null;
     }[]>`
       SELECT id, user_id, amount, status, review_status,
              destination_bank_code, destination_account_number, destination_account_name,
-             bank_account_id, flip_disbursement_id, flip_idempotency_key
+             bank_account_id, customer_bank_account_id, flip_disbursement_id, flip_idempotency_key
         FROM withdrawals WHERE id = ${id}::uuid LIMIT 1
     `;
     const w = rows[0];
@@ -137,6 +137,12 @@ export class AdminWithdrawalsController {
         SELECT is_verified FROM cleaner_bank_accounts WHERE id = ${w.bank_account_id}::uuid LIMIT 1
       `;
       if (!ba[0]?.is_verified) throw new BadRequestException('Rekening belum terverifikasi. Verifikasi dulu atau lakukan transfer manual.');
+    }
+    if (w.customer_bank_account_id) {
+      const ba = await this.prisma.$queryRaw<{ is_verified: boolean }[]>`
+        SELECT is_verified FROM customer_bank_accounts WHERE id = ${w.customer_bank_account_id}::uuid LIMIT 1
+      `;
+      if (!ba[0]?.is_verified) throw new BadRequestException('Rekening customer belum terverifikasi.');
     }
 
     // Hitung transfer amount setelah fee (kalau cleaner yang bayar)
