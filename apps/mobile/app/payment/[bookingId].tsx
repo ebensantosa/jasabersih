@@ -425,8 +425,17 @@ function CountdownBadge({ expiredAt }: { expiredAt: string }) {
   const expired = remainingMs === 0;
   const urgent = !expired && remainingMs < 5 * 60_000; // < 5 menit
   return (
-    <View className={`rounded-lg px-2 py-1 ${expired ? 'bg-rose-100' : urgent ? 'bg-amber-100' : 'bg-blue-100'}`}>
-      <Text className={`text-[10px] font-semibold ${expired ? 'text-rose-700' : urgent ? 'text-amber-700' : 'text-blue-700'}`}>
+    <View
+      style={{
+        minWidth: 74,
+        alignItems: 'center',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        backgroundColor: expired ? '#FEE2E2' : urgent ? '#DBEAFE' : '#D1FAE5',
+      }}
+    >
+      <Text style={{ fontSize: 12, fontWeight: '800', color: expired ? '#BE123C' : urgent ? '#1D4ED8' : '#047857', fontVariant: ['tabular-nums'] }}>
         {expired ? 'Expired' : display}
       </Text>
     </View>
@@ -888,16 +897,16 @@ function PaymentInstructions({ data, onCopy }: { data: DirectResult; onCopy: () 
               NMID: {data.nmid}
             </Text>
           ) : null}
-          <View style={{ width: '100%', marginTop: 18, borderWidth: 1.5, borderColor: '#FF5A36', borderRadius: 2 }}>
+          <View style={{ width: '100%', marginTop: 18, borderRadius: 14, overflow: 'hidden' }}>
             <Pressable
-              onPress={() => toast.success('Status transaksi dicek otomatis')}
-              style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
+              onPress={() => toast.info('Kalau pembayaran belum masuk, status masih menunggu. Setelah lunas, halaman ini akan pindah otomatis.')}
+              style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1D4ED8' }}
             >
-              <Text style={{ fontSize: 16, color: '#FF5A36', fontWeight: '700' }}>Cek Status Transaksi</Text>
+              <Text style={{ fontSize: 16, color: 'white', fontWeight: '800' }}>Cek Status Transaksi</Text>
             </Pressable>
           </View>
           <Text style={{ marginTop: 18, fontSize: 13, color: '#475569', textAlign: 'center', lineHeight: 20 }}>
-            Status pembayaran dicek otomatis. Halaman ini akan pindah ke detail pesanan saat pembayaran masuk.
+            Kalau pembayaran belum masuk, status tetap menunggu. Setelah pembayaran diterima, halaman ini akan berpindah otomatis ke detail pesanan.
           </Text>
           <Text style={{ marginTop: 12, fontSize: 22, color: '#0F172A', fontWeight: '800' }}>
             {formatRupiah(data.amount)}
