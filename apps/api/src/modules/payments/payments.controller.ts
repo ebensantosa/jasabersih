@@ -53,7 +53,7 @@ const CHECKOUT_METHODS: CheckoutMethodDef[] = [
   { code: 'LINKAJA', name: 'LinkAja', group: 'ewallet', senderBank: 'linkaja', senderBankType: 'wallet_account' },
   { code: 'ALFAMART', name: 'Alfamart', group: 'retail', senderBank: 'alfamart', senderBankType: 'retail', description: 'Bayar langsung di kasir' },
   { code: 'INDOMARET', name: 'Indomaret', group: 'retail', senderBank: 'indomaret', senderBankType: 'retail', description: 'Bayar langsung di kasir' },
-  { code: 'CREDIT_CARD', name: 'Kartu Kredit', group: 'credit_card', senderBank: 'credit_card', senderBankType: 'credit_card', description: 'Pembayaran kartu melalui halaman aman Flip' },
+  { code: 'CREDIT_CARD', name: 'Kartu Kredit', group: 'credit_card', senderBank: 'credit_card', senderBankType: 'credit_card', description: 'Pembayaran kartu via halaman pembayaran yang aman' },
 ];
 
 @ApiTags('payments')

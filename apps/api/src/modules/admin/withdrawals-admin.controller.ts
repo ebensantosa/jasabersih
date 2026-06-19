@@ -126,8 +126,8 @@ export class AdminWithdrawalsController {
     `;
     const w = rows[0];
     if (!w) throw new NotFoundException('Withdrawal tidak ditemukan.');
-    if (w.status !== 'pending') throw new BadRequestException(`Withdrawal status ${w.status}, tidak bisa di-approve via Flip.`);
-    if (w.flip_disbursement_id) throw new BadRequestException('Withdrawal sudah pernah dikirim ke Flip.');
+    if (w.status !== 'pending') throw new BadRequestException(`Withdrawal status ${w.status}, tidak bisa di-approve auto-transfer.`);
+    if (w.flip_disbursement_id) throw new BadRequestException('Withdrawal sudah pernah dikirim ke sistem auto-transfer.');
     if (!w.destination_bank_code || !w.destination_account_number || !w.destination_account_name) {
       throw new BadRequestException('Info rekening tidak lengkap.');
     }
@@ -157,7 +157,7 @@ export class AdminWithdrawalsController {
       });
     } catch (e: any) {
       this.log.error(`approve-flip failed for ${id}: ${e?.message ?? e}`);
-      throw new BadRequestException(`Flip disbursement gagal: ${e?.message ?? 'Coba lagi atau pakai approve manual'}`);
+      throw new BadRequestException(`Auto-transfer gagal: ${e?.message ?? 'Coba lagi atau pakai approve manual'}`);
     }
 
     const flipId = String(result?.id ?? '');

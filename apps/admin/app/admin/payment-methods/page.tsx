@@ -134,7 +134,7 @@ export default function PaymentMethodsPage() {
             <h3 className="text-sm font-bold text-amber-900">Banner Peringatan (opsional)</h3>
             <p className="mt-1 text-xs text-amber-800">
               Teks ini tampil sebagai banner kuning di halaman wallet, withdraw, dan checkout mobile.
-              Kosongkan untuk hide banner. Live status bank dari Flip webhook tetap tampil otomatis.
+              Kosongkan untuk hide banner. Live status bank dari sistem pembayaran tetap tampil otomatis.
             </p>
             <textarea
               value={maintenanceNotice}

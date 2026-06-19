@@ -23,10 +23,10 @@ export default function WalletPage() {
   useEffect(() => { void load(); }, [tab]);
 
   async function approveViaAuto(w: any) {
-    if (!confirm(`Retry auto-disburse via Flip - Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${(w.bankCode ?? '—').toUpperCase()} ${w.accountNumber ?? '—'} a/n ${w.accountName ?? '—'}?\n\nPakai hanya kalau yakin Flip udh recover dari error sebelumnya.`)) return;
+    if (!confirm(`Retry auto-disburse - Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${(w.bankCode ?? '—').toUpperCase()} ${w.accountNumber ?? '—'} a/n ${w.accountName ?? '—'}?\n\nPakai hanya kalau yakin sistem pembayaran udh recover dari error sebelumnya.`)) return;
     try {
       await api.admin.approveWithdrawalViaFlip(w.id);
-      toast.success('Retry trigger Flip. Status auto-update via callback.');
+      toast.success('Retry trigger auto-transfer. Status auto-update via callback.');
       void load();
     } catch (e: any) { toast.error(e?.message ?? 'Gagal trigger transfer otomatis.'); }
   }
@@ -35,9 +35,9 @@ export default function WalletPage() {
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Wallet & Withdrawal</h1>
       <p className="text-sm text-slate-500">
-        Cleaner submit -&gt; otomatis transfer via Flip. Yg masuk tab <b>Pending</b> = Flip gagal /
-        belum verified / butuh review. Admin proses manual via bank/wallet sendiri, lalu klik
-        <b>Manual</b> (input ref transfer). Tombol <b>Retry Flip</b> hanya kalau yakin masalah Flip
+        Cleaner submit -&gt; otomatis transfer ke rekening tujuan. Yg masuk tab <b>Pending</b> = auto-transfer
+        gagal / belum verified / butuh review. Admin proses manual via bank/wallet sendiri, lalu klik
+        <b>Manual</b> (input ref transfer). Tombol <b>Retry Auto</b> hanya kalau yakin masalah sistem pembayaran
         udh recover.
       </p>
 
@@ -99,7 +99,7 @@ export default function WalletPage() {
                       <td className="px-4 py-3 font-mono text-xs">
                         {w.bankTransferRef ?? w.flipDisbursementId ?? '—'}
                         {w.reviewStatus === 'auto_approved' && (
-                          <span className="ml-1.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">Auto Flip</span>
+                          <span className="ml-1.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">Auto Transfer</span>
                         )}
                       </td>
                     )}
@@ -107,15 +107,15 @@ export default function WalletPage() {
                     {tab === 'pending' && (
                       <td className="px-4 py-3 text-right space-x-1">
                         {/* Manual = action utama (admin transfer sendiri lalu mark approved).
-                            Retry Flip = hidden behind ellipsis, jarang dipakai. */}
+                            Retry Auto = hidden behind ellipsis, jarang dipakai. */}
                         <Button size="sm" variant="success" onClick={() => setApproving(w)} icon={<Check size={12} />}>Manual Approve</Button>
                         <Button size="sm" variant="ghost" onClick={() => setRejecting(w)} icon={<X size={12} />}>Reject</Button>
                         <details className="inline-block">
                           <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-700 select-none ml-2">···</summary>
                           <div className="absolute right-4 mt-1 rounded border bg-white p-2 shadow-md z-10">
-                            <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)}>Retry Flip</Button>
+                            <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)}>Retry Auto</Button>
                             <p className="mt-1 text-[10px] text-slate-500 max-w-[180px]">
-                              Coba auto-disburse via Flip lagi. Hanya kalau yakin Flip udh recover.
+                              Coba auto-disburse lagi. Hanya kalau yakin sistem pembayaran udh recover.
                             </p>
                           </div>
                         </details>

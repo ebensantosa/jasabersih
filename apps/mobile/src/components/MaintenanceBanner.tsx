@@ -97,7 +97,7 @@ export function MaintenanceBanner() {
         )}
         {hasLive && !hasManual && (
           <Text className="font-medium mt-1.5 text-[10px] italic text-amber-700">
-            Status di-update otomatis dari sistem partner (Flip).
+            Status di-update otomatis dari sistem pembayaran.
           </Text>
         )}
       </View>

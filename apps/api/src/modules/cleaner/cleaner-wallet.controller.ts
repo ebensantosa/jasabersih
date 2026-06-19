@@ -337,7 +337,7 @@ export class CleanerWalletController {
       const flipFee = this.getFlipFee(bankCode, cfg);
       const transferAmount = cfg.feePayer === 'cleaner' ? body.amount - flipFee : body.amount;
       if (cfg.feePayer === 'cleaner' && transferAmount < 10000) {
-        throw new BadRequestException(`Setelah dipotong fee Flip Rp ${flipFee.toLocaleString('id-ID')}, sisa Rp ${transferAmount.toLocaleString('id-ID')} di bawah minimum transfer Flip (Rp 10.000). Tambah jumlah penarikan.`);
+        throw new BadRequestException(`Setelah dipotong fee transfer Rp ${flipFee.toLocaleString('id-ID')}, sisa Rp ${transferAmount.toLocaleString('id-ID')} di bawah minimum transfer (Rp 10.000). Tambah jumlah penarikan.`);
       }
 
       // Pre-check: tolak kalau cleaner punya withdrawal pending (anti double-tap + anti race).

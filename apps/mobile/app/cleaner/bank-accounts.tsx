@@ -162,7 +162,7 @@ function CleanerBankAccounts() {
           <View className="rounded-xl bg-blue-50 border border-blue-200 p-3 flex-row gap-2">
             <BadgeCheck color="#1D4ED8" size={18} />
             <Text className="flex-1 text-xs text-blue-900 leading-5">
-              Tambah rekening bank atau e-wallet atas nama kamu. Sistem akan verifikasi otomatis via Flip.
+              Tambah rekening bank atau e-wallet atas nama kamu. Sistem akan verifikasi otomatis.
               Hanya tujuan verified yang bisa dipakai untuk penarikan otomatis.
             </Text>
           </View>

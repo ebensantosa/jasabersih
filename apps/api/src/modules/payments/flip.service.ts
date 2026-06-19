@@ -347,18 +347,18 @@ export class FlipService {
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
       this.log.error(`flip disbursement failed (status=${res.status}, bank=${bankCode}): ${JSON.stringify(json)}`);
-      // Surfacing Flip error message yg lebih detail ke user
+      // Surfacing provider error message yg lebih detail ke user
       const flipMsg = json?.message ?? json?.error ?? json?.errors?.[0]?.message;
       if (flipMsg) {
-        throw new BadRequestException(`${flipMsg} (Flip)`);
+        throw new BadRequestException(`${flipMsg}`);
       }
-      // Common 422 = merchant belum enable e-wallet disbursement di Flip dashboard
+      // Common 422 = merchant belum enable e-wallet disbursement di provider
       if (res.status === 422 && isEwallet) {
         throw new BadRequestException(
-          `Disbursement ke ${bankCode.toUpperCase()} belum aktif di akun Flip. Admin perlu enable e-wallet disbursement di Flip dashboard (Settings -> Disbursement -> E-wallet) atau pakai bank biasa dulu.`,
+          `Disbursement ke ${bankCode.toUpperCase()} belum aktif. Coba pakai bank transfer dulu atau hubungi CS.`,
         );
       }
-      throw new BadRequestException(`Transfer gagal (${res.status}). Cek log server utk detail Flip response.`);
+      throw new BadRequestException(`Transfer gagal (${res.status}). Coba lagi atau hubungi CS.`);
     }
     return json; // contains: id, status ("PENDING"|"DONE"|"FAILED"|"CANCELLED"), timestamp, etc.
   }

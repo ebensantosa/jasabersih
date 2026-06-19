@@ -701,7 +701,7 @@ function MethodPicker({
                 </View>
                 <View className="flex-1">
                   <Text className={`font-semibold text-sm ${down ? 'text-ink-400' : 'text-ink-900'}`}>{m.name}</Text>
-                  <Text className="font-medium text-[10px] text-ink-500">Visa, Mastercard, JCB - input langsung di halaman Flip</Text>
+                  <Text className="font-medium text-[10px] text-ink-500">Visa, Mastercard, JCB - input di halaman pembayaran aman</Text>
                   {down && <Text className="font-bold text-[10px] text-rose-600 mt-0.5">{getMessage(m.code) || 'Metode ini sedang tidak tersedia'}</Text>}
                   {delayed && <Text className="font-bold text-[10px] text-amber-600 mt-0.5">Transaksi mungkin tertunda</Text>}
                 </View>
