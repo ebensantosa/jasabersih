@@ -242,6 +242,8 @@ export const useBookingsStore = create<State>((set, get) => ({
         const cleanerPayout = (s as any).cleanerPayout != null
           ? Number((s as any).cleanerPayout)
           : existing?.cleanerPayout;
+        const paidAtRaw = (s as any).paidAt ?? (s as any).paid_at;
+        const paidAtMs = paidAtRaw ? safeTimestamp(paidAtRaw) : undefined;
         return existing ? {
           ...existing,
           status: mapServerStatus(s.status),
@@ -251,6 +253,7 @@ export const useBookingsStore = create<State>((set, get) => ({
           addressLine: s.addressLine ?? s.address_line ?? s.address ?? existing.addressLine,
           scheduledAt: safeIsoDate(s.scheduledAt ?? existing.scheduledAt),
           createdAt: safeTimestamp(s.createdAt ?? existing.createdAt),
+          paidAt: paidAtMs ?? existing.paidAt,
           completedAt: (s.completedAt ?? s.completed_at) ? safeTimestamp(s.completedAt ?? s.completed_at) : existing.completedAt,
           totalPrice: total,
           cleanerPayout,
@@ -268,6 +271,7 @@ export const useBookingsStore = create<State>((set, get) => ({
               scheduledAt: safeIsoDate(s.scheduledAt),
               status: mapServerStatus(s.status),
               createdAt: safeTimestamp(s.createdAt),
+              paidAt: paidAtMs,
               addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
               cleanerPayout,
               cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? undefined,

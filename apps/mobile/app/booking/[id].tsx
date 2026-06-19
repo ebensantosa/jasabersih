@@ -357,10 +357,14 @@ function BookingDetail() {
   const color = STATUS_COLOR[booking.status] ?? { bg: '#F1F5F9', fg: '#475569' };
 
   // Live searching countdown derivations. PENTING: guard NaN.
-  // booking.createdAt bisa undefined kalau sync incomplete -> elapsedSec=NaN ->
-  // turunannya semua NaN -> CSS width: NaN% crash RN.
-  const safeCreatedAt = Number.isFinite(booking.createdAt) ? booking.createdAt : now;
-  const elapsedSec = booking.status === 'searching' ? Math.max(0, Math.floor((now - safeCreatedAt) / 1000)) : 0;
+  // Pencarian cleaner dimulai SETELAH pembayaran lunas (paid_at), bukan saat
+  // booking dibuat. Tanpa ini, timer "sudah berlalu" termasuk waktu user nunggu
+  // di payment screen - bikin SEARCH_TIMEOUT salah trigger lebih cepat.
+  // Fallback ke createdAt kalau paidAt belum ke-sync (defensive).
+  const searchStartedAt = Number.isFinite(booking.paidAt) ? (booking.paidAt as number)
+    : Number.isFinite(booking.createdAt) ? booking.createdAt
+    : now;
+  const elapsedSec = booking.status === 'searching' ? Math.max(0, Math.floor((now - searchStartedAt) / 1000)) : 0;
   const remainingSec = Math.max(0, SEARCH_TIMEOUT_SEC - elapsedSec);
   const minLeft = Math.floor(remainingSec / 60);
   const secLeft = remainingSec % 60;

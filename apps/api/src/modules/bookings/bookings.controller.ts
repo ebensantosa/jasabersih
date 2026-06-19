@@ -80,6 +80,7 @@ export class BookingsController {
     return this.prisma.$queryRawUnsafe(
       `SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.total_amount AS total,
               b.scheduled_at AS "scheduledAt", b.address_line AS address, b.created_at AS "createdAt",
+              b.paid_at AS "paidAt",
               s.name AS "serviceName", s.icon_url AS "serviceIcon",
               pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId",
               cl.photo_url AS "cleanerPhotoUrl",
