@@ -195,6 +195,13 @@ export class PaymentsController {
     }
   }
 
+  private toFlipSenderBankType(senderBank: string, senderBankType: CheckoutSenderBankType): CheckoutSenderBankType {
+    if (senderBank === 'qris' && senderBankType === 'qris') {
+      return 'wallet_account';
+    }
+    return senderBankType;
+  }
+
   // ============ FLIP ============
 
   // Create Flip bill for a booking. Returns checkout URL (open in WebView).
@@ -369,6 +376,7 @@ export class PaymentsController {
     try {
       let result: any;
       let fellBackToCheckout = false;
+      const flipSenderBankType = this.toFlipSenderBankType(body.senderBank, body.senderBankType);
       try {
         result = await this.flip.createDirectBill({
           title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
@@ -379,7 +387,7 @@ export class PaymentsController {
           customerPhone: u.phone,
           redirectUrl: `https://jasabersih.com/booking/${b.id}`,
           senderBank: body.senderBank,
-          senderBankType: body.senderBankType,
+          senderBankType: flipSenderBankType,
         });
       } catch (directErr: any) {
         // Fallback: kalau direct mode error (Flip API changed), pakai hosted checkout page.
@@ -575,6 +583,7 @@ export class PaymentsController {
 
     try {
       let result: any;
+      const flipSenderBankType = this.toFlipSenderBankType(body.senderBank, body.senderBankType);
       try {
         result = await this.flip.createDirectBill({
           title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : 'Tip Cleaner'} ${b.id.slice(0, 8)}`,
@@ -585,7 +594,7 @@ export class PaymentsController {
           customerPhone: u.phone,
           redirectUrl: `https://jasabersih.com/booking/${b.id}`,
           senderBank: body.senderBank,
-          senderBankType: body.senderBankType,
+          senderBankType: flipSenderBankType,
         });
       } catch (directErr: any) {
         this.flipLog.warn(`createDirect extra failed (${directErr?.message ?? 'unknown'}), fallback`);
