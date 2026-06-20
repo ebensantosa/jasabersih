@@ -16,7 +16,7 @@ type Me = {
   shareText: string;
   totalReferrals: number;
   totalPaid: number;
-  stats: { pending: number; qualified: number; paid: number };
+  stats: { pending: number; qualified: number; paid: number; active?: number };
 };
 
 type HistoryItem = {
@@ -164,7 +164,7 @@ function ReferralScreen() {
             </View>
             <View className="flex-row gap-2">
               <StatCard label="Belum Order" value={String(me.stats.pending)} color="#B45309" />
-              <StatCard label="Sudah Order" value={String(me.stats.qualified + me.stats.paid)} color="#047857" />
+              <StatCard label="Sudah Order" value={String(me.stats.qualified + me.stats.paid + (me.stats.active ?? 0))} color="#047857" />
             </View>
 
             {/* How it works */}
@@ -282,7 +282,11 @@ function StatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: '#FEF3C7', color: '#B45309', label: 'menunggu' },
     qualified: { bg: '#DBEAFE', color: '#1D4ED8', label: 'qualified' },
-    paid: { bg: '#D1FAE5', color: '#047857', label: 'paid ✓' },
+    // 'active' = referral udah komisi pernah dibayar (commission masuk wallet
+    // referrer). Backend pakai status='active' setelah payout pertama, beda
+    // sama 'paid' (dipake admin terms lama). Display sama2 sukses.
+    active: { bg: '#D1FAE5', color: '#047857', label: '✓ aktif' },
+    paid: { bg: '#D1FAE5', color: '#047857', label: '✓ dibayar' },
   };
   const c = cfg[status] ?? cfg.pending!;
   return (

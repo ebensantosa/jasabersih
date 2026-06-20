@@ -45,12 +45,18 @@ export class ReferralController {
     }
 
     const r = rows[0]!;
-    // Stats: pending vs qualified
-    const stats = await this.prisma.$queryRaw<{ pending: number; qualified: number; paid: number }[]>`
+    // Stats: pending (belum order) vs sukses (active/qualified/paid).
+    // Status di DB inkonsisten lintas versi:
+    // - 'pending' = teman daftar belum order
+    // - 'active'  = referral-payout.service.ts set setelah commission masuk
+    // - 'qualified' & 'paid' = legacy term lama
+    // Semua selain pending di-count sebagai sukses.
+    const stats = await this.prisma.$queryRaw<{ pending: number; qualified: number; paid: number; active: number }[]>`
       SELECT
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END)::int AS pending,
         SUM(CASE WHEN status = 'qualified' THEN 1 ELSE 0 END)::int AS qualified,
-        SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)::int AS paid
+        SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)::int AS paid,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END)::int AS active
       FROM referrals WHERE referrer_id = ${user.id}::uuid
     `;
     return {
@@ -59,7 +65,12 @@ export class ReferralController {
       shareText: `Pesan jasa bersih lewat JasaBersih, pake kode ${r.code} biar order kamu enak & aku dapat komisi 5% dari pesananmu. Download di sini:`,
       totalReferrals: Number(r.total_referrals),
       totalPaid: Number(r.total_paid),
-      stats: { pending: Number(stats[0]?.pending ?? 0), qualified: Number(stats[0]?.qualified ?? 0), paid: Number(stats[0]?.paid ?? 0) },
+      stats: {
+        pending: Number(stats[0]?.pending ?? 0),
+        qualified: Number(stats[0]?.qualified ?? 0),
+        paid: Number(stats[0]?.paid ?? 0),
+        active: Number(stats[0]?.active ?? 0),
+      },
     };
   }
 
