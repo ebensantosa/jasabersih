@@ -57,6 +57,9 @@ export default function WaSurvey() {
     savedLocation ? { lat: savedLocation.lat, lng: savedLocation.lng } : null,
   );
   const [errors, setErrors] = useState<{ description?: string | null }>({});
+  // Track template yg udah dipake supaya chip hilang setelah pertama dipencet -
+  // mencegah customer spam multiple kali nambah teks sama berulang.
+  const [usedTemplates, setUsedTemplates] = useState<Set<string>>(new Set());
 
   function buildLoginNextPath(): string {
     const params = new URLSearchParams();
@@ -70,8 +73,9 @@ export default function WaSurvey() {
     return query ? `/booking/wa-survey?${query}` : '/booking/wa-survey';
   }
 
-  function applyTemplate(text: string): void {
+  function applyTemplate(label: string, text: string): void {
     setDescription((prev) => (prev.endsWith('\n') || prev === '' ? prev + text : `${prev}\n${text}`));
+    setUsedTemplates((prev) => new Set(prev).add(label));
     if (errors.description) setErrors({ description: null });
   }
 
@@ -176,10 +180,10 @@ export default function WaSurvey() {
             </Text>
 
             <View className="mb-3 flex-row flex-wrap gap-1.5">
-              {QUICK_TEMPLATES.map((template) => (
+              {QUICK_TEMPLATES.filter((t) => !usedTemplates.has(t.label)).map((template) => (
                 <Pressable
                   key={template.label}
-                  onPress={() => applyTemplate(template.text)}
+                  onPress={() => applyTemplate(template.label, template.text)}
                   className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5"
                 >
                   <Text className="font-semibold text-[11px] text-brand-700">+ {template.label}</Text>
