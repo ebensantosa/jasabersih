@@ -20,8 +20,16 @@ export class NotificationsController {
     @Body() body: { token: string; deviceId: string; platform?: string; deviceFingerprint?: string },
   ) {
     if (!body?.token || !body?.deviceId) throw new BadRequestException('token & deviceId wajib.');
-    // Migration 20260614000000 pasang unique partial index (user_id, fcm_token) WHERE fcm_token IS NOT NULL.
-    // Upsert: kalau sama user+token udah ada → update last_active_at saja.
+    // FIX: 1 token = 1 user. Sebelumnya constraint (user_id, fcm_token) bikin
+    // device yang dipake login berturut-turut user A -> logout -> user B punya 2 row
+    // (A+token & B+token), notif tetap masuk ke device walau user A sebenarnya
+    // udah logout. Solusi: delete row lain yang punya token sama (beda user_id)
+    // sebelum upsert. Ini bikin token effectively unique per device, ownership
+    // pindah ke user terakhir yg login.
+    await this.prisma.$executeRaw`
+      DELETE FROM user_devices
+       WHERE fcm_token = ${body.token} AND user_id <> ${user.id}::uuid
+    `;
     await this.prisma.$executeRaw`
       INSERT INTO user_devices (user_id, device_id, fcm_token, platform, device_fingerprint, last_active_at)
       VALUES (${user.id}::uuid, ${body.deviceId}, ${body.token}, ${body.platform ?? null}, ${body.deviceFingerprint ?? null}, NOW())
@@ -31,6 +39,21 @@ export class NotificationsController {
         device_id = EXCLUDED.device_id,
         platform = COALESCE(EXCLUDED.platform, user_devices.platform),
         device_fingerprint = COALESCE(EXCLUDED.device_fingerprint, user_devices.device_fingerprint)
+    `;
+    return { ok: true };
+  }
+
+  // Unregister push token saat logout - cegah notif bocor ke device setelah
+  // logout. Frontend wajib panggil ini SEBELUM clear local tokens.
+  @Post('unregister-token')
+  async unregister(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { token: string },
+  ) {
+    if (!body?.token) throw new BadRequestException('token wajib.');
+    await this.prisma.$executeRaw`
+      DELETE FROM user_devices
+       WHERE user_id = ${user.id}::uuid AND fcm_token = ${body.token}
     `;
     return { ok: true };
   }

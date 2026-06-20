@@ -16,10 +16,34 @@ Notifications.setNotificationHandler({
 });
 
 let registered = false;
+let currentToken: string | null = null;
+
+// Reset state - dipanggil saat logout supaya next login bisa register ulang
+// (kalau gak di-reset, flag `registered` global stay true → next user gak
+// kepesan ke backend → terus dapat notif user lama).
+export function resetPushRegistration() {
+  registered = false;
+}
+
+export function getCurrentPushToken(): string | null {
+  return currentToken;
+}
+
+// Unregister token dari backend - panggil SEBELUM clear auth tokens (perlu
+// JWT valid utk auth request).
+export async function unregisterPushAsync(): Promise<void> {
+  const token = currentToken;
+  if (!token) return;
+  try {
+    await api.post('/notifications/unregister-token', { token });
+  } catch { /* non-fatal */ }
+  resetPushRegistration();
+  currentToken = null;
+}
 
 // Call after user is authenticated. Idempotent.
 export async function registerForPushAsync(): Promise<string | null> {
-  if (registered) return null;
+  if (registered) return currentToken;
 
   // Android: bikin channel default + custom channels
   if (Platform.OS === 'android') {
@@ -70,6 +94,7 @@ export async function registerForPushAsync(): Promise<string | null> {
       deviceFingerprint: `${Device.brand ?? ''}-${Device.modelName ?? ''}-${Device.osVersion ?? ''}`,
     });
     registered = true;
+    currentToken = token;
   } catch {
     return token; // token tetap ke-return walau register gagal - bisa di-retry
   }

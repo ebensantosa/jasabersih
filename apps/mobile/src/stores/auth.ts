@@ -31,9 +31,15 @@ export const useAuthStore = create<State>((set, get) => ({
     get().setTokens(res.data.data);
   },
   logout: () => {
+    // Unregister push token DULU sebelum clear tokens - perlu JWT valid.
+    // Tanpa ini, device tetap dapat notif user lama walau udah logout.
+    // Fire-and-forget, lazy-import biar gak ada circular dependency.
+    void import('../lib/pushSetup').then(async (m) => {
+      try { await m.unregisterPushAsync(); } catch {}
+    }).catch(() => {});
+
     get().setTokens(null);
     // Wipe all user-bound caches so next session starts clean.
-    // Lazy-import to avoid module cycles.
     void Promise.all([
       import('./mode').then((m) => m.useModeStore.getState().setMode('customer')),
       import('./addresses').then((m) => m.useAddressesStore.getState().clearLocal?.()),
