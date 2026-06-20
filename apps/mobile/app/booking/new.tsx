@@ -14,22 +14,24 @@ import { StepProgress } from '../../src/components/StepWizard';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import {
+  useDirtLevels,
+  useLargeScaleBathroomRate,
+  useLargeScaleMaxM2,
+  useLargeScaleTargets,
+  usePostRenoBathroomRate,
+  usePostRenoKitchenFlat,
+  usePostRenoLevels,
+  usePostRenoMaxM2,
+  usePostRenoTargets,
+} from '../../src/lib/pricingConfig';
+import {
   ADDONS as LOCAL_ADDONS,
   DIRT_CHARACTERS,
-  DIRT_LEVELS,
   FLOOR_OPTIONS,
   FLOOR_TYPES,
   FURNITURE_DENSITY,
-  LARGE_SCALE_BATHROOM_RATE,
-  LARGE_SCALE_MAX_M2,
   LARGE_SCALE_PROPERTY_TYPES,
-  LARGE_SCALE_TARGETS,
-  POST_RENO_BATHROOM_RATE,
-  POST_RENO_KITCHEN_FLAT,
-  POST_RENO_LEVELS,
-  POST_RENO_MAX_M2,
   POST_RENO_PROPERTY_TYPES,
-  POST_RENO_TARGETS,
   SUBSCRIPTION_DAYS,
   SUBSCRIPTION_TIERS,
   SUBSCRIPTION_VISITS_BY_PKG,
@@ -103,6 +105,17 @@ function NewBooking() {
       router.replace('/services/konsultasi');
     }
   }, [categoryCode, router]);
+
+  // Pricing configs admin-controlled (fallback ke hardcoded catalog.ts).
+  const POST_RENO_LEVELS = usePostRenoLevels();
+  const POST_RENO_TARGETS = usePostRenoTargets();
+  const POST_RENO_BATHROOM_RATE = usePostRenoBathroomRate();
+  const POST_RENO_KITCHEN_FLAT = usePostRenoKitchenFlat();
+  const POST_RENO_MAX_M2 = usePostRenoMaxM2();
+  const LARGE_SCALE_TARGETS = useLargeScaleTargets();
+  const LARGE_SCALE_BATHROOM_RATE = useLargeScaleBathroomRate();
+  const LARGE_SCALE_MAX_M2 = useLargeScaleMaxM2();
+  const DIRT_LEVELS = useDirtLevels();
 
   // Prefer API packages for this service code (admin-editable). Fallback to local.
   const apiPackages = useApiPackagesForService(category?.code ?? '');

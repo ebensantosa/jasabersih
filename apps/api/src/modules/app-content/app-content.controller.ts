@@ -44,6 +44,10 @@ const PUBLIC_CONFIG_EXACT_ALLOWLIST = new Set([
 const PUBLIC_CONFIG_PREFIX_ALLOWLIST = [
   'brand.',
   'typography.',
+  // Pricing configs - admin-editable via /admin/app-settings, dipake mobile
+  // utk hitung harga (post reno, large scale, dirt levels). Aman exposure
+  // karena mobile butuh tau pricing utk display ke customer.
+  'pricing.',
 ];
 
 const PUBLIC_CONFIG_EXACT_SQL = Array.from(PUBLIC_CONFIG_EXACT_ALLOWLIST)
