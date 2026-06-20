@@ -46,6 +46,16 @@ export function BookingPhotos({
   }
   useEffect(() => { void load(); }, [bookingId, onSummaryChange]);
 
+  // Real-time polling utk foto baru dari cleaner. Cuma jalan saat status aktif
+  // (matched -> in_progress) - selesai/batal stop polling supaya gak boros.
+  useEffect(() => {
+    const activeStatuses = ['matched', 'on_the_way', 'in_progress'];
+    if (!status || !activeStatuses.includes(status)) return;
+    const tick = setInterval(() => { void load(); }, 15_000);
+    return () => clearInterval(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, status]);
+
   const beforePhotosCount = photos.filter((p) => p.photoType === 'before').length;
 
   async function pickAndUpload(type: 'before' | 'after' | 'damage') {

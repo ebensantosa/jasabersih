@@ -159,6 +159,19 @@ function BookingDetail() {
   }
   useEffect(() => { void loadUpcharges(); }, [id, isCleaner]);
 
+  // Real-time polling utk update charge tambahan + foto kondisi tanpa user
+  // perlu manual refresh. Cuma jalan saat status aktif (matched -> in_progress)
+  // supaya gak boros bandwidth setelah booking selesai/batal.
+  // BookingPhotos juga refetch internal-nya saat parent re-render.
+  useEffect(() => {
+    if (!id || id.startsWith('bk_')) return;
+    const activeStatuses = ['matched', 'on_the_way', 'in_progress'];
+    if (!booking || !activeStatuses.includes(booking.status)) return;
+    const tick = setInterval(() => { void loadUpcharges(); }, 15_000);
+    return () => clearInterval(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isCleaner, booking?.status]);
+
   // Fetch subscription child visits kalau parent
   async function loadSubscriptionVisits() {
     if (!id || id.startsWith('bk_') || isCleaner) return;
