@@ -132,7 +132,7 @@ function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => 
     <Modal open onClose={onClose} title={`Edit ${tier.label}`}>
       <div className="grid gap-3">
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Code" value={tier.code} disabled />
+          <Input label="Code" value={tier.code} onChange={() => {}} disabled />
           <Input label="Label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Basic / Standard / ..." />
         </div>
         <Input label="Tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Bersih dasar harian" />
