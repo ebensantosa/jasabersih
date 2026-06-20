@@ -224,13 +224,15 @@ function NewBooking() {
 
   // Auto-centang Deep Cleaning sekali aja saat first mount untuk simple service.
   // Kalau user uncheck, jangan auto-aktif lagi (useRef guard).
+  // Subscription default GENERAL - kalau customer mau deep cleaning, centang manual
+  // di section "Upgrade Deep Cleaning". Hindari surprise harga +40% otomatis.
   const deepDefaultedRef = useRef(false);
   useEffect(() => {
     if (isSimpleService && !isVacuum && !deepDefaultedRef.current) {
       setCleaningMode('deep');
       deepDefaultedRef.current = true;
     }
-    if (isVacuum) setCleaningMode('general');
+    if (isVacuum || isSubscription) setCleaningMode('general');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category?.code]);
 
@@ -1979,7 +1981,7 @@ function NewBooking() {
                 )}
               </Section>
 
-              {!isSimpleService && !isSubscription && <Section title="Upgrade Deep Cleaning (Opsional)">
+              {!isSimpleService && <Section title="Upgrade Deep Cleaning (Opsional)">
                 <Pressable
                   onPress={() => setCleaningMode(cleanMode === 'deep' ? 'general' : 'deep')}
                   className={`flex-row items-start gap-3 rounded-xl border p-3 ${
