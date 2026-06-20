@@ -143,12 +143,15 @@ export default function Login() {
               <ArrowLeft color="white" size={20} />
             </Pressable>
           </View>
-          <View className="px-6 pt-4 pb-4">
-            <BrandLogo size={52} showName />
-            <Text className="font-extrabold mt-6 text-3xl leading-9 text-white" style={{ letterSpacing: -0.5 }}>
+          <View className="px-6 pt-6 pb-6">
+            <BrandLogo size={56} showName />
+            <Text
+              className="font-extrabold mt-10 text-white"
+              style={{ fontSize: 32, letterSpacing: -0.8, lineHeight: 38 }}
+            >
               {t('login.welcome_emoji')}
             </Text>
-            <Text className="font-medium mt-2 text-sm leading-5 text-white/90">{t('login.subtitle')}</Text>
+            <Text className="font-medium mt-2 text-[14px] leading-5 text-white/85">{t('login.subtitle')}</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>

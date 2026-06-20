@@ -78,7 +78,7 @@ const TRANSLATIONS = {
     'lang.en': 'English',
     'lang.choose': 'Pilih Bahasa',
 
-    'login.welcome_emoji': 'Selamat Datang 👋',
+    'login.welcome_emoji': 'Selamat Datang',
     'login.subtitle': 'Masuk untuk lanjut pesan jasa bersih',
     'login.email': 'Email',
     'login.no_account': 'Belum punya akun?',
@@ -189,7 +189,7 @@ const TRANSLATIONS = {
     'lang.en': 'English',
     'lang.choose': 'Choose Language',
 
-    'login.welcome_emoji': 'Welcome 👋',
+    'login.welcome_emoji': 'Welcome',
     'login.subtitle': 'Sign in to continue booking',
     'login.email': 'Email',
     'login.no_account': "Don't have an account?",
