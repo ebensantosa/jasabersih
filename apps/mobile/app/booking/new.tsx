@@ -25,19 +25,22 @@ import {
   usePostRenoTargets,
 } from '../../src/lib/pricingConfig';
 import {
+  useBathroomSizes,
+  useDirtCharacters,
+  useFloorOptions,
+  useFloorTypes,
+  useFurnitureDensity,
+  useLargeScalePropertyTypes,
+  usePostRenoPropertyTypes,
+  usePropertyTypes,
+  useRoomFacilities,
+  useSubscriptionDays,
+} from '../../src/lib/formOptions';
+import {
   ADDONS as LOCAL_ADDONS,
-  DIRT_CHARACTERS,
-  FLOOR_OPTIONS,
-  FLOOR_TYPES,
-  FURNITURE_DENSITY,
-  LARGE_SCALE_PROPERTY_TYPES,
-  POST_RENO_PROPERTY_TYPES,
-  SUBSCRIPTION_DAYS,
   SUBSCRIPTION_TIERS,
   SUBSCRIPTION_VISITS_BY_PKG,
   PACKAGES as LOCAL_PACKAGES,
-  PROPERTY_TYPES,
-  ROOM_FACILITIES,
   SERVICE_CATEGORIES,
   formatRupiah,
   type FurnitureDensity,
@@ -116,6 +119,18 @@ function NewBooking() {
   const LARGE_SCALE_BATHROOM_RATE = useLargeScaleBathroomRate();
   const LARGE_SCALE_MAX_M2 = useLargeScaleMaxM2();
   const DIRT_LEVELS = useDirtLevels();
+
+  // Form options admin-controlled (fallback ke hardcoded catalog.ts).
+  const PROPERTY_TYPES = usePropertyTypes();
+  const LARGE_SCALE_PROPERTY_TYPES = useLargeScalePropertyTypes();
+  const POST_RENO_PROPERTY_TYPES = usePostRenoPropertyTypes();
+  const FLOOR_OPTIONS = useFloorOptions();
+  const FLOOR_TYPES = useFloorTypes();
+  const ROOM_FACILITIES = useRoomFacilities();
+  const DIRT_CHARACTERS = useDirtCharacters();
+  const FURNITURE_DENSITY = useFurnitureDensity();
+  const SUBSCRIPTION_DAYS = useSubscriptionDays();
+  const apiBathroomSizes = useBathroomSizes();
 
   // Prefer API packages for this service code (admin-editable). Fallback to local.
   const apiPackages = useApiPackagesForService(category?.code ?? '');
@@ -229,12 +244,8 @@ function NewBooking() {
   ];
   const [aptType, setAptType] = useState<string>('studio');
 
-  // Kamar mandi: variasi ukuran (multiplier ke harga paket)
-  const BATHROOM_SIZES = [
-    { code: 'kecil',  label: 'Kecil',  desc: '≤4m²',     mult: 1.0 },
-    { code: 'sedang', label: 'Sedang', desc: '4–8m²',    mult: 1.25 },
-    { code: 'besar',  label: 'Besar',  desc: '>8m²',     mult: 1.5 },
-  ];
+  // Kamar mandi: variasi ukuran (multiplier ke harga paket) - admin-controlled
+  const BATHROOM_SIZES = apiBathroomSizes;
   const [bathroomSize, setBathroomSize] = useState<string>('kecil');
   const isBathroom = category?.code === 'kamar_mandi';
   const bathroomMult = isBathroom ? (BATHROOM_SIZES.find((s) => s.code === bathroomSize)?.mult ?? 1) : 1;

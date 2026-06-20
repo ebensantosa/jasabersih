@@ -48,6 +48,9 @@ const PUBLIC_CONFIG_PREFIX_ALLOWLIST = [
   // utk hitung harga (post reno, large scale, dirt levels). Aman exposure
   // karena mobile butuh tau pricing utk display ke customer.
   'pricing.',
+  // Form options (property types, floor types, dll) - mobile butuh utk
+  // render dropdown/chips di booking form.
+  'forms.',
 ];
 
 const PUBLIC_CONFIG_EXACT_SQL = Array.from(PUBLIC_CONFIG_EXACT_ALLOWLIST)
