@@ -144,7 +144,7 @@ export default function Login() {
             </Pressable>
           </View>
           <View className="px-6 pt-6 pb-6">
-            <BrandLogo size={56} showName />
+            <BrandLogo size={64} showName />
             <Text
               className="font-extrabold mt-10 text-white"
               style={{ fontSize: 32, letterSpacing: -0.8, lineHeight: 38 }}
