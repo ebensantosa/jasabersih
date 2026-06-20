@@ -15,8 +15,9 @@ export class RetentionService {
     private readonly storage: StorageService,
   ) {}
 
-  // Run daily at 02:00 — clean old data while traffic low
-  @Cron('0 2 * * *')
+  // Run daily at 02:00 UTC = 09:00 WIB - sengaja off-peak (server timezone UTC).
+  // Pakai timezone explicit supaya konsisten lintas server config.
+  @Cron('0 2 * * *', { timeZone: 'UTC' })
   async scheduledRun(): Promise<void> {
     try {
       const r = await this.run();

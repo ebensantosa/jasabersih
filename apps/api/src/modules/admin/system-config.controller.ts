@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { RetentionService } from './retention.service';
 
 @ApiTags('admin-system-config')
 @ApiBearerAuth()
@@ -14,7 +15,20 @@ export class SystemConfigController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly retention: RetentionService,
   ) {}
+
+  // Manual trigger retention job - utk test atau emergency cleanup
+  @Post('retention/run')
+  @Roles('super_admin')
+  async runRetention(@CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+    const result = await this.retention.run();
+    await this.audit.log({
+      adminId: admin.id, action: 'retention.manual_run', resourceType: 'system',
+      changes: result, ipAddress: req.ip ?? null,
+    });
+    return { ok: true, ...result };
+  }
 
   // ============ COMMISSION TIERS ============
   @Get('commission-tiers')
