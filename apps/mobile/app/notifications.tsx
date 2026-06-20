@@ -1,5 +1,24 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Bell, MessageCircle, Wallet, ShieldAlert, Calendar } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  ArrowDownToLine,
+  Bell,
+  BellRing,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  CreditCard,
+  HelpCircle,
+  Megaphone,
+  MessageCircle,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Wallet,
+  XCircle,
+} from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -68,7 +87,7 @@ function NotificationsScreen() {
             contentContainerStyle={{ paddingBottom: 20 }}
             renderItem={({ item }) => (
               <Pressable onPress={() => onTap(item)} className={`mx-3 mt-2 flex-row gap-3 rounded-xl border ${item.isRead ? 'border-ink-100 bg-white' : 'border-brand-100 bg-brand-50'} p-3`}>
-                <ChannelIcon type={item.type} />
+                <ChannelIcon channel={item.type} data={item.data} />
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-ink-900">{item.title}</Text>
                   <Text className="font-sans mt-0.5 text-xs text-ink-600" numberOfLines={2}>{item.body}</Text>
@@ -86,17 +105,70 @@ function NotificationsScreen() {
   );
 }
 
-function ChannelIcon({ type }: { type: string }) {
-  const config: Record<string, { Icon: any; bg: string; color: string }> = {
-    chat: { Icon: MessageCircle, bg: '#DBEAFE', color: '#1D4ED8' },
-    booking: { Icon: Calendar, bg: '#D1FAE5', color: '#047857' },
-    wallet: { Icon: Wallet, bg: '#FEF3C7', color: '#B45309' },
-    system: { Icon: ShieldAlert, bg: '#FEE2E2', color: '#B91C1C' },
-  };
-  const cfg = config[type] ?? config.system!;
+type IconCfg = { Icon: any; bg: string; color: string };
+
+// Mapping spesifik berdasarkan data.type (lebih granular dari channel).
+// Tujuan: notif positif = warna positif (emerald/amber/brand), notif
+// negatif = warna negatif (rose/amber). Hindari merah utk semua karena
+// kesan-nya error padahal kebanyakan info.
+const TYPE_ICONS: Record<string, IconCfg> = {
+  // Rating
+  rating_received: { Icon: Star, bg: '#FEF3C7', color: '#B45309' },
+  rating_reminder: { Icon: Star, bg: '#FEF3C7', color: '#B45309' },
+
+  // Earnings & wallet (sukses = emerald, gagal = rose)
+  earnings_cleared: { Icon: Wallet, bg: '#D1FAE5', color: '#047857' },
+  wallet_credit: { Icon: Wallet, bg: '#D1FAE5', color: '#047857' },
+  withdrawal_approved: { Icon: ArrowDownToLine, bg: '#D1FAE5', color: '#047857' },
+  withdrawal_completed: { Icon: ArrowDownToLine, bg: '#D1FAE5', color: '#047857' },
+  withdrawal_rejected: { Icon: XCircle, bg: '#FEE2E2', color: '#B91C1C' },
+  withdrawal_failed: { Icon: XCircle, bg: '#FEE2E2', color: '#B91C1C' },
+
+  // Payment
+  payment_paid: { Icon: CheckCircle2, bg: '#D1FAE5', color: '#047857' },
+  payment_upcharge_paid: { Icon: CreditCard, bg: '#D1FAE5', color: '#047857' },
+  payment_tip_paid: { Icon: Sparkles, bg: '#FEF3C7', color: '#B45309' },
+  payment_confirmed: { Icon: CheckCircle2, bg: '#D1FAE5', color: '#047857' },
+  payment_underpaid: { Icon: ShieldAlert, bg: '#FEF3C7', color: '#B45309' },
+
+  // Booking lifecycle
+  matched: { Icon: Calendar, bg: '#DBEAFE', color: '#1D4ED8' },
+  on_the_way: { Icon: Calendar, bg: '#DBEAFE', color: '#1D4ED8' },
+  in_progress: { Icon: Calendar, bg: '#DBEAFE', color: '#1D4ED8' },
+  booking_completed: { Icon: CheckCircle2, bg: '#D1FAE5', color: '#047857' },
+  searching: { Icon: Search, bg: '#DBEAFE', color: '#1D4ED8' },
+
+  // KYC
+  kyc_approved: { Icon: ShieldCheck, bg: '#D1FAE5', color: '#047857' },
+  kyc_rejected: { Icon: ShieldAlert, bg: '#FEE2E2', color: '#B91C1C' },
+
+  // Chat
+  chat: { Icon: MessageCircle, bg: '#DBEAFE', color: '#1D4ED8' },
+
+  // Broadcast / system
+  broadcast: { Icon: Megaphone, bg: '#FEF3C7', color: '#B45309' },
+  reminder: { Icon: BellRing, bg: '#FEF3C7', color: '#B45309' },
+
+  // Job (cleaner side)
+  new_job: { Icon: ClipboardList, bg: '#DBEAFE', color: '#1D4ED8' },
+};
+
+// Fallback per channel kalau data.type gak match.
+const CHANNEL_ICONS: Record<string, IconCfg> = {
+  chat: { Icon: MessageCircle, bg: '#DBEAFE', color: '#1D4ED8' },
+  booking: { Icon: Calendar, bg: '#DBEAFE', color: '#1D4ED8' },
+  wallet: { Icon: Wallet, bg: '#D1FAE5', color: '#047857' },
+  system: { Icon: BellRing, bg: '#F1F5F9', color: '#475569' },
+};
+
+const DEFAULT_ICON: IconCfg = { Icon: HelpCircle, bg: '#F1F5F9', color: '#475569' };
+
+function ChannelIcon({ channel, data }: { channel: string; data: Record<string, unknown> | null }) {
+  const specificType = (data?.type as string | undefined) ?? '';
+  const cfg = TYPE_ICONS[specificType] ?? CHANNEL_ICONS[channel] ?? DEFAULT_ICON;
   return (
     <View style={{ backgroundColor: cfg.bg }} className="h-10 w-10 items-center justify-center rounded-full">
-      <cfg.Icon color={cfg.color} size={18} strokeWidth={2.2} />
+      <cfg.Icon color={cfg.color} size={18} strokeWidth={2.4} />
     </View>
   );
 }
