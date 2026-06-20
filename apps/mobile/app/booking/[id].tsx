@@ -513,28 +513,41 @@ function BookingDetail() {
         ? `Per Jam${booking.hourlyTierName ? ` · ${booking.hourlyTierName}` : ''}${booking.hours ? ` × ${booking.hours}j` : ''}`
         : 'Konsultasi WhatsApp';
 
-  // Full-screen searching mode: pesanan sudah dibayar - tidak ada cancel
+  // Full-screen searching mode: pesanan sudah dibayar - tidak ada cancel.
+  // SearchingCleanerView sekarang handle gradient + SafeArea sendiri (full-bleed).
+  // Tombol kembali beranda di-render absolute overlay biar gak ganggu layout
+  // gradient + status text di tengah.
   if (!isCleaner && booking.status === 'searching' && !searchTimeout) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 bg-ink-50">
-          <SafeAreaView edges={['top', 'bottom']} className="flex-1">
-            <View className="flex-1 justify-center px-4">
-              <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
-            </View>
-            <View className="gap-2 px-4 pb-4">
-              <Pressable
-                onPress={() => router.replace('/')}
-                className="items-center rounded-2xl bg-brand-600 py-3"
-              >
-                <Text className="font-bold text-sm text-white">Kembali ke beranda</Text>
-              </Pressable>
-              <Text className="px-2 text-center text-[11px] text-ink-500">
-                Pencarian tetap berjalan di latar. Notifikasi akan dikirim saat cleaner menerima.
-              </Text>
-            </View>
-          </SafeAreaView>
+        <View style={{ flex: 1 }}>
+          <SearchingCleanerView elapsedSec={elapsedSec} broadcastedTo={broadcastedTo} />
+          {/* Footer overlay - tombol kembali ke beranda */}
+          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+            <SafeAreaView edges={['bottom']}>
+              <View style={{ paddingHorizontal: 24, paddingBottom: 8, paddingTop: 4 }}>
+                <Pressable
+                  onPress={() => router.replace('/')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.18)',
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.35)',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
+                    Kembali ke beranda
+                  </Text>
+                </Pressable>
+                <Text style={{ marginTop: 6, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
+                  Pencarian tetap berjalan di latar. Notifikasi dikirim saat cleaner menerima.
+                </Text>
+              </View>
+            </SafeAreaView>
+          </View>
         </View>
       </>
     );
