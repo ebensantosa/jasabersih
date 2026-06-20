@@ -94,7 +94,7 @@ export class AppContentController {
   @Get('content')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async content() {
-    const [config, banners, services, addons, packages, announcement, serviceAreas, hourlyTiers] = await Promise.all([
+    const [config, banners, services, addons, packages, announcement, serviceAreas, hourlyTiers, subscriptionTiers] = await Promise.all([
       this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
         `
         SELECT key, value
@@ -151,6 +151,10 @@ export class AppContentController {
                cleaner_share_pct AS "cleanerSharePct"
           FROM pricing_hourly_tiers WHERE is_active = TRUE ORDER BY display_order ASC, price_per_hour ASC
       `,
+      this.prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT id, code, label, tagline, multiplier, scope, display_order AS "displayOrder"
+          FROM subscription_tiers WHERE is_active = TRUE ORDER BY display_order ASC
+      `,
     ]);
 
     // Convert config rows to flat object
@@ -166,6 +170,7 @@ export class AppContentController {
       services,
       addons,
       hourlyTiers,
+      subscriptionTiers,
       packages,
       announcement: announcement[0] ?? null,
       serviceAreas,

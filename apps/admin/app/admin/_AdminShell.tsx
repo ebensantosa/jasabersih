@@ -44,6 +44,7 @@ const NAV = [
   { href: '/admin/chat', label: 'Chat Audit', icon: MessageSquare },
   { href: '/admin/services', label: 'Layanan', icon: Sparkles },
   { href: '/admin/hourly-tiers', label: 'Tarif Per-Jam', icon: Clock },
+  { href: '/admin/subscription-tiers', label: 'Tier Berlangganan', icon: Clock },
   { href: '/admin/areas', label: 'Area Layanan', icon: MapPinned, badge: 'cityRequests' as const },
   { href: '/admin/cleaner-areas', label: 'Permintaan Area Cleaner', icon: MapPinned },
   { href: '/admin/content', label: 'Content / CMS', icon: FileText },

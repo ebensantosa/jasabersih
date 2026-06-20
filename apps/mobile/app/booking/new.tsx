@@ -42,7 +42,7 @@ import {
   type PropertyType,
 } from '../../src/data/catalog';
 import { useAddressesStore } from '../../src/stores/addresses';
-import { useApiAddons, useApiPackagesForService, useAppContent, useConfig } from '../../src/stores/appContent';
+import { useApiAddons, useApiPackagesForService, useApiSubscriptionTiers, useAppContent, useConfig } from '../../src/stores/appContent';
 import { checkCoverage } from '../../src/lib/coverage';
 import { useServices } from '../../src/hooks/useServices';
 import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
@@ -183,10 +183,14 @@ function NewBooking() {
   // Tier subscription: basic/standard/premium/ultimate. Bedanya scope layanan
   // tiap kunjungan + multiplier harga.
   const [subscriptionTier, setSubscriptionTier] = useState<'basic' | 'standard' | 'premium' | 'ultimate'>('standard');
+  // Pakai admin-controlled tiers dari API kalau ada. Fallback ke hardcoded
+  // catalog.ts kalau API belum return data (offline / belum migrate).
+  const apiSubscriptionTiers = useApiSubscriptionTiers();
+  const effectiveSubscriptionTiers = apiSubscriptionTiers.length > 0 ? apiSubscriptionTiers : SUBSCRIPTION_TIERS;
   const subscriptionTierMultiplier = useMemo(() => {
     if (!isSubscription) return 1;
-    return SUBSCRIPTION_TIERS.find((t) => t.code === subscriptionTier)?.multiplier ?? 1;
-  }, [isSubscription, subscriptionTier]);
+    return effectiveSubscriptionTiers.find((t) => t.code === subscriptionTier)?.multiplier ?? 1;
+  }, [isSubscription, subscriptionTier, effectiveSubscriptionTiers]);
   const subscriptionVisits = useMemo(() => {
     if (!isSubscription || !pkg) return 0;
     const match = SUBSCRIPTION_VISITS_BY_PKG.find((r) => r.match.test(pkg.name));
@@ -1397,7 +1401,7 @@ function NewBooking() {
               {false && isSubscription && (
                 <Section title="Pilih Tier Langganan">
                   <View className="gap-2">
-                    {SUBSCRIPTION_TIERS.map((t) => {
+                    {effectiveSubscriptionTiers.map((t) => {
                       const active = subscriptionTier === t.code;
                       const tierPrice = Math.round(basePrice * t.multiplier);
                       return (

@@ -173,6 +173,41 @@ export class AdminAppCmsController {
     return { ok: true };
   }
 
+  // =========== SUBSCRIPTION TIERS (Basic/Standard/Premium/Ultimate) ===========
+  @Get('subscription-tiers')
+  @Roles('super_admin', 'ops')
+  async listSubscriptionTiers() {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, code, label, tagline, multiplier, scope,
+             is_active AS "isActive", display_order AS "displayOrder",
+             updated_at AS "updatedAt"
+        FROM subscription_tiers ORDER BY display_order ASC
+    `;
+  }
+
+  @Patch('subscription-tiers/:id')
+  @Roles('super_admin', 'ops')
+  async updateSubscriptionTier(
+    @Param('id') id: string,
+    @Body() body: { label?: string; tagline?: string; multiplier?: number; scope?: string[]; isActive?: boolean; displayOrder?: number },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    await this.prisma.$executeRaw`
+      UPDATE subscription_tiers SET
+        label         = COALESCE(${body.label ?? null}, label),
+        tagline       = COALESCE(${body.tagline ?? null}, tagline),
+        multiplier    = COALESCE(${body.multiplier ?? null}, multiplier),
+        scope         = COALESCE(${body.scope ? JSON.stringify(body.scope) : null}::jsonb, scope),
+        is_active     = COALESCE(${body.isActive ?? null}, is_active),
+        display_order = COALESCE(${body.displayOrder ?? null}, display_order),
+        updated_at    = NOW()
+       WHERE id = ${id}::uuid
+    `;
+    await this.audit.log({ adminId: admin.id, action: 'subscription_tier.update', resourceType: 'subscription_tiers', resourceId: id, changes: body, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
   // =========== POPUPS ===========
   @Get('popups')
   @Roles('super_admin', 'ops')

@@ -30,6 +30,7 @@ export type Banner = { id: string; title: string; subtitle: string | null; image
 export type ServiceItem = { id: string; code: string; name: string; description: string | null; iconUrl: string | null; displayOrder: number | null; showOnHome?: boolean };
 export type Addon = { id: string; code: string | null; name: string; price: number; durationMin: number; description: string | null };
 export type HourlyTier = { id: string; code: string | null; name: string | null; description?: string | null; pricePerHour: number; minHours: number; maxHours?: number; cleanerSharePct: number };
+export type SubscriptionTier = { id: string; code: 'basic' | 'standard' | 'premium' | 'ultimate'; label: string; tagline: string | null; multiplier: number; scope: string[]; displayOrder: number };
 export type PackageItem = { id: string; serviceId: string; name: string; price: number; durationMin: number; scope: any };
 export type Announcement = { id: string; title: string; body: string; severity: 'info' | 'warning' | 'critical'; audience: string };
 export type CommissionTier = { id: string; rangeMin: number | null; rangeMax: number | null; shareNoTools: number; shareWithTools: number };
@@ -41,6 +42,7 @@ export type AppContent = {
   services: ServiceItem[];
   addons: Addon[];
   hourlyTiers: HourlyTier[];
+  subscriptionTiers: SubscriptionTier[];
   packages: PackageItem[];
   announcement: Announcement | null;
   commissionTiers: CommissionTier[];
@@ -53,6 +55,7 @@ const EMPTY: AppContent = {
   services: [],
   addons: [],
   hourlyTiers: [],
+  subscriptionTiers: [],
   packages: [],
   announcement: null,
   commissionTiers: [],
@@ -92,6 +95,7 @@ export const useAppContent = create<AppContentStore>((set, get) => ({
           services: data.services ?? [],
           addons: (data.addons ?? []).map((a: any) => ({ ...a, price: coerce(a.price) })),
           hourlyTiers: (data.hourlyTiers ?? []).map((t: any) => ({ ...t, pricePerHour: coerce(t.pricePerHour), minHours: coerce(t.minHours), maxHours: t.maxHours == null ? 8 : coerce(t.maxHours), cleanerSharePct: coerce(t.cleanerSharePct) })),
+          subscriptionTiers: (data.subscriptionTiers ?? []).map((t: any) => ({ id: t.id, code: t.code, label: t.label, tagline: t.tagline ?? null, multiplier: Number(t.multiplier ?? 1), scope: Array.isArray(t.scope) ? t.scope : [], displayOrder: Number(t.displayOrder ?? 0) })),
           packages: (data.packages ?? []).map((p: any) => ({ ...p, price: coerce(p.price) })),
           announcement: data.announcement ?? null,
           commissionTiers: (data.commissionTiers ?? []).map((c: any) => ({ ...c, rangeMin: c.rangeMin == null ? null : coerce(c.rangeMin), rangeMax: c.rangeMax == null ? null : coerce(c.rangeMax), shareNoTools: coerce(c.shareNoTools), shareWithTools: coerce(c.shareWithTools) })),
@@ -130,6 +134,10 @@ export function useApiAddons(): Addon[] {
 
 export function useApiHourlyTiers(): HourlyTier[] {
   return useAppContent((s) => s.content.hourlyTiers);
+}
+
+export function useApiSubscriptionTiers(): SubscriptionTier[] {
+  return useAppContent((s) => s.content.subscriptionTiers);
 }
 
 export function useApiPackagesForService(serviceCode: string): PackageItem[] {

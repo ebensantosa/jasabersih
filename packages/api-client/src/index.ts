@@ -344,6 +344,10 @@ export function createClient(opts: ClientOptions) {
       rejectCleanerAreaRequest: (id: string, reason?: string) =>
         request<{ ok: true }>('POST', `/admin/users/cleaner-area-requests/${id}/reject`, { reason }),
 
+      // Subscription tiers (Basic/Standard/Premium/Ultimate scope & multiplier)
+      subscriptionTiers: () => request<any[]>('GET', '/admin/app/subscription-tiers'),
+      updateSubscriptionTier: (id: string, body: any) => request<unknown>('PATCH', `/admin/app/subscription-tiers/${id}`, body),
+
       // Hourly tiers (per-jam booking pricing)
       hourlyTiers: () => request<any[]>('GET', '/admin/app/hourly-tiers'),
       createHourlyTier: (body: any) => request<{ id: string }>('POST', '/admin/app/hourly-tiers', body),
