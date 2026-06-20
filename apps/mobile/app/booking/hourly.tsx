@@ -267,20 +267,6 @@ export default function HourlyBooking() {
                       <Plus color={clampedHours >= maxH ? '#94A3B8' : 'white'} size={20} strokeWidth={2.6} />
                     </Pressable>
                   </View>
-                  {/* Quick presets */}
-                  <View className="mt-4 flex-row gap-2">
-                    {[2, 3, 4, 6].filter((h) => h >= minH && h <= maxH).map((h) => (
-                      <Pressable
-                        key={h}
-                        onPress={() => setHours(h)}
-                        className={`flex-1 rounded-lg border py-2 ${clampedHours === h ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                      >
-                        <Text className={`font-bold text-center text-[12px] ${clampedHours === h ? 'text-brand-700' : 'text-ink-600'}`}>
-                          {h}j
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
                 </View>
               )}
 
