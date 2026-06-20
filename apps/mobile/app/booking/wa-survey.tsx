@@ -76,17 +76,21 @@ export default function WaSurvey() {
   }
 
   function buildWaMessage(): string {
-    return [
+    const lines = [
       'Halo JasaBersih, saya ingin konsultasi via WhatsApp.',
       '',
       `Nama: ${profile?.name?.trim() || '-'}`,
       `No. HP akun: ${profile?.phone?.trim() || '-'}`,
       `Layanan: ${category?.name || '-'}`,
       `Alamat: ${address.trim() || '-'}`,
-      '',
-      'Deskripsi kebutuhan:',
-      description.trim(),
-    ].join('\n');
+    ];
+    // Include Google Maps link kalau customer udah pin lokasi - CS gampang
+    // navigate utk verifikasi lokasi & estimasi.
+    if (coords?.lat && coords?.lng) {
+      lines.push(`Lokasi: https://www.google.com/maps?q=${coords.lat},${coords.lng}`);
+    }
+    lines.push('', 'Deskripsi kebutuhan:', description.trim());
+    return lines.join('\n');
   }
 
   async function onSubmit(): Promise<void> {
