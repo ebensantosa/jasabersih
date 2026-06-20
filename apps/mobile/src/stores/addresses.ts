@@ -46,6 +46,8 @@ export const useAddressesStore = create<State>((set, get) => ({
   clearLocal() {
     storage.delete(KEY);
     set({ list: [], hydrated: true });
+    addressesLastSyncedAt = 0;
+    addressesSyncPromise = null;
   },
   async syncFromApi(force = false) {
     if (!force && addressesSyncPromise) return addressesSyncPromise;

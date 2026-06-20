@@ -32,11 +32,17 @@ export const useAuthStore = create<State>((set, get) => ({
   },
   logout: () => {
     // Unregister push token DULU sebelum clear tokens - perlu JWT valid.
-    // Tanpa ini, device tetap dapat notif user lama walau udah logout.
-    // Fire-and-forget, lazy-import biar gak ada circular dependency.
     void import('../lib/pushSetup').then(async (m) => {
       try { await m.unregisterPushAsync(); } catch {}
     }).catch(() => {});
+
+    // Disconnect socket connections - cegah kebocoran event jobs/chat
+    // ke session berikutnya (next user di device sama bisa kena event
+    // yg ditujukan ke user lama).
+    void Promise.all([
+      import('../lib/jobsSocket').then((m) => m.disconnectJobsSocket?.()),
+      import('../lib/chatSocket').then((m) => m.disconnectChatSocket?.()),
+    ]).catch(() => {});
 
     get().setTokens(null);
     // Wipe all user-bound caches so next session starts clean.
@@ -49,6 +55,7 @@ export const useAuthStore = create<State>((set, get) => ({
       import('./user').then((m) => m.useUserStore.getState().clear()),
       import('./suspended').then((m) => m.useSuspendedStore.getState().clear()),
       import('./cleanerKyc').then((m) => m.useCleanerKycStore.getState().clear()),
+      import('./notifications').then((m) => m.useNotifications.getState().clear?.()),
     ]).catch(() => {});
   },
   hydrate: () => {

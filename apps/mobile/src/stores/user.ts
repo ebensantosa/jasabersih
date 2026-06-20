@@ -75,6 +75,10 @@ export const useUserStore = create<State>((set, get) => ({
   clear() {
     storage.delete(STORAGE_KEY);
     set({ profile: null });
+    // Reset module-level cache supaya next user fetch fresh, gak ke-skip
+    // karena LastFetchedAt masih dalam stale window.
+    userLastFetchedAt = 0;
+    userFetchPromise = null;
   },
 }));
 

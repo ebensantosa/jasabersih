@@ -241,6 +241,8 @@ export const useBookingsStore = create<State>((set, get) => ({
   clearLocal() {
     storage.delete(BOOKINGS_KEY);
     set({ list: [], hydrated: true, syncError: null });
+    bookingsLastSyncedAt = 0;
+    bookingsSyncPromise = null;
   },
   async syncFromApi(force = false) {
     if (!force && bookingsSyncPromise) return bookingsSyncPromise;

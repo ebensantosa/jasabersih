@@ -23,6 +23,7 @@ type State = {
   loading: boolean;
   fetch: (force?: boolean) => Promise<void>;
   markAllRead: () => Promise<void>;
+  clear: () => void;
 };
 
 export const useNotifications = create<State>((set, get) => ({
@@ -52,5 +53,10 @@ export const useNotifications = create<State>((set, get) => ({
   async markAllRead() {
     try { await api.post('/notifications/mark-all-read'); } catch { /* fall through */ }
     set({ list: get().list.map((n) => ({ ...n, isRead: true })), unreadCount: 0 });
+  },
+  clear() {
+    set({ list: [], unreadCount: 0, loading: false });
+    notificationsLastFetchedAt = 0;
+    notificationsFetchPromise = null;
   },
 }));

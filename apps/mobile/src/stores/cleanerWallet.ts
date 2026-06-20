@@ -82,6 +82,8 @@ export const useCleanerWalletStore = create<State>((set, get) => ({
   clearLocal() {
     storage.delete(KEY);
     set({ entries: [], hydrated: true, serverBalance: 0, serverPendingAmount: 0, syncError: null });
+    cleanerWalletLastSyncedAt = 0;
+    cleanerWalletSyncPromise = null;
   },
   async syncFromApi(force = false) {
     if (!force && cleanerWalletSyncPromise) return cleanerWalletSyncPromise;
