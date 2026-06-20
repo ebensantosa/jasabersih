@@ -133,22 +133,22 @@ function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => 
       <div className="grid gap-3">
         <div className="grid grid-cols-2 gap-3">
           <Input label="Code" value={tier.code} onChange={() => {}} disabled />
-          <Input label="Label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Basic / Standard / ..." />
+          <Input label="Label" value={label} onChange={setLabel} placeholder="Basic / Standard / ..." />
         </div>
-        <Input label="Tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Bersih dasar harian" />
+        <Input label="Tagline" value={tagline} onChange={setTagline} placeholder="Bersih dasar harian" />
         <Input
           label="Multiplier Harga"
           type="number"
           value={String(multiplier)}
-          onChange={(e) => setMultiplier(Number(e.target.value))}
+          onChange={(v) => setMultiplier(Number(v))}
           hint="Contoh: 1.0 = harga normal, 1.25 = 25% lebih mahal, 1.85 = 85% lebih mahal"
         />
         <Textarea
           label="Scope Layanan (satu per baris)"
           value={scopeText}
-          onChange={(e) => setScopeText(e.target.value)}
+          onChange={setScopeText}
           rows={8}
-          hint="Tiap baris jadi 1 item bullet point. Contoh: 'Sapu & pel seluruh lantai'"
+          helpText="Tiap baris jadi 1 item bullet point. Contoh: 'Sapu & pel seluruh lantai'"
         />
         <div className="flex items-center justify-between rounded border p-2">
           <span className="text-sm">Aktif</span>
