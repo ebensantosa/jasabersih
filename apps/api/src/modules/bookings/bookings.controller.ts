@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -185,15 +186,44 @@ export class BookingsController {
     };
   }
 
+  // Anti-spam rate limit: max 10 create-booking per 10 menit per user.
+  // Realistically customer cuma buat 1-2 booking per session. 10 sengaja
+  // longgar utk power user, tapi cukup ketat utk auto-spam bot.
   @Post()
+  @Throttle({ default: { ttl: 10 * 60_000, limit: 10 } })
   async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateBookingSchema)) body: CreateBookingDto,
   ) {
-    // Anti-abuse: max active booking limit dihapus permanently per request user.
-    // Customer bebas buat berapa pun pesanan aktif simultan.
-    // Tapi limits config tetap di-load untuk voucherMaxUsesPerPhone di bawah.
     const limits = await this.abuse.get();
+
+    // Anti-abuse: hard-limit jumlah pending_payment concurrent per user.
+    // Default 0 = no limit (backward compat). Admin bisa set
+    // abuse.max_pending_payment_bookings di app_config (recommend: 5).
+    // Cek pakai $queryRawUnsafe karena `limits.maxActiveBookings` masih lama;
+    // pakai key baru terpisah supaya gak konflik.
+    const maxPendingCfgRows = await this.prisma.$queryRaw<{ value: any }[]>`
+      SELECT value FROM app_config WHERE key = 'abuse.max_pending_payment_bookings' LIMIT 1
+    `;
+    const maxPending = (() => {
+      const v = maxPendingCfgRows[0]?.value;
+      if (v == null) return 0;
+      const n = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    })();
+    if (maxPending > 0) {
+      const cnt = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM bookings
+         WHERE customer_id = ${user.id}::uuid
+           AND status = 'pending_payment'
+           AND created_at > NOW() - INTERVAL '24 hours'
+      `;
+      if (Number(cnt[0]?.c ?? 0) >= maxPending) {
+        throw new BadRequestException(
+          `Kamu punya ${cnt[0]?.c ?? 0} pesanan belum dibayar (max ${maxPending}). Selesaikan pembayaran atau batalkan dulu sebelum buat order baru.`
+        );
+      }
+    }
     // Hitung travel fee — kalau out-of-range, throw BadRequest (mobile arahkan ke WA)
     const lat = body.lat ?? -7.7956;
     const lng = body.lng ?? 110.3695;
