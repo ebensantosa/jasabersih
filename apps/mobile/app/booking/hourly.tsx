@@ -21,6 +21,8 @@ import { toast } from '../../src/stores/ui';
 
 const OPS_START_HOUR = 7;
 const OPS_END_HOUR = 21;
+const NOTES_MIN_LEN = 15;
+const NOTES_MAX_LEN = 500;
 
 function rupiah(n: number): string {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
@@ -117,6 +119,10 @@ export default function HourlyBooking() {
     if (!address.trim()) { toast.error('Alamat wajib diisi'); return; }
     if (!coords) { toast.error('Pin lokasi di peta dulu biar cleaner bisa nyari'); return; }
     if (!notes.trim()) { toast.error('Deskripsi pekerjaan wajib diisi'); return; }
+    if (notes.trim().length < NOTES_MIN_LEN) {
+      toast.error(`Deskripsi minimal ${NOTES_MIN_LEN} karakter (sekarang ${notes.trim().length})`);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -324,20 +330,31 @@ export default function HourlyBooking() {
 
               {/* Notes */}
               <View className="mt-3 rounded-2xl bg-white p-4 shadow-sm" style={{ elevation: 3 }}>
-                <Text className="font-bold text-sm text-ink-900">Deskripsi Pekerjaan</Text>
+                <View className="flex-row items-center justify-between">
+                  <Text className="font-bold text-sm text-ink-900">Deskripsi Pekerjaan</Text>
+                  <Text className={`font-semibold text-[10px] ${notes.length > NOTES_MAX_LEN ? 'text-rose-600' : 'text-ink-400'}`}>
+                    {notes.length} / {NOTES_MAX_LEN}
+                  </Text>
+                </View>
                 <Text className="font-sans mt-1 mb-2 text-[11px] text-ink-500">
                   Wajib diisi agar cleaner tahu area dan prioritas yang harus dibersihkan
                 </Text>
                 <TextInput
                   value={notes}
-                  onChangeText={setNotes}
+                  onChangeText={(v) => setNotes(v.slice(0, NOTES_MAX_LEN))}
                   placeholder="Contoh: Fokus bersihkan toilet, lantai, wastafel, kaca, dan dinding area basah terlebih dahulu"
                   placeholderTextColor="#94A3B8"
                   multiline
                   numberOfLines={3}
+                  maxLength={NOTES_MAX_LEN}
                   className="font-sans rounded-xl border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900"
                   style={{ minHeight: 70, textAlignVertical: 'top' }}
                 />
+                {notes.length > 0 && notes.length < NOTES_MIN_LEN && (
+                  <Text className="font-medium mt-1.5 text-[10px] text-amber-700">
+                    Minimal {NOTES_MIN_LEN} karakter ({NOTES_MIN_LEN - notes.length} lagi)
+                  </Text>
+                )}
               </View>
 
               {/* Schedule */}
