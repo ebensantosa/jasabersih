@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BellRing, MapPin, Search, Users } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const STATUS_MESSAGES: { min: number; text: string }[] = [
@@ -17,9 +17,11 @@ type Props = {
   elapsedSec: number;
   timeoutSec?: number;
   broadcastedTo?: number;
+  /** Optional CTA tombol di bawah - bisa dipake render 'Kembali ke beranda' */
+  footerCta?: { label: string; onPress: () => void; helper?: string };
 };
 
-export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo }: Props) {
+export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo, footerCta }: Props) {
   const safeElapsed = Number.isFinite(elapsedSec) ? Math.max(0, elapsedSec) : 0;
   const safeTimeout = Number.isFinite(timeoutSec) && timeoutSec > 0 ? timeoutSec : 15 * 60;
   const remainingSec = Math.max(0, safeTimeout - safeElapsed);
@@ -220,6 +222,32 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
                 ? 'Customer service melanjutkan pencarian manual'
                 : `Sisa ${minLeft}:${String(secLeft).padStart(2, '0')} sebelum CS mengambil alih`}
             </Text>
+
+            {/* Footer CTA - inline (bukan absolute overlay) supaya layout di atasnya kompensasi space */}
+            {footerCta && (
+              <View style={{ marginTop: 18 }}>
+                <Pressable
+                  onPress={footerCta.onPress}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.18)',
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.35)',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
+                    {footerCta.label}
+                  </Text>
+                </Pressable>
+                {footerCta.helper && (
+                  <Text style={{ marginTop: 6, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
+                    {footerCta.helper}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         </View>
       </SafeAreaView>
