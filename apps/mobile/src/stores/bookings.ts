@@ -398,7 +398,11 @@ export const useBookingsStore = create<State>((set, get) => ({
   },
   create: async ({ initialStatus, ...b }) => {
     const tempId = 'bk_' + Math.random().toString(36).slice(2, 10);
-    const status: BookingStatus = initialStatus ?? 'searching';
+    // Default 'pending_payment' supaya payment screen tidak mistake "auto-finish"
+    // saat booking baru ditambah ke local store sebelum API confirm.
+    // Caller boleh override via initialStatus (e.g., wa_survey pakai
+    // 'wa_survey_pending').
+    const status: BookingStatus = initialStatus ?? 'pending_payment';
     const booking: Booking = {
       ...b,
       id: tempId,

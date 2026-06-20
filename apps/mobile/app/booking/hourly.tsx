@@ -121,6 +121,9 @@ export default function HourlyBooking() {
     setSubmitting(true);
     try {
       const booking = await create({
+        // initialStatus = pending_payment supaya payment screen tidak auto-finish.
+        // Default 'searching' bikin payment screen mengira booking udah bayar.
+        initialStatus: 'pending_payment',
         pricingMode: 'hourly',
         categoryCode: category?.code ?? 'hourly',
         categoryName: category?.name ?? tier.name ?? 'Per Jam',
