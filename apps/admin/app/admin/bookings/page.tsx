@@ -867,13 +867,29 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [cleanerSearch, setCleanerSearch] = useState('');
   const [showCleanerList, setShowCleanerList] = useState(false);
   const [selectedCleanerName, setSelectedCleanerName] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerMatches, setCustomerMatches] = useState<{ id: string; name: string; phone: string }[]>([]);
+  const [showCustomerList, setShowCustomerList] = useState(false);
+  const [selectedCustomerLabel, setSelectedCustomerLabel] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     api.admin.serviceAreas().then((r: any) => setServiceAreas(r ?? [])).catch(() => {});
   }, []);
 
-  // Debounced server-side search (scale-ready untuk ribuan cleaner)
+  // Debounced search customer
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!customerSearch.trim()) { setCustomerMatches([]); return; }
+      try {
+        const r = await api.admin.listUsers({ q: customerSearch.trim(), role: 'customer' }) as any[];
+        setCustomerMatches(r.slice(0, 20).map((u) => ({ id: u.id, name: u.name ?? u.phone, phone: u.phone })));
+      } catch {}
+    }, 250);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+
+  // Debounced server-side search cleaner
   useEffect(() => {
     const t = setTimeout(async () => {
       try {
@@ -886,7 +902,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   async function submit() {
     if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount || !form.cityName) {
-      toast.error('Field wajib kosong — pastikan Kota sudah dipilih'); return;
+      toast.error('Field wajib kosong — pastikan No HP Customer dan Kota sudah diisi'); return;
     }
     const amount = parseInt(form.totalAmount.replace(/[^\d]/g, ''), 10);
     if (!amount || amount <= 0) { toast.error('Total amount tidak valid'); return; }
@@ -916,8 +932,50 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
       </div>
     }>
       <div className="space-y-3">
+        {/* Customer search */}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="No HP Customer" required value={form.customerPhone} onChange={(v) => setForm({ ...form, customerPhone: v })} placeholder="08123456789" />
+          <div className="relative">
+            <label className="block text-xs font-semibold text-slate-700">No HP Customer <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              value={selectedCustomerLabel || customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomerLabel('');
+                setForm({ ...form, customerPhone: e.target.value, customerName: '' });
+                setShowCustomerList(true);
+              }}
+              onFocus={() => { if (customerSearch) setShowCustomerList(true); }}
+              onBlur={() => setTimeout(() => setShowCustomerList(false), 150)}
+              placeholder="Cari nama/HP, atau ketik HP baru"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            {form.customerPhone && (
+              <button type="button" onClick={() => { setForm({ ...form, customerPhone: '', customerName: '' }); setSelectedCustomerLabel(''); setCustomerSearch(''); }}
+                className="absolute right-2 top-7 text-xs text-slate-400 hover:text-red-600">×</button>
+            )}
+            {showCustomerList && customerMatches.length > 0 && (
+              <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                {customerMatches.map((c) => (
+                  <button key={c.id} type="button" onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setForm({ ...form, customerPhone: c.phone, customerName: c.name });
+                      setSelectedCustomerLabel(`${c.name} (${c.phone})`);
+                      setCustomerSearch('');
+                      setShowCustomerList(false);
+                    }}
+                    className="block w-full border-b border-slate-100 px-3 py-2 text-left text-xs hover:bg-slate-50 last:border-b-0"
+                  >
+                    <div className="font-semibold text-slate-900">{c.name}</div>
+                    <div className="text-[10px] text-slate-500">{c.phone}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {!selectedCustomerLabel && customerSearch && customerMatches.length === 0 && (
+              <p className="mt-1 text-[10px] text-slate-500">Customer baru — akan dibuatkan akun otomatis</p>
+            )}
+          </div>
           <Input label="Nama Customer (kalau baru)" value={form.customerName} onChange={(v) => setForm({ ...form, customerName: v })} placeholder="Optional, kalau customer baru" />
         </div>
         <div className="grid grid-cols-2 gap-3">
