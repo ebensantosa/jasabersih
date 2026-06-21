@@ -31,7 +31,12 @@ export class LoginProtectionService {
 
     if (!activeLock) return;
 
-    const remainingSec = Math.max(1, Math.ceil((activeLock - Date.now()) / 1000));
+    const remainingSec = Math.ceil((activeLock - Date.now()) / 1000);
+    // Lock sudah hampir expired (<=2 detik) — clear saja daripada user stuck di "1 detik".
+    if (remainingSec <= 2) {
+      await this.clearFailures(identifier, meta);
+      return;
+    }
     throw new HttpException(
       {
         code: 'LOGIN_TEMP_LOCKED',

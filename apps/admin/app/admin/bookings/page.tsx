@@ -860,12 +860,18 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     cleanerId: '',
     paymentStatus: 'unpaid' as 'unpaid' | 'paid',
     adminNote: '',
+    cityName: '',
   });
+  const [serviceAreas, setServiceAreas] = useState<{ id: string; name: string; city: string }[]>([]);
   const [cleanerMatches, setCleanerMatches] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [cleanerSearch, setCleanerSearch] = useState('');
   const [showCleanerList, setShowCleanerList] = useState(false);
   const [selectedCleanerName, setSelectedCleanerName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.admin.serviceAreas().then((r: any) => setServiceAreas(r ?? [])).catch(() => {});
+  }, []);
 
   // Debounced server-side search (scale-ready untuk ribuan cleaner)
   useEffect(() => {
@@ -879,8 +885,8 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
   }, [cleanerSearch]);
 
   async function submit() {
-    if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount) {
-      toast.error('Field wajib kosong'); return;
+    if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount || !form.cityName) {
+      toast.error('Field wajib kosong — pastikan Kota sudah dipilih'); return;
     }
     const amount = parseInt(form.totalAmount.replace(/[^\d]/g, ''), 10);
     if (!amount || amount <= 0) { toast.error('Total amount tidak valid'); return; }
@@ -896,6 +902,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
         cleanerId: form.cleanerId || undefined,
         paymentStatus: form.paymentStatus,
         adminNote: form.adminNote.trim() || undefined,
+        cityName: form.cityName || undefined,
       });
       onCreated();
     } catch (e: any) { toast.error(e?.message ?? 'Gagal create'); } finally { setSubmitting(false); }
@@ -913,7 +920,23 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
           <Input label="No HP Customer" required value={form.customerPhone} onChange={(v) => setForm({ ...form, customerPhone: v })} placeholder="08123456789" />
           <Input label="Nama Customer (kalau baru)" value={form.customerName} onChange={(v) => setForm({ ...form, customerName: v })} placeholder="Optional, kalau customer baru" />
         </div>
-        <Input label="Alamat" required value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} placeholder="Jl. Mawar No. 5, Yogyakarta" />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Alamat" required value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} placeholder="Jl. Mawar No. 5, Yogyakarta" />
+          <div>
+            <label className="block text-xs font-semibold text-slate-700">Kota / Area Layanan <span className="text-red-500">*</span></label>
+            <select
+              value={form.cityName}
+              onChange={(e) => setForm({ ...form, cityName: e.target.value })}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              required
+            >
+              <option value="">-- Pilih Kota --</option>
+              {serviceAreas.map((a) => (
+                <option key={a.id} value={a.city}>{a.name} ({a.city})</option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Tanggal & Jam" required type="datetime-local" value={form.scheduledAt} onChange={(v) => setForm({ ...form, scheduledAt: v })} />
           <Input label="Total Bayar (Rp)" required value={form.totalAmount} onChange={(v) => setForm({ ...form, totalAmount: v.replace(/[^\d]/g, '') })} placeholder="150000" />
