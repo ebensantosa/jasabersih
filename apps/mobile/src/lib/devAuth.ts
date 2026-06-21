@@ -27,11 +27,11 @@ export async function login(email: string, password: string): Promise<AuthResult
     );
     tokens = res.data.data;
   } catch (error: any) {
-    const message =
-      error?.response?.data?.error?.message
-      ?? error?.message
-      ?? 'Tidak bisa terhubung ke server';
-    throw new Error(message);
+    const body = error?.response?.data?.error ?? error?.response?.data;
+    const message = body?.message ?? error?.message ?? 'Tidak bisa terhubung ke server';
+    const err = new Error(message) as Error & { details?: Record<string, unknown> };
+    if (body?.details) err.details = body.details;
+    throw err;
   }
 
   // Fetch real profile using the freshly-issued access token

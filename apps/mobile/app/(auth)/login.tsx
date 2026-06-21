@@ -32,9 +32,26 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const submittingRef = useRef(false);
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+
+  function startCooldown(seconds: number) {
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    setCooldown(seconds);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((s) => {
+        if (s <= 1) {
+          clearInterval(cooldownRef.current!);
+          cooldownRef.current = null;
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  }
 
   function getSafeNextPath(raw?: string | string[]): string | null {
     const value = Array.isArray(raw) ? raw[0] : raw;
@@ -62,7 +79,7 @@ export default function Login() {
   }
 
   async function onLogin() {
-    if (submittingRef.current) return;
+    if (submittingRef.current || cooldown > 0) return;
     if (!validate()) {
       toast.error('Periksa input yang masih kosong/salah');
       return;
@@ -101,22 +118,27 @@ export default function Login() {
         router.replace(safeNext ?? '/(tabs)');
       }
     } catch (e) {
-      const raw = (e as Error).message ?? 'Login gagal';
-      // Map pesan teknis backend ke pesan ramah user.
+      const err = e as Error & { details?: { remainingSeconds?: number } };
+      const raw = err.message ?? 'Login gagal';
       let userMsg = raw;
       const lc = raw.toLowerCase();
       if (lc.includes('invalid') || lc.includes('wrong') || lc.includes('salah') || lc.includes('credential') || lc.includes('401') || lc.includes('not found')) {
         userMsg = 'Email/Nomor HP atau password kamu salah. Coba cek lagi ya.';
       } else if (lc.includes('percobaan login') || lc.includes('login_temp_locked')) {
         userMsg = raw;
+        const secs = err.details?.remainingSeconds ?? (() => {
+          const m = raw.match(/(\d+)\s*detik/);
+          return m ? parseInt(m[1], 10) : 0;
+        })();
+        if (secs > 0) startCooldown(secs);
       } else if (lc.includes('network') || lc.includes('fetch') || lc.includes('timeout') || lc.includes('abort')) {
         userMsg = 'Koneksi internet bermasalah. Pastikan sinyal/Wi-Fi stabil & coba lagi.';
       } else if (lc.includes('too many') || lc.includes('rate') || lc.includes('429')) {
         userMsg = 'Terlalu banyak percobaan. Tunggu 1 menit sebelum coba lagi.';
+        startCooldown(60);
       } else if (lc.includes('suspend') || lc.includes('blocked') || lc.includes('disabled')) {
         userMsg = 'Akun kamu di-suspend. Hubungi customer service.';
       }
-      // Cuma red border di dua field - pesan asli di toast. Hindari duplikasi text.
       setErrors({ email: ' ', password: ' ' });
       toast.error(userMsg);
     } finally {
@@ -242,12 +264,12 @@ export default function Login() {
           {/* Primary CTA */}
           <Pressable
             onPress={onLogin}
-            disabled={loading}
-            className={`mt-5 items-center rounded-2xl py-4 ${loading ? 'bg-brand-400' : 'bg-brand-600'}`}
+            disabled={loading || cooldown > 0}
+            className={`mt-5 items-center rounded-2xl py-4 ${loading || cooldown > 0 ? 'bg-brand-400' : 'bg-brand-600'}`}
             style={{ elevation: 3, shadowColor: '#1D4ED8', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}
           >
             <Text className="font-bold text-sm text-white">
-              {loading ? t('login.signing_in') : t('auth.login')}
+              {loading ? t('login.signing_in') : cooldown > 0 ? `Coba lagi dalam ${cooldown} detik` : t('auth.login')}
             </Text>
           </Pressable>
 
