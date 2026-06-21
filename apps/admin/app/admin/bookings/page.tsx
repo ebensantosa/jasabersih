@@ -871,10 +871,12 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [customerMatches, setCustomerMatches] = useState<{ id: string; name: string; phone: string }[]>([]);
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [selectedCustomerLabel, setSelectedCustomerLabel] = useState('');
+  const [adminCustomer, setAdminCustomer] = useState<{ id: string; name: string; phone: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     api.admin.serviceAreas().then((r: any) => setServiceAreas(r ?? [])).catch(() => {});
+    api.admin.getAdminCustomer().then(setAdminCustomer).catch(() => {});
   }, []);
 
   // Debounced search customer
@@ -933,6 +935,22 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     }>
       <div className="space-y-3">
         {/* Customer search */}
+        {adminCustomer && (
+          <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+            <span className="text-xs text-blue-700">Pesanan atas nama admin?</span>
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ ...form, customerPhone: adminCustomer.phone, customerName: adminCustomer.name });
+                setSelectedCustomerLabel(`${adminCustomer.name} · ${adminCustomer.phone}`);
+                setCustomerSearch('');
+              }}
+              className="ml-auto rounded-md bg-blue-700 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-800"
+            >
+              Gunakan Akun Admin
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="relative col-span-2">
             <label className="block text-xs font-semibold text-slate-700">Customer <span className="text-red-500">*</span></label>

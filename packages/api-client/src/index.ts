@@ -114,6 +114,7 @@ export function createClient(opts: ClientOptions) {
         request<{ booking: any; photos: { id: string; photoType: string; url: string; uploadedAt: string }[]; charges: any[]; payments: any[] }>(
           'GET', `/admin/bookings/${bookingId}`,
         ),
+      getAdminCustomer: () => request<{ id: string; name: string; phone: string }>('GET', '/admin/bookings/admin-customer'),
       createManualBooking: (body: {
         customerPhone: string; customerName?: string;
         pricingMode: 'package' | 'hourly' | 'wa_survey';

@@ -24,6 +24,27 @@ export class AdminBookingsController {
     private readonly referralPayout: ReferralPayoutService,
   ) {}
 
+  // Ambil atau buat akun customer khusus admin (phone: +62000000000001, name: "Admin JasaBersih").
+  // Dipakai sebagai customer_id untuk manual booking yang dibuat admin sendiri.
+  @Get('admin-customer')
+  @Roles('super_admin', 'ops', 'support')
+  async getAdminCustomer() {
+    const ADMIN_PHONE = '+62000000000001';
+    const existing = await this.prisma.$queryRaw<{ id: string; name: string; phone: string }[]>`
+      SELECT id, name, phone FROM users WHERE phone = ${ADMIN_PHONE} LIMIT 1
+    `;
+    if (existing.length > 0) return existing[0];
+
+    const bcrypt = require('bcrypt');
+    const passwordHash = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 12);
+    const rows = await this.prisma.$queryRaw<{ id: string; name: string; phone: string }[]>`
+      INSERT INTO users (phone, name, email, password_hash, phone_verified_at, is_customer, status)
+      VALUES (${ADMIN_PHONE}, 'Admin JasaBersih', 'admin-booking@jasabersih.internal', ${passwordHash}, NOW(), TRUE, 'active')
+      RETURNING id, name, phone
+    `;
+    return rows[0];
+  }
+
   // Admin manual create booking — biasanya untuk customer yg order via WA/telp,
   // atau perbaikan booking yang gagal create otomatis.
   @Post()
