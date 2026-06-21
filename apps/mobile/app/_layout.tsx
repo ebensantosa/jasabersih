@@ -200,7 +200,8 @@ export default function RootLayout() {
       }
       setUserId(String((profile as any).id ?? (profile as any).userId ?? ''));
       await syncSessionData(profile);
-      void registerForPushAsync().catch(() => {});
+      const currentMode = useModeStore.getState().mode;
+      void registerForPushAsync(currentMode === 'freelancer' ? 'freelancer' : 'customer').catch(() => {});
       setAuthReady(true);
     })();
   }, [accessToken, refreshAuth, fetchUser, syncAddresses, syncBookings, syncWallet]);

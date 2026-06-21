@@ -42,8 +42,8 @@ export async function unregisterPushAsync(): Promise<void> {
 }
 
 // Call after user is authenticated. Idempotent.
-export async function registerForPushAsync(): Promise<string | null> {
-  if (registered) return currentToken;
+export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Promise<string | null> {
+  if (registered && !mode) return currentToken; // skip kalau sudah registered dan bukan mode-switch
 
   // Android: bikin channel default + custom channels
   if (Platform.OS === 'android') {
@@ -92,6 +92,7 @@ export async function registerForPushAsync(): Promise<string | null> {
       deviceId,
       platform: Platform.OS,
       deviceFingerprint: `${Device.brand ?? ''}-${Device.modelName ?? ''}-${Device.osVersion ?? ''}`,
+      mode,
     });
     registered = true;
     currentToken = token;

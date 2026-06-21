@@ -9,6 +9,8 @@ export type PushPayload = {
   body: string;
   data?: Record<string, unknown>;
   channel?: 'booking' | 'chat' | 'wallet' | 'system';
+  // Kalau diisi, hanya kirim ke device yang mode-nya cocok (cegah notif cleaner masuk ke device customer dan sebaliknya)
+  targetMode?: 'customer' | 'freelancer';
 };
 
 @Injectable()
@@ -16,14 +18,38 @@ export class PushService {
   private readonly log = new Logger(PushService.name);
   constructor(private readonly prisma: PrismaService) {}
 
+  // Infer targetMode dari data.type kalau caller tidak set explisit.
+  // Job/cleaner notif → hanya ke device yg sedang mode freelancer.
+  // Booking customer notif → hanya ke device yg sedang mode customer.
+  private inferTargetMode(payload: PushPayload): 'customer' | 'freelancer' | null {
+    if (payload.targetMode) return payload.targetMode;
+    const type = (payload.data as any)?.type ?? '';
+    if (['job_available', 'job_assigned', 'job_accepted', 'job_rejected', 'job_completed',
+         'kyc_approved', 'kyc_rejected', 'withdrawal_approved', 'withdrawal_rejected',
+         'cleaner_inactivity'].some((t) => type.startsWith(t) || type === t)) {
+      return 'freelancer';
+    }
+    if (['booking_matched', 'booking_confirmed', 'booking_completed', 'booking_canceled',
+         'booking_created', 'payment_confirmed'].some((t) => type.startsWith(t) || type === t)) {
+      return 'customer';
+    }
+    return null; // system/wallet notif → kirim ke semua mode
+  }
+
   // Send push notif via Expo. Looks up all user_devices.fcm_token rows for userId.
   // Records to notification_logs (sent/failed) + creates notifications row.
   async send(payload: PushPayload): Promise<{ sent: number; failed: number }> {
+    const targetMode = this.inferTargetMode(payload);
     const tokens = await this.prisma.$queryRaw<{ fcm_token: string | null }[]>`
       SELECT fcm_token FROM user_devices
        WHERE user_id = ${payload.userId}::uuid
          AND fcm_token IS NOT NULL
          AND fcm_token <> ''
+         AND (
+           ${targetMode}::text IS NULL
+           OR current_mode IS NULL
+           OR current_mode = ${targetMode}
+         )
     `;
     const validTokens = tokens
       .map((t) => t.fcm_token!)

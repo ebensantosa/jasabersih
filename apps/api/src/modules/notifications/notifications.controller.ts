@@ -17,29 +17,40 @@ export class NotificationsController {
   @Post('register-token')
   async register(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { token: string; deviceId: string; platform?: string; deviceFingerprint?: string },
+    @Body() body: { token: string; deviceId: string; platform?: string; deviceFingerprint?: string; mode?: 'customer' | 'freelancer' },
   ) {
     if (!body?.token || !body?.deviceId) throw new BadRequestException('token & deviceId wajib.');
-    // FIX: 1 token = 1 user. Sebelumnya constraint (user_id, fcm_token) bikin
-    // device yang dipake login berturut-turut user A -> logout -> user B punya 2 row
-    // (A+token & B+token), notif tetap masuk ke device walau user A sebenarnya
-    // udah logout. Solusi: delete row lain yang punya token sama (beda user_id)
-    // sebelum upsert. Ini bikin token effectively unique per device, ownership
-    // pindah ke user terakhir yg login.
+    const mode = body.mode ?? null;
+    // 1 token = 1 user — pindah ownership ke user terakhir login.
     await this.prisma.$executeRaw`
       DELETE FROM user_devices
        WHERE fcm_token = ${body.token} AND user_id <> ${user.id}::uuid
     `;
-    await this.prisma.$executeRaw`
-      INSERT INTO user_devices (user_id, device_id, fcm_token, platform, device_fingerprint, last_active_at)
-      VALUES (${user.id}::uuid, ${body.deviceId}, ${body.token}, ${body.platform ?? null}, ${body.deviceFingerprint ?? null}, NOW())
-      ON CONFLICT (user_id, fcm_token) WHERE fcm_token IS NOT NULL
-      DO UPDATE SET
-        last_active_at = NOW(),
-        device_id = EXCLUDED.device_id,
-        platform = COALESCE(EXCLUDED.platform, user_devices.platform),
-        device_fingerprint = COALESCE(EXCLUDED.device_fingerprint, user_devices.device_fingerprint)
-    `;
+    try {
+      await this.prisma.$executeRaw`
+        INSERT INTO user_devices (user_id, device_id, fcm_token, platform, device_fingerprint, current_mode, last_active_at)
+        VALUES (${user.id}::uuid, ${body.deviceId}, ${body.token}, ${body.platform ?? null}, ${body.deviceFingerprint ?? null}, ${mode}, NOW())
+        ON CONFLICT (user_id, fcm_token) WHERE fcm_token IS NOT NULL
+        DO UPDATE SET
+          last_active_at = NOW(),
+          device_id = EXCLUDED.device_id,
+          platform = COALESCE(EXCLUDED.platform, user_devices.platform),
+          device_fingerprint = COALESCE(EXCLUDED.device_fingerprint, user_devices.device_fingerprint),
+          current_mode = COALESCE(EXCLUDED.current_mode, user_devices.current_mode)
+      `;
+    } catch {
+      // Kolom current_mode belum ada di DB — fallback tanpa kolom itu
+      await this.prisma.$executeRaw`
+        INSERT INTO user_devices (user_id, device_id, fcm_token, platform, device_fingerprint, last_active_at)
+        VALUES (${user.id}::uuid, ${body.deviceId}, ${body.token}, ${body.platform ?? null}, ${body.deviceFingerprint ?? null}, NOW())
+        ON CONFLICT (user_id, fcm_token) WHERE fcm_token IS NOT NULL
+        DO UPDATE SET
+          last_active_at = NOW(),
+          device_id = EXCLUDED.device_id,
+          platform = COALESCE(EXCLUDED.platform, user_devices.platform),
+          device_fingerprint = COALESCE(EXCLUDED.device_fingerprint, user_devices.device_fingerprint)
+      `;
+    }
     return { ok: true };
   }
 
