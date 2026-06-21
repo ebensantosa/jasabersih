@@ -862,7 +862,11 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     adminNote: '',
     cityName: '',
     customerNotes: '',
+    lat: -7.7956,
+    lng: 110.3695,
   });
+  const [geocoding, setGeocoding] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
   const [serviceAreas, setServiceAreas] = useState<{ id: string; name: string; city: string }[]>([]);
   const [cleanerMatches, setCleanerMatches] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [cleanerSearch, setCleanerSearch] = useState('');
@@ -918,6 +922,29 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     }
   }
 
+  async function geocodeAddress() {
+    if (!form.addressLine.trim()) return;
+    setGeocoding(true);
+    try {
+      const q = encodeURIComponent(form.addressLine + (form.cityName ? `, ${form.cityName}` : ''));
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+        headers: { 'Accept-Language': 'id', 'User-Agent': 'JasaBersih-Admin/1.0' },
+      });
+      const data = await res.json();
+      if (data[0]) {
+        setForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
+        setMapKey((k) => k + 1);
+        toast.success('Titik lokasi ditemukan');
+      } else {
+        toast.error('Alamat tidak ditemukan di peta');
+      }
+    } catch {
+      toast.error('Gagal geocode alamat');
+    } finally {
+      setGeocoding(false);
+    }
+  }
+
   async function submit() {
     if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount || !form.cityName) {
       toast.error('Field wajib kosong — pastikan No HP Customer dan Kota sudah diisi'); return;
@@ -939,6 +966,8 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
         cityName: form.cityName || undefined,
         customerNotes: form.customerNotes.trim() || undefined,
         conditionPhotos: conditionPhotos.length > 0 ? conditionPhotos : undefined,
+        lat: form.lat,
+        lng: form.lng,
       });
       onCreated();
     } catch (e: any) { toast.error(e?.message ?? 'Gagal create'); } finally { setSubmitting(false); }
@@ -1014,7 +1043,24 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Alamat" required value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} placeholder="Jl. Mawar No. 5, Yogyakarta" />
+          <div>
+            <label className="block text-xs font-semibold text-slate-700">Alamat <span className="text-red-500">*</span></label>
+            <div className="mt-1 flex gap-1">
+              <input
+                value={form.addressLine}
+                onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && geocodeAddress()}
+                placeholder="Jl. Mawar No. 5, Yogyakarta"
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+              <button type="button" onClick={geocodeAddress} disabled={geocoding}
+                className="shrink-0 rounded-md bg-slate-700 px-2 py-1 text-[11px] font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                title="Cari titik di peta">
+                {geocoding ? '…' : '📍'}
+              </button>
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-semibold text-slate-700">Kota / Area Layanan <span className="text-red-500">*</span></label>
             <select
@@ -1028,6 +1074,22 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
                 <option key={a.id} value={a.city}>{a.name} ({a.city})</option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Peta Leaflet — muncul setelah geocode */}
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <iframe
+            key={mapKey}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${form.lng - 0.005},${form.lat - 0.004},${form.lng + 0.005},${form.lat + 0.004}&layer=mapnik&marker=${form.lat},${form.lng}`}
+            className="h-48 w-full"
+            title="Peta lokasi"
+          />
+          <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 text-[10px] text-slate-500">
+            <span>📍 {form.lat.toFixed(6)}, {form.lng.toFixed(6)}</span>
+            <a href={`https://www.openstreetmap.org/?mlat=${form.lat}&mlon=${form.lng}#map=17/${form.lat}/${form.lng}`}
+              target="_blank" rel="noreferrer"
+              className="font-semibold text-blue-600 hover:underline">Buka di OSM →</a>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
