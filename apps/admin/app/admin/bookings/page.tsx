@@ -861,6 +861,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     paymentStatus: 'unpaid' as 'unpaid' | 'paid',
     adminNote: '',
     cityName: '',
+    customerNotes: '',
   });
   const [serviceAreas, setServiceAreas] = useState<{ id: string; name: string; city: string }[]>([]);
   const [cleanerMatches, setCleanerMatches] = useState<{ id: string; name: string; phone?: string }[]>([]);
@@ -872,6 +873,8 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [selectedCustomerLabel, setSelectedCustomerLabel] = useState('');
   const [adminCustomer, setAdminCustomer] = useState<{ id: string; name: string; phone: string } | null>(null);
+  const [conditionPhotos, setConditionPhotos] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -902,6 +905,19 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     return () => clearTimeout(t);
   }, [cleanerSearch]);
 
+  async function uploadPhoto(file: File) {
+    setUploadingPhoto(true);
+    try {
+      const { uploadUrl, publicUrl } = await api.admin.cmsUploadUrl(file.type, 'booking-photos');
+      await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+      setConditionPhotos((prev) => [...prev, publicUrl]);
+    } catch {
+      toast.error('Gagal upload foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   async function submit() {
     if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount || !form.cityName) {
       toast.error('Field wajib kosong — pastikan No HP Customer dan Kota sudah diisi'); return;
@@ -921,6 +937,8 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
         paymentStatus: form.paymentStatus,
         adminNote: form.adminNote.trim() || undefined,
         cityName: form.cityName || undefined,
+        customerNotes: form.customerNotes.trim() || undefined,
+        conditionPhotos: conditionPhotos.length > 0 ? conditionPhotos : undefined,
       });
       onCreated();
     } catch (e: any) { toast.error(e?.message ?? 'Gagal create'); } finally { setSubmitting(false); }
@@ -1075,6 +1093,33 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
             </select>
           </div>
         </div>
+        <Textarea label="Catatan Customer" rows={2} value={form.customerNotes} onChange={(v) => setForm({ ...form, customerNotes: v })} placeholder="Mis. tolong bawa alat sendiri, ada anjing, kunci di bawah pot, dll" />
+
+        {/* Foto Kondisi */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700">Foto Kondisi (opsional)</label>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {conditionPhotos.map((url, i) => (
+              <div key={i} className="relative">
+                <img src={url} alt={`foto-${i + 1}`} className="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setConditionPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white"
+                >×</button>
+              </div>
+            ))}
+            {conditionPhotos.length < 5 && (
+              <label className={`flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-[10px] text-slate-500 hover:border-blue-400 hover:text-blue-500 ${uploadingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
+                <span className="text-xl leading-none">{uploadingPhoto ? '…' : '+'}</span>
+                <span>Foto</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ''; }} />
+              </label>
+            )}
+          </div>
+          <p className="mt-1 text-[10px] text-slate-400">Maks 5 foto. Foto kondisi rumah sebelum pengerjaan.</p>
+        </div>
+
         <Textarea label="Catatan Admin" rows={2} value={form.adminNote} onChange={(v) => setForm({ ...form, adminNote: v })} placeholder="Mis. order via WA, customer minta cleaner perempuan, dll" />
         <p className="text-[11px] text-slate-500">Pilih customer dari daftar yang sudah terdaftar. Belum ada? Tambah dulu di halaman <b>Customers</b>.</p>
       </div>

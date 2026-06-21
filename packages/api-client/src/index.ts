@@ -122,7 +122,7 @@ export function createClient(opts: ClientOptions) {
         scheduledAt: string; addressLine: string; lat?: number; lng?: number;
         totalAmount: number; baseAmount?: number; customerNotes?: string;
         cleanerId?: string; paymentStatus?: 'unpaid' | 'paid'; adminNote?: string;
-        cityName?: string;
+        cityName?: string; customerNotes?: string; conditionPhotos?: string[];
       }) => request<{ id: string; customerId: string; status: string }>('POST', `/admin/bookings`, body),
       bookingsNeedsAttention: () =>
         request<{ id: string; addressLine: string; totalAmount: number; scheduledAt: string; createdAt: string; searchingSec: number; serviceName: string | null; customerName: string | null; customerPhone: string | null }[]>(

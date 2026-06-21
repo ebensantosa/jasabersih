@@ -66,7 +66,8 @@ export class AdminBookingsController {
       cleanerId?: string;             // optional — kalau admin sekalian assign
       paymentStatus?: 'unpaid' | 'paid'; // default unpaid → pending_payment, paid → searching
       adminNote?: string;
-      cityName?: string;              // kota area layanan — untuk filter cleaner yang sesuai area
+      cityName?: string;
+      conditionPhotos?: string[];
     },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
@@ -127,7 +128,7 @@ export class AdminBookingsController {
       body.pricingMode,
       body.packageId ?? null,
       body.cleanerId ? 'matched' : status,
-      JSON.stringify({ createdByAdmin: true, categoryName: 'Manual Admin', cityName: body.cityName ?? null }),
+      JSON.stringify({ createdByAdmin: true, categoryName: 'Manual Admin', cityName: body.cityName ?? null, conditionPhotos: body.conditionPhotos ?? [] }),
       body.scheduledAt,
       body.addressLine,
       lng, lat,
