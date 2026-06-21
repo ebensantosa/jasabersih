@@ -98,7 +98,7 @@ async function bootstrap() {
   }
 
   // Validate required env vars at startup so misconfigured deployments fail fast.
-  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+  const requiredEnvVars = ['DATABASE_URL', 'JWT_ACCESS_SECRET'];
   const missingEnvVars = requiredEnvVars.filter((k) => !process.env[k]);
   if (missingEnvVars.length > 0) {
     // eslint-disable-next-line no-console
