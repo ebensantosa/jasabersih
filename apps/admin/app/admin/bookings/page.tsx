@@ -572,6 +572,11 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
               <div><b>Bayar:</b> {(data.booking as any)?.paid_at ? new Date((data.booking as any).paid_at).toLocaleString('id-ID') : '—'}</div>
             </div>
             <div className="mt-2 text-xs">
+              {(() => {
+                const snap = (data.booking as any)?.form_snapshot;
+                const city = snap?.cityName ?? (data.booking as any)?.city ?? null;
+                return city ? <div className="mb-1"><b>Kota:</b> <span className="text-slate-700">{city}</span></div> : null;
+              })()}
               <b>Alamat:</b> {(data.booking as any)?.address_line}
               {(() => {
                 const lat = (data.booking as any)?.lat;
