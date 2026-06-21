@@ -934,23 +934,23 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
       <div className="space-y-3">
         {/* Customer search */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="relative">
-            <label className="block text-xs font-semibold text-slate-700">No HP Customer <span className="text-red-500">*</span></label>
+          <div className="relative col-span-2">
+            <label className="block text-xs font-semibold text-slate-700">Customer <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={selectedCustomerLabel || customerSearch}
               onChange={(e) => {
                 setCustomerSearch(e.target.value);
                 setSelectedCustomerLabel('');
-                setForm({ ...form, customerPhone: e.target.value, customerName: '' });
+                setForm({ ...form, customerPhone: '', customerName: '' });
                 setShowCustomerList(true);
               }}
               onFocus={() => { if (customerSearch) setShowCustomerList(true); }}
               onBlur={() => setTimeout(() => setShowCustomerList(false), 150)}
-              placeholder="Cari nama/HP, atau ketik HP baru"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Cari nama atau No HP customer…"
+              className={`mt-1 w-full rounded-md border px-3 py-2 text-sm ${!form.customerPhone && selectedCustomerLabel === '' && customerSearch ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
             />
-            {form.customerPhone && (
+            {selectedCustomerLabel && (
               <button type="button" onClick={() => { setForm({ ...form, customerPhone: '', customerName: '' }); setSelectedCustomerLabel(''); setCustomerSearch(''); }}
                 className="absolute right-2 top-7 text-xs text-slate-400 hover:text-red-600">×</button>
             )}
@@ -960,7 +960,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
                   <button key={c.id} type="button" onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       setForm({ ...form, customerPhone: c.phone, customerName: c.name });
-                      setSelectedCustomerLabel(`${c.name} (${c.phone})`);
+                      setSelectedCustomerLabel(`${c.name} · ${c.phone}`);
                       setCustomerSearch('');
                       setShowCustomerList(false);
                     }}
@@ -973,10 +973,9 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
               </div>
             )}
             {!selectedCustomerLabel && customerSearch && customerMatches.length === 0 && (
-              <p className="mt-1 text-[10px] text-slate-500">Customer baru — akan dibuatkan akun otomatis</p>
+              <p className="mt-1 text-[10px] text-red-600">Customer tidak ditemukan — tambah dulu di halaman <b>Customers</b></p>
             )}
           </div>
-          <Input label="Nama Customer (kalau baru)" value={form.customerName} onChange={(v) => setForm({ ...form, customerName: v })} placeholder="Optional, kalau customer baru" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Alamat" required value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} placeholder="Jl. Mawar No. 5, Yogyakarta" />
@@ -1059,7 +1058,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
         </div>
         <Textarea label="Catatan Admin" rows={2} value={form.adminNote} onChange={(v) => setForm({ ...form, adminNote: v })} placeholder="Mis. order via WA, customer minta cleaner perempuan, dll" />
-        <p className="text-[11px] text-slate-500">Customer baru otomatis dibuat dengan nomor HP ini. Customer existing akan auto-link.</p>
+        <p className="text-[11px] text-slate-500">Pilih customer dari daftar yang sudah terdaftar. Belum ada? Tambah dulu di halaman <b>Customers</b>.</p>
       </div>
     </Modal>
   );
