@@ -112,13 +112,15 @@ export const Track = {
   serviceSelected: (code: string, name: string) => trackEvent('service_selected', { service_code: code, service_name: name }),
 
   // Booking funnel
-  bookingStarted: (code: string) => trackEvent('booking_started', { service_code: code }),
+  // begin_checkout = saat user buka form booking (intent kuat, before API call)
+  bookingStarted: (serviceCode: string, estimatedValue?: number) => {
+    trackEvent('booking_started', { service_code: serviceCode });
+    trackEvent('begin_checkout', { service_type: serviceCode, value: estimatedValue ?? 0, currency: 'IDR' });
+  },
   addonAdded: (code: string, name: string, price: number) => trackEvent('addon_added', { addon_code: code, addon_name: name, price }),
-  // GA4 standard 'begin_checkout' supaya Google Ads bisa pakai sebagai mid-funnel signal.
-  // value+currency wajib untuk value-based bidding (tROAS).
-  bookingCreated: (bookingId: string, total: number, mode: string) => {
-    trackEvent('booking_created', { booking_id: bookingId, total_amount: total, mode });
-    trackEvent('begin_checkout', { transaction_id: bookingId, value: total, currency: 'IDR', items: [{ item_id: bookingId, item_category: mode }] });
+  // booking_created = setelah API create booking return sukses (sebelum payment)
+  bookingCreated: (bookingId: string, total: number, serviceType: string) => {
+    trackEvent('booking_created', { booking_id: bookingId, service_type: serviceType, value: total, currency: 'IDR' });
   },
 
   // Payment funnel.

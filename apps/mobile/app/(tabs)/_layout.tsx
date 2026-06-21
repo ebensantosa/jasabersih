@@ -20,14 +20,14 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const [chatUnread, setChatUnread] = useState(0);
 
-  // Poll chat unread tiap 30s (pause saat app di background)
+  // Poll chat unread tiap 60s (dulu 30s → terlalu sering)
   const fetchChatUnread = useCallback(async () => {
     try {
       const r = await api.get('/chat/unread-count');
       setChatUnread(Number((r.data?.data ?? r.data)?.count ?? 0));
     } catch { /* silent */ }
   }, []);
-  useVisiblePoll(fetchChatUnread, 30_000, !!tokens && !!profile);
+  useVisiblePoll(fetchChatUnread, 60_000, !!tokens && !!profile);
   useEffect(() => { if (!tokens || !profile) setChatUnread(0); }, [tokens, profile]);
 
   return (

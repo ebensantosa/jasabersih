@@ -88,11 +88,13 @@ const TOTAL_STEPS = 3;
 
 function NewBooking() {
   const router = useRouter();
-  const { category: categoryCode, package: packageId } = useLocalSearchParams<{
+  const { category: categoryCode, package: packageId, reorder: reorderBookingId } = useLocalSearchParams<{
     category: string;
     package?: string;
+    reorder?: string;
   }>();
   const create = useBookingsStore((s) => s.create);
+  const allBookings = useBookingsStore((s) => s.list);
   const SERVICE_CATEGORIES_LIVE = useServices();
 
   const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
@@ -106,6 +108,11 @@ function NewBooking() {
       router.replace('/booking/custom');
     } else if (categoryCode === 'konsultasi') {
       router.replace('/services/konsultasi');
+    } else if (categoryCode) {
+      // begin_checkout: user buka halaman booking = sinyal intent kuat untuk Google Ads
+      void import('../../src/lib/analytics').then(({ Track }) => {
+        Track.bookingStarted(categoryCode);
+      });
     }
   }, [categoryCode, router]);
 
@@ -193,6 +200,8 @@ function NewBooking() {
     })();
   }, []);
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   const [pickedPackageId, setPickedPackageId] = useState<string>(initialPackage?.id ?? '');
   const pkg = PACKAGES.find((p) => p.id === pickedPackageId);
@@ -430,6 +439,32 @@ function NewBooking() {
   const [address, setAddress] = useState(
     selectedAddress?.addressLine ?? savedLocation?.address ?? '',
   );
+
+  // Prefill form dari pesanan sebelumnya (fitur "Pesan Lagi")
+  useEffect(() => {
+    if (!reorderBookingId) return;
+    const prev = allBookings.find((b) => b.id === reorderBookingId);
+    if (!prev?.formSnapshot) return;
+    const s = prev.formSnapshot as Record<string, any>;
+    if (s.propertyType) setPropertyType(s.propertyType);
+    if (typeof s.bedrooms === 'number') setBedrooms(s.bedrooms);
+    if (typeof s.bathrooms === 'number') setBathrooms(s.bathrooms);
+    if (typeof s.areaM2 === 'number') setAreaM2(s.areaM2);
+    if (s.dirtLevel) setDirtLevel(s.dirtLevel as 1 | 2 | 3);
+    if (Array.isArray(s.dirtCharacters)) setDirtChars(new Set(s.dirtCharacters as string[]));
+    if (s.floorType) setFloorType(s.floorType);
+    if (s.furnitureDensity) setFurniture(s.furnitureDensity as FurnitureDensity);
+    if (Array.isArray(s.facilities)) setFacilities(new Set(s.facilities as string[]));
+    if (s.floor) setFloor(String(s.floor));
+    if (typeof s.hasLift === 'boolean') setHasLift(s.hasLift);
+    if (s.cleanMode) setCleaningMode(s.cleanMode as 'general' | 'deep');
+    if (s.notes) setNotes(s.notes as string);
+    if (s.bathroomSize) setBathroomSize(s.bathroomSize as string);
+    if (Array.isArray(s.largeScaleTargets)) setLargeScaleTargets(new Set(s.largeScaleTargets as string[]));
+    if (Array.isArray(s.postRenoTargets)) setPostRenoTargets(new Set(s.postRenoTargets as string[]));
+    if (s.postRenoLevel) setPostRenoLevel(s.postRenoLevel as string);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reorderBookingId]);
 
   // Hitung travel fee - debounce 800ms + cache per koordinat (hindari spam API)
   useEffect(() => {
@@ -673,8 +708,13 @@ function NewBooking() {
   }
 
   async function doSubmit() {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    setSubmitting(true);
     if ((!pkg && !isLargeScale && !isPostReno) || !category) {
       toast.error('Paket layanan belum tersedia. Coba pilih layanan lain atau hubungi customer service.');
+      submitLockRef.current = false;
+      setSubmitting(false);
       return;
     }
     const selectedPackage = pkg;
@@ -741,6 +781,8 @@ function NewBooking() {
       });
     } catch {
       // Error toast already shown by store; abort navigation.
+      submitLockRef.current = false;
+      setSubmitting(false);
       return;
     }
     toast.success('Pesanan dibuat - silakan bayar untuk mulai cari cleaner');
@@ -750,7 +792,7 @@ function NewBooking() {
     } catch {}
     try {
       const { Track } = await import('../../src/lib/analytics');
-      Track.bookingCreated(booking.id, total, 'package');
+      Track.bookingCreated(booking.id, total, categoryCode ?? 'unknown');
     } catch {}
     router.replace({ pathname: '/booking/[id]', params: { id: booking.id } });
   }
@@ -2231,13 +2273,22 @@ function NewBooking() {
                 </Text>
               </Pressable>
             )}
-            {(pkg || isLargeScale || isPostReno) && !needsWaConsultation && (
+            {(pkg || isLargeScale || isPostReno) && !needsWaConsultation && (() => {
+              const grand = total + (travelQuote?.travelFee ?? 0);
+              const creditUsed = useCredit ? Math.min(walletBalance, grand) : 0;
+              const payable = grand - creditUsed;
+              return (
               <View className="flex-row items-center justify-between border-b border-ink-100 px-4 py-3">
                 <View className="flex-1 pr-2">
                   <Text className="font-sans text-[10px] uppercase tracking-wider text-ink-500">
-                    {step === TOTAL_STEPS ? 'Total Bayar' : 'Estimasi Total'}
+                    {step === TOTAL_STEPS ? (useCredit && creditUsed > 0 ? 'Bayar via bank/QRIS' : 'Total Bayar') : 'Estimasi Total'}
                   </Text>
-                  <Text className="font-extrabold mt-0.5 text-lg text-brand-700">{formatRupiah(total + (travelQuote?.travelFee ?? 0))}</Text>
+                  <Text className="font-extrabold mt-0.5 text-lg text-brand-700">{formatRupiah(payable)}</Text>
+                  {useCredit && creditUsed > 0 ? (
+                    <Text className="font-medium mt-0.5 text-[10px] text-emerald-700">
+                      Saldo dipakai −{formatRupiah(creditUsed)} dari {formatRupiah(grand)}
+                    </Text>
+                  ) : null}
                 </View>
                 {step !== TOTAL_STEPS && (
                   <Text className="font-medium max-w-[40%] text-right text-[9px] text-ink-400">
@@ -2245,7 +2296,8 @@ function NewBooking() {
                   </Text>
                 )}
               </View>
-            )}
+              );
+            })()}
             <View className="flex-row gap-2 p-4">
               <Pressable
                 onPress={back}
@@ -2279,11 +2331,17 @@ function NewBooking() {
               ) : (
                 <Pressable
                   onPress={next}
-                  disabled={step === 1 && !pkg && !isLargeScale && !isPostReno}
-                  className={`h-12 flex-1 items-center justify-center rounded-2xl ${step === 1 && !pkg && !isLargeScale && !isPostReno ? 'bg-ink-300' : 'bg-brand-600'}`}
+                  disabled={(step === 1 && !pkg && !isLargeScale && !isPostReno) || submitting}
+                  className={`h-12 flex-1 items-center justify-center rounded-2xl ${(step === 1 && !pkg && !isLargeScale && !isPostReno) || submitting ? 'bg-ink-300' : 'bg-brand-600'}`}
                 >
                   <Text className="font-bold text-sm text-white" numberOfLines={1}>
-                    {step === 1 && !pkg && !isLargeScale && !isPostReno ? 'Memuat...' : step === TOTAL_STEPS ? `Buat Pesanan · ${formatRupiah(total)}` : 'Lanjut'}
+                    {submitting
+                      ? 'Memproses…'
+                      : (step === 1 && !pkg && !isLargeScale && !isPostReno)
+                        ? 'Memuat...'
+                        : step === TOTAL_STEPS
+                          ? `Buat Pesanan · ${formatRupiah(Math.max(0, total + (travelQuote?.travelFee ?? 0) - (useCredit ? Math.min(walletBalance, total + (travelQuote?.travelFee ?? 0)) : 0)))}`
+                          : 'Lanjut'}
                   </Text>
                 </Pressable>
               )}

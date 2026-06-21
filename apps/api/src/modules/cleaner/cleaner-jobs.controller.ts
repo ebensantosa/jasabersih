@@ -467,6 +467,19 @@ export class CleanerJobsController {
       if (currentBooking.pause_started_at) {
         throw new BadRequestException('Lanjutkan timer dulu sebelum tandai job selesai.');
       }
+      // Block kalau masih ada upcharge yang belum di-decide customer (pending).
+      // Charge wajib disetujui & dibayar (status='approved') atau ditolak/cancel
+      // sebelum job bisa selesai. Cegah cleaner skip charge resolution.
+      const pendingCharges = await this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(*)::int AS c FROM booking_upcharges
+         WHERE booking_id = ${id}::uuid AND status = 'pending'
+      `;
+      if (Number(pendingCharges[0]?.c ?? 0) > 0) {
+        throw new BadRequestException({
+          code: 'UPCHARGE_UNRESOLVED',
+          message: 'Ada permintaan charge yang menunggu keputusan customer. Tunggu customer setujui/tolak dulu sebelum tandai selesai.',
+        });
+      }
       const before = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM booking_photos
          WHERE booking_id = ${id}::uuid AND photo_type = 'before'

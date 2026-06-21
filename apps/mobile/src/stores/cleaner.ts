@@ -9,19 +9,22 @@ type State = {
   serviceAreas: string[];
   /** True kalau cleaner punya & bawa alat sendiri (vacuum, mop, dll). Mempengaruhi tier komisi. */
   bringsTools: boolean;
+  /** Niat user untuk online. Disinkron dengan server is_available — dipakai useJobsRealtime supaya gak auto go-online saat reload kalau user sengaja offline. */
+  isAvailable: boolean;
   hydrated: boolean;
   setName: (name: string) => void;
   toggleArea: (area: string) => void;
   setAreas: (areas: string[]) => void;
   setBringsTools: (v: boolean) => void;
+  setIsAvailable: (v: boolean) => void;
   hydrate: () => void;
   clearLocal: () => void;
 };
 
-type Persistable = Pick<State, 'name' | 'serviceAreas' | 'bringsTools'>;
+type Persistable = Pick<State, 'name' | 'serviceAreas' | 'bringsTools' | 'isAvailable'>;
 
 function snapshot(s: State): Persistable {
-  return { name: s.name, serviceAreas: s.serviceAreas, bringsTools: s.bringsTools };
+  return { name: s.name, serviceAreas: s.serviceAreas, bringsTools: s.bringsTools, isAvailable: s.isAvailable };
 }
 
 function persist(p: Persistable): void {
@@ -32,6 +35,7 @@ export const useCleanerStore = create<State>((set, get) => ({
   name: 'Mitra Cleaner',
   serviceAreas: [],
   bringsTools: false,
+  isAvailable: false,
   hydrated: false,
   setName: (name) => {
     persist({ ...snapshot(get()), name });
@@ -51,6 +55,10 @@ export const useCleanerStore = create<State>((set, get) => ({
     persist({ ...snapshot(get()), bringsTools: v });
     set({ bringsTools: v });
   },
+  setIsAvailable: (v) => {
+    persist({ ...snapshot(get()), isAvailable: v });
+    set({ isAvailable: v });
+  },
   hydrate: () => {
     const raw = storage.getString(CLEANER_KEY);
     if (raw) {
@@ -60,6 +68,7 @@ export const useCleanerStore = create<State>((set, get) => ({
           name: p.name ?? 'Mitra Cleaner',
           serviceAreas: p.serviceAreas ?? [],
           bringsTools: p.bringsTools ?? false,
+          isAvailable: p.isAvailable ?? false,
           hydrated: true,
         });
         return;
@@ -71,6 +80,6 @@ export const useCleanerStore = create<State>((set, get) => ({
   },
   clearLocal: () => {
     storage.delete(CLEANER_KEY);
-    set({ name: 'Mitra Cleaner', serviceAreas: [], bringsTools: false, hydrated: true });
+    set({ name: 'Mitra Cleaner', serviceAreas: [], bringsTools: false, isAvailable: false, hydrated: true });
   },
 }));

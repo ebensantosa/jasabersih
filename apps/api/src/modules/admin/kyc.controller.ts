@@ -224,7 +224,8 @@ export class AdminKycController {
       this.prisma.$executeRaw`
         UPDATE cleaner_profiles
            SET kyc_status = 'rejected',
-               rejection_reason = ${body.reason}
+               rejection_reason = ${body.reason},
+               is_available = FALSE
          WHERE user_id = ${userId}::uuid
       `,
       this.prisma.$executeRaw`
@@ -259,7 +260,8 @@ export class AdminKycController {
     await this.prisma.$executeRaw`
       UPDATE cleaner_profiles
          SET kyc_status = 'pending',
-             rejection_reason = ${body.reason}
+             rejection_reason = ${body.reason},
+             is_available = FALSE
        WHERE user_id = ${userId}::uuid
     `;
     await this.audit.log({

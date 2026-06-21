@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 /**
  * Polling yang otomatis berhenti saat app di background, dan jalan ulang
@@ -31,16 +31,27 @@ export function useVisiblePoll(
     };
 
     // Mulai polling kalau app aktif
-    if (AppState.currentState === 'active') start();
+    const isWebVisible = () => Platform.OS !== 'web' || (typeof document === 'undefined' || document.visibilityState === 'visible');
+    if (AppState.currentState === 'active' && isWebVisible()) start();
 
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') start();
+      if (state === 'active' && isWebVisible()) start();
       else stop();
     });
+
+    let onVis: (() => void) | null = null;
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      onVis = () => {
+        if (document.visibilityState === 'visible' && AppState.currentState === 'active') start();
+        else stop();
+      };
+      document.addEventListener('visibilitychange', onVis);
+    }
 
     return () => {
       stop();
       sub.remove();
+      if (onVis && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
     };
   }, [intervalMs, enabled]);
 }

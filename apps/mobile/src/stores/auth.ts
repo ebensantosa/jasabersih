@@ -28,6 +28,9 @@ export const useAuthStore = create<State>((set, get) => ({
     const res = await api.post<{ data: AuthTokens }>('/auth/refresh', {
       refreshToken: current.refreshToken,
     });
+    // Cek lagi setelah await — user mungkin logout saat request berlangsung.
+    // Kalau tokens sudah null (logout), jangan restore.
+    if (!get().tokens) throw new Error('NO_REFRESH_TOKEN');
     get().setTokens(res.data.data);
   },
   logout: () => {

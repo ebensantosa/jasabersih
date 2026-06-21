@@ -1,8 +1,9 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { useVisiblePoll } from '../lib/useVisiblePoll';
 import { useConfig } from '../stores/appContent';
 
 type BankHealth = {
@@ -27,24 +28,17 @@ export function MaintenanceBanner() {
   const manualNotice = useConfig('payment.maintenance_notice', '');
   const [issues, setIssues] = useState<BankHealth[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const r = await api.get('/payments/bank-health');
-        const list: BankHealth[] = r.data?.data ?? r.data ?? [];
-        if (cancelled) return;
-        // Filter cuma yg lagi gangguan (delayed/down)
-        setIssues(list.filter((b) => b.status !== 'normal'));
-      } catch {
-        // Silent - banner cuma optional info, gak crash kalau API down
-      }
-    }
-    void load();
-    // Re-check tiap 60 detik (banner refresh saat masih kebuka)
-    const t = setInterval(load, 60_000);
-    return () => { cancelled = true; clearInterval(t); };
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get('/payments/bank-health');
+      const list: BankHealth[] = r.data?.data ?? r.data ?? [];
+      setIssues(list.filter((b) => b.status !== 'normal'));
+    } catch { /* silent */ }
   }, []);
+
+  // Pakai useVisiblePoll biar berhenti saat app di background.
+  // 5 menit cukup — bank health jarang berubah tiap menit.
+  useVisiblePoll(load, 5 * 60_000);
 
   const hasManual = !!manualNotice && manualNotice.trim().length > 0;
   const hasLive = issues.length > 0;

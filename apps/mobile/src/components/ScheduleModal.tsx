@@ -1,6 +1,7 @@
-import { Calendar, ChevronLeft, ChevronRight, Clock } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 /**
  * Bottom-sheet modal untuk pilih tanggal & jam booking.
@@ -8,13 +9,10 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
  * Time slots per jam + "Sekarang" + "Jam Lain" untuk waktu bebas.
  */
 
-const TIME_SLOTS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
-];
 
 const OPS_START_HOUR = 7;
-const OPS_END_HOUR = 20;
+// Maksimal JAM MULAI = 21:00. Pesanan selesai setelah 21:00 kena biaya lembur.
+const OPS_END_HOUR = 21;
 const MAX_DAYS_AHEAD = 90;
 const QUICK_DAYS = 14;
 
@@ -22,7 +20,8 @@ function clampToOps(d: Date): Date {
   const out = new Date(d);
   if (out.getHours() < OPS_START_HOUR) {
     out.setHours(OPS_START_HOUR, 0, 0, 0);
-  } else if (out.getHours() > OPS_END_HOUR) {
+  } else if (out.getHours() > OPS_END_HOUR || (out.getHours() === OPS_END_HOUR && out.getMinutes() > 0)) {
+    // Lewat jam mulai maks → jadwalkan besok jam OPS_START_HOUR
     out.setDate(out.getDate() + 1);
     out.setHours(OPS_START_HOUR, 0, 0, 0);
   }
@@ -33,6 +32,99 @@ function fmtDateLabel(d: Date): string {
   const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+const WHEEL_ITEM_H = 46;
+const WHEEL_PAD = 2; // 2 item atas & bawah = total 5 item terlihat
+const WHEEL_H = WHEEL_ITEM_H * (WHEEL_PAD * 2 + 1);
+
+function WheelColumn({
+  items,
+  selectedIndex,
+  onChange,
+  flex,
+}: {
+  items: string[];
+  selectedIndex: number;
+  onChange: (index: number) => void;
+  flex?: number;
+}) {
+  const ref = useRef<ScrollView>(null);
+  const lastHapticIdx = useRef(selectedIndex);
+
+  useEffect(() => {
+    ref.current?.scrollTo({ y: selectedIndex * WHEEL_ITEM_H, animated: false });
+  }, [selectedIndex]);
+
+  const commit = (offsetY: number, forceScroll = false) => {
+    const i = Math.max(0, Math.min(Math.round(offsetY / WHEEL_ITEM_H), items.length - 1));
+    if (forceScroll) ref.current?.scrollTo({ y: i * WHEEL_ITEM_H, animated: true });
+    if (i !== lastHapticIdx.current) {
+      lastHapticIdx.current = i;
+      if (Platform.OS !== 'web') {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+    onChange(i);
+  };
+
+  return (
+    <View style={{ flex: flex ?? 1, height: WHEEL_H, overflow: 'hidden' }}>
+      {/* Pill highlight item terpilih — tanpa zIndex supaya ScrollView selalu di atas */}
+      <View pointerEvents="none" style={{
+        position: 'absolute',
+        top: WHEEL_ITEM_H * WHEEL_PAD, height: WHEEL_ITEM_H,
+        left: 4, right: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 12,
+      }} />
+
+      <ScrollView
+        ref={ref}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL_ITEM_H}
+        decelerationRate="fast"
+        contentOffset={{ x: 0, y: selectedIndex * WHEEL_ITEM_H }}
+        onMomentumScrollEnd={(e) => commit(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e) => commit(e.nativeEvent.contentOffset.y, true)}
+      >
+        {Array.from({ length: WHEEL_PAD }).map((_, i) => <View key={`pt-${i}`} style={{ height: WHEEL_ITEM_H }} />)}
+        {items.map((item, i) => {
+          const dist = Math.abs(i - selectedIndex);
+          return (
+            <Pressable
+              key={item}
+              style={{ height: WHEEL_ITEM_H, alignItems: 'center', justifyContent: 'center' }}
+              onPress={() => {
+                onChange(i);
+                ref.current?.scrollTo({ y: i * WHEEL_ITEM_H, animated: true });
+                if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            >
+              <Text style={{
+                fontSize: dist === 0 ? 24 : 19,
+                fontWeight: dist === 0 ? '700' : '400',
+                color: dist === 0 ? '#1E293B' : dist === 1 ? '#64748B' : '#94A3B8',
+              }}>
+                {item}
+              </Text>
+            </Pressable>
+          );
+        })}
+        {Array.from({ length: WHEEL_PAD }).map((_, i) => <View key={`pb-${i}`} style={{ height: WHEEL_ITEM_H }} />)}
+      </ScrollView>
+
+      {/* Fade hanya di ujung paling atas/bawah saja */}
+      <View pointerEvents="none" style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 20,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+      }} />
+      <View pointerEvents="none" style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 20,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+      }} />
+    </View>
+  );
 }
 
 export type ScheduleModalProps = {
@@ -47,11 +139,10 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   });
-  const [timeSlot, setTimeSlot] = useState<string>('09:00');
+  const [selHour, setSelHour] = useState(9);
+  const [selMinute, setSelMinute] = useState(0);
   const [useNowTime, setUseNowTime] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [customTime, setCustomTime] = useState<{ h: number; m: number } | null>(null);
 
   const quickDates = useMemo(() => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -71,17 +162,9 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
     if (!visible) return;
     const v = new Date(value); v.setHours(0, 0, 0, 0);
     setSelectedDate(v);
-    const hh = String(value.getHours()).padStart(2, '0');
-    const mm = String(value.getMinutes()).padStart(2, '0');
-    // Cek apakah jam value match dengan slot
-    const slotMatch = TIME_SLOTS.includes(`${hh}:00`) && value.getMinutes() === 0;
-    if (slotMatch) {
-      setTimeSlot(`${hh}:00`);
-      setCustomTime(null);
-    } else {
-      setCustomTime({ h: value.getHours(), m: value.getMinutes() });
-      setTimeSlot(`${hh}:${mm}`);
-    }
+    setSelHour(value.getHours());
+    // Snap menit ke 15 terdekat
+    setSelMinute(Math.round(value.getMinutes() / 15) * 15 % 60);
     setUseNowTime(false);
   }, [visible, value]);
 
@@ -90,18 +173,36 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
   const earliest = new Date(Date.now() + 60 * 60 * 1000);
   const nowInOps = isToday && earliest.getHours() >= OPS_START_HOUR && earliest.getHours() <= OPS_END_HOUR;
 
-  function isSlotValid(t: string): boolean {
-    if (!isToday) return true;
-    const [hh, mm] = t.split(':').map(Number);
-    const d = new Date(); d.setHours(hh!, mm!, 0, 0);
-    return d.getTime() >= earliest.getTime();
-  }
+  // Hours & minutes lists for wheel
+  const MINUTES = [0, 15, 30, 45];
+  const ALL_HOURS = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR + 1 }, (_, i) => i + OPS_START_HOUR);
 
-  const validSlots = TIME_SLOTS.filter((t) => isSlotValid(t));
-  const allTodayPast = isToday && validSlots.length === 0;
-  const firstValidIdx = isToday && nowInOps
-    ? TIME_SLOTS.findIndex((t) => validSlots.includes(t))
-    : -1;
+  // Filter valid hours for today
+  const validHours = ALL_HOURS.filter(hr => {
+    if (!isToday) return true;
+    const mins = hr === OPS_END_HOUR ? [0] : MINUTES;
+    return mins.some(mn => {
+      const d = new Date(); d.setHours(hr, mn, 0, 0);
+      return d.getTime() >= earliest.getTime();
+    });
+  });
+
+  const allTodayPast = isToday && validHours.length === 0;
+
+  // Clamp selHour ke valid range — harus dideklarasi SEBELUM validMinutes
+  const h = validHours.includes(selHour) ? selHour : (validHours[0] ?? OPS_START_HOUR);
+
+  // Filter valid minutes untuk jam terpilih
+  const validMinutes = (h === OPS_END_HOUR ? [0] : MINUTES).filter(mn => {
+    if (!isToday) return true;
+    const d = new Date(); d.setHours(h, mn, 0, 0);
+    return d.getTime() >= earliest.getTime();
+  });
+
+  const m = validMinutes.includes(selMinute) ? selMinute : (validMinutes[0] ?? 0);
+
+  const hourIndex = validHours.indexOf(h);
+  const minuteIndex = validMinutes.indexOf(m);
 
   // Check if quick chip matches selectedDate
   const quickIdx = quickDates.findIndex((q) => q.date.getTime() === selectedDate.getTime());
@@ -119,12 +220,7 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
       sel = clampToOps(new Date(Date.now() + 60 * 60 * 1000));
     } else {
       sel = new Date(selectedDate);
-      if (customTime) {
-        sel.setHours(customTime.h, customTime.m, 0, 0);
-      } else {
-        const [hh, mm] = timeSlot.split(':').map(Number);
-        sel.setHours(hh!, mm!, 0, 0);
-      }
+      sel.setHours(h, m, 0, 0);
     }
     onChange(sel);
   }
@@ -180,17 +276,12 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
           </ScrollView>
 
           {/* STEP 2: JAM */}
-          <View className="mt-5 mb-1 flex-row items-center gap-2">
+          <View className="mt-5 mb-3 flex-row items-center gap-2">
             <View className="h-5 w-5 items-center justify-center rounded-full bg-brand-600">
               <Text className="font-extrabold text-[10px] text-white">2</Text>
             </View>
             <Text className="font-extrabold text-sm text-ink-900">Pilih Jam</Text>
           </View>
-          <Text className="font-medium mb-2 ml-7 text-[11px] text-ink-500">
-            {useNowTime ? `Sekarang (${String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getHours()).padStart(2, '0')}:${String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getMinutes()).padStart(2, '0')})`
-              : customTime ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}`
-              : timeSlot}
-          </Text>
 
           {allTodayPast ? (
             <View className="rounded-xl border border-amber-300 bg-amber-50 p-3">
@@ -201,70 +292,79 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
             </View>
           ) : isToday && !nowInOps ? (
             <View className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <Text className="font-bold text-sm text-amber-900">⏰ Di luar jam operasional</Text>
+              <Text className="font-bold text-sm text-amber-900">⏰ Sudah lewat jam mulai maks</Text>
               <Text className="font-medium mt-1 text-[11px] leading-4 text-amber-800">
-                Jam operasional 07:00-20:00. Pesanan untuk hari ini sudah tidak bisa.
+                Pemesanan hari ini maksimal mulai pukul 21:00. Pilih tanggal besok atau lainnya.
               </Text>
             </View>
           ) : (
             <>
-              {/* "Sekarang" CTA besar kalau valid */}
+              {/* Tombol Sekarang */}
               {nowInOps && (
                 <Pressable
-                  onPress={() => { setUseNowTime(true); setCustomTime(null); }}
-                  className={`mb-3 flex-row items-center justify-between rounded-xl border-2 p-3 ${useNowTime && isToday ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
+                  onPress={() => setUseNowTime(true)}
+                  className={`mb-4 flex-row items-center justify-between rounded-xl border-2 p-3 ${useNowTime ? 'border-emerald-600 bg-emerald-600' : 'border-emerald-400 bg-emerald-50'}`}
                 >
                   <View className="flex-row items-center gap-2">
                     <Text className="text-base">⚡</Text>
                     <View>
-                      <Text className={`font-extrabold text-sm ${useNowTime && isToday ? 'text-white' : 'text-emerald-800'}`}>
-                        Sekarang (1 jam lagi)
-                      </Text>
-                      <Text className={`font-medium text-[11px] ${useNowTime && isToday ? 'text-white/85' : 'text-emerald-700'}`}>
-                        Cleaner langsung berangkat
-                      </Text>
+                      <Text className={`font-extrabold text-sm ${useNowTime ? 'text-white' : 'text-emerald-800'}`}>Sekarang (1 jam lagi)</Text>
+                      <Text className={`font-medium text-[11px] ${useNowTime ? 'text-white/85' : 'text-emerald-700'}`}>Cleaner langsung berangkat</Text>
                     </View>
                   </View>
-                  <Text className={`font-extrabold text-sm ${useNowTime && isToday ? 'text-white' : 'text-emerald-700'}`}>
+                  <Text className={`font-extrabold text-sm ${useNowTime ? 'text-white' : 'text-emerald-700'}`}>
                     {String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getHours()).padStart(2, '0')}:{String(clampToOps(new Date(Date.now() + 60 * 60 * 1000)).getMinutes()).padStart(2, '0')}
                   </Text>
                 </Pressable>
               )}
 
-              {/* Quick time slots - render HANYA yg valid (gak ada past slots greyed) */}
-              <Text className="font-semibold mb-2 text-[11px] text-ink-500">Atau pilih jam berikut:</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {TIME_SLOTS.filter(isSlotValid).map((t) => {
-                  const active = !customTime && timeSlot === t && !useNowTime;
-                  return (
-                    <Pressable
-                      key={t}
-                      onPress={() => { setUseNowTime(false); setTimeSlot(t); setCustomTime(null); }}
-                      className={`rounded-lg border-2 px-3 py-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'}`}
-                    >
-                      <Text className={`font-bold text-xs ${active ? 'text-white' : 'text-ink-800'}`}>{t}</Text>
-                    </Pressable>
-                  );
-                })}
-                {/* Tombol jam spesifik */}
-                <Pressable
-                  onPress={() => setShowTimePicker(true)}
-                  className={`flex-row items-center gap-1 rounded-lg border-2 border-dashed px-3 py-2 ${customTime ? 'border-brand-600 bg-brand-50' : 'border-brand-400 bg-white'}`}
-                >
-                  <Clock color="#1D4ED8" size={12} />
-                  <Text className="font-bold text-xs text-brand-700">
-                    {customTime ? `${String(customTime.h).padStart(2, '0')}:${String(customTime.m).padStart(2, '0')}` : 'Jam Spesifik'}
-                  </Text>
-                </Pressable>
-              </View>
-              <Text className="mt-3 text-[10px] text-ink-400">Operasional 07:00-20:00 · Min 1 jam dari sekarang</Text>
+              {/* Wheel picker jam & menit */}
+              <Pressable onPress={() => setUseNowTime(false)} activeOpacity={1}>
+                <View style={{ opacity: useNowTime ? 0.3 : 1 }} pointerEvents={useNowTime ? 'none' : 'auto'}>
+                  {/* Label kolom */}
+                  <View style={{ flexDirection: 'row', paddingHorizontal: 8, marginBottom: 4 }}>
+                    <Text style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600', color: '#94A3B8', letterSpacing: 1 }}>JAM</Text>
+                    <View style={{ width: 32 }} />
+                    <Text style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600', color: '#94A3B8', letterSpacing: 1 }}>MENIT</Text>
+                  </View>
+                  {/* Wheel */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 4 }}>
+                    <WheelColumn
+                      flex={1}
+                      items={validHours.map(hh => String(hh).padStart(2, '0'))}
+                      selectedIndex={Math.max(0, hourIndex)}
+                      onChange={(i) => {
+                        setUseNowTime(false);
+                        const newH = validHours[i] ?? OPS_START_HOUR;
+                        setSelHour(newH);
+                        const newMins = newH === OPS_END_HOUR ? [0] : MINUTES;
+                        if (!newMins.includes(selMinute)) setSelMinute(newMins[0] ?? 0);
+                      }}
+                    />
+                    <View style={{ width: 32, alignItems: 'center', justifyContent: 'center', height: WHEEL_H }}>
+                      <Text style={{ fontSize: 24, fontWeight: '300', color: '#CBD5E1' }}>:</Text>
+                    </View>
+                    <WheelColumn
+                      flex={1}
+                      items={validMinutes.map(mm => String(mm).padStart(2, '0'))}
+                      selectedIndex={Math.max(0, minuteIndex)}
+                      onChange={(i) => {
+                        setUseNowTime(false);
+                        setSelMinute(validMinutes[i] ?? 0);
+                      }}
+                    />
+                  </View>
+                  <Text style={{ textAlign: 'center', marginTop: 6, fontSize: 11, color: '#94A3B8' }}>WIB</Text>
+                </View>
+              </Pressable>
+              <Text className="mt-2 text-[10px] text-ink-400">07:00–21:00 · min 1 jam dari sekarang · selesai &gt;21:00 kena biaya lembur</Text>
             </>
           )}
 
           <Pressable
             onPress={confirm}
-            disabled={isToday && (allTodayPast || (!nowInOps && !customTime))}
-            className={`mt-5 h-12 items-center justify-center rounded-2xl ${isToday && (allTodayPast || (!nowInOps && !customTime)) ? 'bg-ink-300' : 'bg-brand-600'}`}
+            disabled={isToday && allTodayPast}
+            className={`mt-5 h-12 items-center justify-center rounded-2xl ${isToday && allTodayPast ? 'bg-ink-300' : 'bg-brand-600'}`}
           >
             <Text className="font-bold text-sm text-white">Pilih Jadwal Ini</Text>
           </Pressable>
@@ -279,20 +379,6 @@ export function ScheduleModal({ visible, value, onChange, onClose }: ScheduleMod
           maxDate={maxDate}
           onPick={(d) => { pickDate(d); setShowDatePicker(false); }}
           onClose={() => setShowDatePicker(false)}
-        />
-      )}
-      {/* Time picker — slot grid 15-min, cross-platform */}
-      {showTimePicker && (
-        <InlineTimePicker
-          initialHour={customTime?.h ?? Number(timeSlot.split(':')[0])}
-          initialMinute={customTime?.m ?? Number(timeSlot.split(':')[1])}
-          onPick={(h, m) => {
-            setCustomTime({ h, m });
-            setTimeSlot(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-            setUseNowTime(false);
-            setShowTimePicker(false);
-          }}
-          onClose={() => setShowTimePicker(false)}
         />
       )}
     </Modal>
@@ -385,92 +471,3 @@ function InlineDatePicker({ value, minDate, maxDate, onPick, onClose }: {
   );
 }
 
-// Cross-platform wheel-style time picker (iOS-like 3-column spinner).
-// 24-hour format dgn jam 07-20 (ops hours), menit 0/15/30/45.
-function InlineTimePicker({ initialHour, initialMinute, onPick, onClose }: {
-  initialHour: number; initialMinute: number;
-  onPick: (h: number, m: number) => void; onClose: () => void;
-}) {
-  const HOURS = Array.from({ length: OPS_END_HOUR - OPS_START_HOUR + 1 }, (_, i) => OPS_START_HOUR + i);
-  // Step 5 menit (00, 05, 10, ..., 55) - granular biar customer bisa pilih jam spesifik
-  const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
-  const [h, setH] = useState(initialHour);
-  const [m, setM] = useState(() => MINUTES.reduce((closest, curr) => Math.abs(curr - initialMinute) < Math.abs(closest - initialMinute) ? curr : closest, MINUTES[0]!));
-
-  function adjustH(delta: number) {
-    const idx = HOURS.indexOf(h);
-    const next = HOURS[Math.max(0, Math.min(HOURS.length - 1, idx + delta))];
-    if (next !== undefined) setH(next);
-  }
-  function adjustM(delta: number) {
-    const idx = MINUTES.indexOf(m);
-    const next = MINUTES[Math.max(0, Math.min(MINUTES.length - 1, idx + delta))];
-    if (next !== undefined) setM(next);
-  }
-
-  function Column({ values, current, format }: { values: number[]; current: number; format: (v: number) => string }) {
-    const idx = values.indexOf(current);
-    const prev2 = idx >= 2 ? values[idx - 2] : null;
-    const prev1 = idx >= 1 ? values[idx - 1] : null;
-    const next1 = idx < values.length - 1 ? values[idx + 1] : null;
-    const next2 = idx < values.length - 2 ? values[idx + 2] : null;
-    return (
-      <View className="items-center" style={{ width: 64 }}>
-        <Text className="font-medium text-base text-ink-200" style={{ height: 28 }}>{prev2 != null ? format(prev2) : ''}</Text>
-        <Text className="font-medium text-base text-ink-300" style={{ height: 28 }}>{prev1 != null ? format(prev1) : ''}</Text>
-        <View className="items-center justify-center rounded-xl border border-ink-200 bg-white" style={{ height: 40, width: 64 }}>
-          <Text className="font-extrabold text-lg text-ink-900">{format(current)}</Text>
-        </View>
-        <Text className="font-medium text-base text-ink-300" style={{ height: 28 }}>{next1 != null ? format(next1) : ''}</Text>
-        <Text className="font-medium text-base text-ink-200" style={{ height: 28 }}>{next2 != null ? format(next2) : ''}</Text>
-      </View>
-    );
-  }
-
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 16 }}>
-        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, alignSelf: 'center' }}>
-          <Text className="font-semibold mb-4 text-center text-sm text-ink-700">Pilih Jam</Text>
-          <View className="flex-row items-center justify-center gap-2">
-            {/* HOUR column */}
-            <View className="items-center">
-              <Pressable onPress={() => adjustH(-1)} disabled={HOURS.indexOf(h) === 0} style={{ opacity: HOURS.indexOf(h) === 0 ? 0.25 : 1 }} className="h-7 items-center justify-center">
-                <Text className="font-bold text-base text-ink-500">▲</Text>
-              </Pressable>
-              <Column values={HOURS} current={h} format={(v) => String(v).padStart(2, '0')} />
-              <Pressable onPress={() => adjustH(1)} disabled={HOURS.indexOf(h) === HOURS.length - 1} style={{ opacity: HOURS.indexOf(h) === HOURS.length - 1 ? 0.25 : 1 }} className="h-7 items-center justify-center">
-                <Text className="font-bold text-base text-ink-500">▼</Text>
-              </Pressable>
-            </View>
-
-            <Text className="font-extrabold text-xl text-ink-700" style={{ paddingTop: 12 }}>:</Text>
-
-            {/* MINUTE column */}
-            <View className="items-center">
-              <Pressable onPress={() => adjustM(-1)} disabled={MINUTES.indexOf(m) === 0} style={{ opacity: MINUTES.indexOf(m) === 0 ? 0.25 : 1 }} className="h-7 items-center justify-center">
-                <Text className="font-bold text-base text-ink-500">▲</Text>
-              </Pressable>
-              <Column values={MINUTES} current={m} format={(v) => String(v).padStart(2, '0')} />
-              <Pressable onPress={() => adjustM(1)} disabled={MINUTES.indexOf(m) === MINUTES.length - 1} style={{ opacity: MINUTES.indexOf(m) === MINUTES.length - 1 ? 0.25 : 1 }} className="h-7 items-center justify-center">
-                <Text className="font-bold text-base text-ink-500">▼</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View className="mt-6 flex-row items-center justify-end gap-4">
-            <Pressable onPress={onClose} className="px-3 py-2">
-              <Text className="font-semibold text-sm text-ink-600">Batal</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => onPick(h, m)}
-              className="rounded-lg bg-brand-600 px-4 py-2"
-            >
-              <Text className="font-bold text-sm text-white">Simpan</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}

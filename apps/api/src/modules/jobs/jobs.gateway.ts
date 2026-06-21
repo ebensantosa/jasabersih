@@ -65,6 +65,16 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('go-online')
   async goOnline(@ConnectedSocket() client: AuthedSocket): Promise<{ ok: boolean; error?: string; code?: string }> {
+    const userRow = await this.prisma.$queryRaw<{ status: string | null; suspended_until: Date | null }[]>`
+      SELECT status, suspended_until FROM users WHERE id = ${client.data.userId}::uuid LIMIT 1
+    `;
+    const u = userRow[0];
+    if (u?.status === 'suspended' && (!u.suspended_until || new Date(u.suspended_until).getTime() > Date.now())) {
+      return { ok: false, error: 'Akun kamu sedang di-suspend', code: 'USER_SUSPENDED' };
+    }
+    if (u?.status === 'banned') {
+      return { ok: false, error: 'Akun kamu di-banned', code: 'USER_BANNED' };
+    }
     const rows = await this.prisma.$queryRaw<{ kyc_status: string | null }[]>`
       SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${client.data.userId}::uuid LIMIT 1
     `;
@@ -155,6 +165,12 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       totalAmount: number;
       cleanerPayout: number | null;
       serviceName: string | null;
+      serviceIconUrl: string | null;
+      packageName: string | null;
+      hourlyTierName: string | null;
+      hours: number | null;
+      customerNotes: string | null;
+      formSnapshot: any;
     }[]>`
       SELECT b.id,
              b.pricing_mode AS "pricingMode",
@@ -163,9 +179,17 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
              b.created_at AS "createdAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
-             s.name AS "serviceName"
+             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             s.icon_url AS "serviceIconUrl",
+             pp.name AS "packageName",
+             ht.name AS "hourlyTierName",
+             b.hours_booked AS "hours",
+             b.customer_notes AS "customerNotes",
+             b.form_snapshot AS "formSnapshot"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
+        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
        WHERE b.id = ${bookingId}::uuid
          AND b.status = 'searching'
          AND b.cleaner_id IS NULL
@@ -173,6 +197,19 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     `;
     if (!rows[0]) return;
     const job = rows[0];
+
+    // Estimasi cleaner_payout — kolom asli baru di-set saat cleaner accept.
+    // Pakai commission_tiers no_tools share (lebih konservatif = aman).
+    if (!job.cleanerPayout || Number(job.cleanerPayout) <= 0) {
+      const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number }[]>`
+        SELECT range_min, range_max, cleaner_share_no_tools
+          FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+      `.catch(() => [] as any[]);
+      const total = Number(job.totalAmount ?? 0);
+      const tier = tiers.find((t) => total >= Number(t.range_min ?? 0) && (t.range_max == null || total <= Number(t.range_max)));
+      const pct = Number(tier?.cleaner_share_no_tools ?? 40);
+      job.cleanerPayout = Math.round(total * pct / 100);
+    }
 
     const { totalAmount: _hidden, ...jobForCleaner } = job;
     this.server.to(ROOM_AVAILABLE).emit('incoming-job', jobForCleaner);

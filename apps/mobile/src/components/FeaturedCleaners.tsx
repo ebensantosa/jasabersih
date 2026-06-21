@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Star } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { create } from 'zustand';
 
 import { api } from '../lib/api';
 import { useT } from '../lib/i18n';
@@ -17,24 +18,36 @@ type Cleaner = {
   totalJobsDone: number;
 };
 
+// Module-level cache: fetch sekali per sesi, tidak re-fetch tiap mount komponen.
+const useFeaturedStore = create<{ list: Cleaner[]; fetched: boolean; fetch: () => void }>((set, get) => ({
+  list: [],
+  fetched: false,
+  fetch: () => {
+    if (get().fetched) return;
+    api.get('/cleaner/public/featured')
+      .then((r) => set({
+        fetched: true,
+        list: ((r.data?.data ?? []) as any[]).map((c) => ({
+          ...c,
+          ratingAvg: c.ratingAvg ? Number(c.ratingAvg) : null,
+          ratingCount: c.ratingCount ? Number(c.ratingCount) : 0,
+          totalJobsDone: Number(c.totalJobsDone ?? 0),
+        })),
+      }))
+      .catch(() => set({ fetched: true }));
+  },
+}));
+
 export function FeaturedCleaners() {
   const router = useRouter();
-  const [list, setList] = useState<Cleaner[]>([]);
-  const [loading, setLoading] = useState(true);
+  const list = useFeaturedStore((s) => s.list);
+  const fetched = useFeaturedStore((s) => s.fetched);
+  const fetch = useFeaturedStore((s) => s.fetch);
   const t = useT();
 
-  useEffect(() => {
-    api.get('/cleaner/public/featured')
-      .then((r) => setList(((r.data?.data ?? []) as any[]).map((c) => ({
-        ...c, ratingAvg: c.ratingAvg ? Number(c.ratingAvg) : null,
-        ratingCount: c.ratingCount ? Number(c.ratingCount) : 0,
-        totalJobsDone: Number(c.totalJobsDone ?? 0),
-      }))))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => { fetch(); }, [fetch]);
 
-  if (loading || list.length === 0) return null;
+  if (!fetched || list.length === 0) return null;
 
   return (
     <View className="mt-4">

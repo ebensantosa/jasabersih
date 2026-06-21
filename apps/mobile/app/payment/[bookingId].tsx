@@ -40,7 +40,7 @@ const VA_METHODS: { code: string; name: string; logo: any }[] = [
   { code: 'permata', name: 'Permata Virtual Account', logo: require('../../assets/payment-logos/logo-permatabank.png') },
   { code: 'bsi', name: 'BSI Virtual Account', logo: require('../../assets/payment-logos/bsi-logo.png') },
   { code: 'danamon', name: 'Danamon Virtual Account', logo: require('../../assets/payment-logos/logo-danamon.png') },
-  { code: 'seabank', name: 'SeaBank Virtual Account', logo: null },
+  { code: 'seabank', name: 'SeaBank Virtual Account', logo: require('../../assets/payment-logos/sea-bank.png') },
   { code: 'btn', name: 'BTN Virtual Account', logo: require('../../assets/payment-logos/BTN.png') },
   { code: 'mega', name: 'Bank Mega Virtual Account', logo: require('../../assets/payment-logos/logo-mega.png') },
 ] as const;
@@ -93,7 +93,7 @@ const METHOD_META: Record<string, { logo?: any; label?: string }> = {
   permata: { logo: require('../../assets/payment-logos/logo-permatabank.png'), label: 'Permata' },
   bsi: { logo: require('../../assets/payment-logos/bsi-logo.png'), label: 'BSI' },
   danamon: { logo: require('../../assets/payment-logos/logo-danamon.png'), label: 'Danamon' },
-  seabank: { label: 'SeaBank' },
+  seabank: { logo: require('../../assets/payment-logos/sea-bank.png'), label: 'SeaBank' },
   btn: { logo: require('../../assets/payment-logos/BTN.png'), label: 'BTN' },
   mega: { logo: require('../../assets/payment-logos/logo-mega.png'), label: 'Mega' },
   ovo: { logo: require('../../assets/payment-logos/logo-ovo.png'), label: 'OVO' },
@@ -305,7 +305,11 @@ function PaymentScreen() {
         Track.paymentStarted(String(bookingId), senderBank, data.amount);
       } catch {}
       // Poll status. Extra mode: cuma cek payment status karena booking.status gak berubah.
+      // Skip kalau tab/app gak visible — hemat bandwidth & cegah loop saat user tinggal lama.
       pollRef.current = setInterval(async () => {
+        const { AppState, Platform } = await import('react-native');
+        if (AppState.currentState !== 'active') return;
+        if (Platform.OS === 'web' && typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
         try {
           if (!extraType) {
             await fetchOne(String(bookingId));

@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, CheckCircle2, Download, Lock, Trash2, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+
+import { useVisiblePoll } from '../lib/useVisiblePoll';
 
 import { api } from '../lib/api';
 import { compressImage, formatBytes } from '../lib/imageCompress';
@@ -31,7 +33,7 @@ export function BookingPhotos({
   const [damageReason, setDamageReason] = useState('');
   const [damageInputOpen, setDamageInputOpen] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api.get(`/cleaner/jobs/${bookingId}/photos`);
@@ -43,18 +45,14 @@ export function BookingPhotos({
         damageCount: nextPhotos.filter((p) => p.photoType === 'damage').length,
       });
     } catch { /* silent */ } finally { setLoading(false); }
-  }
-  useEffect(() => { void load(); }, [bookingId, onSummaryChange]);
+  }, [bookingId, onSummaryChange]);
 
-  // Real-time polling utk foto baru dari cleaner. Cuma jalan saat status aktif
-  // (matched -> in_progress) - selesai/batal stop polling supaya gak boros.
-  useEffect(() => {
-    const activeStatuses = ['matched', 'on_the_way', 'in_progress'];
-    if (!status || !activeStatuses.includes(status)) return;
-    const tick = setInterval(() => { void load(); }, 15_000);
-    return () => clearInterval(tick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId, status]);
+  useEffect(() => { void load(); }, [load]);
+
+  // Poll foto baru saat job aktif, berhenti otomatis saat app di background.
+  const activeStatuses = ['matched', 'on_the_way', 'in_progress'];
+  const isActive = !!status && activeStatuses.includes(status);
+  useVisiblePoll(load, 15_000, isActive);
 
   const beforePhotosCount = photos.filter((p) => p.photoType === 'before').length;
 

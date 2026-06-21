@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BellRing, Calendar, Check, Clock3, MapPin, Wallet, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
@@ -13,9 +14,10 @@ const SEARCH_TIMEOUT_SEC = 15 * 60;
 
 export function RealtimeJobModal() {
   const router = useRouter();
-  const { incoming, dismiss, accept } = useJobsRealtime();
+  const { incoming, queuedCount, dismiss, accept } = useJobsRealtime();
   const [accepting, setAccepting] = useState(false);
   const [secLeft, setSecLeft] = useState(SEARCH_TIMEOUT_SEC);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (!incoming) {
@@ -64,6 +66,13 @@ export function RealtimeJobModal() {
         <View className="rounded-t-3xl bg-white">
           <LinearGradient colors={['#1D4ED8', '#0F766E']} className="rounded-t-3xl px-5 pb-5 pt-4">
             <View className="mb-3 self-center h-1.5 w-10 rounded-full bg-white/35" />
+            {queuedCount > 0 ? (
+              <View className="mb-2 self-start rounded-full bg-amber-400 px-2.5 py-1">
+                <Text className="font-extrabold text-[10px] text-amber-900">
+                  + {queuedCount} job lain antri
+                </Text>
+              </View>
+            ) : null}
             <View className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/20">
               <View style={{ width: `${pct}%` }} className="h-full bg-white" />
             </View>
@@ -89,7 +98,7 @@ export function RealtimeJobModal() {
             </View>
           </LinearGradient>
 
-          <View className="px-5 pb-3 pt-4">
+          <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12 }}>
             <View className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <View className="flex-row items-center gap-2">
                 <Wallet color="#047857" size={16} strokeWidth={2.2} />
@@ -107,12 +116,79 @@ export function RealtimeJobModal() {
               ) : null}
             </View>
 
-            <View className="mt-4 gap-3">
+            {/* Layanan */}
+            <View className="flex-row items-center gap-3 rounded-2xl border border-ink-100 bg-white p-3">
+              {incoming.serviceIconUrl ? (
+                <View className="h-12 w-12 overflow-hidden rounded-xl bg-ink-100">
+                  <Image source={{ uri: incoming.serviceIconUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                </View>
+              ) : null}
+              <View className="flex-1">
+                <Text className="font-bold text-sm text-ink-900">{incoming.serviceName ?? 'Layanan'}</Text>
+                <Text className="font-medium text-[11px] text-brand-600">
+                  {incoming.pricingMode === 'package'
+                    ? (incoming.packageName ?? 'Paket Tetap')
+                    : incoming.pricingMode === 'hourly'
+                      ? `${incoming.hourlyTierName ?? 'Per Jam'}${incoming.hours ? ` · ${incoming.hours}j` : ''}`
+                      : 'Konsultasi WA'}
+                </Text>
+              </View>
+            </View>
+
+            <View className="gap-3">
               <Row icon={<MapPin color="#475569" size={16} />} text={incoming.addressLine} />
               <Row icon={<Calendar color="#475569" size={16} />} text={formatScheduleWithTz(incoming.scheduledAt, (incoming as any).addressLine)} />
-              <Row icon={<Clock3 color="#475569" size={16} />} text="Ambil sekarang agar customer segera mendapat kepastian." />
             </View>
-          </View>
+
+            {/* Detail properti dari snapshot */}
+            {incoming.formSnapshot && incoming.pricingMode === 'package' && (incoming.formSnapshot.propertyType || incoming.formSnapshot.bedrooms != null) ? (
+              <View className="rounded-xl bg-ink-50 p-3">
+                <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">Detail Properti</Text>
+                <Text className="mt-1 text-[11px] text-ink-700">
+                  {[
+                    incoming.formSnapshot.propertyType,
+                    incoming.formSnapshot.bedrooms != null ? `${incoming.formSnapshot.bedrooms} kamar tidur` : null,
+                    incoming.formSnapshot.bathrooms != null ? `${incoming.formSnapshot.bathrooms} kamar mandi` : null,
+                    incoming.formSnapshot.areaM2 ? `${incoming.formSnapshot.areaM2}m²` : null,
+                  ].filter(Boolean).join(' · ')}
+                </Text>
+                {incoming.formSnapshot.dirtLevel ? (
+                  <Text className="mt-1 text-[11px] text-ink-700">Tingkat kotor: {incoming.formSnapshot.dirtLevel}/5</Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* Foto kondisi */}
+            {Array.isArray(incoming.formSnapshot?.conditionPhotos) && incoming.formSnapshot.conditionPhotos.length > 0 ? (
+              <View className="rounded-xl border border-ink-100 bg-white p-3">
+                <Text className="font-semibold text-[10px] uppercase tracking-wider text-ink-500">
+                  Foto Kondisi ({incoming.formSnapshot.conditionPhotos.length})
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+                  <View className="flex-row gap-2">
+                    {incoming.formSnapshot.conditionPhotos.map((url: string, i: number) => (
+                      <Pressable key={`${url}-${i}`} onPress={() => setPreviewPhoto(url)} className="overflow-hidden rounded-lg bg-ink-100" style={{ width: 80, height: 80 }}>
+                        <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            ) : null}
+
+            {/* Catatan customer */}
+            {incoming.customerNotes ? (
+              <View className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <Text className="font-semibold text-[10px] uppercase tracking-wider text-amber-900">Catatan Customer</Text>
+                <Text className="mt-1 text-[11px] text-amber-900">{incoming.customerNotes}</Text>
+              </View>
+            ) : null}
+
+            <View className="flex-row items-start gap-2">
+              <Clock3 color="#475569" size={14} style={{ marginTop: 2 }} />
+              <Text className="flex-1 text-[11px] text-ink-500">Ambil sekarang agar customer segera mendapat kepastian.</Text>
+            </View>
+          </ScrollView>
 
           <SafeAreaView edges={['bottom']} className="border-t border-ink-100 bg-white">
             <View className="flex-row gap-3 px-5 pb-4 pt-4">
@@ -145,6 +221,26 @@ export function RealtimeJobModal() {
           </SafeAreaView>
         </View>
       </View>
+
+      <Modal visible={!!previewPhoto} transparent animationType="fade" onRequestClose={() => setPreviewPhoto(null)}>
+        <Pressable
+          onPress={() => setPreviewPhoto(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 12 }}
+        >
+          {previewPhoto ? (
+            <Image source={{ uri: previewPhoto }} style={{ width: '100%', height: '80%' }} contentFit="contain" />
+          ) : null}
+          <Pressable
+            onPress={() => setPreviewPhoto(null)}
+            style={{ position: 'absolute', top: 50, right: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 999 }}
+          >
+            <X color="white" size={22} />
+          </Pressable>
+          <Text style={{ position: 'absolute', bottom: 40, color: 'white', fontSize: 11 }}>
+            Tap di luar foto untuk tutup
+          </Text>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }

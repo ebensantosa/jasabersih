@@ -87,6 +87,13 @@ module.exports = {
       ],
     ],
     experiments: { typedRoutes: false },
+    updates: {
+      url: 'https://u.expo.dev/4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a',
+      enabled: true,
+      checkAutomatically: 'ON_LOAD',
+      fallbackToCacheTimeout: 0,
+    },
+    runtimeVersion: { policy: 'appVersion' },
     extra: {
       apiBaseUrl: 'https://api.jasabersih.com/v1',
       privacyUrl: 'https://jasabersih.com/ketentuan-layanan/',

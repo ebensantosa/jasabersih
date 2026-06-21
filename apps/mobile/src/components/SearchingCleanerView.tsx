@@ -192,15 +192,6 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             {/* Stats */}
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
               <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: 14, alignItems: 'center' }}>
-                <Users color="white" size={18} strokeWidth={2.4} />
-                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9, fontFamily: 'Inter_700Bold', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Cleaner Dihubungi
-                </Text>
-                <Text style={{ color: 'white', fontSize: 24, fontFamily: 'Inter_800ExtraBold', marginTop: 4 }}>
-                  {broadcastedTo ?? '—'}
-                </Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: 14, alignItems: 'center' }}>
                 <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center' }}>
                   <View style={{ width: 2, height: 6, backgroundColor: 'white', borderRadius: 1 }} />
                 </View>

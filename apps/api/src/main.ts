@@ -67,6 +67,9 @@ async function bootstrap() {
     origin: (origin, cb) => cb(null, isAllowedOrigin(origin ?? undefined)),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    // Cache preflight 24 jam supaya browser gak fire OPTIONS per request
+    // (root cause spam network: dulu preflight di-fire per XHR).
+    maxAge: 86400,
   });
 
   // /v1 prefix for API; /r/* (referral landing) excluded so URL stays short & shareable
@@ -93,6 +96,18 @@ async function bootstrap() {
     console.error('[api][FATAL] AUTH_DEV_MODE=true tidak boleh aktif di production. Refusing to start.');
     process.exit(1);
   }
+
+  // Validate required env vars at startup so misconfigured deployments fail fast.
+  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+  const missingEnvVars = requiredEnvVars.filter((k) => !process.env[k]);
+  if (missingEnvVars.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error(`[api][FATAL] Missing required env vars: ${missingEnvVars.join(', ')}. Refusing to start.`);
+    process.exit(1);
+  }
+
+  // Graceful shutdown: let NestJS flush pending requests before process exits.
+  app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? '0.0.0.0';

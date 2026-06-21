@@ -5,6 +5,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
+import { Track } from '../../src/lib/analytics';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
@@ -72,11 +73,9 @@ export default function Verify() {
         ...(normalizedReferralCode ? { referralCode: normalizedReferralCode } : {}),
       });
       setTokens(res.data?.data ?? res.data);
-      // Sync mode store dgn role yg dipilih saat register, supaya post-verify
-      // navigate ke tab yg benar (cleaner -> /jobs, customer -> /home).
-      // Tanpa ini, cleaner stuck di home tab customer = keliatan blank.
       const targetMode = isFreelancer ? 'freelancer' : 'customer';
       setMode(targetMode);
+      Track.signupSuccess('phone');
       // Cleaner domisili dari register form - set ke cleaner_profile via /cleaner/profile.
       // Non-blocking: kalau gagal, KYC step bisa minta ulang.
       if (targetMode === 'freelancer' && domicileCityParam) {

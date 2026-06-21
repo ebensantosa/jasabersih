@@ -16,7 +16,10 @@ export function useJobsRealtime() {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
   const areas = useCleanerStore((s) => s.serviceAreas);
-  const [incoming, setIncoming] = useState<IncomingJob | null>(null);
+  const userIsAvailable = useCleanerStore((s) => s.isAvailable);
+  const [queue, setQueue] = useState<IncomingJob[]>([]);
+  const incoming = queue[0] ?? null;
+  const queuedCount = Math.max(0, queue.length - 1);
   const [takenIds, setTakenIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const onlineRef = useRef(false);
@@ -44,7 +47,7 @@ export function useJobsRealtime() {
   }
 
   useEffect(() => {
-    const shouldBeOnline = !!tokens && mode === 'freelancer';
+    const shouldBeOnline = !!tokens && mode === 'freelancer' && userIsAvailable;
     if (!shouldBeOnline) {
       if (onlineRef.current) {
         const s = getJobsSocket();
@@ -64,11 +67,11 @@ export function useJobsRealtime() {
     function onIncoming(job: IncomingJob) {
       if (!isPopupEligible(job)) return;
       lastSurfacedIdRef.current = job.id;
-      setIncoming((prev) => prev ?? job); // Don't replace if already showing one
+      setQueue((prev) => (prev.some((j) => j.id === job.id) ? prev : [...prev, job]));
     }
     function onTaken(payload: { bookingId: string }) {
       setTakenIds((prev) => new Set(prev).add(payload.bookingId));
-      setIncoming((prev) => (prev?.id === payload.bookingId ? null : prev));
+      setQueue((prev) => prev.filter((j) => j.id !== payload.bookingId));
     }
 
     if (socket.connected) onConnect();
@@ -83,7 +86,7 @@ export function useJobsRealtime() {
       socket.off('incoming-job', onIncoming);
       socket.off('job-taken', onTaken);
     };
-  }, [tokens, mode, areas]);
+  }, [tokens, mode, areas, userIsAvailable]);
 
   // Polling fallback HANYA kalau websocket gak connect - kalau socket online,
   // server push job real-time, polling jadi noise (request /available tiap 12s).
@@ -98,17 +101,21 @@ export function useJobsRealtime() {
     return () => { socket.off('connect', onConn); socket.off('disconnect', onDisc); };
   }, []);
 
-  const fallbackEnabled = !!tokens && mode === 'freelancer' && !socketConnected;
+  const fallbackEnabled = !!tokens && mode === 'freelancer' && userIsAvailable && !socketConnected;
   const pullAvailableFallback = async () => {
     if (!fallbackEnabled) return;
     if (incoming) return;
     try {
       const r = await api.get('/cleaner/jobs/available');
       const list = ((r.data?.data ?? r.data ?? []) as IncomingJob[]).filter((job) => isPopupEligible(job));
-      const next = list.find((job) => job.id !== lastSurfacedIdRef.current) ?? list[0];
-      if (!next) return;
-      lastSurfacedIdRef.current = next.id;
-      setIncoming(next);
+      if (list.length === 0) return;
+      setQueue((prev) => {
+        const existing = new Set(prev.map((j) => j.id));
+        const merged = [...prev];
+        for (const j of list) if (!existing.has(j.id)) merged.push(j);
+        if (merged[0]) lastSurfacedIdRef.current = merged[0].id;
+        return merged;
+      });
     } catch {
       // silent fallback
     }
@@ -122,26 +129,46 @@ export function useJobsRealtime() {
   function dismiss(bookingId?: string) {
     if (bookingId) {
       setDismissedIds((prev) => new Set(prev).add(bookingId));
+      setQueue((prev) => prev.filter((j) => j.id !== bookingId));
+    } else {
+      setQueue((prev) => prev.slice(1));
     }
-    setIncoming(null);
   }
 
   function accept(bookingId: string): Promise<{ ok: boolean; error?: string }> {
     const socket = getJobsSocket();
     return new Promise((resolve) => {
-      socket.emit('accept-job', { bookingId }, (res: { ok: boolean; error?: string }) => {
+      let settled = false;
+      const finish = (res: { ok: boolean; error?: string }) => {
+        if (settled) return;
+        settled = true;
         if (res?.ok) {
-          setIncoming(null);
+          setQueue((prev) => prev.filter((j) => j.id !== bookingId));
           setDismissedIds((prev) => {
             const next = new Set(prev);
             next.delete(bookingId);
             return next;
           });
         }
-        resolve(res ?? { ok: false, error: 'no response' });
+        resolve(res);
+      };
+      // Fallback: kalau ACK socket gak datang dalam 6 detik, langsung verify
+      // via REST. Bisa terjadi kalau socket disconnect tengah jalan.
+      const timer = setTimeout(async () => {
+        try {
+          const r = await api.post(`/cleaner/jobs/${bookingId}/accept`);
+          finish({ ok: !!(r.data?.ok ?? r.data?.data?.ok ?? true) });
+        } catch (e: any) {
+          const msg = e?.response?.data?.error?.message ?? 'Koneksi lambat, coba lagi';
+          finish({ ok: false, error: msg });
+        }
+      }, 6000);
+      socket.emit('accept-job', { bookingId }, (res: { ok: boolean; error?: string }) => {
+        clearTimeout(timer);
+        finish(res ?? { ok: false, error: 'no response' });
       });
     });
   }
 
-  return { incoming, takenIds, dismiss, accept };
+  return { incoming, queuedCount, takenIds, dismiss, accept };
 }

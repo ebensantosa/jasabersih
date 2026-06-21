@@ -32,9 +32,8 @@ export function CleanerLockOverlay() {
     } catch { /* keep cached */ }
   }, [tokens, mode, setKycStatus]);
 
-  // Refresh tiap 60s - auto unlock kalau admin approve di server.
-  // Pause saat app di background biar gak buang baterai.
-  useVisiblePoll(fetchStatus, 60_000, !!tokens && mode === 'freelancer');
+  // Refresh tiap 5 menit - KYC status jarang berubah, tidak perlu terlalu sering.
+  useVisiblePoll(fetchStatus, 5 * 60_000, !!tokens && mode === 'freelancer');
 
   useEffect(() => {
     if (!tokens || mode !== 'freelancer' || kycStatus === null) return;

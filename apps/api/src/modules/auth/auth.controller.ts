@@ -69,7 +69,9 @@ export class AuthController {
   }
 
   @Post('login')
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  // Login throttle longgar (15/menit) - cukup buat user typo password
+  // beberapa kali tanpa kena lockout, tapi tetep block brute force script.
+  @Throttle({ default: { ttl: 60_000, limit: 15 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login dengan nomor HP + password' })
   login(

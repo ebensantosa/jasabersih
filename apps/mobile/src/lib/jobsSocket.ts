@@ -35,4 +35,10 @@ export type IncomingJob = {
   totalAmount: number;
   cleanerPayout: number | null;
   serviceName: string | null;
+  serviceIconUrl?: string | null;
+  packageName?: string | null;
+  hourlyTierName?: string | null;
+  hours?: number | null;
+  customerNotes?: string | null;
+  formSnapshot?: Record<string, any> | null;
 };

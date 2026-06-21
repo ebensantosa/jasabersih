@@ -163,14 +163,8 @@ function BookingDetail() {
   // perlu manual refresh. Cuma jalan saat status aktif (matched -> in_progress)
   // supaya gak boros bandwidth setelah booking selesai/batal.
   // BookingPhotos juga refetch internal-nya saat parent re-render.
-  useEffect(() => {
-    if (!id || id.startsWith('bk_')) return;
-    const activeStatuses = ['matched', 'on_the_way', 'in_progress'];
-    if (!booking || !activeStatuses.includes(booking.status)) return;
-    const tick = setInterval(() => { void loadUpcharges(); }, 15_000);
-    return () => clearInterval(tick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isCleaner, booking?.status]);
+  const upchargePollEnabled = !!id && !id.startsWith('bk_') && !!booking && ['matched', 'on_the_way', 'in_progress'].includes(booking?.status as string);
+  useVisiblePoll(loadUpcharges, 15_000, upchargePollEnabled);
 
   // Fetch subscription child visits kalau parent
   async function loadSubscriptionVisits() {
@@ -269,12 +263,14 @@ function BookingDetail() {
     && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status);
   const cleanerCanFinish = booking?.status === 'in_progress' && photoSummary.afterCount > 0;
 
-  function openWaHelp() {
+  const csWaNumber = useConfig('contact.whatsapp' as any, '6285124363374' as any) as unknown as string;
+  async function openWaHelp() {
     if (!booking) return;
-    router.push({
-      pathname: '/booking/wa-survey',
-      params: { category: booking.categoryCode || 'konsultasi' },
-    });
+    const { Linking } = await import('react-native');
+    const text = encodeURIComponent(
+      `Halo CS JasaBersih, saya butuh bantuan untuk pesanan ${booking.id} (${booking.categoryCode || 'konsultasi'}).`,
+    );
+    Linking.openURL(`https://wa.me/${csWaNumber}?text=${text}`).catch(() => {});
   }
 
   // ───── ALL HOOKS BEFORE ANY EARLY RETURN ─────
@@ -564,11 +560,19 @@ function BookingDetail() {
                 </Text>
                 <Text className="font-bold text-base text-ink-900">{booking.categoryName}</Text>
                 <Text className="font-medium text-[11px] text-ink-500">{modeLabel}</Text>
-                {!isCleaner && (
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      const Clipboard = await import('expo-clipboard');
+                      await Clipboard.setStringAsync(booking.id);
+                      toast.success('ID pesanan disalin');
+                    } catch {}
+                  }}
+                >
                   <Text className="font-medium text-[10px] text-ink-400">
-                    ID: {booking.id.toUpperCase()}
+                    ID: {String(booking.id).slice(0, 8).toUpperCase()}…{String(booking.id).slice(-4).toUpperCase()}
                   </Text>
-                )}
+                </Pressable>
               </View>
             </View>
             <View

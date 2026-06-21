@@ -192,6 +192,12 @@ export class AdminDisputesController {
                suspended_by = ${admin.id}::uuid
          WHERE id = ${dispute.subject_user_id}::uuid
       `;
+      // Force offline cleaner yang kena suspend supaya gak nongol di pool
+      // broadcast & gak bisa accept job baru.
+      await this.prisma.$executeRaw`
+        UPDATE cleaner_profiles SET is_available = FALSE
+         WHERE user_id = ${dispute.subject_user_id}::uuid
+      `;
     }
 
     // Record fraud strike on subject if action = debit_cleaner / suspend / refund_customer

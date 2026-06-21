@@ -21,6 +21,8 @@ export class LoginProtectionService {
           FROM auth_login_attempts
          WHERE scope_type = ${scope.scopeType}
            AND scope_value = ${scope.scopeValue}
+           AND lock_until IS NOT NULL
+           AND lock_until > NOW()
          LIMIT 1
       `;
       const ts = rows[0]?.lock_until ? new Date(rows[0].lock_until).getTime() : 0;
@@ -61,9 +63,9 @@ export class LoginProtectionService {
                last_failed_at = NOW(),
                lock_until = CASE
                  WHEN auth_login_attempts.last_failed_at < NOW() - ($3::int * INTERVAL '1 minute') THEN NULL
-                 WHEN auth_login_attempts.failed_count + 1 >= 10 THEN NOW() + INTERVAL '15 minutes'
-                 WHEN auth_login_attempts.failed_count + 1 >= 8 THEN NOW() + INTERVAL '5 minutes'
-                 WHEN auth_login_attempts.failed_count + 1 >= 5 THEN NOW() + INTERVAL '1 minute'
+                 WHEN auth_login_attempts.failed_count + 1 >= 20 THEN NOW() + INTERVAL '15 minutes'
+                 WHEN auth_login_attempts.failed_count + 1 >= 15 THEN NOW() + INTERVAL '5 minutes'
+                 WHEN auth_login_attempts.failed_count + 1 >= 10 THEN NOW() + INTERVAL '1 minute'
                  ELSE auth_login_attempts.lock_until
                END,
                updated_at = NOW()
@@ -97,6 +99,7 @@ export class LoginProtectionService {
   }
 
   private humanizeSeconds(seconds: number) {
+    if (seconds < 10) return 'beberapa saat';
     if (seconds < 60) return `${seconds} detik`;
     const minutes = Math.ceil(seconds / 60);
     if (minutes < 60) return `${minutes} menit`;

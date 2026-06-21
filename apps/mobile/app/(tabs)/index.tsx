@@ -9,13 +9,14 @@ import {
   Clock,
   MapPin,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   Sparkles,
   Tag,
   Wallet,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +24,7 @@ import { BannerCarousel } from '../../src/components/BannerCarousel';
 import { FeaturedCleaners } from '../../src/components/FeaturedCleaners';
 import { WaIcon } from '../../src/components/BrandIcon';
 import { NotifBell } from '../../src/components/NotifBell';
+import { useBookingsStore } from '../../src/stores/bookings';
 import { formatRupiah } from '../../src/data/catalog';
 import { useServices } from '../../src/hooks/useServices';
 import { useT } from '../../src/lib/i18n';
@@ -36,6 +38,13 @@ import { useUserStore } from '../../src/stores/user';
 export default function Home() {
   const router = useRouter();
   const mode = useModeStore((s) => s.mode);
+  const allBookings = useBookingsStore((s) => s.list);
+  const recentOrders = useMemo(() =>
+    allBookings
+      .filter((b) => b.status === 'completed' && b.categoryCode && b.formSnapshot)
+      .sort((a, b) => (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt))
+      .slice(0, 5),
+  [allBookings]);
   const ctaAnimated = useConfig('home.cta_animated' as any, false as any) as unknown as boolean;
   const ctaImageUrl = useConfig('home.cta_image_url' as any, '' as any) as unknown as string;
   const pulse = useState(() => new Animated.Value(1))[0];
@@ -314,6 +323,50 @@ export default function Home() {
           </View>
         </View>
 
+
+        {/* PESAN LAGI — tampil kalau ada riwayat pesanan selesai */}
+        {recentOrders.length > 0 && (
+          <View className="mt-6">
+            <View className="mb-3 flex-row items-center justify-between px-4">
+              <Text className="font-extrabold text-sm text-ink-900">Pesan Lagi</Text>
+              <Pressable onPress={() => router.push('/(tabs)/orders')}>
+                <Text className="font-semibold text-xs text-brand-600">Lihat Semua</Text>
+              </Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+              {recentOrders.map((b) => {
+                const snap = b.formSnapshot ?? {};
+                const subtitle = [
+                  b.packageName ?? snap.subscriptionTier,
+                  snap.bedrooms ? `${snap.bedrooms} KT` : null,
+                  snap.bathrooms ? `${snap.bathrooms} KM` : null,
+                  snap.areaM2 ? `${snap.areaM2} m²` : null,
+                ].filter(Boolean).join(' · ');
+                return (
+                  <Pressable
+                    key={b.id}
+                    onPress={() => router.push(`/booking/new?category=${b.categoryCode}${b.packageId ? `&package=${b.packageId}` : ''}&reorder=${b.id}`)}
+                    style={{ width: 180, backgroundColor: 'white', borderRadius: 16, padding: 14, elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.07, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}
+                  >
+                    {b.categoryImage ? (
+                      <Image source={{ uri: b.categoryImage }} style={{ width: 36, height: 36, borderRadius: 10, marginBottom: 8 }} />
+                    ) : (
+                      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#EFF6FF', marginBottom: 8, alignItems: 'center', justifyContent: 'center' }}>
+                        <RotateCcw size={18} color="#3B82F6" />
+                      </View>
+                    )}
+                    <Text style={{ fontWeight: '700', fontSize: 13, color: '#0F172A', marginBottom: 2 }} numberOfLines={1}>{b.categoryName}</Text>
+                    {subtitle ? <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }} numberOfLines={1}>{subtitle}</Text> : null}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <RotateCcw size={11} color="#2563EB" />
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563EB' }}>Pesan Lagi</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {BUNDLE_SERVICES.length > 0 && (
           <View className="mt-8">

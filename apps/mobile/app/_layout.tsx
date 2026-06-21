@@ -179,6 +179,11 @@ export default function RootLayout() {
       lastBootstrappedTokenRef.current = null;
       setUserId(null);
       setAuthReady(true);
+      // Kalau sudah hydrated (bukan cold start) dan token hilang → paksa ke login.
+      // Ini handle kasus logout mid-session atau token expired tanpa bisa refresh.
+      if (useAuthStore.getState().hydrated) {
+        router.replace('/(auth)/login');
+      }
       return;
     }
     if (lastBootstrappedTokenRef.current === accessToken) return;

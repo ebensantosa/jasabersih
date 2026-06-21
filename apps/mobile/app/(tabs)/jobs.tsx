@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertCircle, BadgeCheck, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -63,6 +63,7 @@ function JobsScreen() {
   const [online, setOnline] = useState(false);
   const cleanerAreas = useCleanerStore((s) => s.serviceAreas);
   const setAreas = useCleanerStore((s) => s.setAreas);
+  const setStoreAvailable = useCleanerStore((s) => s.setIsAvailable);
   const noAreaPicked = cleanerAreas.length === 0;
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -80,7 +81,9 @@ function JobsScreen() {
   useEffect(() => {
     api.get('/cleaner/profile').then((r) => {
       const d = r.data?.data ?? r.data;
-      setOnline(!!d?.isAvailable);
+      const serverOnline = !!d?.isAvailable;
+      setOnline(serverOnline);
+      setStoreAvailable(serverOnline);
       const serverAreas = Array.isArray(d?.serviceAreas) ? d.serviceAreas.filter((a: any) => typeof a === 'string') : [];
       // Server is source of truth: kalau local & server beda, server yang menang.
       const localAreas = useCleanerStore.getState().serviceAreas;
@@ -112,9 +115,28 @@ function JobsScreen() {
       router.push('/cleaner/areas');
       return;
     }
+    // Guard: kalau mau go-offline tapi ada job yang lagi in-progress, block.
+    // Cegah cleaner ghosting customer di tengah pengerjaan.
+    if (!next) {
+      const inProgress = active.filter((j: any) => j.status === 'in_progress' || j.status === 'started');
+      if (inProgress.length > 0) {
+        Alert.alert(
+          'Tidak bisa offline',
+          `Kamu masih punya ${inProgress.length} job yang sedang dikerjakan. Selesaikan dulu sebelum offline.`,
+          [{ text: 'Mengerti' }],
+        );
+        return;
+      }
+    }
+    void doToggle(next);
+  }
+
+  async function doToggle(next: boolean) {
     try {
       await api.patch('/cleaner/profile', { isAvailable: next });
       setOnline(next);
+      setStoreAvailable(next);
+      if (!next) setAvailable([]);
       toast.success(next ? 'Status: Online - siap terima job' : 'Status: Offline');
       try {
         const { Track } = await import('../../src/lib/analytics');
@@ -156,6 +178,7 @@ function JobsScreen() {
       setShowPhotoModal(false);
       await api.patch('/cleaner/profile', { isAvailable: true });
       setOnline(true);
+      setStoreAvailable(true);
       toast.success('Status: Online - siap terima job');
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal upload foto');
@@ -268,6 +291,16 @@ function JobsScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
       >
+        {!online && active.length > 0 && (
+          <View className="mb-3 rounded-2xl border border-amber-300 bg-amber-50 p-3">
+            <Text className="font-bold text-[11px] uppercase tracking-wider text-amber-900">
+              Kamu Offline
+            </Text>
+            <Text className="mt-1 text-[11px] text-amber-900">
+              Kamu masih punya {active.length} job aktif yang wajib dikerjakan. Mode offline cuma berhenti terima tawaran baru.
+            </Text>
+          </View>
+        )}
         {active.length > 0 && (
           <View className="mb-3 rounded-2xl p-3" style={{ backgroundColor: '#D1FAE5' }}>
             <Text className="font-semibold text-[11px] uppercase tracking-wider" style={{ color: '#047857' }}>

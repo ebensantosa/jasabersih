@@ -224,6 +224,27 @@ export class BookingsController {
         );
       }
     }
+
+    // Idempotency: kalau dalam 60 detik terakhir customer sudah create booking
+    // dengan kombinasi (service/package/hourly + scheduledAt + total) yang sama,
+    // return booking yang udah ada. Cegah double-submit dari double-tap, retry
+    // network, atau race condition di client.
+    const dedupRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM bookings
+       WHERE customer_id = ${user.id}::uuid
+         AND status = 'pending_payment'
+         AND pricing_mode = ${body.pricingMode}
+         AND COALESCE(service_id::text, '') = ${body.serviceId ?? ''}
+         AND COALESCE(package_id::text, '') = ${body.packageId ?? ''}
+         AND COALESCE(hourly_tier_id::text, '') = ${body.hourlyTierId ?? ''}
+         AND scheduled_at = ${new Date(body.scheduledAt)}::timestamptz
+         AND total_amount = ${body.totalAmount}
+         AND created_at > NOW() - INTERVAL '60 seconds'
+       ORDER BY created_at DESC LIMIT 1
+    `;
+    if (dedupRows[0]) {
+      return { id: dedupRows[0].id, deduped: true };
+    }
     // Hitung travel fee — kalau out-of-range, throw BadRequest (mobile arahkan ke WA)
     const lat = body.lat ?? -7.7956;
     const lng = body.lng ?? 110.3695;
@@ -415,7 +436,12 @@ export class BookingsController {
             VALUES (${body.voucherCode!.trim().toUpperCase()}, ${user.id}::uuid, ${phoneRow[0].phone}, ${bookingId}::uuid)
           `;
         }
-      } catch { /* race condition possible — ignore */ }
+      } catch (e) {
+        // Rethrow application errors (quota exhausted etc.) — only swallow DB-level errors.
+        if (e instanceof BadRequestException) throw e;
+        // eslint-disable-next-line no-console
+        console.error('[booking] voucher_usage record failed (non-fatal)', String(e));
+      }
     }
 
     // Tag booking dengan referral_id (kalau dipake), supaya bisa di-trace saat completion.
@@ -466,15 +492,9 @@ export class BookingsController {
       id, user.id,
     );
 
-    // Materialize subscription children. Return true kalau memang subscription.
+    // Materialize subscription children (creates children + marks parent as subscription_parent atomically).
     const materialized = await this.materializeSubscriptionChildren(id, user.id);
     if (materialized) {
-      // Parent subscription → set ke status special 'subscription_parent' (gak di-broadcast),
-      // cleaner cuma dapat offer dari child bookings (visit 1 langsung, visit 2+ via cron H-1).
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE bookings SET status = 'subscription_parent' WHERE id = $1::uuid`,
-        id,
-      );
       // Broadcast cuma untuk child visit pertama (yg statusnya 'searching')
       const firstChild = await this.prisma.$queryRaw<{ id: string }[]>`
         SELECT id FROM bookings
@@ -531,63 +551,67 @@ export class BookingsController {
     const remainderTotal = totalAmount - perVisitTotal * totalVisits;
     const remainderBase = baseAmount - perVisitBase * totalVisits;
 
-    // Bikin child bookings: visit-1 status='searching' (langsung broadcast), visit 2+ 'scheduled_future'
-    for (let i = 0; i < totalVisits; i++) {
-      const dateIso = sortedDates[i]!;
-      const visitIndex = i + 1;
-      // Default scheduled time = 09:00 di tanggal visit. Customer bisa request reschedule per visit.
-      const scheduledAt = `${dateIso}T09:00:00.000Z`;
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const visitDate = new Date(dateIso); visitDate.setHours(0, 0, 0, 0);
-      const isFirst = i === 0;
-      const isToday = visitDate.getTime() === today.getTime();
-      const isFutureVisit = visitDate.getTime() > today.getTime();
-      const initialStatus = (isFirst || isToday) ? 'searching' : (isFutureVisit ? 'scheduled_future' : 'searching');
-      const childTotalAmt = perVisitTotal + (isFirst ? remainderTotal : 0);
-      const childBaseAmt = perVisitBase + (isFirst ? remainderBase : 0);
-      const childFormSnapshot = {
-        ...(p.form_snapshot ?? {}),
-        // Override: child gak punya array subscriptionDates (hindari nested rendering)
-        subscriptionDates: undefined,
-        // Tag visit info
-        subscriptionVisitOf: visitIndex,
-        subscriptionVisitTotal: totalVisits,
-        parentBookingId: parentId,
-      };
+    // Wrap child creation + parent status update in a transaction to prevent partial state.
+    await this.prisma.$transaction(async (tx) => {
+      for (let i = 0; i < totalVisits; i++) {
+        const dateIso = sortedDates[i]!;
+        const visitIndex = i + 1;
+        const scheduledAt = `${dateIso}T09:00:00.000Z`;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const visitDate = new Date(dateIso); visitDate.setHours(0, 0, 0, 0);
+        const isFirst = i === 0;
+        const isToday = visitDate.getTime() === today.getTime();
+        const isFutureVisit = visitDate.getTime() > today.getTime();
+        const initialStatus = (isFirst || isToday) ? 'searching' : (isFutureVisit ? 'scheduled_future' : 'searching');
+        const childTotalAmt = perVisitTotal + (isFirst ? remainderTotal : 0);
+        const childBaseAmt = perVisitBase + (isFirst ? remainderBase : 0);
+        const childFormSnapshot = {
+          ...(p.form_snapshot ?? {}),
+          subscriptionDates: undefined,
+          subscriptionVisitOf: visitIndex,
+          subscriptionVisitTotal: totalVisits,
+          parentBookingId: parentId,
+        };
 
-      await this.prisma.$executeRawUnsafe(
-        `INSERT INTO bookings (
-          customer_id, service_id, package_id, pricing_mode, status, form_snapshot,
-          scheduled_at, address_line, location, customer_notes,
-          base_amount, total_amount, voucher_id, voucher_discount,
-          parent_booking_id, subscription_visit_index, subscription_total_visits,
-          paid_at
-        ) VALUES (
-          $1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb,
-          $7::timestamptz, $8, $9, $10,
-          $11::bigint, $12::bigint, $13::uuid, $14::bigint,
-          $15::uuid, $16::int, $17::int,
-          NOW()
-        )`,
-        customerId,
-        p.service_id,
-        p.package_id,
-        p.pricing_mode,
-        initialStatus,
-        JSON.stringify(childFormSnapshot),
-        scheduledAt,
-        p.address_line,
-        p.location,
-        p.customer_notes,
-        childBaseAmt,
-        childTotalAmt,
-        p.voucher_id,
-        Number(p.voucher_discount),
+        await tx.$executeRawUnsafe(
+          `INSERT INTO bookings (
+            customer_id, service_id, package_id, pricing_mode, status, form_snapshot,
+            scheduled_at, address_line, location, customer_notes,
+            base_amount, total_amount, voucher_id, voucher_discount,
+            parent_booking_id, subscription_visit_index, subscription_total_visits,
+            paid_at
+          ) VALUES (
+            $1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb,
+            $7::timestamptz, $8, $9, $10,
+            $11::bigint, $12::bigint, $13::uuid, $14::bigint,
+            $15::uuid, $16::int, $17::int,
+            NOW()
+          )`,
+          customerId,
+          p.service_id,
+          p.package_id,
+          p.pricing_mode,
+          initialStatus,
+          JSON.stringify(childFormSnapshot),
+          scheduledAt,
+          p.address_line,
+          p.location,
+          p.customer_notes,
+          childBaseAmt,
+          childTotalAmt,
+          p.voucher_id,
+          Number(p.voucher_discount),
+          parentId,
+          visitIndex,
+          totalVisits,
+        );
+      }
+      // Mark parent as subscription_parent inside same transaction so it's atomic.
+      await tx.$executeRawUnsafe(
+        `UPDATE bookings SET status = 'subscription_parent' WHERE id = $1::uuid`,
         parentId,
-        visitIndex,
-        totalVisits,
       );
-    }
+    });
     return true;
   }
 

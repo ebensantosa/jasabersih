@@ -132,10 +132,11 @@ export default function ServiceDetail() {
               colors={['rgba(0,0,0,0.5)', 'transparent']}
               style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 90 }}
             />
-            {/* Bottom gradient (blue-green, samain dgn home hero) untuk text overlay */}
+            {/* Bottom gradient hitam halus — bikin teks kebaca tanpa warna mencolok */}
             <LinearGradient
-              colors={['transparent', 'rgba(30,58,138,0.55)', 'rgba(4,120,87,0.75)']}
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 }}
+              colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.75)']}
+              locations={[0, 0.55, 1]}
+              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 180 }}
             />
 
             {/* Top action bar */}
