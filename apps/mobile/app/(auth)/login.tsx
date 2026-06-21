@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,6 +32,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
 
@@ -61,10 +62,12 @@ export default function Login() {
   }
 
   async function onLogin() {
+    if (submittingRef.current) return;
     if (!validate()) {
       toast.error('Periksa input yang masih kosong/salah');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
       const result = await login(email, password);
@@ -118,6 +121,7 @@ export default function Login() {
       toast.error(userMsg);
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 
