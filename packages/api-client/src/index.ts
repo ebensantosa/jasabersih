@@ -120,7 +120,7 @@ export function createClient(opts: ClientOptions) {
         pricingMode: 'package' | 'hourly' | 'wa_survey';
         packageId?: string; serviceId?: string;
         scheduledAt: string; addressLine: string; lat?: number; lng?: number;
-        totalAmount: number; baseAmount?: number; customerNotes?: string;
+        totalAmount: number; baseAmount?: number;
         cleanerId?: string; paymentStatus?: 'unpaid' | 'paid'; adminNote?: string;
         cityName?: string; customerNotes?: string; conditionPhotos?: string[];
       }) => request<{ id: string; customerId: string; status: string }>('POST', `/admin/bookings`, body),

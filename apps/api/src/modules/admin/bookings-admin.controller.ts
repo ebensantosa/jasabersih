@@ -105,7 +105,7 @@ export class AdminBookingsController {
     }
 
     const status = body.paymentStatus === 'paid' ? 'searching' : 'pending_payment';
-    const paidAt = body.paymentStatus === 'paid' ? new Date().toISOString() : null;
+    const isPaid = body.paymentStatus === 'paid';
     const lng = body.lng ?? 110.3695;
     const lat = body.lat ?? -7.7956;
 
@@ -120,7 +120,9 @@ export class AdminBookingsController {
          $1::uuid, $2::uuid, $3::uuid, $4, $5::uuid,
          $6, $7::jsonb, $8::timestamptz, $9,
          ST_SetSRID(ST_MakePoint($10, $11), 4326)::geography,
-         $12, $13, $14, $15, $16, $17
+         $12, $13, $14, $15,
+         CASE WHEN $16 THEN NOW() ELSE NULL END,
+         CASE WHEN $17::uuid IS NOT NULL THEN NOW() ELSE NULL END
        ) RETURNING id`,
       customerId,
       body.cleanerId ?? null,
@@ -136,8 +138,8 @@ export class AdminBookingsController {
       `[admin manual] ${body.adminNote ?? 'created by admin'}${body.cityName ? ` | kota: ${body.cityName}` : ''}`,
       body.baseAmount ?? body.totalAmount,
       body.totalAmount,
-      paidAt,
-      body.cleanerId ? new Date().toISOString() : null,
+      isPaid,
+      body.cleanerId ?? null,
     );
 
     const bookingId = row[0]?.id;
