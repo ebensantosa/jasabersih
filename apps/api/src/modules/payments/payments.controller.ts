@@ -473,14 +473,6 @@ export class PaymentsController {
       );
       const balance = Number(balRow[0]?.b ?? 0);
       creditUsed = Math.min(balance, total);
-      if (creditUsed > 0 && creditUsed < total) {
-        // partial: deduct saldo sekarang
-        await this.prisma.$executeRawUnsafe(
-          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-           VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
-          user.id, creditUsed, b.id, `Potongan saldo untuk booking ${b.id.slice(0, 8)}`,
-        );
-      }
     }
     const amount = total - creditUsed;
     if (amount <= 0) throw new BadRequestException('Total bayar 0 — gunakan endpoint /bookings/:id/pay dengan useCredit untuk pelunasan pakai saldo penuh.');
@@ -566,6 +558,15 @@ export class PaymentsController {
       const expiredAt = expiresAt.toISOString();
 
       this.flipLog.log(`flip parsed: qrString=${qrString ? 'YES('+qrString.length+'chars)' : 'NO'} qrUrl=${qrUrl ? 'YES' : 'NO'} nmid=${nmid ?? 'NO'} accountNumber=${accountNumber ?? 'NO'} linkId=${result?.link_id}`);
+
+      // Flip API sukses — baru debit wallet (rollback-safe: kalau Flip gagal, catch block mark failed tanpa insert ledger)
+      if (creditUsed > 0) {
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+           VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
+          user.id, creditUsed, b.id, `Potongan saldo untuk booking ${b.id.slice(0, 8)}`,
+        );
+      }
 
       await this.prisma.$executeRaw`
         UPDATE payments
@@ -710,13 +711,6 @@ export class PaymentsController {
         return { ok: true, paidViaWallet: true, walletDeducted: amount, walletRemaining: balance - amount };
       }
       if (creditUsed > 0) {
-        // Partial: deduct sekarang, sisanya via Flip
-        await this.prisma.$executeRawUnsafe(
-          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-           VALUES ($1::uuid, 'credit_use', $2, $3, $4::uuid, 'CLEARED', NOW(), $5)`,
-          user.id, creditUsed, body.type, body.upchargeId ?? body.bookingId,
-          `Potongan saldo untuk ${body.type} booking ${b.id.slice(0, 8)}`,
-        );
         extra = { ...extra, creditUsed };
       }
     }
@@ -781,6 +775,16 @@ export class PaymentsController {
       const walletUrl: string | undefined = billPayment?.customer?.payment_url ?? billPayment?.redirect_url ?? billPayment?.payment_url ?? billPayment?.url ?? result?.customer_url ?? result?.payment_url;
       const expiresAt = this.resolvePaymentExpiry(result);
       const expiredAt = expiresAt.toISOString();
+
+      // Flip API sukses — baru debit wallet (rollback-safe)
+      if (creditUsed > 0) {
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+           VALUES ($1::uuid, 'credit_use', $2, $3, $4::uuid, 'CLEARED', NOW(), $5)`,
+          user.id, creditUsed, body.type, body.upchargeId ?? body.bookingId,
+          `Potongan saldo untuk ${body.type} booking ${b.id.slice(0, 8)}`,
+        );
+      }
 
       await this.prisma.$executeRaw`
         UPDATE payments SET flip_link_id = ${String(result.link_id ?? '')},
@@ -902,6 +906,13 @@ export class PaymentsController {
     // the QR isn't amount-locked. Reject if paid amount != expected.
     const paidAmount = Number(data?.amount ?? data?.bill_payment?.amount ?? 0);
     const expected = Number(p.amount);
+
+    // Guard: amount=0/undefined — jangan proses sebagai payment sukses
+    if (status === 'SUCCESSFUL' && (!paidAmount || paidAmount <= 0)) {
+      this.flipLog.warn(`callback: SUCCESSFUL but paidAmount=${paidAmount} — skipping (possible Flip test/bogus callback)`);
+      return { received: true };
+    }
+
     if (status === 'SUCCESSFUL' && paidAmount > 0 && Math.abs(paidAmount - expected) > 1) {
       // Mark as disputed/underpaid — needs admin attention, do NOT advance booking.
       await this.prisma.$executeRaw`

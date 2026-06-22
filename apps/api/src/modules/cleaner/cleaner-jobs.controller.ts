@@ -456,7 +456,7 @@ export class CleanerJobsController {
 
     const allowedFrom: Record<string, string[]> = {
       on_the_way: ['matched'],
-      in_progress: ['on_the_way', 'matched'],
+      in_progress: ['on_the_way'],
       completed: ['in_progress'],
     };
     const fromList = allowedFrom[body.to];
@@ -931,7 +931,7 @@ export class CleanerJobsController {
 
     await this.prisma.$executeRaw`
       UPDATE booking_helpers SET status = 'declined', decided_at = NOW()
-       WHERE id = ${inviteId}::uuid
+       WHERE id = ${inviteId}::uuid AND cleaner_id = ${user.id}::uuid
     `;
 
     void this.push.send({

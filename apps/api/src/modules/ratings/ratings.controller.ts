@@ -59,14 +59,24 @@ export class RatingsController {
     // Tidak peduli rating berapa — rating ≠ mekanisme tahan uang.
     // Customer yang gak puas wajib buka dispute (mekanisme proper, ada audit & resolution).
     // Ini mencegah abuse: customer kasih 1⭐ supaya cleaner gak dibayar tanpa alasan.
-    await this.prisma.$executeRaw`
-      UPDATE wallet_ledger_entries
-         SET status = 'CLEARED', cleared_at = NOW()
+    // Idempotency guard: skip jika sudah ada ledger earnings CLEARED untuk booking ini.
+    const alreadyReleased = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM wallet_ledger_entries
        WHERE reference_type = 'booking'
          AND reference_id = ${body.bookingId}::uuid
-         AND status = 'PENDING'
          AND account_type = 'earnings'
+         AND status = 'CLEARED'
     `;
+    if (Number(alreadyReleased[0]?.c ?? 0) === 0) {
+      await this.prisma.$executeRaw`
+        UPDATE wallet_ledger_entries
+           SET status = 'CLEARED', cleared_at = NOW()
+         WHERE reference_type = 'booking'
+           AND reference_id = ${body.bookingId}::uuid
+           AND status = 'PENDING'
+           AND account_type = 'earnings'
+      `;
+    }
 
     // Incremental aggregate — O(1) bukan O(N).
     // new_avg = (old_avg * old_count + new_rating) / (old_count + 1)

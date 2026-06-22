@@ -898,6 +898,9 @@ export class BookingsController {
     if (rows.length === 0) throw new BadRequestException('Pesanan tidak ditemukan');
     const b = rows[0]!;
 
+    if (b.status === 'subscription_parent') {
+      throw new BadRequestException('Booking subscription parent tidak bisa di-reschedule. Reschedule visit individual.');
+    }
     if (['canceled', 'completed', 'in_progress', 'started'].includes(b.status)) {
       throw new BadRequestException('Status pesanan tidak bisa di-reschedule. Hubungi CS kalau perlu bantuan.');
     }
