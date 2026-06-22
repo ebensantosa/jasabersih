@@ -1,10 +1,36 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Image as ImageIcon, MessageSquare, Paperclip, RefreshCw, Search, Send, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, MapPin, MessageSquare, Package, Paperclip, RefreshCw, Search, Send, User, X } from 'lucide-react';
 import { api } from '../../../lib/api';
 
 const ADMIN_PHONE = '+62000000000001';
+
+function InfoRow({ icon, label, value, wide, highlight, badge, badgeColor }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  wide?: boolean;
+  highlight?: boolean;
+  badge?: string;
+  badgeColor?: 'green' | 'red';
+}) {
+  return (
+    <div className={wide ? 'col-span-2' : ''}>
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
+        {icon}{label}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className={`text-[12px] font-medium ${highlight ? 'text-red-600' : 'text-slate-700'}`}>{value}</span>
+        {badge && (
+          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${badgeColor === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+            {badge}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function PesanPage() {
   const [threads, setThreads] = useState<any[]>([]);
@@ -17,6 +43,7 @@ export default function PesanPage() {
   const [uploadingImg, setUploadingImg] = useState(false);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -211,28 +238,68 @@ export default function PesanPage() {
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Thread header */}
-            <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-5 py-3 shadow-sm">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow">
-                {(selected.customerName ?? 'U').slice(0, 2).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-slate-900">{selected.customerName ?? selected.customerPhone}</div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[11px] text-slate-400">{selected.customerPhone}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-[11px] text-slate-500">{selected.serviceName ?? '—'}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className="font-mono text-[10px] text-slate-400">#{selected.bookingId?.slice(0, 8)}</span>
+            <div className="border-b border-slate-100 bg-white shadow-sm">
+              <div className="flex items-center gap-3 px-5 py-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow">
+                  {(selected.customerName ?? 'U').slice(0, 2).toUpperCase()}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-slate-900">{selected.customerName ?? selected.customerPhone}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] text-slate-400">{selected.customerPhone}</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="font-mono text-[10px] text-slate-400">#{selected.bookingId?.slice(0, 8)}</span>
+                  </div>
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                  selected.bookingStatus === 'searching' ? 'bg-blue-100 text-blue-700' :
+                  ['matched', 'in_progress', 'cleaner_otw'].includes(selected.bookingStatus) ? 'bg-green-100 text-green-700' :
+                  selected.bookingStatus === 'completed' ? 'bg-slate-100 text-slate-500' :
+                  'bg-red-100 text-red-600'
+                }`}>
+                  {selected.bookingStatus}
+                </span>
+                <button
+                  onClick={() => setInfoOpen((v) => !v)}
+                  className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  {infoOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  Info
+                </button>
               </div>
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                selected.bookingStatus === 'searching' ? 'bg-blue-100 text-blue-700' :
-                ['matched', 'in_progress', 'cleaner_otw'].includes(selected.bookingStatus) ? 'bg-green-100 text-green-700' :
-                selected.bookingStatus === 'completed' ? 'bg-slate-100 text-slate-500' :
-                'bg-red-100 text-red-600'
-              }`}>
-                {selected.bookingStatus}
-              </span>
+
+              {/* Booking info panel */}
+              {infoOpen && (() => {
+                const snap = selected.formSnapshot ?? {};
+                const city = snap.cityName ?? null;
+                const notes = selected.customerNotes ?? snap.customerNotes ?? null;
+                const photos: string[] = Array.isArray(snap.conditionPhotos) ? snap.conditionPhotos : [];
+                const scheduledAt = selected.scheduledAt ? new Date(selected.scheduledAt) : null;
+                const paidAt = selected.paidAt ? new Date(selected.paidAt) : null;
+                return (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs">
+                    <InfoRow icon={<Package size={11} />} label="Paket" value={selected.packageName ?? selected.serviceName ?? selected.serviceCategory ?? selected.pricingMode ?? '—'} />
+                    <InfoRow icon={<User size={11} />} label="Cleaner" value={selected.cleanerName ? `${selected.cleanerName} · ${selected.cleanerPhone ?? ''}` : '—'} />
+                    <InfoRow icon={<CalendarDays size={11} />} label="Jadwal" value={scheduledAt ? scheduledAt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'} />
+                    <InfoRow icon={null} label="Total" value={selected.totalAmount ? `Rp ${Number(selected.totalAmount).toLocaleString('id-ID')}` : '—'} highlight={!paidAt} badge={paidAt ? 'Lunas' : 'Belum bayar'} badgeColor={paidAt ? 'green' : 'red'} />
+                    <InfoRow icon={<MapPin size={11} />} label="Alamat" value={[selected.addressLine, city].filter(Boolean).join(' · ') || '—'} wide />
+                    {notes && <InfoRow icon={null} label="Catatan Customer" value={notes} wide />}
+                    {photos.length > 0 && (
+                      <div className="col-span-2">
+                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Foto Kondisi</div>
+                        <div className="flex gap-2 flex-wrap">
+                          {photos.map((url, i) => (
+                            <button key={i} onClick={() => setPreviewImg(url)}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={url} alt={`foto-${i}`} className="h-14 w-14 rounded-lg border object-cover hover:opacity-80 transition-opacity" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Messages */}
