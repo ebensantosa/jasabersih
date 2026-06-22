@@ -277,7 +277,7 @@ export const useBookingsStore = create<State>((set, get) => ({
       const serverIds = new Set(items.map((i) => i.id));
       const serverMapped: Booking[] = items.map((s) => {
         const existing = local.find((b) => b.id === s.id);
-        const total = Number(s.total ?? existing?.totalPrice ?? 0);
+        const total = Number((s as any).total_amount ?? s.total ?? existing?.totalPrice ?? 0);
         const cleanerPayout = (s as any).cleanerPayout != null
           ? Number((s as any).cleanerPayout)
           : existing?.cleanerPayout;

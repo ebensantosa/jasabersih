@@ -279,7 +279,7 @@ function Chat() {
 
               // Hanya tampilkan Admin header kalau ada bukti explisit (pesan admin atau booking manual)
               // Jangan gunakan !cleanerId karena booking bisa belum ter-load
-              if (hasAdminChat || (isManualBooking && !cleanerId)) {
+              if (hasAdminChat || isManualBooking) {
                 return (
                   <>
                     <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-600">
