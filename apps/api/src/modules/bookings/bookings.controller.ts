@@ -339,7 +339,7 @@ export class BookingsController {
       }
     }
 
-    const totalWithTravel = Number(body.totalAmount) + travelFee - voucherDiscount - referralDiscount;
+    const totalWithTravel = Math.max(0, Number(body.totalAmount) + travelFee - voucherDiscount - referralDiscount);
 
     // Server-side coverage gate: pastikan booking address dalam radius minimal 1 service_area aktif.
     // Pakai PostGIS ST_DWithin untuk performa (index gist). Skip kalau gak ada area sama sekali.
@@ -469,28 +469,48 @@ export class BookingsController {
     if (bk[0].status !== 'pending_payment') throw new BadRequestException('Booking tidak dalam status pending_payment');
 
     if (body?.useCredit) {
-      const bal = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
-        `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
-              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
-           FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
-        user.id,
+      // Idempotency: skip debit kalau sudah ada entri credit_use untuk booking ini
+      const existingDebit = await this.prisma.$queryRawUnsafe<{ c: number }[]>(
+        `SELECT COUNT(*)::int AS c FROM wallet_ledger_entries
+          WHERE reference_type = 'booking' AND reference_id = $1::uuid AND account_type = 'credit_use'`,
+        id,
       );
-      const balance = Number(bal[0]?.b ?? 0);
-      const use = Math.min(balance, Number(bk[0].total_amount));
-      if (use > 0) {
-        await this.prisma.$executeRawUnsafe(
-          `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-           VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
-          user.id, use, id, `Pakai saldo untuk booking ${id.slice(0, 8)}`,
+      if (Number(existingDebit[0]?.c ?? 0) === 0) {
+        const bal = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
+          `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
+                - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
+             FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
+          user.id,
         );
+        const balance = Number(bal[0]?.b ?? 0);
+        const use = Math.min(balance, Number(bk[0].total_amount));
+        if (use > 0) {
+          await this.prisma.$executeRawUnsafe(
+            `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+             VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
+            user.id, use, id, `Pakai saldo untuk booking ${id.slice(0, 8)}`,
+          );
+        }
       }
     }
 
-    await this.prisma.$executeRawUnsafe(
+    const updated = await this.prisma.$executeRawUnsafe(
       `UPDATE bookings SET status = 'searching', paid_at = NOW()
        WHERE id = $1::uuid AND customer_id = $2::uuid AND status = 'pending_payment'`,
       id, user.id,
     );
+    if (Number(updated) === 0) {
+      // Booking sudah pindah status (mungkin sudah dibayar sebelumnya) — idempotent, tidak error
+      const current = await this.prisma.$queryRawUnsafe<{ status: string }[]>(
+        `SELECT status FROM bookings WHERE id = $1::uuid AND customer_id = $2::uuid LIMIT 1`,
+        id, user.id,
+      );
+      if (!current[0] || current[0].status === 'pending_payment') {
+        throw new BadRequestException('Gagal update status booking. Coba lagi.');
+      }
+      // Sudah paid sebelumnya — return ok (idempotent)
+      return { ok: true };
+    }
 
     // Materialize subscription children (creates children + marks parent as subscription_parent atomically).
     const materialized = await this.materializeSubscriptionChildren(id, user.id);

@@ -77,6 +77,17 @@ export class AdminWithdrawalsController {
     @Req() req: Request,
   ) {
     if (!body?.bankTransferRef) throw new BadRequestException('Referensi bank transfer wajib.');
+    // Guard: cek status user tidak banned
+    const wRows = await this.prisma.$queryRaw<{ user_id: string }[]>`
+      SELECT user_id FROM withdrawals WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (!wRows[0]) throw new BadRequestException('Withdrawal tidak ditemukan.');
+    const userRows = await this.prisma.$queryRaw<{ status: string }[]>`
+      SELECT status FROM users WHERE id = ${wRows[0].user_id}::uuid LIMIT 1
+    `;
+    if (userRows[0]?.status === 'banned') {
+      throw new BadRequestException('User sudah di-ban, withdrawal tidak bisa diproses');
+    }
     await this.prisma.$transaction([
       this.prisma.$executeRaw`
         UPDATE withdrawals
@@ -88,6 +99,7 @@ export class AdminWithdrawalsController {
                bank_transfer_ref = ${body.bankTransferRef},
                review_note = ${body.note ?? null}
          WHERE id = ${id}::uuid
+           AND review_status = 'pending'
       `,
       // Mark ledger debit CLEARED (saldo benar-benar berkurang)
       this.prisma.$executeRaw`

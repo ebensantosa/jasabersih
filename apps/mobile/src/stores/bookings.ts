@@ -229,6 +229,9 @@ function mapServerStatus(s: string | null | undefined): BookingStatus {
     case 'completed': return 'completed';
     case 'cancelled':
     case 'canceled': return 'canceled';
+    case 'subscription_parent': return 'completed';
+    case 'scheduled_future': return 'searching';
+    case 'wa_survey_pending': return 'pending_payment';
     default: return 'searching';
   }
 }
@@ -495,6 +498,8 @@ export const useBookingsStore = create<State>((set, get) => ({
     }
   },
   markPaid: (id) => {
+    // Simpan status lama untuk rollback
+    const previous = get().list.find((b) => b.id === id);
     const next = get().list.map((b) =>
       b.id === id ? { ...b, paidAt: Date.now(), status: 'searching' as const } : b,
     );
@@ -503,7 +508,19 @@ export const useBookingsStore = create<State>((set, get) => ({
     set({ list: trimmed });
     // Push to API (server-side: status 'pending_payment' → 'searching')
     if (!id.startsWith('bk_')) {
-      api.post(`/bookings/${id}/pay`, {}).catch(() => {});
+      api.post(`/bookings/${id}/pay`, {}).catch(async (e: any) => {
+        // Rollback optimistik ke status lama
+        if (previous) {
+          const rolled = get().list.map((b) => b.id === id ? { ...previous } : b);
+          const rolledTrimmed = rolled.slice(0, MAX_PERSISTED_BOOKINGS);
+          persist(rolledTrimmed);
+          set({ list: rolledTrimmed });
+        }
+        try {
+          const { toast } = await import('./ui');
+          toast.error(e?.response?.data?.error?.message ?? 'Gagal konfirmasi pembayaran');
+        } catch {}
+      });
     }
   },
   cancel: (id, refund) => {
