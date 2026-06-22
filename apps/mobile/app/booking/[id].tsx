@@ -658,7 +658,7 @@ function BookingDetail() {
           )}
 
           {/* Foto Pekerjaan - cleaner: taruh di atas biar gak kelewat upload before/after */}
-          {isCleaner && !booking.id.startsWith('bk_') && ['matched', 'on_the_way', 'in_progress', 'completed'].includes(booking.status) && (
+          {isCleaner && !booking.id.startsWith('bk_') && ['in_progress', 'completed'].includes(booking.status) && (
             <View className="mx-4 mt-3">
               <BookingPhotos bookingId={booking.id} isCleaner={isCleaner} status={booking.status} onSummaryChange={setPhotoSummary} />
             </View>

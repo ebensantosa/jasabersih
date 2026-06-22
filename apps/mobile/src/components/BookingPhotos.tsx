@@ -124,8 +124,8 @@ export function BookingPhotos({
     }
   }
 
-  // Before photo bisa diupload sejak on_the_way; after/damage hanya saat in_progress.
-  const canManagePhotos = isCleaner && ['on_the_way', 'in_progress'].includes(status);
+  // Foto hanya bisa dikelola setelah cleaner klik Mulai Kerja (in_progress).
+  const canManagePhotos = isCleaner && status === 'in_progress';
   const beforePhotos = photos.filter((p) => p.photoType === 'before');
   const afterPhotos = photos.filter((p) => p.photoType === 'after');
   const damagePhotos = photos.filter((p) => p.photoType === 'damage');
