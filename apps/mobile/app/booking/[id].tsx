@@ -1194,7 +1194,10 @@ function BookingDetail() {
                     className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl border border-brand-300 bg-white py-3.5"
                   >
                     <MessageCircle color="#1D4ED8" size={16} strokeWidth={2.4} />
-                    <Text className="font-bold text-sm text-brand-700">{t('bd.chat_customer')}</Text>
+                    <Text className="font-bold text-sm text-brand-700">
+                      {(booking.formSnapshot as any)?.createdByAdmin === true || (booking.formSnapshot as any)?.createdByAdmin === 'true'
+                        ? 'Chat Admin' : t('bd.chat_customer')}
+                    </Text>
                   </Pressable>
                   {booking.status === 'matched' && (
                     <Pressable

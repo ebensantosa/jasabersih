@@ -267,9 +267,11 @@ function Chat() {
             {(() => {
               const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
               const hasAdminChat = messages.some((m) => m.isAdmin);
-              const isAdminChat = !cleanerId || hasAdminChat;
+              const isManualBooking = (booking as any)?.formSnapshot?.createdByAdmin === true
+                || (booking as any)?.formSnapshot?.createdByAdmin === 'true'
+                || (booking as any)?.isManual === true;
 
-              if (hasAdminChat || !cleanerId) {
+              if (hasAdminChat || !cleanerId || isManualBooking) {
                 return (
                   <>
                     <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-600">

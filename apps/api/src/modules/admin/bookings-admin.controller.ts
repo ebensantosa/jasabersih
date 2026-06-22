@@ -130,7 +130,7 @@ export class AdminBookingsController {
       body.pricingMode,
       body.packageId ?? null,
       body.cleanerId ? 'matched' : status,
-      JSON.stringify({ createdByAdmin: true, categoryName: 'Manual Admin', cityName: body.cityName ?? null, conditionPhotos: body.conditionPhotos ?? [] }),
+      JSON.stringify({ createdByAdmin: true, categoryName: 'Pesanan Admin', cityName: body.cityName ?? null, conditionPhotos: body.conditionPhotos ?? [] }),
       body.scheduledAt,
       body.addressLine,
       lng, lat,
