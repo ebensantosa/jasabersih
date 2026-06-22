@@ -161,7 +161,7 @@ function EarningsScreen() {
           <View className="flex-1">
             <Text className="font-bold text-sm text-ink-900">Riwayat Job</Text>
             <Text className="font-medium text-[11px] text-ink-500">
-              Lihat semua {completedJobs} job yg pernah kamu kerjain
+              {completedJobs} job selesai (100 terakhir)
             </Text>
           </View>
           <Text className="font-bold text-base text-brand-600">›</Text>
