@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Headers, Logger, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -234,6 +235,62 @@ export class PaymentsController {
     }
   }
 
+  // Kata kunci error dari Flip yang menandakan maintenance / channel belum aktif
+  private isMaintenanceError(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return lower.includes('maintenance') || lower.includes('pemeliharaan') ||
+           lower.includes('not available') || lower.includes('not active') ||
+           lower.includes('unavailable') || lower.includes('belum aktif') ||
+           lower.includes('channel is currently') || lower.includes('bank sedang') ||
+           lower.includes('suspended') || lower.includes('disabled by provider');
+  }
+
+  // Auto-disable method di payment.active_channels + catat expiry (2 jam)
+  private async autoDisableMethod(senderBank: string, reason: string): Promise<void> {
+    try {
+      const row = await this.prisma.$queryRaw<{ value: any }[]>`
+        SELECT value FROM app_config WHERE key = 'payment.active_channels' LIMIT 1
+      `;
+      const current: Record<string, any> = (row[0]?.value ?? {}) as any;
+      const expiry = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+      current[senderBank] = { active: false, reason, autoDisabledAt: new Date().toISOString(), autoReEnableAt: expiry };
+      await this.prisma.$executeRaw`
+        INSERT INTO app_config (key, value) VALUES ('payment.active_channels', ${JSON.stringify(current)}::jsonb)
+        ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(current)}::jsonb, updated_at = NOW()
+      `;
+      this.log.warn(`[AutoDisable] ${senderBank} disabled — ${reason} — re-enable at ${expiry}`);
+    } catch (e: any) {
+      this.log.error(`autoDisableMethod failed: ${e?.message}`);
+    }
+  }
+
+  // Cron setiap 30 menit: re-enable method yang sudah melewati autoReEnableAt
+  @Cron('0 */30 * * * *')
+  async autoReEnableExpiredMethods(): Promise<void> {
+    try {
+      const row = await this.prisma.$queryRaw<{ value: any }[]>`
+        SELECT value FROM app_config WHERE key = 'payment.active_channels' LIMIT 1
+      `;
+      const current: Record<string, any> = (row[0]?.value ?? {}) as any;
+      let changed = false;
+      for (const [bank, cfg] of Object.entries(current)) {
+        if (cfg?.autoReEnableAt && new Date(cfg.autoReEnableAt) <= new Date()) {
+          delete current[bank];
+          changed = true;
+          this.log.log(`[AutoReEnable] ${bank} re-enabled after maintenance window`);
+        }
+      }
+      if (changed) {
+        await this.prisma.$executeRaw`
+          INSERT INTO app_config (key, value) VALUES ('payment.active_channels', ${JSON.stringify(current)}::jsonb)
+          ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(current)}::jsonb, updated_at = NOW()
+        `;
+      }
+    } catch (e: any) {
+      this.log.error(`autoReEnableExpiredMethods failed: ${e?.message}`);
+    }
+  }
+
   private toFlipSenderBankType(senderBank: string, senderBankType: CheckoutSenderBankType): CheckoutSenderBankType {
     if (senderBank === 'qris' && senderBankType === 'qris') {
       return 'wallet_account';
@@ -451,9 +508,14 @@ export class PaymentsController {
           senderBankType: flipSenderBankType,
         });
       } catch (directErr: any) {
+        const errMsg = directErr?.message ?? '';
+        // Kalau Flip return maintenance/unavailable error → auto-disable method ini 2 jam
+        if (this.isMaintenanceError(errMsg)) {
+          await this.autoDisableMethod(body.senderBank, errMsg.slice(0, 120));
+          throw new BadRequestException(`${body.senderBank.toUpperCase()} sedang maintenance. Silakan pilih metode lain — kami sudah otomatis sembunyikan sementara.`);
+        }
         // Fallback: kalau direct mode error (Flip API changed), pakai hosted checkout page.
-        // Customer akan pilih bank di Flip page. UX sedikit beda tapi tetap jalan.
-        this.flipLog.warn(`createDirect failed (${directErr?.message ?? 'unknown'}), falling back to hosted checkout`);
+        this.flipLog.warn(`createDirect failed (${errMsg}), falling back to hosted checkout`);
         result = await this.flip.createBill({
           title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
           amount,
@@ -683,7 +745,12 @@ export class PaymentsController {
           senderBankType: flipSenderBankType,
         });
       } catch (directErr: any) {
-        this.flipLog.warn(`createDirect extra failed (${directErr?.message ?? 'unknown'}), fallback`);
+        const extraErrMsg = directErr?.message ?? '';
+        if (this.isMaintenanceError(extraErrMsg)) {
+          await this.autoDisableMethod(body.senderBank, extraErrMsg.slice(0, 120));
+          throw new BadRequestException(`${body.senderBank.toUpperCase()} sedang maintenance. Silakan pilih metode lain.`);
+        }
+        this.flipLog.warn(`createDirect extra failed (${extraErrMsg}), fallback`);
         result = await this.flip.createBill({
           title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : 'Tip'} ${b.id.slice(0, 8)}`,
           amount: flipAmount,

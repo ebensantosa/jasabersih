@@ -525,7 +525,6 @@ function MethodPicker({
     })();
   }, []);
 
-  const visibleMethods = methods.filter((method) => method.status !== 'down');
   const getMethod = (code: string) => methods.find((method) => method.senderBank === code || method.code === code.toUpperCase());
   const getStatus = (code: string): 'normal' | 'delayed' | 'down' => getMethod(code)?.status ?? 'normal';
   const getMessage = (code: string) => getMethod(code)?.message ?? '';
@@ -797,7 +796,7 @@ function MethodPicker({
           <Text className="font-medium mt-2 text-[11px] text-ink-500">Memuat metode pembayaran...</Text>
         </View>
       )}
-      {!loadingMethods && visibleMethods.length === 0 && (
+      {!loadingMethods && methods.length === 0 && (
         <View className="rounded-2xl bg-white p-4">
           <Text className="text-sm font-semibold text-ink-900">Metode pembayaran belum tersedia</Text>
           <Text className="mt-1 text-[12px] leading-5 text-ink-500">Silakan coba lagi beberapa saat lagi.</Text>
