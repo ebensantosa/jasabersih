@@ -282,9 +282,11 @@ function Chat() {
               if (hasAdminChat || isManualBooking) {
                 return (
                   <>
-                    <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-600">
-                      <Text className="font-bold text-sm text-white">JB</Text>
-                    </View>
+                    <Image
+                      source={require('../../assets/icon.png')}
+                      style={{ width: 40, height: 40, borderRadius: 20 }}
+                      contentFit="cover"
+                    />
                     <View className="flex-1">
                       <Text className="font-semibold text-sm text-ink-900">Admin JasaBersih</Text>
                       <Text className="font-medium text-[11px] text-ink-500">
@@ -548,9 +550,7 @@ function Bubble({
     <View className={isMe ? 'items-end' : 'items-start'}>
       {isAdmin && !isMe && (
         <View className="mb-0.5 flex-row items-center gap-1">
-          <View className="h-4 w-4 items-center justify-center rounded-full bg-brand-600">
-            <Text style={{ fontSize: 8, color: 'white', fontWeight: 'bold' }}>JB</Text>
-          </View>
+          <Image source={require('../../assets/icon.png')} style={{ width: 16, height: 16, borderRadius: 8 }} contentFit="cover" />
           <Text className="font-bold text-[10px] text-amber-700">Admin JasaBersih</Text>
         </View>
       )}
