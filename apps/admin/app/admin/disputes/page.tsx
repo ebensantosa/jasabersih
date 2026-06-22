@@ -116,7 +116,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
   const [escalating, setEscalating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
-    action: 'refund_customer' as 'refund_customer' | 'debit_cleaner' | 'warn_both' | 'dismiss' | 'suspend_subject',
+    action: 'refund_customer' as 'refund_customer' | 'debit_cleaner' | 'warn_both' | 'dismiss' | 'suspend_subject' | 'warranty_redo_approved',
     payoutAmount: '',
     resolution: '',
     suspendDays: 14,

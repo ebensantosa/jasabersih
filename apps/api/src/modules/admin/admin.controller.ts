@@ -432,11 +432,8 @@ export class AdminController {
     await this.prisma.$executeRaw`UPDATE ratings SET ratee_id = NULL WHERE ratee_id = ${id}::uuid`;
     // disputes
     await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
-    // wallet_ledger_entries: trigger ledger_immutable memblokir DELETE dan UPDATE user_id.
-    // Disable trigger sementara untuk allow anonymisasi saat hard delete user.
-    await this.prisma.$executeRawUnsafe(`ALTER TABLE wallet_ledger_entries DISABLE TRIGGER ledger_immutable`);
+    // wallet_ledger_entries: trigger sudah diupdate via migration 20260623000000 untuk allow user_id → NULL
     await this.prisma.$executeRaw`UPDATE wallet_ledger_entries SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRawUnsafe(`ALTER TABLE wallet_ledger_entries ENABLE TRIGGER ledger_immutable`);
     // withdrawals
     await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
     // payments
