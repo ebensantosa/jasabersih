@@ -268,7 +268,7 @@ function Chat() {
               const hasAdminChat = messages.some((m) => m.isAdmin);
               const isAdminChat = !cleanerId || hasAdminChat;
 
-              if (isAdminChat && !cleanerId) {
+              if (hasAdminChat || !cleanerId) {
                 return (
                   <>
                     <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-600">
