@@ -35,7 +35,7 @@ export class AdminController {
         SELECT
           b.id, b.status, b.pricing_mode AS "pricingMode",
           b.total_amount AS total, b.scheduled_at AS "scheduledAt",
-          b.address_line AS address, b.city, b.created_at AS "createdAt",
+          b.address_line AS address, b.created_at AS "createdAt",
           cu.name AS "customerName", cu.phone AS "customerPhone",
           cl.name AS "cleanerName",
           COALESCE(s.name, sp.name, p.name) AS service,
@@ -434,7 +434,9 @@ export class AdminController {
     await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
     // wallet_ledger_entries: trigger sudah diupdate via migration 20260623000000 untuk allow user_id → NULL
     await this.prisma.$executeRaw`UPDATE wallet_ledger_entries SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    // withdrawals
+    // withdrawals — NULL-kan FK ke bank accounts sebelum bank accounts cascade-deleted
+    await this.prisma.$executeRaw`UPDATE withdrawals SET customer_bank_account_id = NULL WHERE customer_bank_account_id IN (SELECT id FROM customer_bank_accounts WHERE user_id = ${id}::uuid)`;
+    await this.prisma.$executeRaw`UPDATE withdrawals SET bank_account_id = NULL WHERE bank_account_id IN (SELECT id FROM cleaner_bank_accounts WHERE user_id = ${id}::uuid)`;
     await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
     // payments
     await this.prisma.$executeRaw`UPDATE payments SET user_id = NULL WHERE user_id = ${id}::uuid`;
