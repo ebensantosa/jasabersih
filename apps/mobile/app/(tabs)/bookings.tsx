@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { CalendarCheck, ChevronRight } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthGate } from '../../src/components/AuthGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useAuthStore } from '../../src/stores/auth';
@@ -37,9 +38,8 @@ export default function Bookings() {
   const historyList = useMemo(() => list.filter((b) => !activeStatuses.has(b.status)), [list, activeStatuses]);
   const visibleList = filter === 'active' ? activeList : historyList;
 
-  // Redirect synchronous saat tidak ada token - menghindari blank screen flash
   if (!tokens) {
-    return <Redirect href="/(auth)/login" />;
+    return <AuthGate title="Lihat Pesanan" message="Masuk dulu untuk melihat riwayat dan status pesananmu.">{null}</AuthGate>;
   }
 
   return (

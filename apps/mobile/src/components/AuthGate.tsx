@@ -1,5 +1,5 @@
-import { Redirect, useRouter } from 'expo-router';
-import { ShieldAlert } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { LogIn, ShieldAlert } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,9 +24,37 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
 
-  // Anonymous → sync Redirect supaya gak ada flash blank putih sebelum useEffect jalan.
+  // Belum login → tampilkan layar login-prompt (bukan Redirect kosong yg bikin flash hitam)
   if (!tokens) {
-    return <Redirect href="/(auth)/login" />;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <LinearGradient
+          colors={['#1E3A8A', '#047857', '#0E7490']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ height: 200, width: '100%', alignSelf: 'stretch' }}
+        >
+          <SafeAreaView edges={['top']} />
+        </LinearGradient>
+        <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 24, marginTop: -48 }}>
+          <View style={{ height: 96, width: 96, alignItems: 'center', justifyContent: 'center', borderRadius: 48, backgroundColor: 'white', elevation: 6, shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+            <LogIn color="#1D4ED8" size={36} strokeWidth={2} />
+          </View>
+          <Text style={{ fontWeight: '800', fontSize: 20, color: '#0F172A', marginTop: 20, textAlign: 'center' }}>
+            {title ?? 'Login Dulu, Yuk!'}
+          </Text>
+          <Text style={{ fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+            {message ?? 'Masuk ke akunmu untuk mengakses fitur ini.'}
+          </Text>
+          <Pressable
+            onPress={() => router.push('/(auth)/login')}
+            style={{ marginTop: 28, width: '100%', borderRadius: 16, backgroundColor: '#1D4ED8', paddingVertical: 16, alignItems: 'center' }}
+          >
+            <Text style={{ fontWeight: '700', fontSize: 15, color: 'white' }}>Masuk / Daftar</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
   }
 
   // Logged in but wrong mode (customer trying cleaner page or vice versa)
