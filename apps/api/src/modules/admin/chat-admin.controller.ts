@@ -8,12 +8,12 @@ import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 import { ChatGateway } from '../chat/chat.gateway';
 
+const ADMIN_PHONE = '+62000000000001';
+
 @ApiTags('admin-chat')
 @ApiBearerAuth()
 @UseGuards(AdminJwtGuard, AdminRbacGuard)
 @Controller('admin/chat')
-const ADMIN_PHONE = '+62000000000001';
-
 export class AdminChatController {
   constructor(
     private readonly prisma: PrismaService,
