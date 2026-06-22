@@ -235,22 +235,7 @@ export class AdminController {
       throw new BadRequestException('Customer masih punya booking aktif — selesaikan dulu sebelum hapus');
     }
 
-    // Hard delete
-    await this.prisma.$executeRaw`UPDATE bookings SET cleaner_id = NULL WHERE cleaner_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE bookings SET customer_id = NULL WHERE customer_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE booking_photos SET uploaded_by = NULL WHERE uploaded_by = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM chat_messages WHERE sender_id = ${id}::uuid OR recipient_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE referrals SET referrer_id = NULL WHERE referrer_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE referrals SET referred_id = NULL WHERE referred_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE ratings SET rater_id = NULL WHERE rater_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE ratings SET ratee_id = NULL WHERE ratee_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM wallet_ledger_entries WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE payments SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE voucher_usage SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM referral_codes WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM users WHERE id = ${id}::uuid`;
+    await this.hardDeleteUser(id);
 
     await this.audit.log({
       adminId: admin.id, action: 'customer.delete', resourceType: 'user', resourceId: id,
@@ -410,21 +395,7 @@ export class AdminController {
     }
 
     // Hard delete — NULL out non-cascading FK refs, lalu DELETE user (CASCADE handle sisanya)
-    await this.prisma.$executeRaw`UPDATE bookings SET cleaner_id = NULL WHERE cleaner_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE bookings SET customer_id = NULL WHERE customer_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE booking_photos SET uploaded_by = NULL WHERE uploaded_by = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM chat_messages WHERE sender_id = ${id}::uuid OR recipient_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE referrals SET referrer_id = NULL WHERE referrer_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE referrals SET referred_id = NULL WHERE referred_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE ratings SET rater_id = NULL WHERE rater_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE ratings SET ratee_id = NULL WHERE ratee_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM wallet_ledger_entries WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE payments SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`UPDATE voucher_usage SET user_id = NULL WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM referral_codes WHERE user_id = ${id}::uuid`;
-    await this.prisma.$executeRaw`DELETE FROM users WHERE id = ${id}::uuid`;
+    await this.hardDeleteUser(id);
 
     await this.audit.log({
       adminId: admin.id,
@@ -436,6 +407,50 @@ export class AdminController {
     });
 
     return { ok: true };
+  }
+
+  // Shared hard-delete helper — NULL semua non-cascade FK ke users(id), lalu DELETE user.
+  // Dipakai oleh deleteCustomer dan deleteCleaner.
+  private async hardDeleteUser(id: string): Promise<void> {
+    // bookings
+    await this.prisma.$executeRaw`UPDATE bookings SET cleaner_id = NULL WHERE cleaner_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE bookings SET customer_id = NULL WHERE customer_id = ${id}::uuid`;
+    // booking_photos
+    await this.prisma.$executeRaw`UPDATE booking_photos SET uploaded_by = NULL WHERE uploaded_by = ${id}::uuid`;
+    // booking_upcharges (FK tidak cascade)
+    await this.prisma.$executeRaw`UPDATE booking_upcharges SET cleaner_id = NULL WHERE cleaner_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE booking_upcharges SET decided_by_user_id = NULL WHERE decided_by_user_id = ${id}::uuid`;
+    // booking_helpers.invited_by adalah NOT NULL — harus DELETE row
+    await this.prisma.$executeRaw`DELETE FROM booking_helpers WHERE invited_by = ${id}::uuid`;
+    // chat_messages
+    await this.prisma.$executeRaw`DELETE FROM chat_messages WHERE sender_id = ${id}::uuid OR recipient_id = ${id}::uuid`;
+    // referrals
+    await this.prisma.$executeRaw`UPDATE referrals SET referrer_id = NULL WHERE referrer_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE referrals SET referred_id = NULL WHERE referred_id = ${id}::uuid`;
+    // ratings
+    await this.prisma.$executeRaw`UPDATE ratings SET rater_id = NULL WHERE rater_id = ${id}::uuid`;
+    await this.prisma.$executeRaw`UPDATE ratings SET ratee_id = NULL WHERE ratee_id = ${id}::uuid`;
+    // disputes
+    await this.prisma.$executeRaw`UPDATE disputes SET raised_by = NULL WHERE raised_by = ${id}::uuid`;
+    // wallet_ledger_entries: trigger ledger_immutable memblokir DELETE dan UPDATE user_id.
+    // Disable trigger sementara untuk allow anonymisasi saat hard delete user.
+    await this.prisma.$executeRawUnsafe(`ALTER TABLE wallet_ledger_entries DISABLE TRIGGER ledger_immutable`);
+    await this.prisma.$executeRaw`UPDATE wallet_ledger_entries SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    await this.prisma.$executeRawUnsafe(`ALTER TABLE wallet_ledger_entries ENABLE TRIGGER ledger_immutable`);
+    // withdrawals
+    await this.prisma.$executeRaw`UPDATE withdrawals SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    // payments
+    await this.prisma.$executeRaw`UPDATE payments SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    // voucher_usage
+    await this.prisma.$executeRaw`UPDATE voucher_usage SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    // city_requests (user_id nullable FK ke users)
+    await this.prisma.$executeRaw`UPDATE city_requests SET user_id = NULL WHERE user_id = ${id}::uuid`;
+    // cleaner_area_requests.reviewed_by_admin_id → admin_users (ON DELETE SET NULL, auto-handled)
+    // city_requests.reviewed_by_admin_id → admin_users (ON DELETE SET NULL, auto-handled)
+    // referral_codes
+    await this.prisma.$executeRaw`DELETE FROM referral_codes WHERE user_id = ${id}::uuid`;
+    // Akhirnya hapus user — tabel dengan ON DELETE CASCADE handle otomatis
+    await this.prisma.$executeRaw`DELETE FROM users WHERE id = ${id}::uuid`;
   }
 
   // GET wallet detail untuk user tertentu (customer atau cleaner)
