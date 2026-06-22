@@ -60,6 +60,8 @@ const CHECKOUT_METHODS: CheckoutMethodDef[] = [
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
+  private readonly log = new Logger(PaymentsController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tripay: TripayService,

@@ -8,6 +8,13 @@ import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
 import { FlipService } from '../payments/flip.service';
 
+function isMaintenanceError(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return ['maintenance', 'pemeliharaan', 'not available', 'not active', 'unavailable',
+    'belum aktif', 'channel is currently', 'bank sedang', 'suspended', 'disabled by provider',
+  ].some(k => lower.includes(k));
+}
+
 @ApiTags('admin-withdrawals')
 @ApiBearerAuth()
 @UseGuards(AdminJwtGuard, AdminRbacGuard)
@@ -163,6 +170,34 @@ export class AdminWithdrawalsController {
       });
     } catch (e: any) {
       this.log.error(`approve-flip failed for ${id}: ${e?.message ?? e}`);
+      if (isMaintenanceError(e?.message ?? '')) {
+        // Bank sedang maintenance — jangan reject withdrawal, biarkan tetap pending
+        await this.prisma.$executeRaw`
+          UPDATE withdrawals
+             SET flip_idempotency_key = ${idempKey},
+                 review_note = ${'Bank ' + w.destination_bank_code + ' sedang gangguan/maintenance. Auto-retry oleh admin setelah bank normal.'},
+                 reviewed_by = ${admin.id}::uuid
+           WHERE id = ${id}::uuid
+        `;
+        // Notif ke cleaner agar tidak panik
+        if (w.user_id) {
+          void this.push.send({
+            userId: w.user_id,
+            title: 'Penarikan Tertunda Sementara',
+            body: `Bank ${w.destination_bank_code} sedang gangguan. Penarikan kamu akan diproses segera setelah bank normal kembali.`,
+            channel: 'wallet',
+            data: { type: 'withdrawal_pending_maintenance', withdrawalId: id },
+          }).catch(() => {});
+        }
+        await this.audit.log({
+          adminId: admin.id, action: 'withdrawal.approve_flip_maintenance', resourceType: 'withdrawal', resourceId: id,
+          changes: { bank: w.destination_bank_code, error: e?.message },
+          ipAddress: req.ip ?? null,
+        });
+        throw new BadRequestException(
+          `Bank ${w.destination_bank_code} sedang maintenance/gangguan. Withdrawal tetap pending — coba approve lagi nanti setelah bank normal. Cleaner sudah dinotifikasi.`
+        );
+      }
       throw new BadRequestException(`Auto-transfer gagal: ${e?.message ?? 'Coba lagi atau pakai approve manual'}`);
     }
 
