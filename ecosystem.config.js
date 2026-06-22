@@ -12,7 +12,7 @@ module.exports = {
         PORT: '5000',
         R2_SKIP_CORS_INIT: 'true',
       },
-      max_memory_restart: '512M',
+      max_memory_restart: '900M',
       error_file: '/var/log/pm2/jasabersih-api.err.log',
       out_file: '/var/log/pm2/jasabersih-api.out.log',
       merge_logs: true,
