@@ -66,6 +66,7 @@ function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
+  const isCleaner = useModeStore((s) => s.mode === 'freelancer');
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
