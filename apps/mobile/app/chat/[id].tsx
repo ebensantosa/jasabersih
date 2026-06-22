@@ -353,7 +353,7 @@ function Chat() {
 
         {/* Safety banner + Report button. Teks bisa diubah admin via app_config
             key 'safety.chat_banner' (fallback ke default kalau gak ke-set). */}
-        <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />
+        {!isCleaner && <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />}
 
         <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ padding: 16, gap: 8 }} showsVerticalScrollIndicator={false}>
           {messages.length === 0 ? (
