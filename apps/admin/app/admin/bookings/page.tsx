@@ -14,9 +14,10 @@ import {
   formatRupiah,
 } from '../../../lib/mock';
 
-const FILTERS: { key: OrderStatus | 'all' | 'needs_manual'; label: string }[] = [
+const FILTERS: { key: OrderStatus | 'all' | 'needs_manual' | 'manual_admin'; label: string }[] = [
   { key: 'all', label: 'Semua' },
   { key: 'needs_manual', label: '⚠️ Butuh Assign Manual' },
+  { key: 'manual_admin', label: '🛠️ Pesanan Admin' },
   { key: 'pending_payment', label: '💳 Belum Bayar' },
   { key: 'searching', label: 'Cari Cleaner' },
   { key: 'matched', label: 'Sudah Match' },
@@ -27,7 +28,7 @@ const FILTERS: { key: OrderStatus | 'all' | 'needs_manual'; label: string }[] = 
 ];
 
 export default function Bookings() {
-  const [filter, setFilter] = useState<OrderStatus | 'all' | 'needs_manual'>('all');
+  const [filter, setFilter] = useState<OrderStatus | 'all' | 'needs_manual' | 'manual_admin'>('all');
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -166,7 +167,7 @@ export default function Bookings() {
   async function exportCsv() {
     try {
       const r = await api.admin.exportBookingsCsv({
-        status: filter === 'all' || filter === 'needs_manual' ? undefined : filter,
+        status: filter === 'all' || filter === 'needs_manual' || filter === 'manual_admin' ? undefined : filter,
         from: from || undefined,
         to: to || undefined,
       });
@@ -196,7 +197,7 @@ export default function Bookings() {
     setError(null);
     try {
       const res = (await api.admin.listBookings({
-        status: filter === 'all' || filter === 'needs_manual' ? undefined : filter,
+        status: filter === 'all' || filter === 'needs_manual' || filter === 'manual_admin' ? undefined : filter,
         from: from || undefined,
         to: to || undefined,
         limit: PAGE_SIZE,
@@ -218,6 +219,8 @@ export default function Bookings() {
   const filtered = (orders ?? []).filter((o) => {
     if (filter === 'needs_manual') {
       if (!needsManualIds.has(o.id)) return false;
+    } else if (filter === 'manual_admin') {
+      if (!(o as any).isManual) return false;
     } else if (filter !== 'all' && o.status !== filter) return false;
     if (
       q &&

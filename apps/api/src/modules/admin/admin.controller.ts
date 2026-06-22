@@ -38,7 +38,8 @@ export class AdminController {
           b.address_line AS address, b.created_at AS "createdAt",
           cu.name AS "customerName", cu.phone AS "customerPhone",
           cl.name AS "cleanerName",
-          COALESCE(s.name, sp.name, p.name) AS service
+          COALESCE(s.name, sp.name, p.name) AS service,
+          (b.form_snapshot->>'createdByAdmin')::boolean AS "isManual"
         FROM bookings b
         LEFT JOIN users cu ON cu.id = b.customer_id
         LEFT JOIN users cl ON cl.id = b.cleaner_id
