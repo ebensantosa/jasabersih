@@ -124,8 +124,8 @@ export function BookingPhotos({
     }
   }
 
-  // Setelah job selesai, foto tetap bisa dilihat tetapi tidak boleh diubah lagi.
-  const canManagePhotos = isCleaner && status === 'in_progress';
+  // Before photo bisa diupload sejak on_the_way; after/damage hanya saat in_progress.
+  const canManagePhotos = isCleaner && ['on_the_way', 'in_progress'].includes(status);
   const beforePhotos = photos.filter((p) => p.photoType === 'before');
   const afterPhotos = photos.filter((p) => p.photoType === 'after');
   const damagePhotos = photos.filter((p) => p.photoType === 'damage');
