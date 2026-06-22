@@ -31,7 +31,8 @@ import { useModeStore } from '../src/stores/mode';
 function NotificationsScreen() {
   const router = useRouter();
   const mode = useModeStore((s) => s.mode);
-  const { list, loading, fetch, markAllRead } = useNotifications();
+  const { list: rawList, loading, fetch, markAllRead } = useNotifications();
+  const list = rawList.filter((n) => (n.data as any)?.type !== 'chat');
 
   useEffect(() => {
     void fetch(true);
