@@ -117,6 +117,33 @@ export class AdminChatController {
     `;
   }
 
+  // Inbox admin — semua booking dengan chat aktif, sorted by last message.
+  // Menandai apakah menunggu balasan admin (last msg bukan dari Admin JasaBersih).
+  @Get('inbox')
+  @Roles('super_admin', 'ops', 'support')
+  async inbox() {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT
+        b.id AS "bookingId", b.status AS "bookingStatus",
+        cu.id AS "customerId", cu.name AS "customerName", cu.phone AS "customerPhone",
+        cl.name AS "cleanerName",
+        COALESCE(pp.name, b.form_snapshot->>'categoryName', s.name, b.pricing_mode) AS "serviceName",
+        b.form_snapshot->>'createdByAdmin' = 'true' AS "isManual",
+        (SELECT content FROM chat_messages WHERE booking_id = b.id AND status = 'sent' ORDER BY created_at DESC LIMIT 1) AS "lastMessage",
+        (SELECT created_at FROM chat_messages WHERE booking_id = b.id AND status = 'sent' ORDER BY created_at DESC LIMIT 1) AS "lastMessageAt",
+        (SELECT u2.phone FROM chat_messages cm2 LEFT JOIN users u2 ON u2.id = cm2.sender_id WHERE cm2.booking_id = b.id AND cm2.status = 'sent' ORDER BY cm2.created_at DESC LIMIT 1) AS "lastSenderPhone",
+        (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND status = 'sent') AS "totalMessages"
+      FROM bookings b
+      LEFT JOIN users cu ON cu.id = b.customer_id
+      LEFT JOIN users cl ON cl.id = b.cleaner_id
+      LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+      LEFT JOIN services s ON s.id = b.service_id
+      WHERE EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id AND cm.status = 'sent')
+      ORDER BY "lastMessageAt" DESC NULLS LAST
+      LIMIT 100
+    `;
+  }
+
   // Admin kirim pesan ke chat booking — sender adalah akun Admin JasaBersih
   @Post('booking/:id/send')
   @Roles('super_admin', 'ops', 'support')

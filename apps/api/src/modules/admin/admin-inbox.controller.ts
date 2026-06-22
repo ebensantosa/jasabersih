@@ -22,6 +22,7 @@ export class AdminInboxController {
       bookingsNeedAssign,
       fraudReports,
       cityRequests,
+      chatUnread,
     ] = await Promise.all([
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM cleaner_profiles WHERE kyc_status = 'under_review'`,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM disputes WHERE status IN ('open', 'in_progress', 'escalated')`,
@@ -33,6 +34,21 @@ export class AdminInboxController {
       `,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM fraud_reports WHERE status = 'open'`,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM city_requests WHERE created_at > NOW() - INTERVAL '30 days'`,
+      // Chat yang menunggu balasan admin: booking dimana pesan terakhir bukan dari akun Admin JasaBersih
+      this.prisma.$queryRaw<{ c: number }[]>`
+        SELECT COUNT(DISTINCT cm.booking_id)::int AS c
+          FROM chat_messages cm
+          LEFT JOIN users u ON u.id = cm.sender_id
+         WHERE cm.status = 'sent'
+           AND (u.phone IS NULL OR u.phone <> '+62000000000001')
+           AND NOT EXISTS (
+             SELECT 1 FROM chat_messages cm2
+             LEFT JOIN users u2 ON u2.id = cm2.sender_id
+             WHERE cm2.booking_id = cm.booking_id
+               AND u2.phone = '+62000000000001'
+               AND cm2.created_at > cm.created_at
+           )
+      `,
     ]);
     const counts = {
       kycPending: Number(kycPending[0]?.c ?? 0),
@@ -41,6 +57,7 @@ export class AdminInboxController {
       bookingsNeedAssign: Number(bookingsNeedAssign[0]?.c ?? 0),
       fraudReports: Number(fraudReports[0]?.c ?? 0),
       cityRequests: Number(cityRequests[0]?.c ?? 0),
+      chatUnread: Number(chatUnread[0]?.c ?? 0),
     };
     const total = Object.values(counts).reduce((s, n) => s + n, 0);
     return { ...counts, total };

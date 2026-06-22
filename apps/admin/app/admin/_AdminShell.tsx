@@ -41,6 +41,7 @@ const NAV = [
   { href: '/admin/fraud-reports', label: 'Fraud Reports', icon: ShieldAlert, badge: 'fraudReports' as const },
   { href: '/admin/vouchers', label: 'Vouchers', icon: Tag },
   { href: '/admin/referrals', label: 'Referrals', icon: Gift },
+  { href: '/admin/pesan', label: 'Pesan', icon: MessageSquare, badge: 'chatUnread' as const },
   { href: '/admin/chat', label: 'Chat Audit', icon: MessageSquare },
   { href: '/admin/services', label: 'Layanan', icon: Sparkles },
   { href: '/admin/hourly-tiers', label: 'Tarif Per-Jam', icon: Clock },

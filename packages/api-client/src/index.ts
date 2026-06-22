@@ -129,7 +129,7 @@ export function createClient(opts: ClientOptions) {
           'GET', `/admin/bookings/needs-attention`,
         ),
       inboxCounts: () =>
-        request<{ kycPending: number; disputesOpen: number; withdrawalsPending: number; bookingsNeedAssign: number; fraudReports: number; cityRequests: number; total: number }>(
+        request<{ kycPending: number; disputesOpen: number; withdrawalsPending: number; bookingsNeedAssign: number; fraudReports: number; cityRequests: number; chatUnread: number; total: number }>(
           'GET', `/admin/inbox/counts`,
         ),
       forceCancelBooking: (bookingId: string, reason: string, refundAmount?: number) =>
@@ -392,6 +392,8 @@ export function createClient(opts: ClientOptions) {
       chatStats: () => request<{ last7Days: any; blockedByReason: any[] }>('GET', '/admin/chat/stats'),
       chatSend: (bookingId: string, content: string) =>
         request<{ ok: boolean; messageId?: string }>('POST', `/admin/chat/booking/${bookingId}/send`, { content }),
+      chatInbox: () =>
+        request<any[]>('GET', '/admin/chat/inbox'),
     },
 
     // Catalog (public — no auth needed)
