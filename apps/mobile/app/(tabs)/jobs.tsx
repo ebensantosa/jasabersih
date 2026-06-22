@@ -15,6 +15,7 @@ import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { calculateCleanerEarning, calculateCleanerShare } from '../../src/stores/cleanerWallet';
 import { useCleanerStore } from '../../src/stores/cleaner';
+import { useModeStore } from '../../src/stores/mode';
 import { useNotifications } from '../../src/stores/notifications';
 import { toast } from '../../src/stores/ui';
 
@@ -56,6 +57,11 @@ export default function Jobs() {
 
 function JobsScreen() {
   const router = useRouter();
+  const setMode = useModeStore((s) => s.setMode);
+
+  // Pastikan mode = freelancer saat di Job Board, karena booking detail
+  // pakai isCleaner = mode === 'freelancer' untuk tampilkan tombol advance.
+  useEffect(() => { setMode('freelancer'); }, [setMode]);
 
   const [available, setAvailable] = useState<AvailableJob[]>([]);
   const [active, setActive] = useState<ActiveJob[]>([]);
