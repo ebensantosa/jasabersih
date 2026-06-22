@@ -55,15 +55,19 @@ export class PushService {
       .map((t) => t.fcm_token!)
       .filter((t) => t.startsWith('ExponentPushToken['));
 
-    // Dedup: kalau notif identik (user + type + bookingId in data) sudah ada di 1 jam terakhir, skip
+    // Dedup: kalau notif identik (user + type + referenceId) sudah ada di 1 jam terakhir, skip.
+    // Covers bookingId, withdrawalId, atau reference lain yg ada di data payload.
     const bookingId = (payload.data as any)?.bookingId;
+    const withdrawalId = (payload.data as any)?.withdrawalId;
+    const refId = bookingId ?? withdrawalId;
     const notifType = (payload.data as any)?.type ?? payload.channel ?? 'system';
-    if (bookingId) {
+    if (refId) {
+      const refKey = bookingId ? 'bookingId' : 'withdrawalId';
       const dup = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM notifications
          WHERE user_id = ${payload.userId}::uuid
            AND data->>'type' = ${notifType}
-           AND data->>'bookingId' = ${bookingId}
+           AND data->>${refKey} = ${refId}
            AND created_at > NOW() - INTERVAL '1 hour'
       `;
       if ((dup[0]?.c ?? 0) > 0) {

@@ -1102,14 +1102,19 @@ export class PaymentsController {
     const next = status === 'DONE' ? 'completed' : status === 'CANCELLED' ? 'canceled' : status === 'FAILED' ? 'failed' : 'processing';
     const failureReason = next === 'failed' || next === 'canceled' ? String(data.failure_reason ?? data.reason ?? `Flip status ${status}`) : null;
 
-    await this.prisma.$executeRaw`
+    // Guard: only update (and notify) if still in a non-terminal state.
+    // Flip retries callbacks — without this guard every retry sends a duplicate notification.
+    const updated = await this.prisma.$executeRaw`
       UPDATE withdrawals
          SET status = ${next},
              callback_payload = ${JSON.stringify(data)}::jsonb,
              failure_reason = ${failureReason},
              processed_at = CASE WHEN ${next} = 'completed' THEN NOW() ELSE processed_at END
-       WHERE id = ${w.id}::uuid
+       WHERE id = ${w.id}::uuid AND status NOT IN ('completed', 'canceled', 'failed')
     `;
+    if (Number(updated) === 0) {
+      return { ok: true, status: next, skipped: true };
+    }
 
     // Kalau gagal/cancel, reverse holding ledger entry agar saldo cleaner balik.
     if (next === 'failed' || next === 'canceled') {
@@ -1202,7 +1207,14 @@ export class PaymentsController {
     return known.map((code) => {
       const override = overrides[code];
       const s = stored[code];
-      let status: 'normal' | 'delayed' | 'down' = (s?.status as any) ?? 'normal';
+      // Auto-expire stale status: Flip jarang kirim "recovered" webhook, jadi
+      // kalau status lama > threshold, anggap sudah normal kembali.
+      let status: 'normal' | 'delayed' | 'down' = 'normal';
+      if (s?.status && s.status !== 'normal') {
+        const ageMs = s.updated_at ? Date.now() - new Date(s.updated_at).getTime() : 0;
+        const maxAgeMs = s.status === 'down' ? 6 * 3600_000 : 2 * 3600_000;
+        if (ageMs < maxAgeMs) status = s.status as any;
+      }
       let message = '';
       // Admin override mengalahkan webhook status
       if (override?.active === false) {
