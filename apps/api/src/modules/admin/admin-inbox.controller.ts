@@ -34,20 +34,26 @@ export class AdminInboxController {
       `,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM fraud_reports WHERE status = 'open'`,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM city_requests WHERE created_at > NOW() - INTERVAL '30 days'`,
-      // Chat yang menunggu balasan admin: booking dimana pesan terakhir bukan dari akun Admin JasaBersih
+      // Chat yang menunggu balasan admin: HANYA booking manual (createdByAdmin)
+      // atau booking dimana admin pernah ikut reply — dan pesan terakhir bukan dari admin.
       this.prisma.$queryRaw<{ c: number }[]>`
-        SELECT COUNT(DISTINCT cm.booking_id)::int AS c
-          FROM chat_messages cm
-          LEFT JOIN users u ON u.id = cm.sender_id
-         WHERE cm.status = 'sent'
-           AND (u.phone IS NULL OR u.phone <> '+62000000000001')
-           AND NOT EXISTS (
+        SELECT COUNT(DISTINCT b.id)::int AS c
+          FROM bookings b
+         WHERE (
+           b.form_snapshot->>'createdByAdmin' = 'true'
+           OR EXISTS (
              SELECT 1 FROM chat_messages cm2
              LEFT JOIN users u2 ON u2.id = cm2.sender_id
-             WHERE cm2.booking_id = cm.booking_id
-               AND u2.phone = '+62000000000001'
-               AND cm2.created_at > cm.created_at
+             WHERE cm2.booking_id = b.id AND u2.phone = '+62000000000001'
            )
+         )
+         AND EXISTS (SELECT 1 FROM chat_messages WHERE booking_id = b.id AND status = 'sent')
+         AND (
+           SELECT u3.phone FROM chat_messages cm3
+           LEFT JOIN users u3 ON u3.id = cm3.sender_id
+           WHERE cm3.booking_id = b.id AND cm3.status = 'sent'
+           ORDER BY cm3.created_at DESC LIMIT 1
+         ) <> '+62000000000001'
       `,
     ]);
     const counts = {

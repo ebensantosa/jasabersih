@@ -150,6 +150,14 @@ export class AdminChatController {
       LEFT JOIN pricing_packages pp ON pp.id = b.package_id
       LEFT JOIN services s ON s.id = b.service_id
       WHERE EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id AND cm.status = 'sent')
+        AND (
+          b.form_snapshot->>'createdByAdmin' = 'true'
+          OR EXISTS (
+            SELECT 1 FROM chat_messages cm2
+            LEFT JOIN users u2 ON u2.id = cm2.sender_id
+            WHERE cm2.booking_id = b.id AND u2.phone = '+62000000000001'
+          )
+        )
       ORDER BY "lastMessageAt" DESC NULLS LAST
       LIMIT 100
     `;
