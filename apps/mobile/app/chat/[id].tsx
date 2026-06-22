@@ -65,8 +65,14 @@ function Chat() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
+  const fetchOne = useBookingsStore((s) => s.fetchOne);
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
   const isCleaner = useModeStore((s) => s.mode === 'freelancer');
+
+  // Fetch booking jika belum ada di store (cleaner buka chat langsung)
+  useEffect(() => {
+    if (id && !booking) void fetchOne(id).catch(() => {});
+  }, [id, booking, fetchOne]);
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
@@ -271,7 +277,9 @@ function Chat() {
                 || (booking as any)?.formSnapshot?.createdByAdmin === 'true'
                 || (booking as any)?.isManual === true;
 
-              if (hasAdminChat || !cleanerId || isManualBooking) {
+              // Hanya tampilkan Admin header kalau ada bukti explisit (pesan admin atau booking manual)
+              // Jangan gunakan !cleanerId karena booking bisa belum ter-load
+              if (hasAdminChat || (isManualBooking && !cleanerId)) {
                 return (
                   <>
                     <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-600">
