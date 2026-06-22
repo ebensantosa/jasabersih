@@ -1,17 +1,26 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
+import { ChatGateway } from '../chat/chat.gateway';
 
 @ApiTags('admin-chat')
 @ApiBearerAuth()
 @UseGuards(AdminJwtGuard, AdminRbacGuard)
 @Controller('admin/chat')
+const ADMIN_PHONE = '+62000000000001';
+
 export class AdminChatController {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AdminAuditService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AdminAuditService,
+    private readonly push: PushService,
+    private readonly gateway: ChatGateway,
+  ) {}
 
   // List bookings dengan chat activity (latest first), termasuk count blocked.
   @Get('bookings')
@@ -106,6 +115,73 @@ export class AdminChatController {
        ORDER BY cm.created_at DESC
        LIMIT ${lim}::int
     `;
+  }
+
+  // Admin kirim pesan ke chat booking — sender adalah akun Admin JasaBersih
+  @Post('booking/:id/send')
+  @Roles('super_admin', 'ops', 'support')
+  async sendMessage(
+    @Param('id') id: string,
+    @Body() body: { content: string },
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    if (!body?.content?.trim()) throw new BadRequestException('content wajib.');
+    if (body.content.length > 2000) throw new BadRequestException('pesan terlalu panjang (max 2000).');
+
+    // Ambil booking + participants
+    const rows = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string | null }[]>`
+      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (!rows[0]) throw new NotFoundException('booking tidak ditemukan.');
+    const { customer_id, cleaner_id } = rows[0];
+
+    // Get or create admin account sebagai sender
+    const adminRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM users WHERE phone = ${ADMIN_PHONE} LIMIT 1
+    `;
+    if (!adminRows[0]) throw new NotFoundException('Akun Admin JasaBersih belum dibuat. Buat dulu via GET /admin/bookings/admin-customer.');
+    const adminUserId = adminRows[0].id;
+
+    // Kirim ke customer (primary recipient). Kalau cleaner sudah assigned, kirim ke cleaner juga
+    const recipientId = cleaner_id ?? customer_id;
+
+    const inserted = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
+      INSERT INTO chat_messages (booking_id, sender_id, recipient_id, message_type, content, status, block_reason)
+      VALUES (${id}::uuid, ${adminUserId}::uuid, ${recipientId}::uuid, 'text', ${body.content.trim()}, 'sent', NULL)
+      RETURNING id, created_at
+    `;
+    const msg = inserted[0];
+
+    // Broadcast real-time ke room booking
+    if (msg) {
+      this.gateway.broadcastAdminMessage({
+        id: msg.id,
+        bookingId: id,
+        senderId: adminUserId,
+        recipientId,
+        content: body.content.trim(),
+        createdAt: msg.created_at.toISOString(),
+        isAdmin: true,
+      });
+    }
+
+    // Push notif ke recipient
+    void this.push.send({
+      userId: recipientId,
+      title: 'Pesan dari Admin JasaBersih',
+      body: body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content,
+      channel: 'chat',
+      data: { type: 'chat', bookingId: id },
+    }).catch(() => {});
+
+    await this.audit.log({
+      adminId: admin.id, action: 'chat.send_admin_message', resourceType: 'booking', resourceId: id,
+      changes: { contentLength: body.content.length },
+      ipAddress: req.ip ?? null,
+    });
+
+    return { ok: true, messageId: msg?.id };
   }
 
   // Stats untuk dashboard fraud

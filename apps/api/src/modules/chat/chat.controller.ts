@@ -123,14 +123,16 @@ export class ChatController {
     const limit = Math.min(Number(limitStr ?? 50), 100);
 
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT id, sender_id AS "senderId", recipient_id AS "recipientId",
-             message_type AS "messageType", content, attachment_url AS "attachmentUrl",
-             status, created_at AS "createdAt", read_at AS "readAt"
-        FROM chat_messages
-       WHERE booking_id = ${id}::uuid
-         AND status != 'blocked'
-         AND (${before ?? null}::timestamptz IS NULL OR created_at < ${before ?? null}::timestamptz)
-       ORDER BY created_at DESC
+      SELECT cm.id, cm.sender_id AS "senderId", cm.recipient_id AS "recipientId",
+             cm.message_type AS "messageType", cm.content, cm.attachment_url AS "attachmentUrl",
+             cm.status, cm.created_at AS "createdAt", cm.read_at AS "readAt",
+             (u.phone = '+62000000000001') AS "isAdmin"
+        FROM chat_messages cm
+        LEFT JOIN users u ON u.id = cm.sender_id
+       WHERE cm.booking_id = ${id}::uuid
+         AND cm.status != 'blocked'
+         AND (${before ?? null}::timestamptz IS NULL OR cm.created_at < ${before ?? null}::timestamptz)
+       ORDER BY cm.created_at DESC
        LIMIT ${limit}::int
     `;
   }

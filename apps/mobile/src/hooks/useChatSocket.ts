@@ -22,7 +22,7 @@ export function useChatSocket(bookingId: string | undefined) {
         if (!cancelled) setMessages(items.map((m) => ({
           id: m.id, bookingId, senderId: m.senderId, recipientId: m.recipientId,
           messageType: m.messageType, content: m.content, attachmentUrl: m.attachmentUrl,
-          createdAt: m.createdAt, readAt: m.readAt ?? null,
+          createdAt: m.createdAt, readAt: m.readAt ?? null, isAdmin: !!m.isAdmin,
         })));
       } catch {
         // silent - connection still works
@@ -44,9 +44,10 @@ export function useChatSocket(bookingId: string | undefined) {
     }
     function onDisconnect() { setStatus('disconnected'); }
     function onConnectError() { setStatus('error'); }
-    function onMessage(msg: ChatMessage) {
+    function onMessage(msg: ChatMessage & { isAdmin?: boolean }) {
       if (msg.bookingId !== bookingId) return;
-      setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+      const mapped: ChatMessage = { ...msg, isAdmin: !!msg.isAdmin };
+      setMessages((prev) => prev.some((m) => m.id === mapped.id) ? prev : [...prev, mapped]);
     }
     function onTyping(payload: { userId: string; typing: boolean }) {
       setOtherTyping(payload.typing);

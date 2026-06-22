@@ -263,40 +263,65 @@ function Chat() {
             <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
-            {booking?.cleanerPhotoUrl ? (
-              <Image
-                source={{ uri: booking.cleanerPhotoUrl }}
-                style={{ width: 40, height: 40, borderRadius: 20 }}
-                contentFit="cover"
-              />
-            ) : (
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
-                <Text className="font-bold text-sm text-brand-700">{(booking?.cleanerName ?? 'C')[0]}</Text>
-              </View>
-            )}
-            <Pressable
-              className="flex-1"
-              onPress={() => {
-                const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
-                if (cleanerId) router.push({ pathname: '/cleaner/public/[id]', params: { id: cleanerId } });
-              }}
-            >
-              <View className="flex-row items-center gap-1.5">
-                <Text className="font-semibold text-sm text-ink-900">{booking?.cleanerName ?? 'Menunggu cleaner…'}</Text>
-                {cleanerStats && (
-                  <View className="flex-row items-center gap-0.5">
-                    <Star color="#FACC15" fill="#FACC15" size={10} strokeWidth={1} />
-                    <Text className="font-bold text-[10px] text-ink-700">{cleanerStats.ratingAvg.toFixed(1)}</Text>
-                    <Text className="font-sans text-[10px] text-ink-400">({cleanerStats.ratingCount})</Text>
-                  </View>
-                )}
-              </View>
-              <Text className={`font-medium text-[11px] ${peerPresence?.isOnline ? 'text-success' : 'text-ink-500'}`}>
-                {status === 'connecting' ? 'Menyambung…' :
-                 status === 'error' ? 'Koneksi error' :
-                 presenceLabel()}
-              </Text>
-            </Pressable>
+            {(() => {
+              const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
+              const hasAdminChat = messages.some((m) => m.isAdmin);
+              const isAdminChat = !cleanerId || hasAdminChat;
+
+              if (isAdminChat && !cleanerId) {
+                return (
+                  <>
+                    <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-600">
+                      <Text className="font-bold text-sm text-white">JB</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-semibold text-sm text-ink-900">Admin JasaBersih</Text>
+                      <Text className="font-medium text-[11px] text-ink-500">
+                        {status === 'connecting' ? 'Menyambung…' : status === 'error' ? 'Koneksi error' : 'Tim Support'}
+                      </Text>
+                    </View>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  {booking?.cleanerPhotoUrl ? (
+                    <Image
+                      source={{ uri: booking.cleanerPhotoUrl }}
+                      style={{ width: 40, height: 40, borderRadius: 20 }}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+                      <Text className="font-bold text-sm text-brand-700">{(booking?.cleanerName ?? 'C')[0]}</Text>
+                    </View>
+                  )}
+                  <Pressable
+                    className="flex-1"
+                    onPress={() => {
+                      if (cleanerId) router.push({ pathname: '/cleaner/public/[id]', params: { id: cleanerId } });
+                    }}
+                  >
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="font-semibold text-sm text-ink-900">{booking?.cleanerName ?? 'Menunggu cleaner…'}</Text>
+                      {cleanerStats && (
+                        <View className="flex-row items-center gap-0.5">
+                          <Star color="#FACC15" fill="#FACC15" size={10} strokeWidth={1} />
+                          <Text className="font-bold text-[10px] text-ink-700">{cleanerStats.ratingAvg.toFixed(1)}</Text>
+                          <Text className="font-sans text-[10px] text-ink-400">({cleanerStats.ratingCount})</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className={`font-medium text-[11px] ${peerPresence?.isOnline ? 'text-success' : 'text-ink-500'}`}>
+                      {status === 'connecting' ? 'Menyambung…' :
+                       status === 'error' ? 'Koneksi error' :
+                       presenceLabel()}
+                    </Text>
+                  </Pressable>
+                </>
+              );
+            })()}
           </View>
         </SafeAreaView>
 
@@ -339,6 +364,7 @@ function Chat() {
             <Bubble
               key={m.id}
               isMe={m.senderId === myUserId}
+              isAdmin={!!m.isAdmin}
               text={m.content}
               time={new Date(m.createdAt).getTime()}
               messageType={m.messageType}
@@ -483,6 +509,7 @@ function Chat() {
 
 function Bubble({
   isMe,
+  isAdmin,
   text,
   time,
   messageType,
@@ -491,6 +518,7 @@ function Bubble({
   onImagePress,
 }: {
   isMe: boolean;
+  isAdmin?: boolean;
   text: string;
   time: number;
   messageType?: string;
@@ -501,8 +529,20 @@ function Bubble({
   const t = new Date(time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   const isImage = messageType === 'image' && (attachmentUrl || text);
   const imageUrl = attachmentUrl ?? text;
+  const bubbleBg = isMe ? 'bg-brand-600' : isAdmin ? 'bg-amber-50' : 'bg-white';
+  const textColor = isMe ? 'text-white' : 'text-ink-800';
+  const borderStyle = isMe ? {} : isAdmin ? { borderWidth: 1, borderColor: '#FDE68A' } : { borderWidth: 1, borderColor: '#E2E8F0' };
+
   return (
     <View className={isMe ? 'items-end' : 'items-start'}>
+      {isAdmin && !isMe && (
+        <View className="mb-0.5 flex-row items-center gap-1">
+          <View className="h-4 w-4 items-center justify-center rounded-full bg-brand-600">
+            <Text style={{ fontSize: 8, color: 'white', fontWeight: 'bold' }}>JB</Text>
+          </View>
+          <Text className="font-bold text-[10px] text-amber-700">Admin JasaBersih</Text>
+        </View>
+      )}
       {isImage ? (
         <Pressable onPress={() => onImagePress?.(imageUrl)}>
           <Image
@@ -513,10 +553,10 @@ function Bubble({
         </Pressable>
       ) : (
         <View
-          className={`max-w-[80%] rounded-2xl px-3 py-2 ${isMe ? 'bg-brand-600' : 'bg-white'}`}
-          style={isMe ? {} : { borderWidth: 1, borderColor: '#E2E8F0' }}
+          className={`max-w-[80%] rounded-2xl px-3 py-2 ${bubbleBg}`}
+          style={borderStyle}
         >
-          <Text className={`font-sans text-sm ${isMe ? 'text-white' : 'text-ink-800'}`}>{text}</Text>
+          <Text className={`font-sans text-sm ${textColor}`}>{text}</Text>
         </View>
       )}
       <View className="mx-1 mt-0.5 flex-row items-center gap-1">

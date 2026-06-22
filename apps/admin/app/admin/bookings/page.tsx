@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
 import { Button, Input, Modal, Textarea } from '../../../components/ui';
 
@@ -546,6 +546,92 @@ export default function Bookings() {
   );
 }
 
+function AdminChatPanel({ bookingId }: { bookingId: string }) {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  async function loadMessages() {
+    try {
+      const msgs = await api.admin.chatMessages(bookingId);
+      setMessages(msgs);
+    } catch {}
+  }
+
+  useEffect(() => {
+    loadMessages();
+    const t = setInterval(loadMessages, 5000);
+    return () => clearInterval(t);
+  }, [bookingId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  async function handleSend() {
+    if (!text.trim() || sending) return;
+    setSending(true);
+    try {
+      await api.admin.chatSend(bookingId, text.trim());
+      setText('');
+      await loadMessages();
+    } catch {
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50">
+      <div className="border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+        💬 Chat Booking
+      </div>
+      <div className="flex h-64 flex-col gap-1 overflow-y-auto p-3">
+        {messages.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">Belum ada pesan</div>
+        ) : (
+          messages.map((m: any) => {
+            const isAdmin = m.isAdmin || m.senderPhone === '+62000000000001';
+            return (
+              <div key={m.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
+                {!isAdmin && (
+                  <div className="mb-0.5 text-[10px] text-slate-500">{m.senderName ?? 'User'}</div>
+                )}
+                <div className={`max-w-[80%] rounded-xl px-3 py-1.5 text-xs ${isAdmin ? 'bg-blue-600 text-white' : 'bg-white text-slate-800 border border-slate-200'}`}>
+                  {m.messageType === 'image' ? (
+                    <a href={m.attachmentUrl ?? m.content} target="_blank" rel="noreferrer" className="underline">📷 Foto</a>
+                  ) : m.content}
+                </div>
+                <div className="mt-0.5 text-[9px] text-slate-400">
+                  {isAdmin ? 'Admin JasaBersih · ' : ''}{new Date(m.createdAt).toLocaleString('id-ID')}
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <div className="flex gap-2 border-t border-slate-200 p-2">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
+          placeholder="Tulis pesan sebagai Admin JasaBersih…"
+          className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!text.trim() || sending}
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          {sending ? '…' : 'Kirim'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.admin.getBookingDetail>> | null>(null);
   useEffect(() => { api.admin.getBookingDetail(bookingId).then(setData).catch(() => {}); }, [bookingId]);
@@ -655,6 +741,8 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
               {damage.length > 0 && <PhotoSection title="⚠️ Kerusakan" photos={damage} />}
             </div>
           )}
+
+          <AdminChatPanel bookingId={bookingId} />
 
           {data.payments?.length > 0 && (
             <div>
