@@ -69,10 +69,10 @@ function Chat() {
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
   const isCleaner = useModeStore((s) => s.mode === 'freelancer');
 
-  // Fetch booking jika belum ada di store (cleaner buka chat langsung)
+  // Always fetch fresh on open so cleanerPhotoUrl / status never stale
   useEffect(() => {
-    if (id && !booking) void fetchOne(id).catch(() => {});
-  }, [id, booking, fetchOne]);
+    if (id) void fetchOne(id).catch(() => {});
+  }, [id, fetchOne]);
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 

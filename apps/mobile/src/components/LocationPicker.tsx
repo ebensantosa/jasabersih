@@ -342,7 +342,7 @@ export function LocationPicker({
             Alamat Terpilih
           </Text>
           <Text className="font-medium text-sm text-ink-900" numberOfLines={3}>
-            {resolving ? 'Mencari alamat…' : address || 'Geser peta untuk pilih lokasi'}
+            {address || (resolving ? 'Mencari alamat…' : 'Geser peta untuk pilih lokasi')}
           </Text>
           <Text className="font-sans mt-1 text-[10px] text-ink-400">
             {lat.toFixed(6)}, {lng.toFixed(6)}
