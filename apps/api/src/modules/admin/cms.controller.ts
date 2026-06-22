@@ -430,7 +430,9 @@ export class AdminCmsController {
                'notes', notes, 'source', source, 'status', status, 'createdAt', created_at
              ) ORDER BY created_at DESC) AS samples
         FROM city_requests
+       WHERE status IS DISTINCT FROM 'reviewed'
        GROUP BY lower(trim(city))
+       HAVING COUNT(*) > 0
        ORDER BY "requestCount" DESC, "lastRequestAt" DESC
        LIMIT 100
     `;
