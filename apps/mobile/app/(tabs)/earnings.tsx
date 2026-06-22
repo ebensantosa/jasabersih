@@ -18,7 +18,6 @@ import { formatRupiah } from '../../src/data/catalog';
 import { AuthGate } from '../../src/components/AuthGate';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { api } from '../../src/lib/api';
-import { useBookingsStore } from '../../src/stores/bookings';
 import { useCleanerStore } from '../../src/stores/cleaner';
 import { useCleanerWalletStore } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
@@ -48,21 +47,30 @@ function EarningsScreen() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardMe, setLeaderboardMe] = useState<LeaderboardMe>({ rank: null, jobs: 0, earnings: 0 });
   const [refreshing, setRefreshing] = useState(false);
+  const [completedJobs, setCompletedJobs] = useState(0);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await syncWallet();
-      const r = await api.get('/cleaner/leaderboard');
-      const d = r.data?.data ?? r.data;
-      setLeaderboard(Array.isArray(d?.top) ? d.top : []);
-      if (d?.me) setLeaderboardMe(d.me);
+      const [lbRes, histRes] = await Promise.allSettled([
+        api.get('/cleaner/leaderboard'),
+        api.get('/cleaner/jobs/history'),
+      ]);
+      if (lbRes.status === 'fulfilled') {
+        const d = lbRes.value.data?.data ?? lbRes.value.data;
+        setLeaderboard(Array.isArray(d?.top) ? d.top : []);
+        if (d?.me) setLeaderboardMe(d.me);
+      }
+      if (histRes.status === 'fulfilled') {
+        const hist = histRes.value.data?.data ?? histRes.value.data;
+        setCompletedJobs(Array.isArray(hist) ? hist.length : 0);
+      }
     } catch { /* silent */ } finally { setRefreshing(false); }
   }, [syncWallet]);
 
   // Refresh wallet + leaderboard on tab focus
   useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
-  const list = useBookingsStore((s) => s.list);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -71,9 +79,6 @@ function EarningsScreen() {
     .reduce((s, e) => s + e.amount, 0);
   const thisMonthJobs = entries.filter(
     (e) => e.type === 'earning' && e.createdAt >= monthStart,
-  ).length;
-  const completedJobs = list.filter(
-    (b) => b.cleanerName === cleanerName && b.status === 'completed',
   ).length;
 
   return (
