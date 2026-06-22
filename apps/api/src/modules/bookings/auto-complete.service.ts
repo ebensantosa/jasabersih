@@ -33,32 +33,36 @@ export class AutoCompleteService {
     this.log.warn(`Auto-complete: ${stale.length} bookings in_progress > ${STALE_HOURS}h`);
 
     for (const b of stale) {
-      await this.prisma.$transaction([
-        this.prisma.$executeRaw`
-          UPDATE bookings
-             SET status = 'completed',
-                 completed_at = NOW(),
-                 admin_notes = COALESCE(admin_notes, '') || E'\n[auto] in_progress > ${STALE_HOURS}h, force-complete'
-           WHERE id = ${b.id}::uuid AND status = 'in_progress'
-        `,
-        ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 ? [
+      try {
+        await this.prisma.$transaction([
           this.prisma.$executeRaw`
-            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-            VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'PENDING', NULL, 'Earning auto-complete — escrow 24 jam')
-            ON CONFLICT DO NOTHING
+            UPDATE bookings
+               SET status = 'completed',
+                   completed_at = NOW(),
+                   admin_notes = COALESCE(admin_notes, '') || E'\n[auto] in_progress > ${STALE_HOURS}h, force-complete'
+             WHERE id = ${b.id}::uuid AND status = 'in_progress'
           `,
-        ] : []),
-      ]);
-      if (b.customer_id) {
-        void this.push.send({
-          userId: b.customer_id, channel: 'booking',
-          title: 'Pesanan otomatis diselesaikan',
-          body: 'Tim kami otomatis menyelesaikan pesananmu yang sudah > 4 jam. Yuk kasih rating!',
-          data: { type: 'auto_completed', bookingId: b.id },
-        }).catch(() => {});
+          ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 ? [
+            this.prisma.$executeRaw`
+              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+              VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'PENDING', NULL, 'Earning auto-complete — escrow 24 jam')
+              ON CONFLICT DO NOTHING
+            `,
+          ] : []),
+        ]);
+        if (b.customer_id) {
+          void this.push.send({
+            userId: b.customer_id, channel: 'booking',
+            title: 'Pesanan otomatis diselesaikan',
+            body: 'Tim kami otomatis menyelesaikan pesananmu yang sudah > 4 jam. Yuk kasih rating!',
+            data: { type: 'auto_completed', bookingId: b.id },
+          }).catch(() => {});
+        }
+        // Referral 5% commission (recurring per order).
+        await this.referralPayout.payoutForCompletedBooking(b.id);
+      } catch (e) {
+        this.log.error(`Auto-complete failed for booking ${b.id}: ${e}`);
       }
-      // Referral 5% commission (recurring per order).
-      await this.referralPayout.payoutForCompletedBooking(b.id);
     }
   }
 }

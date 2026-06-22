@@ -34,17 +34,21 @@ export class SearchTimeoutService {
     this.log.warn(`Search timeout: ${expired.length} bookings need manual admin assignment`);
 
     for (const b of expired) {
-      await this.prisma.$executeRaw`
-        UPDATE bookings SET search_timed_out_at = NOW() WHERE id = ${b.id}::uuid
-      `;
-      // Push notif ke customer
-      void this.push.send({
-        userId: b.customer_id,
-        channel: 'booking',
-        title: 'Tim CS akan bantu carikan cleaner',
-        body: 'Belum ada cleaner yang respons dalam 15 menit. Tim CS lagi cariin secara manual — biasanya selesai dalam 30 menit.',
-        data: { type: 'search_timeout', bookingId: b.id },
-      }).catch(() => {});
+      try {
+        await this.prisma.$executeRaw`
+          UPDATE bookings SET search_timed_out_at = NOW() WHERE id = ${b.id}::uuid
+        `;
+        // Push notif ke customer
+        void this.push.send({
+          userId: b.customer_id,
+          channel: 'booking',
+          title: 'Tim CS akan bantu carikan cleaner',
+          body: 'Belum ada cleaner yang respons dalam 15 menit. Tim CS lagi cariin secara manual — biasanya selesai dalam 30 menit.',
+          data: { type: 'search_timeout', bookingId: b.id },
+        }).catch(() => {});
+      } catch (e) {
+        this.log.error(`Search timeout update failed for booking ${b.id}: ${e}`);
+      }
     }
   }
 }

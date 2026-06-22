@@ -204,7 +204,7 @@ export class AdminUsersController {
              cancellation_reason = 'admin_ban',
              cancelled_by = ${admin.id}::uuid
        WHERE (customer_id = ${id}::uuid OR cleaner_id = ${id}::uuid)
-         AND status IN ('pending_payment', 'searching_cleaner', 'matched', 'confirmed')
+         AND status IN ('pending_payment', 'searching', 'matched', 'on_the_way', 'in_progress')
     `;
     await this.audit.log({
       adminId: admin.id,

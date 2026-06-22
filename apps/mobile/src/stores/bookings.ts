@@ -503,7 +503,7 @@ export const useBookingsStore = create<State>((set, get) => ({
     set({ list: trimmed });
     // Push to API (server-side: status 'pending_payment' → 'searching')
     if (!id.startsWith('bk_')) {
-      api.post(`/bookings/${id}/pay`).catch(() => {});
+      api.post(`/bookings/${id}/pay`, {}).catch(() => {});
     }
   },
   cancel: (id, refund) => {

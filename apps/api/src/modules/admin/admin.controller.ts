@@ -35,7 +35,7 @@ export class AdminController {
         SELECT
           b.id, b.status, b.pricing_mode AS "pricingMode",
           b.total_amount AS total, b.scheduled_at AS "scheduledAt",
-          b.address_line AS address, b.created_at AS "createdAt",
+          b.address_line AS address, b.city, b.created_at AS "createdAt",
           cu.name AS "customerName", cu.phone AS "customerPhone",
           cl.name AS "cleanerName",
           COALESCE(s.name, sp.name, p.name) AS service,

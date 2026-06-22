@@ -290,10 +290,13 @@ export class AdminBookingsController {
       throw new BadRequestException('Alasan wajib (min 5 karakter).');
     }
     // Ambil party info (customer + cleaner) sebelum update
-    const partyRows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null }[]>`
-      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    const partyRows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null; status: string }[]>`
+      SELECT customer_id, cleaner_id, status FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
     const parties = partyRows[0];
+    if (parties?.status === 'completed' || parties?.status === 'canceled') {
+      throw new BadRequestException('Booking sudah selesai/dibatalkan');
+    }
 
     await this.prisma.$executeRaw`
       UPDATE bookings
@@ -344,9 +347,12 @@ export class AdminBookingsController {
       throw new BadRequestException('Alasan wajib.');
     }
     // Get booking info untuk auto-credit cleaner
-    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string | null; cleaner_payout: number | null; total_amount: number }[]>`
-      SELECT cleaner_id, customer_id, cleaner_payout, total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string | null; cleaner_payout: number | null; total_amount: number; status: string }[]>`
+      SELECT cleaner_id, customer_id, cleaner_payout, total_amount, status FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
+    if (bookings[0]?.status === 'completed') {
+      throw new BadRequestException('Booking sudah selesai');
+    }
     const booking = bookings[0];
 
     await this.prisma.$transaction([
@@ -535,6 +541,10 @@ export class AdminBookingsController {
     @Req() req: Request,
   ) {
     if (!body?.cleanerId) throw new BadRequestException('cleanerId wajib.');
+    const oldCleanerRows = await this.prisma.$queryRaw<{ cleaner_id: string | null }[]>`
+      SELECT cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const oldCleanerId = oldCleanerRows[0]?.cleaner_id ?? null;
     await this.prisma.$executeRaw`
       UPDATE bookings
          SET cleaner_id = ${body.cleanerId}::uuid,
@@ -542,6 +552,9 @@ export class AdminBookingsController {
              matched_at = NOW()
        WHERE id = ${id}::uuid
     `;
+    if (oldCleanerId) {
+      void this.push.send({ userId: oldCleanerId, title: 'Job Dipindahkan', body: `Job #${id.slice(0, 8)} telah dipindahkan ke cleaner lain.` }).catch(() => {});
+    }
     await this.audit.log({
       adminId: admin.id,
       action: 'booking.reassign',
