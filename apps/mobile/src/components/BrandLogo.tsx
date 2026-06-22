@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import { Animated, Easing, Text, useWindowDimensions, View } from 'react-native';
 
 import { useConfig } from '../stores/appContent';
 
@@ -77,9 +77,12 @@ export function BrandLogo({
 
   const containerSize = size;
   const logoSize = size * 0.78;
+  const { width: screenWidth } = useWindowDimensions();
+  // Lebar teks = layar - logo - gap - padding kiri/kanan (estimasi 48px)
+  const textMaxWidth = screenWidth - containerSize - 14 - 48;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flexShrink: 1 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
       {/* Animated logo container */}
       <Animated.View
         style={{
@@ -144,7 +147,7 @@ export function BrandLogo({
       </Animated.View>
 
       {showName && (
-        <Animated.View style={{ opacity: introOpacity, flex: 1, transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }}>
+        <Animated.View style={{ opacity: introOpacity, maxWidth: textMaxWidth, transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }}>
           <Text
             className={`font-extrabold ${textColor}`}
             style={{ fontSize: size * 0.46, letterSpacing: -0.4, lineHeight: size * 0.5 }}
