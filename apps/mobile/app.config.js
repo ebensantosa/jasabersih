@@ -50,7 +50,7 @@ module.exports = {
     icon: './assets/icon.png',
     splash: {
       image: './assets/splash-logo.png',
-      resizeMode: 'cover',
+      resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
     ios: {
@@ -77,12 +77,9 @@ module.exports = {
         'expo-splash-screen',
         {
           image: './assets/splash-logo.png',
-          resizeMode: 'cover',
+          resizeMode: 'contain',
           backgroundColor: '#ffffff',
-          // imageWidth ~ lebar layar dlm dp (mayoritas device 360-430dp).
-          // 414 = iPhone Plus/Pro Max width = full-bleed di hampir semua HP
-          // dgn aspect ratio image 1242x2436 (≈0.51 -> potrait ~810dp height).
-          imageWidth: 414,
+          imageWidth: 280,
         },
       ],
     ],

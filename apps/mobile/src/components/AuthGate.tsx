@@ -11,11 +11,8 @@ import { useModeStore } from '../stores/mode';
 
 type Props = {
   children: React.ReactNode;
-  /** Restrict access to a specific mode (customer/freelancer). Omit for any-logged-in. */
   requireMode?: UserMode;
-  /** Title shown in the not-allowed screen */
   title?: string;
-  /** Optional message override */
   message?: string;
 };
 
@@ -24,7 +21,6 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
 
-  // Belum login → tampilkan layar login-prompt (bukan Redirect kosong yg bikin flash hitam)
   if (!tokens) {
     return (
       <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -32,7 +28,7 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
           colors={['#1E3A8A', '#047857', '#0E7490']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ height: 200, width: '100%', alignSelf: 'stretch' }}
+          style={{ height: 200, width: '100%' }}
         >
           <SafeAreaView edges={['top']} />
         </LinearGradient>

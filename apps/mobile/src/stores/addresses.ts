@@ -101,6 +101,9 @@ export const useAddressesStore = create<State>((set, get) => ({
     const newList = [...list, next];
     persist(newList);
     set({ list: newList });
+    // Tandai sync fresh supaya syncFromApi yg dipanggil booking/new saat mount
+    // tidak langsung overwrite optimistic state dengan GET yg masih return kosong.
+    addressesLastSyncedAt = Date.now();
 
     // Push to API in background, replace tempId with server uuid
     api.post('/addresses', {

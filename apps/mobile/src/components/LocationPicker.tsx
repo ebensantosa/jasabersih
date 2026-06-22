@@ -255,7 +255,8 @@ export function LocationPicker({
   }
 
   function confirm(): void {
-    onPick({ lat, lng, address });
+    const finalAddress = address.trim() || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    onPick({ lat, lng, address: finalAddress });
     onClose();
   }
 
@@ -348,10 +349,12 @@ export function LocationPicker({
           </Text>
           <Pressable
             onPress={confirm}
-            disabled={!address || resolving}
+            disabled={resolving && !address}
             className="mt-3 rounded-2xl bg-brand-600 py-3.5 disabled:opacity-50"
           >
-            <Text className="font-bold text-center text-sm text-white">Pakai Alamat Ini</Text>
+            <Text className="font-bold text-center text-sm text-white">
+              {resolving ? 'Mencari alamat…' : 'Pakai Alamat Ini'}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>

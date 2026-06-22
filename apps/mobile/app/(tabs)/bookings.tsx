@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { CalendarCheck, ChevronRight } from 'lucide-react-native';
+import { CalendarCheck, ChevronRight, LogIn } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthGate } from '../../src/components/AuthGate';
 import { formatRupiah } from '../../src/data/catalog';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useAuthStore } from '../../src/stores/auth';
@@ -39,7 +39,33 @@ export default function Bookings() {
   const visibleList = filter === 'active' ? activeList : historyList;
 
   if (!tokens) {
-    return <AuthGate title="Lihat Pesanan" message="Masuk dulu untuk melihat riwayat dan status pesananmu.">{null}</AuthGate>;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <LinearGradient
+          colors={['#1E3A8A', '#047857', '#0E7490']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ height: 200, width: '100%' }}
+        >
+          <SafeAreaView edges={['top']} />
+        </LinearGradient>
+        <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 24, marginTop: -48 }}>
+          <View style={{ height: 96, width: 96, alignItems: 'center', justifyContent: 'center', borderRadius: 48, backgroundColor: 'white', elevation: 6, shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+            <LogIn color="#1D4ED8" size={36} strokeWidth={2} />
+          </View>
+          <Text style={{ fontWeight: '800', fontSize: 20, color: '#0F172A', marginTop: 20, textAlign: 'center' }}>Login Dulu, Yuk!</Text>
+          <Text style={{ fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+            Masuk dulu untuk melihat riwayat dan status pesananmu.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/(auth)/login')}
+            style={{ marginTop: 28, width: '100%', borderRadius: 16, backgroundColor: '#1D4ED8', paddingVertical: 16, alignItems: 'center' }}
+          >
+            <Text style={{ fontWeight: '700', fontSize: 15, color: 'white' }}>Masuk / Daftar</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -95,7 +121,7 @@ export default function Bookings() {
                   : 'Pesanan yang sudah selesai atau dibatalkan akan tersimpan di riwayat.')}
           </Text>
           <Pressable
-            onPress={() => router.push(isCleaner ? '/(tabs)/jobs' : '/(tabs)')}
+            onPress={() => router.push(isCleaner ? '/(tabs)/jobs' : '/(tabs)/explore')}
             className="mt-4 rounded-xl bg-brand-600 px-5 py-2.5"
           >
             <Text className="font-semibold text-xs text-white">

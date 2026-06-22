@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -32,10 +32,6 @@ function ChatsScreen() {
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
 
-  if (!accessToken) {
-    return <Redirect href="/(auth)/login" />;
-  }
-
   const fetchChats = useCallback(async () => {
     setLoading(true);
     try {
@@ -47,9 +43,12 @@ function ChatsScreen() {
     } finally {
       setLoading(false);
     }
-  }, []); // tanpa deps - stable
+  }, []);
 
-  useFocusEffect(useCallback(() => { void fetchChats(); }, [fetchChats]));
+  useFocusEffect(useCallback(() => {
+    if (accessToken) void fetchChats();
+  }, [fetchChats, accessToken]));
+
 
   return (
     <View className="flex-1 bg-ink-50">

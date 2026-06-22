@@ -9,6 +9,7 @@ import { api } from '../../src/lib/api';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { toast } from '../../src/stores/ui';
+import { useUserStore } from '../../src/stores/user';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 import { safeBack } from '../../src/lib/safeBack';
@@ -30,6 +31,8 @@ type Profile = {
 
 function CleanerProfileScreen() {
   const router = useRouter();
+  const userProfile = useUserStore((s) => s.profile);
+  const setUserProfile = useUserStore((s) => s.setProfile);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,6 +70,7 @@ function CleanerProfileScreen() {
       );
       await api.patch('/cleaner/profile', { photoUrl: publicUrl });
       setPhotoUrl(publicUrl);
+      if (userProfile) setUserProfile({ ...userProfile, photoUrl: publicUrl });
       toast.success(`Foto tersimpan (${formatBytes(c.size)})`);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Gagal upload foto');
