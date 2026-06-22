@@ -19,7 +19,15 @@ export const useModeStore = create<State>((set, get) => ({
     // Re-register push token dengan mode baru agar notif tidak bocor lintas mode
     void registerForPushAsync(m === 'customer' ? 'customer' : 'freelancer');
   },
-  toggle: () => get().setMode(get().mode === 'customer' ? 'freelancer' : 'customer'),
+  toggle: () => {
+    const { useUserStore } = require('./user');
+    const profile = useUserStore.getState().profile;
+    const next = get().mode === 'customer' ? 'freelancer' : 'customer';
+    // Only allow toggle if user actually has the target role
+    if (next === 'freelancer' && !profile?.isFreelancer) return;
+    if (next === 'customer' && !profile?.isCustomer) return;
+    get().setMode(next);
+  },
   hydrate: () => {
     const raw = storage.getString(persistKeys.mode);
     if (raw === 'customer' || raw === 'freelancer') set({ mode: raw });

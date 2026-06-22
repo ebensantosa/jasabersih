@@ -9,7 +9,14 @@ const API_BASE =
 
 export type AuthResult = {
   tokens: AuthTokens;
-  user: { email: string; name: string; mode: 'customer' | 'freelancer'; kycStatus?: string | null };
+  user: {
+    email: string;
+    name: string;
+    mode: 'customer' | 'freelancer';
+    isCustomer: boolean;
+    isFreelancer: boolean;
+    kycStatus?: string | null;
+  };
 };
 
 /** Login real ke backend NestJS - no mock. */
@@ -34,8 +41,16 @@ export async function login(email: string, password: string, loginAs: 'customer'
     throw err;
   }
 
-  // Fetch real profile using the freshly-issued access token
-  let user: AuthResult['user'] = { email, name: email, mode: 'customer', kycStatus: null };
+  // Default: assume loginAs role (safe fallback if /auth/me fails)
+  let user: AuthResult['user'] = {
+    email,
+    name: email,
+    mode: loginAs,
+    isCustomer: loginAs === 'customer',
+    isFreelancer: loginAs === 'freelancer',
+    kycStatus: null,
+  };
+
   try {
     const me = await api.get('/auth/me', {
       timeout: 12_000,
@@ -43,18 +58,30 @@ export async function login(email: string, password: string, loginAs: 'customer'
     });
     const p = me.data?.data ?? me.data;
     if (p) {
-      // If user has both flags (isCustomer + isFreelancer), respect loginAs tab choice.
-      // Otherwise use server-returned mode to catch role mismatch.
-      const serverMode: 'customer' | 'freelancer' = p.mode === 'freelancer' ? 'freelancer' : 'customer';
-      const resolvedMode = (p.isCustomer && p.isFreelancer) ? loginAs : serverMode;
+      const isCustomer: boolean = !!p.isCustomer;
+      const isFreelancer: boolean = !!p.isFreelancer;
+
+      // Resolve mode: if user has both roles, honour their loginAs choice.
+      // If single-role, use whatever role they have (role-mismatch check in login.tsx).
+      let resolvedMode: 'customer' | 'freelancer';
+      if (isCustomer && isFreelancer) {
+        resolvedMode = loginAs;
+      } else if (isFreelancer) {
+        resolvedMode = 'freelancer';
+      } else {
+        resolvedMode = 'customer';
+      }
+
       user = {
         email: p.email ?? email,
         name: p.name ?? p.phone ?? email,
         mode: resolvedMode,
+        isCustomer,
+        isFreelancer,
         kycStatus: null,
       };
 
-      if (user.mode === 'freelancer') {
+      if (resolvedMode === 'freelancer') {
         try {
           const cleanerProfile = await api.get('/cleaner/profile', {
             timeout: 12_000,
@@ -67,7 +94,7 @@ export async function login(email: string, password: string, loginAs: 'customer'
         }
       }
     }
-  } catch { /* ignore - fall back to placeholder */ }
+  } catch { /* ignore - fall back to loginAs default */ }
 
   return { tokens, user };
 }

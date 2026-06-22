@@ -88,10 +88,11 @@ export default function Login() {
     setLoading(true);
     try {
       const result = await login(email, password, loginAs);
-      // Validate role: user must have the flag for the selected tab
-      if (result.user.mode !== loginAs) {
+      // Validate: user must have the flag matching the selected tab
+      const hasRole = loginAs === 'customer' ? result.user.isCustomer : result.user.isFreelancer;
+      if (!hasRole) {
         const want = loginAs === 'customer' ? 'Customer' : 'Cleaner';
-        const actual = result.user.mode === 'customer' ? 'Customer' : 'Cleaner';
+        const actual = result.user.isFreelancer ? 'Cleaner' : 'Customer';
         toast.error(`Akun ini terdaftar sebagai ${actual}, bukan ${want}. Pilih tab yang sesuai.`);
         setLoading(false);
         return;

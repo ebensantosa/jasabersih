@@ -9,7 +9,8 @@ export type UserProfile = {
   phone: string;
   email: string | null;
   photoUrl: string | null;
-  mode: 'customer' | 'freelancer';
+  isCustomer: boolean;
+  isFreelancer: boolean;
   memberSince: string;
   verified: boolean;
 };
@@ -47,7 +48,18 @@ export const useUserStore = create<State>((set, get) => ({
     userFetchPromise = (async () => {
       try {
         const res = await api.get('/auth/me');
-        const profile: UserProfile = res.data?.data ?? res.data;
+        const raw = res.data?.data ?? res.data;
+        const profile: UserProfile = {
+          id: raw.id,
+          name: raw.name ?? null,
+          phone: raw.phone,
+          email: raw.email ?? null,
+          photoUrl: raw.photoUrl ?? null,
+          isCustomer: !!raw.isCustomer,
+          isFreelancer: !!raw.isFreelancer,
+          memberSince: raw.memberSince,
+          verified: !!raw.verified,
+        };
         storage.set(STORAGE_KEY, JSON.stringify(profile));
         userLastFetchedAt = Date.now();
         set({ profile, loading: false });
