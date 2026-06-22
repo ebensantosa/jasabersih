@@ -87,8 +87,8 @@ export default function Login() {
     submittingRef.current = true;
     setLoading(true);
     try {
-      const result = await login(email, password);
-      // Validate role matches selected toggle
+      const result = await login(email, password, loginAs);
+      // Validate role: user must have the flag for the selected tab
       if (result.user.mode !== loginAs) {
         const want = loginAs === 'customer' ? 'Customer' : 'Cleaner';
         const actual = result.user.mode === 'customer' ? 'Customer' : 'Cleaner';

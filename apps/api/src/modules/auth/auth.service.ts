@@ -236,6 +236,8 @@ export class AuthService {
       email: user.email,
       photoUrl: user.photoUrl,
       mode: user.isFreelancer ? 'freelancer' : 'customer',
+      isCustomer: user.isCustomer,
+      isFreelancer: user.isFreelancer,
       memberSince: user.createdAt,
       verified: !!user.phoneVerifiedAt,
     };

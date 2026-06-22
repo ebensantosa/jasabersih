@@ -13,7 +13,7 @@ export type AuthResult = {
 };
 
 /** Login real ke backend NestJS - no mock. */
-export async function login(email: string, password: string): Promise<AuthResult> {
+export async function login(email: string, password: string, loginAs: 'customer' | 'freelancer' = 'customer'): Promise<AuthResult> {
   const deviceId = await getDeviceId();
   let tokens: AuthTokens;
   try {
@@ -43,10 +43,14 @@ export async function login(email: string, password: string): Promise<AuthResult
     });
     const p = me.data?.data ?? me.data;
     if (p) {
+      // If user has both flags (isCustomer + isFreelancer), respect loginAs tab choice.
+      // Otherwise use server-returned mode to catch role mismatch.
+      const serverMode: 'customer' | 'freelancer' = p.mode === 'freelancer' ? 'freelancer' : 'customer';
+      const resolvedMode = (p.isCustomer && p.isFreelancer) ? loginAs : serverMode;
       user = {
         email: p.email ?? email,
         name: p.name ?? p.phone ?? email,
-        mode: p.mode === 'freelancer' ? 'freelancer' : 'customer',
+        mode: resolvedMode,
         kycStatus: null,
       };
 
