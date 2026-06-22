@@ -742,7 +742,10 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             </div>
           )}
 
-          <AdminChatPanel bookingId={bookingId} />
+          {(data?.booking as any)?.form_snapshot?.createdByAdmin === true ||
+           (data?.booking as any)?.form_snapshot?.createdByAdmin === 'true' ? (
+            <AdminChatPanel bookingId={bookingId} />
+          ) : null}
 
           {data.payments?.length > 0 && (
             <div>
