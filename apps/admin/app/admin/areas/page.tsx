@@ -192,6 +192,10 @@ function RequestsTab({ onChange }: { onChange: () => void }) {
     try { await api.admin.deleteCityRequest(id); toast.success('Dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
 
+  async function ackEntry(id: string) {
+    try { await api.admin.ackCityRequest(id); toast.success('Ditandai sudah ditinjau.'); void load(); } catch (e: any) { toast.error(e?.message); }
+  }
+
   return (
     <div>
       <h2 className="text-base font-semibold">Request Kota Baru ({list.length} kota)</h2>
@@ -229,7 +233,8 @@ function RequestsTab({ onChange }: { onChange: () => void }) {
                           <td className="px-2 py-1">{s.contactName ?? '—'}</td>
                           <td className="px-2 py-1">{s.contactPhone ?? '—'}</td>
                           <td className="px-2 py-1">{s.notes ?? '—'}</td>
-                          <td className="px-2 py-1">
+                          <td className="px-2 py-1 flex gap-3">
+                            <button onClick={() => ackEntry(s.id)} className="text-green-600 hover:underline">Acc</button>
                             <button onClick={() => delEntry(s.id, r.city)} className="text-red-600 hover:underline">Hapus</button>
                           </td>
                         </tr>

@@ -436,6 +436,13 @@ export class AdminCmsController {
     `;
   }
 
+  @Post('city-requests/:id/ack')
+  @Roles('super_admin', 'ops')
+  async ackCityRequest(@Param('id') id: string) {
+    await this.prisma.$executeRaw`UPDATE city_requests SET status = 'reviewed' WHERE id = ${id}::uuid`;
+    return { ok: true };
+  }
+
   @Delete('city-requests/:id')
   @Roles('super_admin', 'ops')
   async deleteCityRequest(@Param('id') id: string) {

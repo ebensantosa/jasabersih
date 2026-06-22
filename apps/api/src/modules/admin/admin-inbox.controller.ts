@@ -33,7 +33,7 @@ export class AdminInboxController {
            AND COALESCE(paid_at, created_at) < NOW() - INTERVAL '5 minutes'
       `,
       this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM fraud_reports WHERE status = 'open'`,
-      this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM city_requests WHERE created_at > NOW() - INTERVAL '30 days'`,
+      this.prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM city_requests WHERE created_at > NOW() - INTERVAL '30 days' AND status != 'reviewed'`,
       // Chat yang menunggu balasan admin: HANYA booking manual (createdByAdmin)
       // atau booking dimana admin pernah ikut reply — dan pesan terakhir bukan dari admin.
       this.prisma.$queryRaw<{ c: number }[]>`

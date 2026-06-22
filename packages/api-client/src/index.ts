@@ -295,6 +295,7 @@ export function createClient(opts: ClientOptions) {
       serviceAreas: () => request<any[]>('GET', '/admin/cms/service-areas'),
       listCityRequests: () => request<any[]>('GET', '/admin/cms/city-requests'),
       deleteCityRequest: (id: string) => request<{ ok: true }>('DELETE', `/admin/cms/city-requests/${id}`),
+      ackCityRequest: (id: string) => request<{ ok: true }>('POST', `/admin/cms/city-requests/${id}/ack`),
       listFraudReports: (status?: 'pending' | 'approved' | 'rejected') =>
         request<any[]>('GET', `/admin/fraud-reports${status ? `?status=${status}` : ''}`),
       reviewFraudReport: (id: string, decision: 'approved' | 'rejected', adminNotes?: string) =>
