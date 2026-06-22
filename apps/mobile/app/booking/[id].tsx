@@ -32,6 +32,7 @@ import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { useT } from '../../src/lib/i18n';
 import { formatRupiah } from '../../src/data/catalog';
 import { useConfig } from '../../src/stores/appContent';
+import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import {
   STATUS_COLOR,
@@ -137,7 +138,18 @@ function BookingDetail() {
     if (id && !id.startsWith('bk_') && !booking) void fetchOne(id);
   }, [id, booking, fetchOne]);
   const mode = useModeStore((s) => s.mode);
-  const isCleaner = mode === 'freelancer';
+  const token = useAuthStore((s) => s.tokens?.accessToken);
+  const myUserId = (() => {
+    try {
+      if (!token) return null;
+      const p = token.split('.')[1];
+      const d = typeof atob !== 'undefined' ? atob(p.replace(/-/g, '+').replace(/_/g, '/')) : Buffer.from(p, 'base64').toString();
+      return JSON.parse(d)?.sub ?? null;
+    } catch { return null; }
+  })();
+  const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id ?? null;
+  // isCleaner: mode freelancer OR user ini adalah cleaner yang di-assign ke booking ini
+  const isCleaner = mode === 'freelancer' || (!!myUserId && !!cleanerId && myUserId === cleanerId);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDispute, setShowDispute] = useState(false);
   const [showRating, setShowRating] = useState(false);
@@ -1172,8 +1184,7 @@ function BookingDetail() {
         {/* CLEANER bottom actions - kalau job ini di-take dia */}
         {isCleaner &&
           booking.status !== 'canceled' &&
-          booking.status !== 'completed' &&
-          booking.cleanerName && (
+          booking.status !== 'completed' && (
             <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
               <SafeAreaView edges={['bottom']}>
                 {booking.status === 'on_the_way' && booking.pricingMode === 'hourly' && (
