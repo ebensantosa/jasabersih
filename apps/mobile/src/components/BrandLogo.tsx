@@ -79,7 +79,7 @@ export function BrandLogo({
   const logoSize = size * 0.78;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flexShrink: 1 }}>
       {/* Animated logo container */}
       <Animated.View
         style={{
@@ -144,10 +144,12 @@ export function BrandLogo({
       </Animated.View>
 
       {showName && (
-        <Animated.View style={{ opacity: introOpacity, transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }}>
+        <Animated.View style={{ opacity: introOpacity, flex: 1, transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }}>
           <Text
             className={`font-extrabold ${textColor}`}
             style={{ fontSize: size * 0.46, letterSpacing: -0.4, lineHeight: size * 0.5 }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
           >
             {appName}
           </Text>
@@ -155,13 +157,14 @@ export function BrandLogo({
             style={{
               color: subtleColor,
               fontFamily: 'Inter_500Medium',
-              fontSize: size * 0.22,
-              letterSpacing: 1.4,
+              fontSize: size * 0.20,
+              letterSpacing: 1.2,
               marginTop: 2,
               textTransform: 'uppercase',
             }}
+            numberOfLines={2}
           >
-            Layanan Bersih Profesional
+            Layanan Bersih{'\n'}Profesional
           </Text>
         </Animated.View>
       )}
