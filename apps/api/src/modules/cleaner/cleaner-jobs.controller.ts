@@ -427,6 +427,9 @@ export class CleanerJobsController {
     const b = await this.prisma.$queryRaw<{ customer_id: string }[]>`
       SELECT customer_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
+    // Notify other online cleaners so their job popup closes immediately
+    this.jobs.emitJobTaken(id, user.id);
+
     if (b[0]?.customer_id) {
       void this.push.send({
         userId: b[0].customer_id, channel: 'booking',

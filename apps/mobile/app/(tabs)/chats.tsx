@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,13 +32,16 @@ function ChatsScreen() {
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
+  const hasDataRef = useRef(false);
 
   const fetchChats = useCallback(async () => {
-    setLoading(true);
+    // Only show spinner on initial load — re-fetch on focus stays silent
+    if (!hasDataRef.current) setLoading(true);
     try {
       const res = await api.get('/chat/conversations');
       const data = (res.data?.data ?? res.data ?? []) as ChatRow[];
       setChats(data);
+      hasDataRef.current = true;
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal load chat');
     } finally {
@@ -174,7 +177,6 @@ function ChatsScreen() {
                       source={{ uri: c.partnerPhotoUrl }}
                       style={{ width: 48, height: 48, borderRadius: 24 }}
                       contentFit="cover"
-                      cachePolicy="reload"
                     />
                   ) : (
                     <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-100">

@@ -155,6 +155,10 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return this.server?.sockets?.adapter?.rooms?.get(ROOM_AVAILABLE)?.size ?? 0;
   }
 
+  emitJobTaken(bookingId: string, byUserId: string): void {
+    this.server?.to(ROOM_AVAILABLE)?.emit('job-taken', { bookingId, by: byUserId });
+  }
+
   async broadcastIncomingJob(bookingId: string): Promise<void> {
     const rows = await this.prisma.$queryRaw<{
       id: string;
