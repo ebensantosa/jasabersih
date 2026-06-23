@@ -176,7 +176,7 @@ export default function HourlyTiersPage(): React.ReactElement {
   );
 }
 
-function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose: () => void; onSaved: () => void }) {
+function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const [code, setCode] = useState(tier?.code ?? '');
   const [name, setName] = useState(tier?.name ?? '');

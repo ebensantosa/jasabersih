@@ -110,7 +110,7 @@ function AdminsTab() {
   );
 }
 
-function AdminFormModal({ admin, onClose, onSaved }: { admin: any | null; onClose: () => void; onSaved: () => void }) {
+function AdminFormModal({ admin, onClose, onSaved }: { admin: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const isEdit = !!admin;
   const [form, setForm] = useState({
@@ -191,7 +191,7 @@ function AdminFormModal({ admin, onClose, onSaved }: { admin: any | null; onClos
   );
 }
 
-function PasswordResetModal({ admin, onClose }: { admin: any; onClose: () => void }) {
+function PasswordResetModal({ admin, onClose }: { admin: any; onClose: () => void }): React.ReactElement {
   const toast = useToast();
   const [pw, setPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -232,7 +232,7 @@ function PasswordResetModal({ admin, onClose }: { admin: any; onClose: () => voi
   );
 }
 
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role }: { role: string }): React.ReactElement {
   const variant: any = { super_admin: 'purple', ops: 'blue', finance: 'green', fraud_analyst: 'red', support: 'slate' }[role] ?? 'slate';
   return <Badge variant={variant}>{role}</Badge>;
 }
@@ -282,7 +282,7 @@ function CommissionTab() {
   );
 }
 
-function CommissionFormModal({ tier, onClose, onSaved }: { tier: any; onClose: () => void; onSaved: () => void }) {
+function CommissionFormModal({ tier, onClose, onSaved }: { tier: any; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const [form, setForm] = useState({
     rangeMin: tier.rangeMin ?? 0,
@@ -433,7 +433,7 @@ function ServicesTab() {
   );
 }
 
-function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }) {
+function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const isEdit = !!service;
   const [form, setForm] = useState({
@@ -493,7 +493,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
 }
 
 // ============ SERVICE ICON UPLOAD ============
-function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url: string) => void }): React.ReactElement {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -615,7 +615,7 @@ function BlacklistTab() {
   );
 }
 
-function BlacklistFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function BlacklistFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const [form, setForm] = useState({ type: 'phone', value: '', reason: '', expiresAt: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});

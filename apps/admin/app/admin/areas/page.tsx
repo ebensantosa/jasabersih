@@ -44,7 +44,7 @@ export default function AreasPage(): React.ReactElement {
   );
 }
 
-function SubTabBtn({ active, onClick, icon, label, badge }: { active: boolean; onClick: () => void; icon: any; label: string; badge?: number }) {
+function SubTabBtn({ active, onClick, icon, label, badge }: { active: boolean; onClick: () => void; icon: any; label: string; badge?: number }): React.ReactElement {
   return (
     <button onClick={onClick} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${active ? 'border-b-2 border-blue-700 text-blue-700' : 'text-slate-500 hover:text-slate-900'}`}>
       {icon} {label}
@@ -110,7 +110,7 @@ function AreasTab() {
   );
 }
 
-function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }) {
+function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const isEdit = !!area;
   const [form, setForm] = useState({
@@ -177,7 +177,7 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
 }
 
 // ============ CITY REQUESTS ============
-function RequestsTab({ onChange }: { onChange: () => void }) {
+function RequestsTab({ onChange }: { onChange: () => void }): React.ReactElement {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);

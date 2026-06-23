@@ -103,7 +103,7 @@ export default function DisputesPage(): React.ReactElement {
   );
 }
 
-function SlaBadge({ dueAt }: { dueAt: string }) {
+function SlaBadge({ dueAt }: { dueAt: string }): React.ReactElement {
   const dueDate = new Date(dueAt);
   const hoursLeft = Math.round((dueDate.getTime() - Date.now()) / 3_600_000);
   if (hoursLeft < 0) return <Badge variant="red">Overdue {Math.abs(hoursLeft)}h</Badge>;
@@ -111,7 +111,7 @@ function SlaBadge({ dueAt }: { dueAt: string }) {
   return <Badge>{hoursLeft}h left</Badge>;
 }
 
-function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; onClose: () => void; onResolved: () => void }) {
+function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; onClose: () => void; onResolved: () => void }): React.ReactElement {
   const toast = useToast();
   const [escalating, setEscalating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -234,7 +234,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
   );
 }
 
-function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onClose: () => void; onDone: () => void }) {
+function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onClose: () => void; onDone: () => void }): React.ReactElement {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -269,7 +269,7 @@ function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onCl
   );
 }
 
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
+function InfoCard({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
     <div className="rounded-md border bg-slate-50 p-3">
       <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{title}</div>

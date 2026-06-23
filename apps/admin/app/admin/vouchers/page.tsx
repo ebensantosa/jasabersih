@@ -76,7 +76,7 @@ export default function VouchersPage(): React.ReactElement {
   );
 }
 
-function VoucherFormModal({ voucher, onClose, onSaved }: { voucher: any | null; onClose: () => void; onSaved: () => void }) {
+function VoucherFormModal({ voucher, onClose, onSaved }: { voucher: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const isEdit = !!voucher;
   const [form, setForm] = useState({

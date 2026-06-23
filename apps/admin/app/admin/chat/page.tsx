@@ -107,7 +107,7 @@ function BookingsTab() {
   );
 }
 
-function ThreadModal({ booking, onClose }: { booking: any; onClose: () => void }) {
+function ThreadModal({ booking, onClose }: { booking: any; onClose: () => void }): React.ReactElement {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [messages, setMessages] = useState<any[] | null>(null);
@@ -240,7 +240,7 @@ function StatsTab() {
   );
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }): React.ReactElement {
   return (
     <div className={`rounded-md border p-4 ${highlight ? 'border-red-300 bg-red-50' : 'bg-white'}`}>
       <div className="text-xs text-slate-500">{label}</div>

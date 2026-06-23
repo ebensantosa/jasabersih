@@ -178,7 +178,7 @@ export default function AdminOverview(): React.ReactElement {
   );
 }
 
-function PendingCard({ icon: Icon, label, count, href, color }: { icon: any; label: string; count: number; href: string; color: 'amber' | 'blue' | 'red' | 'purple' }) {
+function PendingCard({ icon: Icon, label, count, href, color }: { icon: any; label: string; count: number; href: string; color: 'amber' | 'blue' | 'red' | 'purple' }): React.ReactElement {
   const cls = {
     amber: { bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', icon: 'text-amber-700' },
     blue: { bg: 'bg-blue-50', text: 'text-blue-900', border: 'border-blue-200', icon: 'text-blue-700' },
@@ -197,7 +197,7 @@ function PendingCard({ icon: Icon, label, count, href, color }: { icon: any; lab
   );
 }
 
-function GmvCard({ label, orders, gmv, revenue }: { label: string; orders: number; gmv: number; revenue: number }) {
+function GmvCard({ label, orders, gmv, revenue }: { label: string; orders: number; gmv: number; revenue: number }): React.ReactElement {
   return (
     <div className="rounded-md border bg-white p-4">
       <div className="text-xs uppercase text-slate-500">{label}</div>
@@ -211,7 +211,7 @@ function GmvCard({ label, orders, gmv, revenue }: { label: string; orders: numbe
   );
 }
 
-function TrendBars({ data }: { data: { day: string; orders: number; gmv: number }[] }) {
+function TrendBars({ data }: { data: { day: string; orders: number; gmv: number }[] }): React.ReactElement {
   if (!data || data.length === 0) return <p className="py-6 text-center text-xs text-slate-500">Belum ada data 7 hari terakhir.</p>;
   const max = Math.max(...data.map((d) => Number(d.gmv)), 1);
   return (
@@ -230,7 +230,7 @@ function TrendBars({ data }: { data: { day: string; orders: number; gmv: number 
   );
 }
 
-function FunnelRow({ label, value, sub, positive, negative }: { label: string; value: number; sub?: string; positive?: boolean; negative?: boolean }) {
+function FunnelRow({ label, value, sub, positive, negative }: { label: string; value: number; sub?: string; positive?: boolean; negative?: boolean }): React.ReactElement {
   const color = positive ? 'text-green-700' : negative ? 'text-red-700' : 'text-slate-900';
   return (
     <div className="flex items-center justify-between border-b border-slate-100 py-2 last:border-b-0">
@@ -243,7 +243,7 @@ function FunnelRow({ label, value, sub, positive, negative }: { label: string; v
   );
 }
 
-function Stat({ label, value, positive, negative }: { label: string; value: number; positive?: boolean; negative?: boolean }) {
+function Stat({ label, value, positive, negative }: { label: string; value: number; positive?: boolean; negative?: boolean }): React.ReactElement {
   const color = positive ? 'text-green-700' : negative ? 'text-red-700' : 'text-slate-900';
   return (
     <div>

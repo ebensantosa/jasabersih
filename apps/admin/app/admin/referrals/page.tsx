@@ -200,7 +200,7 @@ export default function ReferralsAdminPage(): React.ReactElement {
   );
 }
 
-function StatCard({ label, value, icon, color, highlight }: { label: string; value: string; icon?: React.ReactNode; color: 'blue' | 'amber' | 'green' | 'slate'; highlight?: boolean }) {
+function StatCard({ label, value, icon, color, highlight }: { label: string; value: string; icon?: React.ReactNode; color: 'blue' | 'amber' | 'green' | 'slate'; highlight?: boolean }): React.ReactElement {
   const cls = {
     blue: 'border-blue-200 bg-blue-50 text-blue-900',
     amber: 'border-amber-200 bg-amber-50 text-amber-900',

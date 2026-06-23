@@ -101,7 +101,7 @@ export default function SubscriptionTiersPage(): React.ReactElement {
   );
 }
 
-function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => void; onSaved: () => void }) {
+function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const [label, setLabel] = useState(tier.label);
   const [tagline, setTagline] = useState(tier.tagline ?? '');

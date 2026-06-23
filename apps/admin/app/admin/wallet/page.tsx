@@ -135,7 +135,7 @@ export default function WalletPage(): React.ReactElement {
   );
 }
 
-function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }) {
+function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }): React.ReactElement {
   const toast = useToast();
   const [ref, setRef] = useState('');
   const [note, setNote] = useState('');
@@ -177,7 +177,7 @@ function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onD
   );
 }
 
-function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }) {
+function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }): React.ReactElement {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});

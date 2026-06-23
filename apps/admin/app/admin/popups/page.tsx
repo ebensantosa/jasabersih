@@ -88,7 +88,7 @@ async function uploadImage(file: File): Promise<string | null> {
   } catch { return null; }
 }
 
-function PopupFormModal({ popup, onClose, onSaved }: { popup: any | null; onClose: () => void; onSaved: () => void }) {
+function PopupFormModal({ popup, onClose, onSaved }: { popup: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const isEdit = !!popup;
   const [form, setForm] = useState({

@@ -102,7 +102,7 @@ export default function FraudPage(): React.ReactElement {
   );
 }
 
-function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () => void; onDone: () => void }) {
+function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () => void; onDone: () => void }): React.ReactElement {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,7 +139,7 @@ function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () =>
   );
 }
 
-function RuleCard({ title, desc }: { title: string; desc: string }) {
+function RuleCard({ title, desc }: { title: string; desc: string }): React.ReactElement {
   return (
     <div className="rounded-md border bg-white p-3">
       <div className="text-xs font-semibold text-slate-900">{title}</div>
@@ -148,7 +148,7 @@ function RuleCard({ title, desc }: { title: string; desc: string }) {
   );
 }
 
-function SignalBadge({ type }: { type: string }) {
+function SignalBadge({ type }: { type: string }): React.ReactElement {
   const variant: any = {
     high_cancel_rate: 'amber', high_refund_rate: 'amber',
     shared_device: 'purple', off_platform_chat: 'red',

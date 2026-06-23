@@ -129,7 +129,7 @@ export default function AppSettingsPage(): React.ReactElement {
   );
 }
 
-function ValuePreview({ value, keyName }: { value: any; keyName: string }) {
+function ValuePreview({ value, keyName }: { value: any; keyName: string }): React.ReactElement {
   // Mask sensitive secrets
   const isSensitive = /(_key|_secret|_private|password|token)/i.test(keyName);
   if (isSensitive && typeof value === 'string') {
@@ -154,7 +154,7 @@ function ValuePreview({ value, keyName }: { value: any; keyName: string }) {
   return <code className="text-[10px]">{JSON.stringify(value)}</code>;
 }
 
-function ImageUploadField({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
+function ImageUploadField({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }): React.ReactElement {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   async function pickAndUpload(file: File) {
@@ -189,7 +189,7 @@ function ImageUploadField({ value, onChange, folder }: { value: string; onChange
   );
 }
 
-function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onClose: () => void; onSaved: () => void }) {
+function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const isEdit = !!config;
   const [form, setForm] = useState({
@@ -302,7 +302,7 @@ function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onC
 }
 
 
-function BrandingPanel({ list, onSaved }: { list: any[]; onSaved: () => void }) {
+function BrandingPanel({ list, onSaved }: { list: any[]; onSaved: () => void }): React.ReactElement {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const cfg = (key: string) => list.find((c) => c.key === key);

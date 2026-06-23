@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -38,7 +38,7 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
-export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
+export function MapPicker({ lat, lng, onChange, height = 280 }: Props): React.ReactElement {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -61,7 +61,7 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
       }).setView([lat, lng], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap',
+        attribution: 'Â© OpenStreetMap',
       }).addTo(map);
       const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
       marker.on('dragend', () => {
@@ -155,7 +155,7 @@ export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
         )}
       </div>
       <div ref={ref} style={{ height, width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid #E2E8F0' }} />
-      <p className="text-[11px] text-slate-500">Scroll mouse untuk zoom · klik peta atau drag marker untuk pin centroid.</p>
+      <p className="text-[11px] text-slate-500">Scroll mouse untuk zoom Â· klik peta atau drag marker untuk pin centroid.</p>
     </div>
   );
 }

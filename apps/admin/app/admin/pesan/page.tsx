@@ -14,7 +14,7 @@ function InfoRow({ icon, label, value, wide, highlight, badge, badgeColor }: {
   highlight?: boolean;
   badge?: string;
   badgeColor?: 'green' | 'red';
-}) {
+}): React.ReactElement {
   return (
     <div className={wide ? 'col-span-2' : ''}>
       <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
