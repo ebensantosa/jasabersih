@@ -15,7 +15,7 @@ const AUDIENCES = [
   { value: 'inactive_30d', label: 'Customer tidak aktif 30 hari' },
 ];
 
-export default function BroadcastPage(): React.ReactElement {
+export default function BroadcastPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [form, setForm] = useState({ title: '', body: '', audience: 'all', ctaLink: '' });

@@ -6,7 +6,7 @@ import { Play, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-export default function FraudPage(): React.ReactElement {
+export default function FraudPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -102,7 +102,7 @@ export default function FraudPage(): React.ReactElement {
   );
 }
 
-function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () => void; onDone: () => void }): React.ReactElement {
+function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,7 +139,7 @@ function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () =>
   );
 }
 
-function RuleCard({ title, desc }: { title: string; desc: string }): React.ReactElement {
+function RuleCard({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="rounded-md border bg-white p-3">
       <div className="text-xs font-semibold text-slate-900">{title}</div>
@@ -148,7 +148,7 @@ function RuleCard({ title, desc }: { title: string; desc: string }): React.React
   );
 }
 
-function SignalBadge({ type }: { type: string }): React.ReactElement {
+function SignalBadge({ type }: { type: string }) {
   const variant: any = {
     high_cancel_rate: 'amber', high_refund_rate: 'amber',
     shared_device: 'purple', off_platform_chat: 'red',

@@ -9,7 +9,7 @@ import { MapPicker } from '../../../components/MapPicker';
 
 type SubTab = 'areas' | 'requests';
 
-export default function AreasPage(): React.ReactElement {
+export default function AreasPage() {
   const [tab, setTab] = useState<SubTab>('areas');
   const [requestCount, setRequestCount] = useState(0);
 
@@ -44,7 +44,7 @@ export default function AreasPage(): React.ReactElement {
   );
 }
 
-function SubTabBtn({ active, onClick, icon, label, badge }: { active: boolean; onClick: () => void; icon: any; label: string; badge?: number }): React.ReactElement {
+function SubTabBtn({ active, onClick, icon, label, badge }: { active: boolean; onClick: () => void; icon: any; label: string; badge?: number }) {
   return (
     <button onClick={onClick} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${active ? 'border-b-2 border-blue-700 text-blue-700' : 'text-slate-500 hover:text-slate-900'}`}>
       {icon} {label}
@@ -110,7 +110,7 @@ function AreasTab() {
   );
 }
 
-function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!area;
   const [form, setForm] = useState({
@@ -177,7 +177,7 @@ function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: 
 }
 
 // ============ CITY REQUESTS ============
-function RequestsTab({ onChange }: { onChange: () => void }): React.ReactElement {
+function RequestsTab({ onChange }: { onChange: () => void }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);

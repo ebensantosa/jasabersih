@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -56,7 +56,7 @@ const NAV = [
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function AdminShell({ children }: { children: React.ReactNode }): React.ReactElement {
+export default function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null | 'loading'>('loading');
   const [cityRequestsCount, setCityRequestsCount] = useState(0);
@@ -83,7 +83,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }):
     }
   }, [router]);
 
-  // Poll city request demand for sidebar badge — every 60s, lightweight.
+  // Poll city request demand for sidebar badge â€” every 60s, lightweight.
   useEffect(() => {
     if (session === 'loading' || !session) return;
     let cancelled = false;
@@ -118,7 +118,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }):
   if (session === 'loading' || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
-        Loading…
+        Loadingâ€¦
       </div>
     );
   }

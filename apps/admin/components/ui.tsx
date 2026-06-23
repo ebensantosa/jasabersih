@@ -20,7 +20,7 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-}): React.ReactElement {
+}) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -106,7 +106,7 @@ export function useToast(): { success: (msg: string) => void; error: (msg: strin
 // ============================================================
 // PROVIDER
 // ============================================================
-export function UiProvider({ children }: { children: ReactNode }): React.ReactElement {
+export function UiProvider({ children }: { children: ReactNode }) {
   const [confirmState, setConfirmState] = useState<(ConfirmOpts & { resolve: (v: boolean) => void }) | null>(null);
   const [promptState, setPromptState] = useState<(PromptOpts & { resolve: (v: string | null) => void }) | null>(null);
   const [promptValue, setPromptValue] = useState('');
@@ -272,7 +272,7 @@ export function Input({
 }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; placeholder?: string; required?: boolean; helpText?: string; hint?: string; error?: string; disabled?: boolean;
-}): React.ReactElement {
+}) {
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-slate-700">
@@ -299,7 +299,7 @@ export function Textarea({
 }: {
   label: string; value: string; onChange: (v: string) => void;
   rows?: number; placeholder?: string; required?: boolean; helpText?: string; mono?: boolean; disabled?: boolean;
-}): React.ReactElement {
+}) {
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-slate-700">
@@ -323,7 +323,7 @@ export function Select({
 }: {
   label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void;
   required?: boolean; helpText?: string;
-}): React.ReactElement {
+}) {
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-slate-700">
@@ -348,7 +348,7 @@ export function Button({
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
   loading?: boolean; disabled?: boolean; type?: 'button' | 'submit'; size?: 'sm' | 'md';
   icon?: ReactNode;
-}): React.ReactElement {
+}) {
   const cls = {
     primary: 'bg-blue-700 text-white hover:bg-blue-800',
     secondary: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
@@ -370,7 +370,7 @@ export function Button({
   );
 }
 
-export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }): React.ReactElement {
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <label className="inline-flex cursor-pointer items-center gap-2">
       <button
@@ -385,7 +385,7 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
   );
 }
 
-export function Badge({ children, variant = 'slate' }: { children: ReactNode; variant?: 'slate' | 'green' | 'red' | 'amber' | 'blue' | 'purple' }): React.ReactElement {
+export function Badge({ children, variant = 'slate' }: { children: ReactNode; variant?: 'slate' | 'green' | 'red' | 'amber' | 'blue' | 'purple' }) {
   const cls = {
     slate: 'bg-slate-100 text-slate-700',
     green: 'bg-green-100 text-green-700',

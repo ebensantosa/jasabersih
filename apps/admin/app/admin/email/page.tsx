@@ -6,7 +6,7 @@ import { Send } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Button, Input, useToast } from '../../../components/ui';
 
-export default function EmailPage(): React.ReactElement {
+export default function EmailPage() {
   const toast = useToast();
   const [apiKey, setApiKey] = useState('');
   const [fromAddress, setFromAddress] = useState('');

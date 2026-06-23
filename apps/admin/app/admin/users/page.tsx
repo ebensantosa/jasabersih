@@ -25,7 +25,7 @@ type Row = {
   serviceAreas?: unknown;
 };
 
-export default function UsersPage(): React.ReactElement {
+export default function UsersPage() {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('customer');
   const [rows, setRows] = useState<Row[]>([]);
@@ -234,7 +234,7 @@ export default function UsersPage(): React.ReactElement {
   );
 }
 
-function EditUserModal({ row, onClose, onSaved }: { row: Row; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function EditUserModal({ row, onClose, onSaved }: { row: Row; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [name, setName] = useState(row.name ?? '');
   const [email, setEmail] = useState(row.email ?? '');
@@ -308,7 +308,7 @@ function EditUserModal({ row, onClose, onSaved }: { row: Row; onClose: () => voi
   );
 }
 
-function AddUserModal({ role, onClose, onDone }: { role: 'customer' | 'cleaner'; onClose: () => void; onDone: () => void }): React.ReactElement {
+function AddUserModal({ role, onClose, onDone }: { role: 'customer' | 'cleaner'; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [form, setForm] = useState({
     name: '', phone: '', email: '', password: '',
@@ -388,13 +388,13 @@ function AddUserModal({ role, onClose, onDone }: { role: 'customer' | 'cleaner';
   );
 }
 
-function StatusBadge({ status }: { status: string }): React.ReactElement {
+function StatusBadge({ status }: { status: string }) {
   if (status === 'suspended') return <Badge variant="amber">suspended</Badge>;
   if (status === 'banned') return <Badge variant="red">banned</Badge>;
   return <Badge variant="green">aktif</Badge>;
 }
 
-function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () => void; onChanged: () => void }): React.ReactElement {
+function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () => void; onChanged: () => void }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [detail, setDetail] = useState<any>(null);
@@ -514,7 +514,7 @@ function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () =>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-md border bg-slate-50 p-2">
       <div className="text-[10px] uppercase text-slate-500">{label}</div>
@@ -527,7 +527,7 @@ function ReasonModal({ title, placeholder, durationField, variant = 'primary', o
   title: string; placeholder: string; durationField?: boolean;
   variant?: 'primary' | 'danger';
   onClose: () => void; onSubmit: (reason: string, days?: number) => Promise<void>;
-}): React.ReactElement {
+}) {
   const [reason, setReason] = useState('');
   const [days, setDays] = useState(7);
   const [busy, setBusy] = useState(false);
@@ -551,7 +551,7 @@ function ReasonModal({ title, placeholder, durationField, variant = 'primary', o
   );
 }
 
-function WalletModal({ user, onClose }: { user: Row; onClose: () => void }): React.ReactElement {
+function WalletModal({ user, onClose }: { user: Row; onClose: () => void }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.admin.getUserWallet>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [type, setType] = useState<'credit' | 'debit'>('credit');

@@ -17,7 +17,7 @@ type Tier = {
   displayOrder: number;
 };
 
-export default function SubscriptionTiersPage(): React.ReactElement {
+export default function SubscriptionTiersPage() {
   const toast = useToast();
   const [list, setList] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +101,7 @@ export default function SubscriptionTiersPage(): React.ReactElement {
   );
 }
 
-function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [label, setLabel] = useState(tier.label);
   const [tagline, setTagline] = useState(tier.tagline ?? '');

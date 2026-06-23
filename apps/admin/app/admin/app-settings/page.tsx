@@ -43,7 +43,7 @@ const HINT: Record<string, string> = {
   'payment.flip_validation_token': 'Validation Token dari Flip â€” dipakai verify callback (string-equal). Webhook URL yang harus di-set di Flip dashboard: https://api.jasabersih.com/v1/payments/flip/callback',
 };
 
-export default function AppSettingsPage(): React.ReactElement {
+export default function AppSettingsPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -129,7 +129,7 @@ export default function AppSettingsPage(): React.ReactElement {
   );
 }
 
-function ValuePreview({ value, keyName }: { value: any; keyName: string }): React.ReactElement {
+function ValuePreview({ value, keyName }: { value: any; keyName: string }) {
   // Mask sensitive secrets
   const isSensitive = /(_key|_secret|_private|password|token)/i.test(keyName);
   if (isSensitive && typeof value === 'string') {
@@ -154,7 +154,7 @@ function ValuePreview({ value, keyName }: { value: any; keyName: string }): Reac
   return <code className="text-[10px]">{JSON.stringify(value)}</code>;
 }
 
-function ImageUploadField({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }): React.ReactElement {
+function ImageUploadField({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   async function pickAndUpload(file: File) {
@@ -189,7 +189,7 @@ function ImageUploadField({ value, onChange, folder }: { value: string; onChange
   );
 }
 
-function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!config;
   const [form, setForm] = useState({
@@ -302,7 +302,7 @@ function ConfigFormModal({ config, onClose, onSaved }: { config: any | null; onC
 }
 
 
-function BrandingPanel({ list, onSaved }: { list: any[]; onSaved: () => void }): React.ReactElement {
+function BrandingPanel({ list, onSaved }: { list: any[]; onSaved: () => void }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const cfg = (key: string) => list.find((c) => c.key === key);

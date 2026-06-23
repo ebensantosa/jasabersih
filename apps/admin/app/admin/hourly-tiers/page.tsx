@@ -23,7 +23,7 @@ function rupiah(n: number) {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
-export default function HourlyTiersPage(): React.ReactElement {
+export default function HourlyTiersPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<Tier[]>([]);
@@ -176,7 +176,7 @@ export default function HourlyTiersPage(): React.ReactElement {
   );
 }
 
-function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [code, setCode] = useState(tier?.code ?? '');
   const [name, setName] = useState(tier?.name ?? '');

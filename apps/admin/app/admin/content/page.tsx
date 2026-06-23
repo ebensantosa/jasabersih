@@ -16,7 +16,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'addons', label: 'Add-Ons', icon: Plus },
 ];
 
-export default function CmsPage(): React.ReactElement {
+export default function CmsPage() {
   const [tab, setTab] = useState<Tab>('banners');
   return (
     <div>
@@ -60,7 +60,7 @@ async function uploadToR2(file: File, folder: string): Promise<{ url: string | n
   }
 }
 
-function ImageUpload({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }): React.ReactElement {
+function ImageUpload({ value, onChange, folder }: { value: string; onChange: (url: string) => void; folder: string }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   return (
@@ -137,7 +137,7 @@ function BannersTab() {
   );
 }
 
-function BannerFormModal({ banner, onClose, onSaved }: { banner: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function BannerFormModal({ banner, onClose, onSaved }: { banner: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!banner;
   const [form, setForm] = useState({
@@ -272,7 +272,7 @@ function PagesTab() {
   );
 }
 
-function PageFormModal({ page, onClose, onSaved }: { page: { slug: string; title: string; bodyMarkdown: string; audience: string }; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function PageFormModal({ page, onClose, onSaved }: { page: { slug: string; title: string; bodyMarkdown: string; audience: string }; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [form, setForm] = useState(page);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -349,7 +349,7 @@ function AnnouncementsTab() {
   );
 }
 
-function AnnouncementFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }): React.ReactElement {
+function AnnouncementFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [form, setForm] = useState({ title: '', body: '', audience: 'all', severity: 'info', endsAt: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -448,7 +448,7 @@ function AreasTab() {
   );
 }
 
-function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function AreaFormModal({ area, onClose, onSaved }: { area: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!area;
   const [form, setForm] = useState({
@@ -573,7 +573,7 @@ function PackagesTab() {
   );
 }
 
-function PackageFormModal({ pkg, services, onClose, onSaved }: { pkg: any | null; services: any[]; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function PackageFormModal({ pkg, services, onClose, onSaved }: { pkg: any | null; services: any[]; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!pkg;
   const [form, setForm] = useState({
@@ -696,7 +696,7 @@ function AddonsTab() {
   );
 }
 
-function AddonFormModal({ addon, onClose, onSaved }: { addon: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function AddonFormModal({ addon, onClose, onSaved }: { addon: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!addon;
   const [form, setForm] = useState({
@@ -815,7 +815,7 @@ function ServicesTab() {
   );
 }
 
-function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!service;
   const [form, setForm] = useState({

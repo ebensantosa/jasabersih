@@ -33,7 +33,7 @@ function ImageUpload({ value, onChange, folder, label, previewClass, hint }: {
   label?: string;
   previewClass?: string;
   hint?: string;
-}): React.ReactElement {
+}) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   return (
@@ -61,7 +61,7 @@ function ImageUpload({ value, onChange, folder, label, previewClass, hint }: {
   );
 }
 
-export default function ServicesPage(): React.ReactElement {
+export default function ServicesPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -129,7 +129,7 @@ export default function ServicesPage(): React.ReactElement {
   );
 }
 
-function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!service;
   const [form, setForm] = useState({

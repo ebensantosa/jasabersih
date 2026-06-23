@@ -8,7 +8,7 @@ import { Modal, Input, Textarea, Button, Badge, useToast } from '../../../compon
 
 type Tab = 'pending' | 'approved' | 'rejected';
 
-export default function WalletPage(): React.ReactElement {
+export default function WalletPage() {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('pending');
   const [list, setList] = useState<any[]>([]);
@@ -135,7 +135,7 @@ export default function WalletPage(): React.ReactElement {
   );
 }
 
-function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }): React.ReactElement {
+function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [ref, setRef] = useState('');
   const [note, setNote] = useState('');
@@ -177,7 +177,7 @@ function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onD
   );
 }
 
-function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }): React.ReactElement {
+function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});

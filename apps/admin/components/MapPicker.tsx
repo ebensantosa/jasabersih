@@ -38,7 +38,7 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
-export function MapPicker({ lat, lng, onChange, height = 280 }: Props): React.ReactElement {
+export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);

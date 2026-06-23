@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Megaphone } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-export default function PopupsPage(): React.ReactElement {
+export default function PopupsPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -88,7 +88,7 @@ async function uploadImage(file: File): Promise<string | null> {
   } catch { return null; }
 }
 
-function PopupFormModal({ popup, onClose, onSaved }: { popup: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function PopupFormModal({ popup, onClose, onSaved }: { popup: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!popup;
   const [form, setForm] = useState({

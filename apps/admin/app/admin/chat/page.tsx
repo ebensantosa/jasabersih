@@ -8,7 +8,7 @@ import { Modal, Input, Button, Badge, useToast } from '../../../components/ui';
 
 type Tab = 'bookings' | 'blocked' | 'stats';
 
-export default function ChatAuditPage(): React.ReactElement {
+export default function ChatAuditPage() {
   const [tab, setTab] = useState<Tab>('bookings');
   return (
     <div>
@@ -107,7 +107,7 @@ function BookingsTab() {
   );
 }
 
-function ThreadModal({ booking, onClose }: { booking: any; onClose: () => void }): React.ReactElement {
+function ThreadModal({ booking, onClose }: { booking: any; onClose: () => void }) {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [messages, setMessages] = useState<any[] | null>(null);
@@ -240,7 +240,7 @@ function StatsTab() {
   );
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }): React.ReactElement {
+function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
     <div className={`rounded-md border p-4 ${highlight ? 'border-red-300 bg-red-50' : 'bg-white'}`}>
       <div className="text-xs text-slate-500">{label}</div>

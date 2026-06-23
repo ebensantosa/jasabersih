@@ -2,6 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-export default function Root(): React.ReactElement {
+export default function Root() {
   redirect('/admin');
 }

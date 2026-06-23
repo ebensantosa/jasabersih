@@ -14,7 +14,7 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'resolved', label: 'Resolved' },
 ];
 
-export default function DisputesPage(): React.ReactElement {
+export default function DisputesPage() {
   const toast = useToast();
   const [tab, setTab] = useState<Status>('open');
   const [list, setList] = useState<any[]>([]);
@@ -103,7 +103,7 @@ export default function DisputesPage(): React.ReactElement {
   );
 }
 
-function SlaBadge({ dueAt }: { dueAt: string }): React.ReactElement {
+function SlaBadge({ dueAt }: { dueAt: string }) {
   const dueDate = new Date(dueAt);
   const hoursLeft = Math.round((dueDate.getTime() - Date.now()) / 3_600_000);
   if (hoursLeft < 0) return <Badge variant="red">Overdue {Math.abs(hoursLeft)}h</Badge>;
@@ -111,7 +111,7 @@ function SlaBadge({ dueAt }: { dueAt: string }): React.ReactElement {
   return <Badge>{hoursLeft}h left</Badge>;
 }
 
-function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; onClose: () => void; onResolved: () => void }): React.ReactElement {
+function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; onClose: () => void; onResolved: () => void }) {
   const toast = useToast();
   const [escalating, setEscalating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -234,7 +234,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
   );
 }
 
-function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onClose: () => void; onDone: () => void }): React.ReactElement {
+function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -269,7 +269,7 @@ function EscalateModal({ disputeId, onClose, onDone }: { disputeId: string; onCl
   );
 }
 
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
+function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-md border bg-slate-50 p-3">
       <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{title}</div>

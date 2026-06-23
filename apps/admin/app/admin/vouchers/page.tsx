@@ -6,7 +6,7 @@ import { Plus, Tag, Pencil } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Select, Switch, Button, Badge, useToast } from '../../../components/ui';
 
-export default function VouchersPage(): React.ReactElement {
+export default function VouchersPage() {
   const toast = useToast();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export default function VouchersPage(): React.ReactElement {
   );
 }
 
-function VoucherFormModal({ voucher, onClose, onSaved }: { voucher: any | null; onClose: () => void; onSaved: () => void }): React.ReactElement {
+function VoucherFormModal({ voucher, onClose, onSaved }: { voucher: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!voucher;
   const [form, setForm] = useState({

@@ -19,7 +19,7 @@ const TABS: Array<{ key: 'pending' | 'under_review' | 'approved' | 'rejected'; l
   { key: 'rejected', label: 'Rejected' },
 ];
 
-export default function KycPage(): React.ReactElement {
+export default function KycPage() {
   const toast = useToast();
   const [tab, setTab] = useState<'pending' | 'under_review' | 'approved' | 'rejected'>('pending');
   const [list, setList] = useState<Cleaner[]>([]);
@@ -177,7 +177,7 @@ export default function KycPage(): React.ReactElement {
   );
 }
 
-function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }): React.ReactElement {
+function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [form, setForm] = useState({
     name: '', phone: '', email: '', password: '',
@@ -251,7 +251,7 @@ function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () 
   );
 }
 
-function KycDetailModal({ data, onClose, onDone }: { data: Detail; onClose: () => void; onDone: () => void }): React.ReactElement {
+function KycDetailModal({ data, onClose, onDone }: { data: Detail; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [rejecting, setRejecting] = useState(false);
@@ -328,7 +328,7 @@ function KycDetailModal({ data, onClose, onDone }: { data: Detail; onClose: () =
 function ReasonModal({ title, placeholder, submitLabel, variant, onClose, onSubmit }: {
   title: string; placeholder: string; submitLabel: string; variant: 'danger' | 'primary';
   onClose: () => void; onSubmit: (reason: string) => Promise<void>;
-}): React.ReactElement {
+}) {
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

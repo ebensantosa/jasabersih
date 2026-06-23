@@ -19,7 +19,7 @@ type Req = {
   domicileCity: string | null;
 };
 
-export default function CleanerAreaRequestsPage(): React.ReactElement {
+export default function CleanerAreaRequestsPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<Req[]>([]);

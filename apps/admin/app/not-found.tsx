@@ -1,6 +1,6 @@
 ﻿export const dynamic = 'force-dynamic';
 
-export default function NotFound(): React.ReactElement {
+export default function NotFound() {
   return (
     <html lang="id">
       <body style={{ fontFamily: 'system-ui', display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', margin: 0 }}>

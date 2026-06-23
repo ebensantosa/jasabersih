@@ -27,7 +27,7 @@ const FILTERS: { key: OrderStatus | 'all' | 'needs_manual' | 'manual_admin'; lab
   { key: 'canceled', label: 'Batal' },
 ];
 
-export default function Bookings(): React.ReactElement {
+export default function Bookings() {
   const [filter, setFilter] = useState<OrderStatus | 'all' | 'needs_manual' | 'manual_admin'>('all');
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
@@ -549,7 +549,7 @@ export default function Bookings(): React.ReactElement {
   );
 }
 
-function AdminChatPanel({ bookingId }: { bookingId: string }): React.ReactElement {
+function AdminChatPanel({ bookingId }: { bookingId: string }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -635,7 +635,7 @@ function AdminChatPanel({ bookingId }: { bookingId: string }): React.ReactElemen
   );
 }
 
-function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose: () => void }): React.ReactElement {
+function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.admin.getBookingDetail>> | null>(null);
   useEffect(() => { api.admin.getBookingDetail(bookingId).then(setData).catch(() => {}); }, [bookingId]);
 
@@ -769,7 +769,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
   );
 }
 
-function PhotoSection({ title, photos }: { title: string; photos: { url: string; uploadedAt: string }[] }): React.ReactElement {
+function PhotoSection({ title, photos }: { title: string; photos: { url: string; uploadedAt: string }[] }) {
   if (photos.length === 0) return null;
   return (
     <div className="mb-3">
@@ -786,7 +786,7 @@ function PhotoSection({ title, photos }: { title: string; photos: { url: string;
   );
 }
 
-function OfflineCard({ onRetry }: { onRetry: () => void }): React.ReactElement {
+function OfflineCard({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="mt-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
       <WifiOff className="text-amber-700" size={20} />
@@ -816,7 +816,7 @@ function AssignModal({
   currentCleanerName?: string | null;
   onClose: () => void;
   onAssigned: () => void;
-}): React.ReactElement {
+}) {
   const [cleaners, setCleaners] = useState<{ id: string; name: string; phone?: string; rating?: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -947,7 +947,7 @@ function AssignModal({
   );
 }
 
-function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }): React.ReactElement {
+function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const toast = useToast();
   const [form, setForm] = useState({
     customerPhone: '',
