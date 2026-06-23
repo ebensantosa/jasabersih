@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type Props = {
   lat: number;
@@ -38,7 +38,7 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
-export function MapPicker({ lat, lng, onChange, height = 280 }: Props) {
+export function MapPicker({ lat, lng, onChange, height = 280 }: Props): React.ReactElement | null {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
