@@ -113,14 +113,21 @@ export class PushService {
       const results = Array.isArray(json.data) ? json.data : [];
       for (let i = 0; i < messages.length; i++) {
         const r = results[i];
-        const ok = r?.status === 'ok';
-        if (ok) sent++; else failed++;
-        await this.prisma.$executeRaw`
-          INSERT INTO notification_logs (user_id, channel, template_key, status, external_id, failure_reason)
-          VALUES (${payload.userId}::uuid, 'push', ${payload.channel ?? 'system'},
-                  ${ok ? 'sent' : 'failed'}, ${r?.id ?? null},
-                  ${ok ? null : (r?.message ?? r?.details?.error ?? 'unknown')})
-        `;
+        if (r?.status === 'ok') sent++; else failed++;
+      }
+      // Log failures only (fire-and-forget, non-blocking)
+      const failedResults = results
+        .map((r, i) => ({ r, token: messages[i]?.to }))
+        .filter(({ r }) => r?.status !== 'ok');
+      if (failedResults.length > 0) {
+        void Promise.all(failedResults.map(({ r }) =>
+          this.prisma.$executeRaw`
+            INSERT INTO notification_logs (user_id, channel, template_key, status, external_id, failure_reason)
+            VALUES (${payload.userId}::uuid, 'push', ${payload.channel ?? 'system'},
+                    'failed', ${r?.id ?? null},
+                    ${r?.message ?? r?.details?.error ?? 'unknown'})
+          `.catch(() => {}),
+        ));
       }
     } catch (e: any) {
       this.log.error(`expo push failed: ${e?.message}`);
