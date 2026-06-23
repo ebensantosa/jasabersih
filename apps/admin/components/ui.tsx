@@ -57,7 +57,7 @@ type ConfirmOpts = {
 
 const ConfirmCtx = createContext<((opts: ConfirmOpts) => Promise<boolean>) | null>(null);
 
-export function useConfirm(): React.ReactElement {
+export function useConfirm(): (opts: ConfirmOpts) => Promise<boolean> {
   const ctx = useContext(ConfirmCtx);
   if (!ctx) throw new Error('useConfirm must be used within UiProvider');
   return ctx;
@@ -80,7 +80,7 @@ type PromptOpts = {
 
 const PromptCtx = createContext<((opts: PromptOpts) => Promise<string | null>) | null>(null);
 
-export function usePrompt(): React.ReactElement {
+export function usePrompt(): (opts: PromptOpts) => Promise<string | null> {
   const ctx = useContext(PromptCtx);
   if (!ctx) throw new Error('usePrompt must be used within UiProvider');
   return ctx;
@@ -97,7 +97,7 @@ const ToastCtx = createContext<{
   info: (msg: string) => void;
 } | null>(null);
 
-export function useToast(): React.ReactElement {
+export function useToast(): { success: (msg: string) => void; error: (msg: string) => void; info: (msg: string) => void } {
   const ctx = useContext(ToastCtx);
   if (!ctx) throw new Error('useToast must be used within UiProvider');
   return ctx;
