@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 
-export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error; reset: () => void }): React.ReactElement {
   // Auto-reload on stale chunk errors. After a deploy the old HTML in the
   // browser references chunk hashes that no longer exist on the server →
   // "Loading chunk N failed". reset() re-renders the same broken tree, so
