@@ -22,6 +22,10 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+
+    // Network error / timeout (no server response) — jangan logout, ini transient
+    if (!error.response) return Promise.reject(error);
+
     const errorCode = error.response?.data?.error?.code;
     const errorMsg = error.response?.data?.error?.message;
 
@@ -38,7 +42,10 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !original?._retry) {
+    // Jangan intercept 401 dari endpoint refresh itu sendiri — hindari recursive refresh
+    const isRefreshEndpoint = typeof original?.url === 'string' && original.url.includes('/auth/refresh');
+
+    if (error.response?.status === 401 && !original?._retry && !isRefreshEndpoint) {
       const hasTokens = !!useAuthStore.getState().tokens;
       // No tokens = anonymous user, don't try refresh - caller handles "not logged in"
       if (!hasTokens) return Promise.reject(error);
@@ -48,10 +55,14 @@ api.interceptors.response.use(
         await refreshing;
         refreshing = null;
         return api(original);
-      } catch {
+      } catch (refreshErr) {
         refreshing = null;
-        // logout() now wipes addresses/bookings/wallet/cleaner/user caches too
-        useAuthStore.getState().logout();
+        // Hanya logout kalau server explicitly menolak token (401) — bukan network/timeout error
+        const tokenRejected = axios.isAxiosError(refreshErr) && refreshErr.response?.status === 401;
+        if (tokenRejected) {
+          // logout() now wipes addresses/bookings/wallet/cleaner/user caches too
+          useAuthStore.getState().logout();
+        }
       }
     }
     return Promise.reject(error);
