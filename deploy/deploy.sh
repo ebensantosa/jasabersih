@@ -26,20 +26,22 @@ log "pnpm install (root + workspaces, include devDependencies)"
 CI=true pnpm install --frozen-lockfile --prod=false
 
 log "Generate Prisma client"
-(cd apps/api && pnpm exec prisma generate)
+pnpm --filter @jasabersih/api prisma generate
 
 log "Apply Prisma migrations (deploy mode)"
-(cd apps/api && pnpm exec prisma migrate deploy)
+pnpm --filter @jasabersih/api prisma migrate deploy
 
 log "Seed master data (idempotent)"
-(cd apps/api && pnpm exec tsx prisma/seed.ts) || warn "Seed skipped"
+pnpm --filter @jasabersih/api tsx prisma/seed.ts || warn "Seed skipped"
 
 log "Build NestJS API"
-(cd apps/api && rm -rf dist *.tsbuildinfo .tsbuildinfo && pnpm exec nest build)
+(cd apps/api && rm -rf dist *.tsbuildinfo .tsbuildinfo)
+pnpm --filter @jasabersih/api nest build
 [[ -f apps/api/dist/main.js ]] || die "API build did not produce dist/main.js"
 
 log "Build Admin Next.js"
-(cd apps/admin && rm -rf .next node_modules/.cache && pnpm exec next build)
+(cd apps/admin && rm -rf .next node_modules/.cache)
+pnpm --filter @jasabersih/admin next build
 [[ -d apps/admin/.next/server/app/admin ]] || die "Admin build did not produce .next/server/app/admin"
 
 log "Kill any orphan listeners on :5000/:5001"
