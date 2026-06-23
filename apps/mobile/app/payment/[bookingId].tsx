@@ -230,12 +230,21 @@ function PaymentScreen() {
     })();
   }, [bookingId]);
 
+  // Fetch booking terbaru saat layar terbuka — pastikan status masih pending_payment.
+  // Jika ternyata sudah dibayar (dari sumber lain), langsung redirect ke booking detail.
+  useEffect(() => {
+    if (!bookingId || extraType) return;
+    void fetchOne(String(bookingId)).then(() => {
+      const b = useBookingsStore.getState().list.find((x) => x.id === bookingId);
+      if (b && b.status !== 'pending_payment') finishAndRedirect();
+    }).catch(() => {});
+  }, [bookingId]);
+
   async function payWithSaldo() {
     if (!bookingId) return;
     setCreating(true);
     try {
       if (extraType === 'upcharge' && extraUpchargeId) {
-        // Pakai endpoint upcharge approve langsung (auto-deduct wallet kalau cukup)
         await api.post(`/bookings/${bookingId}/upcharges/${extraUpchargeId}/approve`);
         toast.success('Charge tambahan disetujui');
       } else if (extraType === 'tip') {
@@ -246,6 +255,18 @@ function PaymentScreen() {
       } else { return; }
       finishAndRedirect();
     } catch (e: any) {
+      // Kalau booking ternyata sudah dibayar (race condition / double tap),
+      // re-fetch status dan redirect ke booking detail tanpa error.
+      if (!extraType) {
+        try {
+          await fetchOne(String(bookingId));
+          const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+          if (latest && latest.status !== 'pending_payment') {
+            finishAndRedirect();
+            return;
+          }
+        } catch { /* ignore */ }
+      }
       toast.error(e?.response?.data?.error?.message ?? 'Gagal bayar dengan saldo');
     } finally {
       setCreating(false);
@@ -560,6 +581,7 @@ function MethodPicker({
         {walletBalance > 0 && (
           <>
           {fullSaldo ? (
+            <>
             <Pressable
               disabled={disabled}
               onPress={onPaySaldo}
@@ -571,10 +593,25 @@ function MethodPicker({
               <View className="flex-1">
                 <Text className="font-bold text-sm text-emerald-900">Bayar dengan Saldo</Text>
                 <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                  Saldo tersedia {formatRupiah(walletBalance)} dan cukup untuk pembayaran penuh.
+                  Tap untuk bayar lunas — tidak perlu pilih bank.
                 </Text>
               </View>
             </Pressable>
+            <View className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2">
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-ink-600">Total pembayaran</Text>
+                <Text className="text-xs text-ink-700">{formatRupiah(total)}</Text>
+              </View>
+              <View className="flex-row justify-between mt-1">
+                <Text className="text-xs text-ink-600">Saldo kamu</Text>
+                <Text className="text-xs text-emerald-700">{formatRupiah(walletBalance)}</Text>
+              </View>
+              <View className="flex-row justify-between mt-1 border-t border-emerald-200 pt-1">
+                <Text className="text-xs font-bold text-ink-900">Sisa saldo setelah bayar</Text>
+                <Text className="text-xs font-bold text-emerald-700">{formatRupiah(walletBalance - total)}</Text>
+              </View>
+            </View>
+            </>
           ) : (
             <Pressable
               disabled={disabled}
