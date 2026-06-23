@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
@@ -736,12 +736,35 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             );
           })()}
 
-          {before.length + after.length + damage.length > 0 && (
+          {before.length + after.length > 0 && (
             <div>
               <div className="text-sm font-bold text-slate-900 mb-2">Foto Pengerjaan</div>
               <PhotoSection title="Sebelum" photos={before} />
               <PhotoSection title="Sesudah" photos={after} />
-              {damage.length > 0 && <PhotoSection title="⚠ Kerusakan" photos={damage} />}
+            </div>
+          )}
+          {damage.length > 0 && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">&#9888;&#65039;</span>
+                <div>
+                  <div className="text-sm font-bold text-red-800">Laporan Kerusakan ({damage.length} foto)</div>
+                  <div className="text-xs text-red-600">Cleaner melaporkan adanya kerusakan. Perlu ditindaklanjuti admin.</div>
+                </div>
+              </div>
+              {damage.map((p: any, i: number) => (
+                <div key={i} className="mb-3 rounded border border-red-200 bg-white p-2">
+                  <a href={p.url} target="_blank" rel="noreferrer" className="block">
+                    <img src={p.url} alt="kerusakan" className="max-h-48 w-full rounded object-cover hover:opacity-80" />
+                  </a>
+                  {p.description && (
+                    <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-800">
+                      <span className="font-semibold">Deskripsi cleaner:</span> {p.description}
+                    </div>
+                  )}
+                  <div className="mt-1 text-[10px] text-slate-500">{new Date(p.uploadedAt).toLocaleString('id-ID')}</div>
+                </div>
+              ))}
             </div>
           )}
 

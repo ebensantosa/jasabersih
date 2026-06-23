@@ -227,8 +227,8 @@ export class AdminBookingsController {
     if (rows.length === 0) throw new NotFoundException('Booking tidak ditemukan.');
     const booking = rows[0];
 
-    const photos = await this.prisma.$queryRaw<{ id: string; photoType: string; storagePath: string; uploadedAt: Date }[]>`
-      SELECT id, photo_type AS "photoType", storage_path AS "storagePath", uploaded_at AS "uploadedAt"
+    const photos = await this.prisma.$queryRaw<{ id: string; photoType: string; storagePath: string; uploadedAt: Date; description: string | null }[]>`
+      SELECT id, photo_type AS "photoType", storage_path AS "storagePath", uploaded_at AS "uploadedAt", description
         FROM booking_photos WHERE booking_id = ${id}::uuid ORDER BY uploaded_at ASC
     `;
     const photosWithUrl = photos.map((p) => ({
