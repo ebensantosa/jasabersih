@@ -30,6 +30,7 @@ function ChatsScreen() {
   // Pakai selector string (bukan object) supaya ref stable - mencegah
   // fetchChats useCallback ke-recreate tiap zustand update.
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
+  const isCleaner = useModeStore((s) => s.mode) === 'freelancer';
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
   const hasDataRef = useRef(false);
@@ -148,14 +149,18 @@ function ChatsScreen() {
               </View>
               <Text className="mt-3 font-bold text-sm text-ink-700">Belum ada chat</Text>
               <Text className="mt-1 max-w-xs text-center font-sans text-xs text-ink-500">
-                Chat akan tersedia setelah cleaner cocok dengan pesanan kamu. Pesan layanan dulu untuk mulai.
+                {isCleaner
+                  ? 'Chat dengan customer akan muncul setelah kamu ambil job.'
+                  : 'Chat akan tersedia setelah cleaner cocok dengan pesanan kamu. Pesan layanan dulu untuk mulai.'}
               </Text>
-              <Pressable
-                onPress={() => router.push('/(tabs)/explore')}
-                className="mt-4 rounded-xl bg-brand-600 px-5 py-2.5"
-              >
-                <Text className="font-bold text-sm text-white">Pesan Layanan</Text>
-              </Pressable>
+              {!isCleaner && (
+                <Pressable
+                  onPress={() => router.push('/(tabs)/explore')}
+                  className="mt-4 rounded-xl bg-brand-600 px-5 py-2.5"
+                >
+                  <Text className="font-bold text-sm text-white">Pesan Layanan</Text>
+                </Pressable>
+              )}
             </View>
           ) : (
             <View className="gap-2">
