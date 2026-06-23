@@ -164,7 +164,7 @@ export default function Verify() {
               );
             })}
           </View>
-          {/* Hidden actual input */}
+          {/* Hidden actual input — harus ada dimensi > 0 agar Android bisa fokus */}
           <TextInput
             ref={otpInputRef}
             value={otp}
@@ -172,7 +172,7 @@ export default function Verify() {
             keyboardType="number-pad"
             maxLength={OTP_LENGTH}
             autoFocus
-            style={{ position: 'absolute', opacity: 0, height: 0, width: 0 }}
+            style={{ position: 'absolute', opacity: 0, top: -999, left: 0, width: 1, height: 1 }}
           />
         </Pressable>
 
