@@ -294,11 +294,11 @@ export class AdminController {
       action: 'cleaner.create',
       resourceType: 'user',
       resourceId: userId,
-      changes: { name: body.name, phone, email, kycStatus, tier, autoApprove: !!body.autoApprove },
+      changes: { name: body.name, phone, email, kycStatus, autoApprove: !!body.autoApprove },
       ipAddress: req.ip ?? null,
     });
 
-    return { id: userId, phone, name: body.name, kycStatus, tier };
+    return { id: userId, phone, name: body.name, kycStatus };
   }
 
   // PATCH /admin/users/:id — admin edit name / email / password (customer ATAU cleaner)
