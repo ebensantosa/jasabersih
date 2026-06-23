@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Mail, ShieldCheck, Tag } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { InteractionManager, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -53,10 +53,15 @@ export default function Verify() {
     return () => clearInterval(t);
   }, [cooldown]);
 
-  // Paksa fokus setelah screen transition selesai — autoFocus sering gagal di Android
+  // Paksa fokus setelah semua animasi navigasi & modal selesai.
+  // InteractionManager lebih reliable dari setTimeout — cover kasus cleaner
+  // yang pakai Modal (city picker) di screen sebelumnya, modal bisa bikin
+  // window focus Android nyangkut kalau pakai delay fixed.
   useEffect(() => {
-    const t = setTimeout(() => otpInputRef.current?.focus(), 400);
-    return () => clearTimeout(t);
+    const task = InteractionManager.runAfterInteractions(() => {
+      otpInputRef.current?.focus();
+    });
+    return () => task.cancel();
   }, []);
 
   async function onSubmit() {
