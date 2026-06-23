@@ -240,7 +240,7 @@ function EarningsScreen() {
                 <View className="flex-1">
                   <Text className="font-bold text-xs text-brand-700">{cleanerName} (kamu)</Text>
                   <Text className="font-medium text-[10px] text-ink-500">
-                    {leaderboardMe.jobs || completedJobs} job selesai bulan ini
+                    {leaderboardMe.jobs || thisMonthJobs} job selesai bulan ini
                     {leaderboardMe.rank ? ` · peringkat #${leaderboardMe.rank}` : ''}
                   </Text>
                 </View>

@@ -151,17 +151,20 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Compute & store cleaner_payout fire-and-forget (keep socket ACK fast)
     void (async () => {
       try {
-        const ctx = await this.prisma.$queryRaw<{ base: number; travel: number; brings_tools: boolean | null; pricing_mode: string | null; hourly_share_pct: number | null }[]>`
+        const ctx = await this.prisma.$queryRaw<{ base: number; travel: number; brings_tools: boolean | null; pricing_mode: string | null; hourly_share_pct: number | null; existing_payout: number | null }[]>`
           SELECT COALESCE(b.base_amount, b.total_amount) AS base,
                  COALESCE(b.travel_fee, 0) AS travel,
                  cp.brings_tools,
                  b.pricing_mode,
-                 ht.cleaner_share_pct AS hourly_share_pct
+                 ht.cleaner_share_pct AS hourly_share_pct,
+                 b.cleaner_payout AS existing_payout
             FROM bookings b
             LEFT JOIN cleaner_profiles cp ON cp.user_id = ${userId}::uuid
             LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
            WHERE b.id = ${body.bookingId}::uuid LIMIT 1
         `;
+        // Jika cleaner_payout sudah ada (booking warranty redo), pakai nilai asli — jangan overwrite
+        if (Number(ctx[0]?.existing_payout ?? 0) > 0) return;
         const base = Number(ctx[0]?.base ?? 0);
         const travel = Number(ctx[0]?.travel ?? 0);
         const bringsTools = !!ctx[0]?.brings_tools;
