@@ -146,9 +146,9 @@ export default function Verify() {
           </View>
         )}
 
-        {/* OTP visual boxes (tap any → focus hidden input) */}
-        <Pressable className="mt-6" onPress={() => otpInputRef.current?.focus()}>
-          <View className="flex-row justify-center gap-2">
+        {/* OTP visual boxes — TextInput transparan di-overlay langsung di atas boxes */}
+        <View className="mt-6" style={{ position: 'relative' }}>
+          <View className="flex-row justify-center gap-2" pointerEvents="none">
             {otpDigits.map((d, i) => {
               const filled = d.trim().length > 0;
               const isCursor = i === otp.length;
@@ -164,7 +164,7 @@ export default function Verify() {
               );
             })}
           </View>
-          {/* Hidden actual input — harus ada dimensi > 0 agar Android bisa fokus */}
+          {/* Overlay transparan seluas area boxes — tap langsung ke TextInput */}
           <TextInput
             ref={otpInputRef}
             value={otp}
@@ -172,9 +172,10 @@ export default function Verify() {
             keyboardType="number-pad"
             maxLength={OTP_LENGTH}
             autoFocus
-            style={{ position: 'absolute', opacity: 0, top: -999, left: 0, width: 1, height: 1 }}
+            caretHidden
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0 }}
           />
-        </Pressable>
+        </View>
 
         {/* Resend */}
         <View className="mt-5 flex-row items-center justify-center gap-1">
