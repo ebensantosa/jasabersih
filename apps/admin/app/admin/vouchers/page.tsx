@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Plus, Tag, Pencil } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Plus, Tag, Pencil } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Select, Switch, Button, Badge, useToast } from '../../../components/ui';
 
-export default function VouchersPage(): React.ReactElement | null {
+export default function VouchersPage(): React.ReactElement | null  {
   const toast = useToast();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export default function VouchersPage(): React.ReactElement | null {
       </div>
 
       {loading ? (
-        <div className="mt-4 py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="mt-4 py-10 text-center text-sm text-slate-500">Memuat…</div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-md border bg-white">
           <table className="w-full text-sm">
@@ -58,8 +58,8 @@ export default function VouchersPage(): React.ReactElement | null {
                     {v.maxDiscount && v.type === 'percentage' && <div className="text-[10px] font-normal text-slate-500">max Rp {Number(v.maxDiscount).toLocaleString('id-ID')}</div>}
                   </td>
                   <td className="px-4 py-2 text-xs">Rp {Number(v.minOrder ?? 0).toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-2 text-xs">{v.usedCount} {v.totalQuota ? `/ ${v.totalQuota}` : '/ âˆž'}</td>
-                  <td className="px-4 py-2 text-xs text-slate-500">{new Date(v.validFrom).toLocaleDateString('id-ID')} â†’ {new Date(v.validUntil).toLocaleDateString('id-ID')}</td>
+                  <td className="px-4 py-2 text-xs">{v.usedCount} {v.totalQuota ? `/ ${v.totalQuota}` : '/ ∞'}</td>
+                  <td className="px-4 py-2 text-xs text-slate-500">{new Date(v.validFrom).toLocaleDateString('id-ID')} → {new Date(v.validUntil).toLocaleDateString('id-ID')}</td>
                   <td className="px-4 py-2"><button onClick={() => toggle(v)}>{v.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(v)}>Edit</Button>
@@ -150,7 +150,7 @@ function VoucherFormModal({ voucher, onClose, onSaved }: { voucher: any | null; 
             <Input label="Code (otomatis UPPERCASE)" required value={form.code} onChange={(v) => setForm({ ...form, code: v })} error={errors.code} placeholder="JBSIH50" />
             <Select label="Type" required value={form.type} options={[{ value: 'percentage', label: 'Percentage (%)' }, { value: 'fixed', label: 'Fixed (Rupiah)' }]} onChange={(v) => setForm({ ...form, type: v as any })} />
             <Input label={form.type === 'percentage' ? 'Value (%)' : 'Value (Rupiah)'} type="number" required value={String(form.value)} onChange={(v) => setForm({ ...form, value: Number(v) })} error={errors.value} />
-            {form.type === 'percentage' && <Input label="Max Discount (Rupiah)" type="number" value={String(form.maxDiscount)} onChange={(v) => setForm({ ...form, maxDiscount: Number(v) })} helpText="Cap maksimal diskon â€” penting untuk percentage." />}
+            {form.type === 'percentage' && <Input label="Max Discount (Rupiah)" type="number" value={String(form.maxDiscount)} onChange={(v) => setForm({ ...form, maxDiscount: Number(v) })} helpText="Cap maksimal diskon — penting untuk percentage." />}
             <Input label="Min Order (Rupiah)" type="number" value={String(form.minOrder)} onChange={(v) => setForm({ ...form, minOrder: Number(v) })} />
             <div className="grid grid-cols-2 gap-3">
               <Input label="Quota Total" type="number" value={String(form.totalQuota)} onChange={(v) => setForm({ ...form, totalQuota: Number(v) })} helpText="0 = unlimited" />
@@ -159,8 +159,8 @@ function VoucherFormModal({ voucher, onClose, onSaved }: { voucher: any | null; 
           </>
         ) : (
           <div className="rounded-md bg-slate-50 p-3 text-sm">
-            <div>Code: <code>{voucher.code}</code> Â· Type: {voucher.type} Â· Value: {voucher.type === 'percentage' ? `${voucher.value}%` : `Rp ${Number(voucher.value).toLocaleString('id-ID')}`}</div>
-            <div className="text-xs text-slate-500">Pemakaian: {voucher.usedCount} / {voucher.totalQuota ?? 'âˆž'}</div>
+            <div>Code: <code>{voucher.code}</code> · Type: {voucher.type} · Value: {voucher.type === 'percentage' ? `${voucher.value}%` : `Rp ${Number(voucher.value).toLocaleString('id-ID')}`}</div>
+            <div className="text-xs text-slate-500">Pemakaian: {voucher.usedCount} / {voucher.totalQuota ?? '∞'}</div>
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">

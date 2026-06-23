@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, ChevronDown, ChevronUp, MapPin, MessageSquare, Package, Paperclip, RefreshCw, Search, Send, User, X } from 'lucide-react';
@@ -32,7 +32,7 @@ function InfoRow({ icon, label, value, wide, highlight, badge, badgeColor }: {
   );
 }
 
-export default function PesanPage(): React.ReactElement | null {
+export default function PesanPage(): React.ReactElement | null  {
   const [threads, setThreads] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -156,7 +156,7 @@ export default function PesanPage(): React.ReactElement | null {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama atau nomorâ€¦"
+                placeholder="Cari nama atau nomor…"
                 className="flex-1 bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
               />
               {search && (
@@ -205,18 +205,18 @@ export default function PesanPage(): React.ReactElement | null {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span className={`truncate text-[13px] font-semibold ${needsReply ? 'text-slate-900' : 'text-slate-600'}`}>
-                          {t.customerName ?? t.customerPhone ?? 'â€”'}
+                          {t.customerName ?? t.customerPhone ?? '—'}
                         </span>
                         <span className="shrink-0 text-[10px] text-slate-400">{timeStr}</span>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="truncate text-[11px] text-slate-400">{t.serviceName ?? 'â€”'}</span>
+                        <span className="truncate text-[11px] text-slate-400">{t.serviceName ?? '—'}</span>
                         {t.isManual && (
                           <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">MANUAL</span>
                         )}
                       </div>
                       <div className={`mt-1 truncate text-[12px] ${needsReply ? 'font-medium text-slate-700' : 'text-slate-400'}`}>
-                        {t.lastMessage ?? 'â€”'}
+                        {t.lastMessage ?? '—'}
                       </div>
                     </div>
                   </div>
@@ -247,7 +247,7 @@ export default function PesanPage(): React.ReactElement | null {
                   <div className="font-semibold text-slate-900">{selected.customerName ?? selected.customerPhone}</div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[11px] text-slate-400">{selected.customerPhone}</span>
-                    <span className="text-slate-300">Â·</span>
+                    <span className="text-slate-300">·</span>
                     <span className="font-mono text-[10px] text-slate-400">#{selected.bookingId?.slice(0, 8)}</span>
                   </div>
                 </div>
@@ -278,11 +278,11 @@ export default function PesanPage(): React.ReactElement | null {
                 const paidAt = selected.paidAt ? new Date(selected.paidAt) : null;
                 return (
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs">
-                    <InfoRow icon={<Package size={11} />} label="Paket" value={selected.packageName ?? selected.serviceName ?? selected.serviceCategory ?? selected.pricingMode ?? 'â€”'} />
-                    <InfoRow icon={<User size={11} />} label="Cleaner" value={selected.cleanerName ? `${selected.cleanerName} Â· ${selected.cleanerPhone ?? ''}` : 'â€”'} />
-                    <InfoRow icon={<CalendarDays size={11} />} label="Jadwal" value={scheduledAt ? scheduledAt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'â€”'} />
-                    <InfoRow icon={null} label="Total" value={selected.totalAmount ? `Rp ${Number(selected.totalAmount).toLocaleString('id-ID')}` : 'â€”'} highlight={!paidAt} badge={paidAt ? 'Lunas' : 'Belum bayar'} badgeColor={paidAt ? 'green' : 'red'} />
-                    <InfoRow icon={<MapPin size={11} />} label="Alamat" value={[selected.addressLine, city].filter(Boolean).join(' Â· ') || 'â€”'} wide />
+                    <InfoRow icon={<Package size={11} />} label="Paket" value={selected.packageName ?? selected.serviceName ?? selected.serviceCategory ?? selected.pricingMode ?? '—'} />
+                    <InfoRow icon={<User size={11} />} label="Cleaner" value={selected.cleanerName ? `${selected.cleanerName} · ${selected.cleanerPhone ?? ''}` : '—'} />
+                    <InfoRow icon={<CalendarDays size={11} />} label="Jadwal" value={scheduledAt ? scheduledAt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'} />
+                    <InfoRow icon={null} label="Total" value={selected.totalAmount ? `Rp ${Number(selected.totalAmount).toLocaleString('id-ID')}` : '—'} highlight={!paidAt} badge={paidAt ? 'Lunas' : 'Belum bayar'} badgeColor={paidAt ? 'green' : 'red'} />
+                    <InfoRow icon={<MapPin size={11} />} label="Alamat" value={[selected.addressLine, city].filter(Boolean).join(' · ') || '—'} wide />
                     {notes && <InfoRow icon={null} label="Catatan Customer" value={notes} wide />}
                     {photos.length > 0 && (
                       <div className="col-span-2">
@@ -305,7 +305,7 @@ export default function PesanPage(): React.ReactElement | null {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto bg-slate-50 px-5 py-4 space-y-3">
               {loadingMsgs && messages.length === 0 ? (
-                <div className="flex items-center justify-center py-20 text-xs text-slate-400">Memuat pesanâ€¦</div>
+                <div className="flex items-center justify-center py-20 text-xs text-slate-400">Memuat pesan…</div>
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center py-20 text-slate-300">
                   <MessageSquare size={28} className="mb-2" />
@@ -376,7 +376,7 @@ export default function PesanPage(): React.ReactElement | null {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                  placeholder="Tulis pesanâ€¦ (Enter kirim Â· Shift+Enter baris baru)"
+                  placeholder="Tulis pesan… (Enter kirim · Shift+Enter baris baru)"
                   rows={1}
                   className="flex-1 resize-none bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 max-h-32"
                   style={{ minHeight: '24px' }}
@@ -403,7 +403,7 @@ export default function PesanPage(): React.ReactElement | null {
                 </button>
               </div>
               <p className="mt-1.5 px-1 text-[10px] text-slate-400">
-                Pesan dikirim atas nama <span className="font-semibold text-blue-600">Admin JasaBersih</span> Â· Gambar maks 5MB
+                Pesan dikirim atas nama <span className="font-semibold text-blue-600">Admin JasaBersih</span> · Gambar maks 5MB
               </p>
             </div>
           </div>

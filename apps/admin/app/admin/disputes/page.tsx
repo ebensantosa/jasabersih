@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, X, Send, ArrowUpCircle } from 'lucide-react';
@@ -14,7 +14,7 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'resolved', label: 'Resolved' },
 ];
 
-export default function DisputesPage(): React.ReactElement | null {
+export default function DisputesPage(): React.ReactElement | null  {
   const toast = useToast();
   const [tab, setTab] = useState<Status>('open');
   const [list, setList] = useState<any[]>([]);
@@ -40,7 +40,7 @@ export default function DisputesPage(): React.ReactElement | null {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Disputes</h1>
-          <p className="text-sm text-slate-500">Sengketa antara customer â†” cleaner. Resolve dengan refund / debit / suspend.</p>
+          <p className="text-sm text-slate-500">Sengketa antara customer ↔ cleaner. Resolve dengan refund / debit / suspend.</p>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export default function DisputesPage(): React.ReactElement | null {
 
       <div className="mt-4">
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+          <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
         ) : list.length === 0 ? (
           <div className="rounded-md border border-dashed p-10 text-center text-sm text-slate-500">Tidak ada dispute di status <b>{tab}</b>.</div>
         ) : (
@@ -80,12 +80,12 @@ export default function DisputesPage(): React.ReactElement | null {
                     onClick={() => openDetail(d.id)}
                   >
                     <td className="px-4 py-2"><Badge>{d.type}</Badge></td>
-                    <td className="px-4 py-2"><div className="font-medium">{d.raisedByName ?? 'â€”'}</div><div className="text-xs text-slate-500">{d.raisedByPhone}</div></td>
-                    <td className="px-4 py-2"><div className="font-medium">{d.subjectName ?? 'â€”'}</div><div className="text-xs text-slate-500">{d.subjectPhone}</div></td>
-                    <td className="px-4 py-2 font-mono text-xs">{d.bookingId?.slice(0, 8)}â€¦</td>
+                    <td className="px-4 py-2"><div className="font-medium">{d.raisedByName ?? '—'}</div><div className="text-xs text-slate-500">{d.raisedByPhone}</div></td>
+                    <td className="px-4 py-2"><div className="font-medium">{d.subjectName ?? '—'}</div><div className="text-xs text-slate-500">{d.subjectPhone}</div></td>
+                    <td className="px-4 py-2 font-mono text-xs">{d.bookingId?.slice(0, 8)}…</td>
                     <td className="px-4 py-2"><Badge variant={d.priority === 'urgent' ? 'red' : d.priority === 'high' ? 'amber' : 'slate'}>{d.priority}</Badge></td>
                     <td className="px-4 py-2 text-xs text-slate-500">{new Date(d.createdAt).toLocaleString('id-ID')}</td>
-                    <td className="px-4 py-2 text-xs">{d.slaDueAt ? <SlaBadge dueAt={d.slaDueAt} /> : <span className="text-slate-400">â€”</span>}</td>
+                    <td className="px-4 py-2 text-xs">{d.slaDueAt ? <SlaBadge dueAt={d.slaDueAt} /> : <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button size="sm" variant="secondary" onClick={() => openDetail(d.id)}>Detail</Button>
                       {tab === 'open' && <Button size="sm" variant="primary" onClick={() => takeOver(d.id)}>Take Over</Button>}
@@ -146,14 +146,14 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
 
   return (
     <>
-      <Modal title={`Dispute Â· ${dispute.type}`} open={!escalating} onClose={onClose} size="lg">
+      <Modal title={`Dispute · ${dispute.type}`} open={!escalating} onClose={onClose} size="lg">
         <div className="grid gap-3 md:grid-cols-2">
-          <InfoCard title="Pelapor"><div className="font-medium">{dispute.raisedByName ?? 'â€”'}</div><div className="text-xs text-slate-500">{dispute.raisedByPhone}</div></InfoCard>
-          <InfoCard title="Subject"><div className="font-medium">{dispute.subjectName ?? 'â€”'}</div><div className="text-xs text-slate-500">{dispute.subjectPhone}</div></InfoCard>
+          <InfoCard title="Pelapor"><div className="font-medium">{dispute.raisedByName ?? '—'}</div><div className="text-xs text-slate-500">{dispute.raisedByPhone}</div></InfoCard>
+          <InfoCard title="Subject"><div className="font-medium">{dispute.subjectName ?? '—'}</div><div className="text-xs text-slate-500">{dispute.subjectPhone}</div></InfoCard>
           <InfoCard title="Booking">
-            <div className="text-xs">Status: {dispute.bookingStatus ?? 'â€”'}</div>
+            <div className="text-xs">Status: {dispute.bookingStatus ?? '—'}</div>
             <div className="text-xs">Total: Rp {Number(dispute.bookingTotal ?? 0).toLocaleString('id-ID')}</div>
-            <div className="text-xs">{dispute.bookingAddress ?? 'â€”'}</div>
+            <div className="text-xs">{dispute.bookingAddress ?? '—'}</div>
           </InfoCard>
           <InfoCard title="Status & Priority">
             <div className="text-xs">Status: <b>{dispute.status}</b></div>
@@ -195,7 +195,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
               <Select
                 label="Action" required value={form.action}
                 options={[
-                  { value: 'warranty_redo_approved', label: 'ðŸ›¡ï¸ Approve Garansi â€” Cleaner balik bersihkan ulang (gratis)' },
+                  { value: 'warranty_redo_approved', label: '🛡 Approve Garansi — Cleaner balik bersihkan ulang (gratis)' },
                   { value: 'refund_customer', label: 'Refund Customer' },
                   { value: 'debit_cleaner', label: 'Debit Cleaner (potong saldo)' },
                   { value: 'suspend_subject', label: 'Suspend Subject' },
@@ -210,7 +210,7 @@ function DisputeDetailModal({ dispute, onClose, onResolved }: { dispute: any; on
               {form.action === 'suspend_subject' && (
                 <Input label="Durasi suspend (hari)" type="number" value={String(form.suspendDays)} onChange={(v) => setForm({ ...form, suspendDays: Number(v) })} />
               )}
-              <Textarea label="Resolusi" required rows={3} value={form.resolution} onChange={(v) => setForm({ ...form, resolution: v })} helpText="Min 10 char â€” masuk audit log." />
+              <Textarea label="Resolusi" required rows={3} value={form.resolution} onChange={(v) => setForm({ ...form, resolution: v })} helpText="Min 10 char — masuk audit log." />
               {errors.resolution && <p className="text-xs text-red-600">{errors.resolution}</p>}
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" icon={<ArrowUpCircle size={14} />} onClick={() => setEscalating(true)}>Escalate</Button>

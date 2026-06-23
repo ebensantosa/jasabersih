@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { CheckCircle2, AlertTriangle, X, Info, XCircle, Loader2 } from 'lucide-react';
@@ -64,7 +64,7 @@ export function useConfirm(): (opts: ConfirmOpts) => Promise<boolean> {
 }
 
 // ============================================================
-// PROMPT (replaces window.prompt) â€” returns string or null on cancel
+// PROMPT (replaces window.prompt) — returns string or null on cancel
 // ============================================================
 type PromptOpts = {
   title: string;

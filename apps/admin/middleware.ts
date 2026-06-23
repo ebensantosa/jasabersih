@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Strong no-cache for admin HTML routes — prevents Cloudflare and the browser
+// Strong no-cache for admin HTML routes  prevents Cloudflare and the browser
 // from holding onto an old shell that references chunk hashes that get deleted
 // on the next deploy. Static assets under /_next/static keep their default
 // long-lived caching (the filename hash is the cache key).

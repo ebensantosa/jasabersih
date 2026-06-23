@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Check, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Modal, Input, Textarea, Button, Badge, useToast } from '../../../compon
 
 type Tab = 'pending' | 'approved' | 'rejected';
 
-export default function WalletPage(): React.ReactElement | null {
+export default function WalletPage(): React.ReactElement | null  {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('pending');
   const [list, setList] = useState<any[]>([]);
@@ -23,7 +23,7 @@ export default function WalletPage(): React.ReactElement | null {
   useEffect(() => { void load(); }, [tab]);
 
   async function approveViaAuto(w: any) {
-    if (!confirm(`Retry auto-disburse - Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${(w.bankCode ?? 'â€”').toUpperCase()} ${w.accountNumber ?? 'â€”'} a/n ${w.accountName ?? 'â€”'}?\n\nPakai hanya kalau yakin sistem pembayaran udh recover dari error sebelumnya.`)) return;
+    if (!confirm(`Retry auto-disburse - Rp ${Number(w.amount).toLocaleString('id-ID')} ke ${(w.bankCode ?? '—').toUpperCase()} ${w.accountNumber ?? '—'} a/n ${w.accountName ?? '—'}?\n\nPakai hanya kalau yakin sistem pembayaran udh recover dari error sebelumnya.`)) return;
     try {
       await api.admin.approveWithdrawalViaFlip(w.id);
       toast.success('Retry trigger auto-transfer. Status auto-update via callback.');
@@ -58,7 +58,7 @@ export default function WalletPage(): React.ReactElement | null {
 
       <div className="mt-4">
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+          <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
         ) : list.length === 0 ? (
           <div className="rounded-md border border-dashed p-10 text-center text-sm text-slate-500">Tidak ada withdrawal di status <b>{tab}</b>.</div>
         ) : (
@@ -80,7 +80,7 @@ export default function WalletPage(): React.ReactElement | null {
                 {list.map((w) => (
                   <tr key={w.id} className="border-t hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <div className="font-medium">{w.userName ?? 'â€”'}</div>
+                      <div className="font-medium">{w.userName ?? '—'}</div>
                       <div className="text-xs text-slate-500">{w.userPhone}</div>
                       {w.cleanerTier && <div className="mt-1"><Badge variant="amber">Tier {w.cleanerTier}</Badge></div>}
                     </td>
@@ -89,21 +89,21 @@ export default function WalletPage(): React.ReactElement | null {
                       {w.fee > 0 && <div className="text-[10px] font-normal text-slate-500">Fee: Rp {Number(w.fee).toLocaleString('id-ID')}</div>}
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      <div className="font-medium">{w.bankCode ?? 'â€”'}</div>
-                      <div className="font-mono">{w.accountNumber ?? 'â€”'}</div>
-                      <div className="text-slate-500">a/n {w.accountName ?? 'â€”'}</div>
+                      <div className="font-medium">{w.bankCode ?? '—'}</div>
+                      <div className="font-mono">{w.accountNumber ?? '—'}</div>
+                      <div className="text-slate-500">a/n {w.accountName ?? '—'}</div>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">{new Date(w.requestedAt).toLocaleString('id-ID')}</td>
-                    {tab !== 'pending' && <td className="px-4 py-3 text-xs text-slate-500">{w.reviewedAt ? new Date(w.reviewedAt).toLocaleString('id-ID') : 'â€”'}</td>}
+                    {tab !== 'pending' && <td className="px-4 py-3 text-xs text-slate-500">{w.reviewedAt ? new Date(w.reviewedAt).toLocaleString('id-ID') : '—'}</td>}
                     {tab === 'approved' && (
                       <td className="px-4 py-3 font-mono text-xs">
-                        {w.bankTransferRef ?? w.flipDisbursementId ?? 'â€”'}
+                        {w.bankTransferRef ?? w.flipDisbursementId ?? '—'}
                         {w.reviewStatus === 'auto_approved' && (
                           <span className="ml-1.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">Auto Transfer</span>
                         )}
                       </td>
                     )}
-                    {tab === 'rejected' && <td className="px-4 py-3 text-xs text-red-700">{w.reviewNote ?? w.failureReason ?? 'â€”'}</td>}
+                    {tab === 'rejected' && <td className="px-4 py-3 text-xs text-red-700">{w.reviewNote ?? w.failureReason ?? '—'}</td>}
                     {tab === 'pending' && (
                       <td className="px-4 py-3 text-right space-x-1">
                         {/* Manual = action utama (admin transfer sendiri lalu mark approved).
@@ -111,7 +111,7 @@ export default function WalletPage(): React.ReactElement | null {
                         <Button size="sm" variant="success" onClick={() => setApproving(w)} icon={<Check size={12} />}>Manual Approve</Button>
                         <Button size="sm" variant="ghost" onClick={() => setRejecting(w)} icon={<X size={12} />}>Reject</Button>
                         <details className="inline-block">
-                          <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-700 select-none ml-2">Â·Â·Â·</summary>
+                          <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-700 select-none ml-2">···</summary>
                           <div className="absolute right-4 mt-1 rounded border bg-white p-2 shadow-md z-10">
                             <Button size="sm" variant="primary" onClick={() => void approveViaAuto(w)}>Retry Auto</Button>
                             <p className="mt-1 text-[10px] text-slate-500 max-w-[180px]">
@@ -155,7 +155,7 @@ function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onD
 
   return (
     <Modal
-      title={`Approve Withdrawal â€” ${w.userName ?? 'â€”'}`}
+      title={`Approve Withdrawal — ${w.userName ?? '—'}`}
       open={true}
       onClose={onClose}
       footer={
@@ -168,9 +168,9 @@ function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onD
       <div className="space-y-3">
         <div className="rounded-md bg-slate-50 p-3 text-sm">
           <div>Jumlah: <b>Rp {Number(w.amount).toLocaleString('id-ID')}</b></div>
-          <div className="text-xs text-slate-600">{w.bankCode} Â· {w.accountNumber} Â· a/n {w.accountName}</div>
+          <div className="text-xs text-slate-600">{w.bankCode} · {w.accountNumber} · a/n {w.accountName}</div>
         </div>
-        <Input label="Referensi Bank Transfer" required value={ref} onChange={setRef} error={errors.ref} placeholder="No transaksi BCA/Mandiri/dll" helpText="Wajib â€” sebagai bukti audit." />
+        <Input label="Referensi Bank Transfer" required value={ref} onChange={setRef} error={errors.ref} placeholder="No transaksi BCA/Mandiri/dll" helpText="Wajib — sebagai bukti audit." />
         <Textarea label="Catatan (opsional)" value={note} onChange={setNote} rows={2} />
       </div>
     </Modal>
@@ -196,7 +196,7 @@ function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDo
 
   return (
     <Modal
-      title={`Reject Withdrawal â€” ${w.userName ?? 'â€”'}`}
+      title={`Reject Withdrawal — ${w.userName ?? '—'}`}
       open={true}
       onClose={onClose}
       footer={
@@ -209,7 +209,7 @@ function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDo
       <div className="space-y-3">
         <div className="rounded-md bg-slate-50 p-3 text-sm">
           <div>Jumlah: <b>Rp {Number(w.amount).toLocaleString('id-ID')}</b></div>
-          <div className="text-xs text-slate-600">{w.bankCode} Â· {w.accountNumber} Â· a/n {w.accountName}</div>
+          <div className="text-xs text-slate-600">{w.bankCode} · {w.accountNumber} · a/n {w.accountName}</div>
         </div>
         <Textarea label="Alasan Reject" required rows={3} value={reason} onChange={setReason} helpText="Akan dikirim ke cleaner. Min 5 karakter." />
         {errors.reason && <p className="text-xs text-red-600">{errors.reason}</p>}

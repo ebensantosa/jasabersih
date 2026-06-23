@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -30,7 +30,7 @@ function fmtRp(n: number | string | null | undefined): string {
   return 'Rp ' + Number(n).toLocaleString('id-ID');
 }
 
-export default function AdminOverview(): React.ReactElement | null {
+export default function AdminOverview(): React.ReactElement | null  {
   const toast = useToast();
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,14 +43,14 @@ export default function AdminOverview(): React.ReactElement | null {
   }
   useEffect(() => { void load(); }, []);
 
-  if (loading) return <div className="py-20 text-center text-sm text-slate-500">Memuat analyticsâ€¦</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-slate-500">Memuat analytics…</div>;
   if (!data) return <div className="py-20 text-center text-sm text-slate-500">Data tidak tersedia.</div>;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
-        <p className="text-sm text-slate-500">Realtime metrics â€” refresh untuk update terbaru.</p>
+        <p className="text-sm text-slate-500">Realtime metrics — refresh untuk update terbaru.</p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
@@ -88,7 +88,7 @@ export default function AdminOverview(): React.ReactElement | null {
         <div className="rounded-md border bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2"><Users size={16} /> Customer</h2>
-            <Link href="/admin/users" className="text-xs text-blue-700 hover:underline">Lihat semua â†’</Link>
+            <Link href="/admin/users" className="text-xs text-blue-700 hover:underline">Lihat semua →</Link>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Stat label="Total" value={Number(data.users.total)} />
@@ -101,7 +101,7 @@ export default function AdminOverview(): React.ReactElement | null {
         <div className="rounded-md border bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2"><BadgeCheck size={16} /> Cleaner</h2>
-            <Link href="/admin/kyc" className="text-xs text-blue-700 hover:underline">KYC review â†’</Link>
+            <Link href="/admin/kyc" className="text-xs text-blue-700 hover:underline">KYC review →</Link>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Stat label="Approved" value={Number(data.cleaners.approved)} positive />
@@ -123,11 +123,11 @@ export default function AdminOverview(): React.ReactElement | null {
                 <div key={c.id} className="flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold">{i + 1}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm font-medium">{c.name ?? 'â€”'}</div>
+                    <div className="truncate text-sm font-medium">{c.name ?? '—'}</div>
                     <div className="text-[11px] text-slate-500">{c.phone}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs font-bold">â­ {Number(c.ratingAvg ?? 0).toFixed(2)}</div>
+                    <div className="text-xs font-bold"> {Number(c.ratingAvg ?? 0).toFixed(2)}</div>
                     <div className="text-[10px] text-slate-500">{Number(c.totalJobsDone)} job</div>
                   </div>
                 </div>
@@ -204,7 +204,7 @@ function GmvCard({ label, orders, gmv, revenue }: { label: string; orders: numbe
       <div className="mt-1 text-2xl font-bold">{fmtRp(gmv)}</div>
       <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
         <span><b>{orders}</b> order</span>
-        <span>â€¢</span>
+        <span>•</span>
         <span>Take rate: <b>{fmtRp(revenue)}</b></span>
       </div>
     </div>

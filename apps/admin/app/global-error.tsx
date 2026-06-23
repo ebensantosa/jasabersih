@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect } from 'react';
 
 export default function GlobalError({ error, reset }: { error: Error; reset: () => void }): React.ReactElement | null {
   // Auto-reload on stale chunk errors. After a deploy the old HTML in the
-  // browser references chunk hashes that no longer exist on the server â†’
+  // browser references chunk hashes that no longer exist on the server →
   // "Loading chunk N failed". reset() re-renders the same broken tree, so
   // we hard-reload (cache-busting) to fetch the fresh HTML + chunks.
   const isChunkError = /Loading chunk|ChunkLoadError|Failed to fetch dynamically imported module/i.test(error?.message ?? '');
@@ -30,7 +30,7 @@ export default function GlobalError({ error, reset }: { error: Error; reset: () 
           </h1>
           <p style={{ marginTop: 8, fontSize: 13, color: '#64748b' }}>
             {isChunkError
-              ? 'Aplikasi baru saja di-update. Memuat ulangâ€¦'
+              ? 'Aplikasi baru saja di-update. Memuat ulang…'
               : (error?.message ?? 'Terjadi kesalahan')}
           </p>
           <button onClick={hardReload} style={{ marginTop: 16, padding: '8px 16px', background: '#2563eb', color: 'white', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>

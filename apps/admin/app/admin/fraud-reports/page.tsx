@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { CheckCircle2, ShieldAlert, XCircle } from 'lucide-react';
@@ -13,7 +13,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: 'Lainnya',
 };
 
-export default function FraudReportsPage(): React.ReactElement | null {
+export default function FraudReportsPage(): React.ReactElement | null  {
   const toast = useToast();
   const confirm = useConfirm();
   const prompt = usePrompt();
@@ -59,7 +59,7 @@ export default function FraudReportsPage(): React.ReactElement | null {
         <ShieldAlert className="text-red-600" size={24} />
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Fraud Reports</h1>
-          <p className="text-sm text-slate-500">Review laporan customer terhadap cleaner. Approved â†’ voucher Rp 50k + strike cleaner.</p>
+          <p className="text-sm text-slate-500">Review laporan customer terhadap cleaner. Approved → voucher Rp 50k + strike cleaner.</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export default function FraudReportsPage(): React.ReactElement | null {
       </div>
 
       {loading ? (
-        <div className="mt-8 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="mt-8 text-center text-sm text-slate-500">Memuat…</div>
       ) : list.length === 0 ? (
         <div className="mt-4 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           Tidak ada laporan dengan status <b>{statusFilter}</b>.
@@ -89,8 +89,8 @@ export default function FraudReportsPage(): React.ReactElement | null {
                     {r.rewardVoucherCode && <Badge>{r.rewardVoucherCode}</Badge>}
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                    <div><b>Pelapor:</b> {r.reporterName} Â· {r.reporterPhone}</div>
-                    <div><b>Dilaporkan:</b> {r.reportedName ?? 'â€”'} Â· {r.reportedPhone ?? 'â€”'}</div>
+                    <div><b>Pelapor:</b> {r.reporterName} · {r.reporterPhone}</div>
+                    <div><b>Dilaporkan:</b> {r.reportedName ?? '—'} · {r.reportedPhone ?? '—'}</div>
                     <div><b>Booking:</b> <span className="font-mono">{r.bookingId?.slice(0, 8)}</span></div>
                     <div><b>Tanggal:</b> {new Date(r.createdAt).toLocaleString('id-ID')}</div>
                   </div>

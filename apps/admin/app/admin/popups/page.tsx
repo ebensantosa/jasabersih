@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Megaphone } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Megaphone } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-export default function PopupsPage(): React.ReactElement | null {
+export default function PopupsPage(): React.ReactElement | null  {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -36,7 +36,7 @@ export default function PopupsPage(): React.ReactElement | null {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
       ) : list.length === 0 ? (
         <div className="mt-4 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           <Megaphone size={28} className="mx-auto mb-2 text-slate-400" />
@@ -59,7 +59,7 @@ export default function PopupsPage(): React.ReactElement | null {
                   {p.priority > 0 && <Badge variant="amber">priority {p.priority}</Badge>}
                 </div>
                 <div className="mt-2 text-[10px] text-slate-500">
-                  Views: {p.viewCount} Â· CTA Clicks: {p.clickCount}
+                  Views: {p.viewCount} · CTA Clicks: {p.clickCount}
                 </div>
                 <div className="mt-2 flex justify-between">
                   <button onClick={() => toggle(p)}>{p.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button>
@@ -143,7 +143,7 @@ function PopupFormModal({ popup, onClose, onSaved }: { popup: any | null; onClos
     >
       <div className="space-y-3">
         <Input label="Judul" required value={form.title} onChange={(v) => setForm({ ...form, title: v })} error={errors.title} placeholder="Diskon 50% Bersih Kamar!" />
-        <Textarea label="Pesan" rows={3} value={form.body} onChange={(v) => setForm({ ...form, body: v })} placeholder="Promo terbatas â€” pakai code JBSIH50 dapat diskon 50%." />
+        <Textarea label="Pesan" rows={3} value={form.body} onChange={(v) => setForm({ ...form, body: v })} placeholder="Promo terbatas — pakai code JBSIH50 dapat diskon 50%." />
 
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-700">Gambar (opsional)</label>
@@ -162,7 +162,7 @@ function PopupFormModal({ popup, onClose, onSaved }: { popup: any | null; onClos
             }}
             className="w-full text-xs"
           />
-          {uploading && <div className="mt-1 text-xs text-slate-500">Uploadingâ€¦</div>}
+          {uploading && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

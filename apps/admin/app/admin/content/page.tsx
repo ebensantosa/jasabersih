@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Image as ImageIcon, FileText, Megaphone, MapPin, Package, Plus, Sparkles, Trash2, Pencil, ExternalLink } from 'lucide-react';
@@ -16,7 +16,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'addons', label: 'Add-Ons', icon: Plus },
 ];
 
-export default function CmsPage(): React.ReactElement | null {
+export default function CmsPage(): React.ReactElement | null  {
   const [tab, setTab] = useState<Tab>('banners');
   return (
     <div>
@@ -83,7 +83,7 @@ function ImageUpload({ value, onChange, folder }: { value: string; onChange: (ur
         className="w-full text-xs"
       />
       <p className="mt-1 text-[10px] text-slate-500">JPG, PNG, atau WebP. Max {MAX_IMG_MB}MB.</p>
-      {busy && <div className="mt-1 text-xs text-slate-500">Uploadingâ€¦</div>}
+      {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
     </div>
   );
 }
@@ -307,7 +307,7 @@ function PageFormModal({ page, onClose, onSaved }: { page: { slug: string; title
         <Input label="Slug (URL)" required value={form.slug} onChange={(v) => setForm({ ...form, slug: v })} error={errors.slug} placeholder="terms / privacy / about / faq" />
         <Input label="Judul" required value={form.title} onChange={(v) => setForm({ ...form, title: v })} error={errors.title} />
         <Select label="Audience" value={form.audience} options={[{ value: 'public', label: 'Public (semua)' }, { value: 'customer', label: 'Customer only' }, { value: 'cleaner', label: 'Cleaner only' }]} onChange={(v) => setForm({ ...form, audience: v })} />
-        <Textarea label="Body (Markdown)" mono required rows={14} value={form.bodyMarkdown} onChange={(v) => setForm({ ...form, bodyMarkdown: v })} helpText="Markdown â€” header (#), bold (**), list (-), link [text](url)." />
+        <Textarea label="Body (Markdown)" mono required rows={14} value={form.bodyMarkdown} onChange={(v) => setForm({ ...form, bodyMarkdown: v })} helpText="Markdown — header (#), bold (**), list (-), link [text](url)." />
         {errors.bodyMarkdown && <p className="text-xs text-red-600">{errors.bodyMarkdown}</p>}
       </div>
     </Modal>
@@ -337,7 +337,7 @@ function AnnouncementsTab() {
               <div>
                 <div className="flex items-center gap-2"><h3 className="text-sm font-bold">{a.title}</h3><Badge>{a.severity}</Badge><Badge>{a.audience}</Badge></div>
                 <p className="mt-1 text-sm text-slate-700">{a.body}</p>
-                <p className="mt-1 text-[10px] text-slate-500">{new Date(a.startsAt).toLocaleString('id-ID')} {a.endsAt ? `â†’ ${new Date(a.endsAt).toLocaleString('id-ID')}` : ''}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{new Date(a.startsAt).toLocaleString('id-ID')} {a.endsAt ? `→ ${new Date(a.endsAt).toLocaleString('id-ID')}` : ''}</p>
               </div>
               <button onClick={() => toggle(a)}>{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button>
             </div>
@@ -554,7 +554,7 @@ function PackagesTab() {
           <tbody>
             {list.map((p) => (
               <tr key={p.id} className="border-t">
-                <td className="px-4 py-2 text-xs text-slate-600">{p.serviceName ?? 'â€”'}</td>
+                <td className="px-4 py-2 text-xs text-slate-600">{p.serviceName ?? '—'}</td>
                 <td className="px-4 py-2 font-medium">{p.name}</td>
                 <td className="px-4 py-2 font-mono">Rp {Number(p.price).toLocaleString('id-ID')}</td>
                 <td className="px-4 py-2 text-xs">{p.durationMin} min</td>
@@ -618,7 +618,7 @@ function PackageFormModal({ pkg, services, onClose, onSaved }: { pkg: any | null
         {!isEdit && (
           <Select
             label="Service" required value={form.serviceId}
-            options={[{ value: '', label: 'â€” pilih â€”' }, ...services.map((s: any) => ({ value: s.id, label: s.name }))]}
+            options={[{ value: '', label: '— pilih —' }, ...services.map((s: any) => ({ value: s.id, label: s.name }))]}
             onChange={(v) => setForm({ ...form, serviceId: v })}
           />
         )}
@@ -676,11 +676,11 @@ function AddonsTab() {
           <tbody>
             {list.map((a) => (
               <tr key={a.id} className="border-t">
-                <td className="px-4 py-2 font-mono text-xs">{a.code ?? 'â€”'}</td>
+                <td className="px-4 py-2 font-mono text-xs">{a.code ?? '—'}</td>
                 <td className="px-4 py-2 font-medium">{a.name}</td>
                 <td className="px-4 py-2 font-mono">Rp {Number(a.price).toLocaleString('id-ID')}</td>
                 <td className="px-4 py-2 text-xs">{a.durationMin} min</td>
-                <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-600">{a.description ?? 'â€”'}</td>
+                <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-600">{a.description ?? '—'}</td>
                 <td className="px-4 py-2"><button onClick={() => toggle(a)}>{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</button></td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(a)}>Edit</Button>
@@ -796,7 +796,7 @@ function ServicesTab() {
                     ? <img src={s.iconUrl} alt="" className="h-12 w-12 rounded object-cover border" />
                     : <div className="h-12 w-12 rounded bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">no icon</div>}
                 </td>
-                <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? 'â€”'}</div></td>
+                <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? '—'}</div></td>
                 <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
                 <td className="px-4 py-2"><Badge>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
                 <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
@@ -895,7 +895,7 @@ function CityRequestsTab() {
       <h2 className="text-lg font-semibold">Request Kota Baru ({list.length} kota)</h2>
       <p className="mt-1 text-xs text-slate-500">Customer di kota yang belum dilayani submit lewat mobile app. Diurutkan berdasarkan jumlah request terbanyak.</p>
       {loading ? (
-        <div className="mt-8 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="mt-8 text-center text-sm text-slate-500">Memuat…</div>
       ) : list.length === 0 ? (
         <div className="mt-8 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           Belum ada request kota baru. Customer di luar coverage akan mengisi form dari mobile.
@@ -908,11 +908,11 @@ function CityRequestsTab() {
                 <div>
                   <div className="text-base font-bold capitalize text-slate-900">{r.city}</div>
                   <div className="text-xs text-slate-500">
-                    {r.requestCount} request Â· terakhir {new Date(r.lastRequestAt).toLocaleDateString('id-ID')}
-                    {r.provinces?.length > 0 && ` Â· ${r.provinces.join(', ')}`}
+                    {r.requestCount} request · terakhir {new Date(r.lastRequestAt).toLocaleDateString('id-ID')}
+                    {r.provinces?.length > 0 && ` · ${r.provinces.join(', ')}`}
                   </div>
                 </div>
-                <Badge>{r.requestCount}Ã—</Badge>
+                <Badge>{r.requestCount}×</Badge>
               </div>
               {r.samples?.length > 0 && (
                 <details className="mt-3">
@@ -925,9 +925,9 @@ function CityRequestsTab() {
                       {r.samples.map((s: any) => (
                         <tr key={s.id} className="border-t">
                           <td className="px-2 py-1">{new Date(s.createdAt).toLocaleString('id-ID')}</td>
-                          <td className="px-2 py-1">{s.contactName ?? 'â€”'}</td>
-                          <td className="px-2 py-1">{s.contactPhone ?? 'â€”'}</td>
-                          <td className="px-2 py-1">{s.notes ?? 'â€”'}</td>
+                          <td className="px-2 py-1">{s.contactName ?? '—'}</td>
+                          <td className="px-2 py-1">{s.contactPhone ?? '—'}</td>
+                          <td className="px-2 py-1">{s.notes ?? '—'}</td>
                           <td className="px-2 py-1">
                             <button onClick={() => delEntry(s.id, r.city)} className="text-red-600 hover:underline">Hapus</button>
                           </td>

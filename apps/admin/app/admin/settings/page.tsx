@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, GripVertical, Home as HomeIcon, Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2 } from 'lucide-react';
@@ -15,7 +15,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'audit', label: 'Audit Log', icon: Activity },
 ];
 
-export default function SettingsPage(): React.ReactElement | null {
+export default function SettingsPage(): React.ReactElement | null  {
   const [tab, setTab] = useState<Tab>('admins');
   return (
     <div>
@@ -74,7 +74,7 @@ function AdminsTab() {
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Admin</Button>
       </div>
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
       ) : (
         <div className="overflow-hidden rounded-md border bg-white">
           <table className="w-full text-sm">
@@ -91,7 +91,7 @@ function AdminsTab() {
                   <td className="px-4 py-2 font-medium">{a.name}</td>
                   <td className="px-4 py-2 text-slate-600">{a.email}</td>
                   <td className="px-4 py-2"><RoleBadge role={a.role} /></td>
-                  <td className="px-4 py-2 text-xs text-slate-500">{a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString('id-ID') : 'â€”'}</td>
+                  <td className="px-4 py-2 text-xs text-slate-500">{a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString('id-ID') : '—'}</td>
                   <td className="px-4 py-2">{a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" onClick={() => setEditing(a)} icon={<Pencil size={12} />}>Edit</Button>
@@ -214,7 +214,7 @@ function PasswordResetModal({ admin, onClose }: { admin: any; onClose: () => voi
 
   return (
     <Modal
-      title={`Reset Password â€” ${admin.email}`}
+      title={`Reset Password — ${admin.email}`}
       open={true}
       onClose={onClose}
       footer={
@@ -264,8 +264,8 @@ function CommissionTab() {
           <tbody>
             {list.map((t) => (
               <tr key={t.id} className="border-t">
-                <td className="px-4 py-2 font-mono text-xs">{t.rangeMin ? Number(t.rangeMin).toLocaleString('id-ID') : 'â€”'}</td>
-                <td className="px-4 py-2 font-mono text-xs">{t.rangeMax ? Number(t.rangeMax).toLocaleString('id-ID') : 'âˆž'}</td>
+                <td className="px-4 py-2 font-mono text-xs">{t.rangeMin ? Number(t.rangeMin).toLocaleString('id-ID') : '—'}</td>
+                <td className="px-4 py-2 font-mono text-xs">{t.rangeMax ? Number(t.rangeMax).toLocaleString('id-ID') : '∞'}</td>
                 <td className="px-4 py-2 font-bold">{Number(t.shareNoTools ?? 0)}%</td>
                 <td className="px-4 py-2 font-bold">{Number(t.shareWithTools ?? 0)}%</td>
                 <td className="px-4 py-2">{Number(t.topTierBonusPct ?? 0)}%</td>
@@ -386,7 +386,7 @@ function ServicesTab() {
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Layanan</Button>
       </div>
       <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-[11px] text-blue-900">
-        â†‘â†“ untuk atur urutan tampil. Toggle <HomeIcon size={11} className="inline" /> = tampil di home grid mobile (kalau off, layanan tetap muncul di tab Layanan).
+        ↑↓ untuk atur urutan tampil. Toggle <HomeIcon size={11} className="inline" /> = tampil di home grid mobile (kalau off, layanan tetap muncul di tab Layanan).
       </div>
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
@@ -412,7 +412,7 @@ function ServicesTab() {
                 </td>
                 <td className="px-4 py-2 font-mono text-xs">{s.code}</td>
                 <td className="px-4 py-2 font-medium">{s.name}</td>
-                <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-500">{s.description ?? 'â€”'}</td>
+                <td className="px-4 py-2 max-w-xs truncate text-xs text-slate-500">{s.description ?? '—'}</td>
                 <td className="px-4 py-2">
                   <button onClick={() => toggleHome(s)} title={s.showOnHome ? 'Klik untuk hide dari home' : 'Klik untuk show di home'}>
                     {s.showOnHome ? <Badge variant="blue">tampil</Badge> : <Badge>tidak</Badge>}
@@ -482,10 +482,10 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         <Input label="Nama" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
         <Textarea label="Deskripsi" value={form.description} onChange={(v) => setForm({ ...form, description: v })} rows={3} />
         <ServiceIconUpload value={form.iconUrl} onChange={(v) => setForm({ ...form, iconUrl: v })} />
-        <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} helpText="Atau pakai tombol â†‘â†“ di tabel untuk reorder cepat." />
+        <Input label="Display Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) })} helpText="Atau pakai tombol ↑↓ di tabel untuk reorder cepat." />
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-700">Tampil di Home Grid Mobile</label>
-          <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Ya, tampil di home (max 7 tile)' : 'Tidak â€” hanya tampil di tab Layanan'} />
+          <Switch checked={form.showOnHome} onChange={(v) => setForm({ ...form, showOnHome: v })} label={form.showOnHome ? 'Ya, tampil di home (max 7 tile)' : 'Tidak — hanya tampil di tab Layanan'} />
         </div>
       </div>
     </Modal>
@@ -506,7 +506,7 @@ function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url:
       onChange(publicUrl);
       toast.success('Icon ter-upload.');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Upload gagal â€” cek koneksi atau format file.');
+      toast.error(e?.message ?? 'Upload gagal — cek koneksi atau format file.');
     } finally {
       setBusy(false);
     }
@@ -515,7 +515,7 @@ function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url:
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-slate-700">Icon Layanan (opsional)</label>
-      <p className="mb-2 text-[11px] text-slate-500">PNG/SVG transparan, ukuran ~64Ã—64. Kalau kosong, pakai icon default Lucide.</p>
+      <p className="mb-2 text-[11px] text-slate-500">PNG/SVG transparan, ukuran ~64×64. Kalau kosong, pakai icon default Lucide.</p>
       <div className="flex items-center gap-3">
         {value ? (
           <div className="relative h-16 w-16 rounded-xl border border-slate-200 bg-slate-50 p-2">
@@ -526,7 +526,7 @@ function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url:
               className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-white shadow"
               title="Hapus icon"
             >
-              Ã—
+              ×
             </button>
           </div>
         ) : (
@@ -546,7 +546,7 @@ function ServiceIconUpload({ value, onChange }: { value: string; onChange: (url:
             }}
             className="block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium hover:file:bg-slate-200"
           />
-          {busy && <div className="mt-1 text-xs text-slate-500">Uploadingâ€¦</div>}
+          {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
           {value && (
             <input
               type="text"
@@ -661,7 +661,7 @@ function BlacklistFormModal({ onClose, onSaved }: { onClose: () => void; onSaved
           onChange={(v) => setForm({ ...form, type: v })}
         />
         <Input label="Value" required value={form.value} onChange={(v) => setForm({ ...form, value: v })} error={errors.value} placeholder={form.type === 'phone' ? '081234567890' : '...'} />
-        <Textarea label="Alasan" rows={3} required value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} helpText="Min 5 karakter â€” akan masuk audit log." />
+        <Textarea label="Alasan" rows={3} required value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} helpText="Min 5 karakter — akan masuk audit log." />
         <Input label="Berakhir (opsional)" type="datetime-local" value={form.expiresAt} onChange={(v) => setForm({ ...form, expiresAt: v })} helpText="Kosongkan = permanen." />
       </div>
     </Modal>
@@ -717,7 +717,7 @@ function AuditTab() {
     <div>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-base font-semibold">Audit Log</h2>
-        <Button variant="secondary" onClick={exportCsv}>â¬‡ Export CSV</Button>
+        <Button variant="secondary" onClick={exportCsv}>⬇ Export CSV</Button>
       </div>
 
       {/* Filters */}
@@ -754,7 +754,7 @@ function AuditTab() {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
       ) : (
         <div className="overflow-hidden rounded-md border bg-white">
           <table className="w-full text-sm">
@@ -774,9 +774,9 @@ function AuditTab() {
                   <td className="px-4 py-2 text-xs text-slate-500">{new Date(a.performedAt).toLocaleString('id-ID')}</td>
                   <td className="px-4 py-2"><div className="text-xs font-medium">{a.adminName ?? a.adminEmail}</div><div className="text-[10px] text-slate-500">{a.adminRole}</div></td>
                   <td className="px-4 py-2"><Badge variant="blue">{a.action}</Badge></td>
-                  <td className="px-4 py-2 text-xs">{a.resourceType}{a.resourceId ? `:${a.resourceId.slice(0, 8)}â€¦` : ''}</td>
+                  <td className="px-4 py-2 text-xs">{a.resourceType}{a.resourceId ? `:${a.resourceId.slice(0, 8)}…` : ''}</td>
                   <td className="px-4 py-2 max-w-md text-xs text-slate-600">
-                    {a.changes ? <code className="block max-h-20 overflow-auto break-all text-[10px]">{JSON.stringify(a.changes)}</code> : 'â€”'}
+                    {a.changes ? <code className="block max-h-20 overflow-auto break-all text-[10px]">{JSON.stringify(a.changes)}</code> : '—'}
                   </td>
                 </tr>
               ))}

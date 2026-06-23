@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Check, MapPin, X } from 'lucide-react';
@@ -19,7 +19,7 @@ type Req = {
   domicileCity: string | null;
 };
 
-export default function CleanerAreaRequestsPage(): React.ReactElement | null {
+export default function CleanerAreaRequestsPage(): React.ReactElement | null  {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<Req[]>([]);
@@ -63,7 +63,7 @@ export default function CleanerAreaRequestsPage(): React.ReactElement | null {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
       ) : list.length === 0 ? (
         <div className="mt-4 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           <MapPin size={28} className="mx-auto mb-2 text-slate-400" />
@@ -98,7 +98,7 @@ export default function CleanerAreaRequestsPage(): React.ReactElement | null {
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
                       <Badge variant={r.action === 'remove' ? 'amber' : 'green'}>
-                        {r.action === 'remove' ? 'âˆ’ Hapus' : '+ Tambah'}
+                        {r.action === 'remove' ? '− Hapus' : '+ Tambah'}
                       </Badge>
                       <Badge variant="blue">{r.city}</Badge>
                     </div>

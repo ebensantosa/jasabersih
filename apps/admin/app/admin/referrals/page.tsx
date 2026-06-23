@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Gift, Search, Trophy } from 'lucide-react';
@@ -21,7 +21,7 @@ function rp(n: number | string | null | undefined): string {
   return 'Rp ' + Number(n ?? 0).toLocaleString('id-ID');
 }
 
-export default function ReferralsAdminPage(): React.ReactElement | null {
+export default function ReferralsAdminPage(): React.ReactElement | null  {
   const toast = useToast();
   const [tab, setTab] = useState<'overview' | 'leaderboard' | 'all'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
@@ -46,7 +46,7 @@ export default function ReferralsAdminPage(): React.ReactElement | null {
   }
   useEffect(() => { void load(); /* eslint-disable-next-line */ }, [filter]);
 
-  if (loading && !stats) return <div className="py-20 text-center text-sm text-slate-500">Memuatâ€¦</div>;
+  if (loading && !stats) return <div className="py-20 text-center text-sm text-slate-500">Memuat…</div>;
 
   return (
     <div className="space-y-4">
@@ -84,13 +84,13 @@ export default function ReferralsAdminPage(): React.ReactElement | null {
             <div key={l.userId} className="flex items-center gap-3 border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
               <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-700' : i === 2 ? 'bg-orange-100 text-orange-800' : 'bg-slate-100 text-slate-500'}`}>{i + 1}</div>
               <div className="flex-1">
-                <div className="text-sm font-medium">{l.referrerName ?? 'â€”'}</div>
+                <div className="text-sm font-medium">{l.referrerName ?? '—'}</div>
                 <div className="text-[11px] text-slate-500">{l.referrerPhone}</div>
               </div>
               <div className="text-right">
                 <div className="font-mono text-xs text-blue-700">{l.code}</div>
                 <div className="text-xs">
-                  <span className="font-bold">{Number(l.totalReferrals)}</span> teman Â·{' '}
+                  <span className="font-bold">{Number(l.totalReferrals)}</span> teman ·{' '}
                   <span className="font-bold text-green-700">{rp(l.totalPaid)}</span>
                 </div>
               </div>
@@ -118,7 +118,7 @@ export default function ReferralsAdminPage(): React.ReactElement | null {
               ) : leaders.map((l, i) => (
                 <tr key={l.userId} className="border-t hover:bg-slate-50">
                   <td className="px-4 py-2 font-bold">{i + 1}</td>
-                  <td className="px-4 py-2"><div className="font-medium">{l.referrerName ?? 'â€”'}</div><div className="text-xs text-slate-500">{l.referrerPhone}</div></td>
+                  <td className="px-4 py-2"><div className="font-medium">{l.referrerName ?? '—'}</div><div className="text-xs text-slate-500">{l.referrerPhone}</div></td>
                   <td className="px-4 py-2"><code className="rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{l.code}</code></td>
                   <td className="px-4 py-2 text-right font-bold">{Number(l.totalReferrals)}</td>
                   <td className="px-4 py-2 text-right font-bold text-green-700">{rp(l.totalPaid)}</td>
@@ -138,7 +138,7 @@ export default function ReferralsAdminPage(): React.ReactElement | null {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && load()}
-                placeholder="Cari nama / no HP / kodeâ€¦"
+                placeholder="Cari nama / no HP / kode…"
                 className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm"
               />
             </div>
@@ -175,19 +175,19 @@ export default function ReferralsAdminPage(): React.ReactElement | null {
                       {new Date(r.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-2">
-                      <div className="font-medium">{r.referrerName ?? 'â€”'}</div>
+                      <div className="font-medium">{r.referrerName ?? '—'}</div>
                       <div className="text-xs text-slate-500">{r.referrerPhone}</div>
                     </td>
-                    <td className="px-4 py-2"><code className="rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{r.referrerCode ?? 'â€”'}</code></td>
+                    <td className="px-4 py-2"><code className="rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{r.referrerCode ?? '—'}</code></td>
                     <td className="px-4 py-2">
-                      <div className="font-medium">{r.referredName ?? 'â€”'}</div>
+                      <div className="font-medium">{r.referredName ?? '—'}</div>
                       <div className="text-xs text-slate-500">{r.referredPhone}</div>
                     </td>
                     <td className="px-4 py-2">
                       <Badge variant={r.status === 'paid' ? 'green' : r.status === 'qualified' ? 'blue' : r.status === 'pending' ? 'amber' : 'slate'}>{r.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-right font-bold text-green-700">
-                      {r.bonusAmount ? rp(r.bonusAmount) : 'â€”'}
+                      {r.bonusAmount ? rp(r.bonusAmount) : '—'}
                     </td>
                   </tr>
                 ))}

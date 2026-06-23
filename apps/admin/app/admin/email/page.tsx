@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Send } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Button, Input, useToast } from '../../../components/ui';
 
-export default function EmailPage(): React.ReactElement | null {
+export default function EmailPage(): React.ReactElement | null  {
   const toast = useToast();
   const [apiKey, setApiKey] = useState('');
   const [fromAddress, setFromAddress] = useState('');
@@ -68,7 +68,7 @@ export default function EmailPage(): React.ReactElement | null {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Email (Resend)</h1>
-      <p className="text-sm text-slate-500">Konfigurasi email transaksional via Resend â€” OTP, notifikasi booking, password reset.</p>
+      <p className="text-sm text-slate-500">Konfigurasi email transaksional via Resend — OTP, notifikasi booking, password reset.</p>
 
       {loading ? (
         <div className="py-10 text-center text-sm text-slate-500">Memuat...</div>

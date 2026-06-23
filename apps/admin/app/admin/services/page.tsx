@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -56,12 +56,12 @@ function ImageUpload({ value, onChange, folder, label, previewClass, hint }: {
         className="w-full text-xs"
       />
       <p className="mt-1 text-[10px] text-slate-500">{hint ?? `JPG, PNG, atau WebP. Max ${MAX_SIZE_MB}MB.`}</p>
-      {busy && <div className="mt-1 text-xs text-slate-500">Uploadingâ€¦</div>}
+      {busy && <div className="mt-1 text-xs text-slate-500">Uploading…</div>}
     </div>
   );
 }
 
-export default function ServicesPage(): React.ReactElement | null {
+export default function ServicesPage(): React.ReactElement | null  {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -93,7 +93,7 @@ export default function ServicesPage(): React.ReactElement | null {
 
       <div className="mt-4 overflow-hidden rounded-md border bg-white">
         {loading ? (
-          <div className="py-12 text-center text-sm text-slate-500">Memuatâ€¦</div>
+          <div className="py-12 text-center text-sm text-slate-500">Memuat…</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
@@ -107,11 +107,11 @@ export default function ServicesPage(): React.ReactElement | null {
                       ? <img src={s.iconUrl} alt="" className="h-12 w-12 rounded object-cover border" />
                       : <div className="h-12 w-12 rounded bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">no icon</div>}
                   </td>
-                  <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? 'â€”'}</div></td>
+                  <td className="px-4 py-2 font-medium">{s.name}<div className="text-[11px] text-slate-500">{s.description ?? '—'}</div></td>
                   <td className="px-4 py-2"><Badge>{s.code}</Badge></td>
-                  <td className="px-4 py-2">{s.isBundle ? <Badge variant="amber">ðŸŽ Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
+                  <td className="px-4 py-2">{s.isBundle ? <Badge variant="amber"> Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
                   <td className="px-4 py-2"><Badge variant={s.showOnHome ? 'green' : 'red'}>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
-                  <td className="px-4 py-2"><Badge variant={s.isActive ? 'green' : 'red'}>{s.isActive ? 'ðŸŸ¢ Aktif' : 'ðŸ”´ Off'}</Badge></td>
+                  <td className="px-4 py-2"><Badge variant={s.isActive ? 'green' : 'red'}>{s.isActive ? '🟢 Aktif' : '🔴 Off'}</Badge></td>
                   <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
@@ -219,22 +219,22 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
           </div>
           <div className="rounded border bg-slate-50 p-3 text-[12px] text-slate-600">
             <strong>Layanan Reguler</strong>: tampil di grid layanan di Home (Bersih Kamar, Bersih Dapur, dll).<br/>
-            <strong>Paket Lengkap (Bundle)</strong>: tampil di section khusus "Paket Lengkap" â€” untuk combo all-in (Full House, Pasca Renovasi, Subscription).
+            <strong>Paket Lengkap (Bundle)</strong>: tampil di section khusus "Paket Lengkap" — untuk combo all-in (Full House, Pasca Renovasi, Subscription).
           </div>
           <Switch
             checked={form.isBundle}
             onChange={(v) => setForm({ ...form, isBundle: v })}
-            label={form.isBundle ? 'ðŸŽ Paket Lengkap (Bundle) â€” tampil di section "Paket Lengkap"' : 'ðŸ  Layanan Reguler â€” tampil di grid Home'}
+            label={form.isBundle ? ' Paket Lengkap (Bundle) — tampil di section "Paket Lengkap"' : ' Layanan Reguler — tampil di grid Home'}
           />
           <Switch
             checked={form.showOnHome}
             onChange={(v) => setForm({ ...form, showOnHome: v })}
-            label={form.showOnHome ? 'âœ… Tampil di Home' : 'ðŸ™ˆ Disembunyikan dari Home'}
+            label={form.showOnHome ? '✅ Tampil di Home' : '🙈 Disembunyikan dari Home'}
           />
           <Switch
             checked={form.isActive}
             onChange={(v) => setForm({ ...form, isActive: v })}
-            label={form.isActive ? 'ðŸŸ¢ Layanan Aktif - bisa dipesan customer' : 'ðŸ”´ Tidak Tersedia - tampil grey di mobile, gak bisa dipesan (cocok buat maintenance)'}
+            label={form.isActive ? '🟢 Layanan Aktif - bisa dipesan customer' : '🔴 Tidak Tersedia - tampil grey di mobile, gak bisa dipesan (cocok buat maintenance)'}
           />
           <Input label="Sort Order" type="number" value={String(form.displayOrder)} onChange={(v) => setForm({ ...form, displayOrder: Number(v) || 0 })} helpText="Angka kecil tampil duluan (1 paling kiri/atas)." />
         </section>
@@ -295,11 +295,11 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
               rows={3}
               value={pkgNote}
               onChange={setPkgNote}
-              placeholder="Contoh: Cocok untuk kamar kotor ringanâ€“sedang. Jika ada kerak tebal/jamur biasanya perlu biaya tambahan."
+              placeholder="Contoh: Cocok untuk kamar kotor ringan–sedang. Jika ada kerak tebal/jamur biasanya perlu biaya tambahan."
             />
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Poin Pekerjaan (bullet âœ“)</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Poin Pekerjaan (bullet ✓)</label>
               <div className="space-y-2">
                 {pkgIncludes.map((item, i) => (
                   <div key={i} className="flex gap-2">
@@ -315,7 +315,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
                       onClick={() => setPkgIncludes((arr) => arr.filter((_, idx) => idx !== i))}
                       className="rounded border border-rose-200 bg-rose-50 px-2 text-xs font-bold text-rose-700"
                     >
-                      Ã—
+                      ×
                     </button>
                   </div>
                 ))}
@@ -328,7 +328,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
                 </button>
               </div>
               <p className="mt-1 text-[10px] text-slate-500">
-                Tap "+ Tambah Poin" untuk nambah baris. Tap Ã— buat hapus. Min 3 poin recommended.
+                Tap "+ Tambah Poin" untuk nambah baris. Tap × buat hapus. Min 3 poin recommended.
               </p>
             </div>
           </section>

@@ -17,7 +17,7 @@ export function tzAbbr(tz: string): string {
 }
 
 export function formatDateTimeWithTz(iso: string | Date | null | undefined, address?: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '';
   const tz = tzForAddress(address);
   return `${new Intl.DateTimeFormat('id-ID', {
     day: '2-digit', month: 'short', year: 'numeric',

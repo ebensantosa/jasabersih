@@ -42,7 +42,7 @@ const KNOWN_METHODS: Method[] = [
   { code: 'CREDIT_CARD', name: 'Kartu Kredit', type: 'card' },
 ];
 
-export default function PaymentMethodsPage(): React.ReactElement | null {
+export default function PaymentMethodsPage(): React.ReactElement | null  {
   const toast = useToast();
   const [disabled, setDisabled] = useState<Set<string>>(new Set());
   const [health, setHealth] = useState<Record<string, BankHealth>>({});
