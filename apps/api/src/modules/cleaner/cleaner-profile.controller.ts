@@ -6,6 +6,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CleanerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { StorageService } from '../storage/storage.service';
 
@@ -21,7 +22,7 @@ type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>;
 
 @ApiTags('cleaner-profile')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CleanerGuard)
 @Controller('cleaner/profile')
 export class CleanerProfileController {
   constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}

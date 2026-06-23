@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CleanerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { FlipService } from '../payments/flip.service';
@@ -111,6 +112,8 @@ const AddBankSchema = z.object({
 type AddBankDto = z.infer<typeof AddBankSchema>;
 
 @ApiTags('cleaner-bank-accounts')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, CleanerGuard)
 @Controller('cleaner/bank-accounts')
 export class CleanerBankAccountsController {
   constructor(

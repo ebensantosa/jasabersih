@@ -7,6 +7,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CustomerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { JobsGateway } from '../jobs/jobs.gateway';
@@ -34,7 +35,7 @@ type CreateBookingDto = z.infer<typeof CreateBookingSchema>;
 
 @ApiTags('bookings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CustomerGuard)
 @Controller('bookings')
 export class BookingsController {
   constructor(

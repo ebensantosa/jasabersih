@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CleanerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { StorageService } from '../storage/storage.service';
 
@@ -18,7 +19,7 @@ const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
 @ApiTags('cleaner-kyc')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CleanerGuard)
 @Controller('cleaner/kyc')
 export class CleanerKycController {
   constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}

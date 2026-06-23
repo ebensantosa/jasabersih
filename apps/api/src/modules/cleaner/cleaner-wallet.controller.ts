@@ -6,6 +6,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CleanerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { FlipService } from '../payments/flip.service';
 
@@ -22,7 +23,7 @@ type RequestWithdrawalDto = z.infer<typeof RequestWithdrawalSchema>;
 
 @ApiTags('cleaner-wallet')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CleanerGuard)
 @Controller('cleaner')
 export class CleanerWalletController {
   private readonly log = new Logger(CleanerWalletController.name);

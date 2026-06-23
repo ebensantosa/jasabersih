@@ -6,6 +6,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CustomerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
 const ValidateVoucherSchema = z.object({
@@ -15,7 +16,7 @@ const ValidateVoucherSchema = z.object({
 
 @ApiTags('vouchers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CustomerGuard)
 @Controller('vouchers')
 export class VouchersController {
   constructor(private readonly prisma: PrismaService) {}

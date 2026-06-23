@@ -6,7 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../common/prisma.service';
 import type { JwtPayload } from './token.service';
 
-export type AuthenticatedUser = { id: string; phone: string };
+export type AuthenticatedUser = { id: string; phone: string; isCustomer: boolean; isFreelancer: boolean };
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -39,8 +39,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     // Check user status — block suspended/banned/deleted accounts walaupun token masih valid
-    const rows = await this.prisma.$queryRaw<{ status: string | null; suspended_until: Date | null; deleted_at: Date | null; suspend_reason: string | null }[]>`
-      SELECT status, suspended_until, deleted_at, suspend_reason
+    const rows = await this.prisma.$queryRaw<{ status: string | null; suspended_until: Date | null; deleted_at: Date | null; suspend_reason: string | null; is_customer: boolean; is_freelancer: boolean }[]>`
+      SELECT status, suspended_until, deleted_at, suspend_reason, is_customer, is_freelancer
         FROM users WHERE id = ${payload.sub}::uuid LIMIT 1
     `;
     const u = rows[0];
@@ -76,6 +76,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
     }
     this.touchLastSeen(payload.sub);
-    return { id: payload.sub, phone: payload.phone };
+    return { id: payload.sub, phone: payload.phone, isCustomer: u.is_customer, isFreelancer: u.is_freelancer };
   }
 }

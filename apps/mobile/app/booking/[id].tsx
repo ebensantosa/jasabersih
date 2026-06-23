@@ -335,6 +335,7 @@ function BookingDetail() {
   const stillFetching = !booking && id && !id.startsWith('bk_') && (Date.now() - fetchTriedAt < 10000);
 
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [payNavigating, setPayNavigating] = useState(false);
   const [showTip, setShowTip] = useState(false);
   const [customTipAmount, setCustomTipAmount] = useState('');
   const [tipGiven, setTipGiven] = useState(0);
@@ -448,14 +449,15 @@ function BookingDetail() {
   }
 
   function onPay() {
-    if (!booking) return;
-    // Booking yang gagal sync ke server (id masih bk_xxx) tidak bisa dibayar -
-    // Flip butuh booking_id real di DB. User harus retry create booking dulu.
+    if (!booking || payNavigating) return;
     if (booking.id.startsWith('bk_')) {
       toast.error('Pesanan belum tersimpan di server. Tutup dan buat ulang pesanan.');
       return;
     }
+    setPayNavigating(true);
     router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id } });
+    // Reset setelah kembali ke screen ini
+    setTimeout(() => setPayNavigating(false), 2000);
   }
 
   const rescheduleCount = (booking as any)?.rescheduleCount ?? 0;
@@ -601,10 +603,12 @@ function BookingDetail() {
           {!isCleaner && booking.status === 'pending_payment' && (
             <Pressable
               onPress={onPay}
+              disabled={payNavigating}
               className="mx-4 mt-3 flex-row items-center gap-3 rounded-2xl border-2 border-brand-400 bg-brand-50 p-4"
+              style={{ opacity: payNavigating ? 0.7 : 1 }}
             >
               <View className="h-12 w-12 items-center justify-center rounded-2xl bg-brand-600">
-                <Text className="text-xl">💳</Text>
+                {payNavigating ? <ActivityIndicator color="white" size="small" /> : <Text className="text-xl">💳</Text>}
               </View>
               <View className="flex-1">
                 <Text className="font-bold text-sm text-brand-900">Selesain Pembayaran Dulu</Text>
@@ -1091,11 +1095,17 @@ function BookingDetail() {
                 <View className="p-4">
                   <Pressable
                     onPress={onPay}
+                    disabled={payNavigating}
                     className="rounded-2xl bg-brand-600 py-3.5"
+                    style={{ opacity: payNavigating ? 0.7 : 1 }}
                   >
-                    <Text className="font-bold text-center text-sm text-white">
-                      Bayar {formatRupiah(booking.totalPrice)}
-                    </Text>
+                    {payNavigating ? (
+                      <ActivityIndicator color="white" size="small" />
+                    ) : (
+                      <Text className="font-bold text-center text-sm text-white">
+                        Bayar {formatRupiah(booking.totalPrice)}
+                      </Text>
+                    )}
                   </Pressable>
                   {canReschedule && (
                     <Pressable onPress={() => setRescheduleOpen(true)} className="mt-2 py-2">

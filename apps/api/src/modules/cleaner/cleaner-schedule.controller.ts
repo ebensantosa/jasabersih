@@ -4,13 +4,14 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { CleanerGuard } from '../auth/role.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
 type SlotInput = { dayOfWeek: number; startMinute: number; endMinute: number };
 
 @ApiTags('cleaner-schedule')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CleanerGuard)
 @Controller('cleaner/schedule')
 export class CleanerScheduleController {
   constructor(private readonly prisma: PrismaService) {}
