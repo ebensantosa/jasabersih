@@ -17,6 +17,7 @@ type ChatRow = {
   bookingId: string;
   partnerName: string;
   partnerPhotoUrl?: string | null;
+  isAdmin?: boolean;
   status: string;
   lastMessage?: string | null;
   lastTimestamp?: string | null;
@@ -162,11 +163,18 @@ function ChatsScreen() {
                   className="flex-row items-center gap-3 rounded-2xl bg-white p-3"
                   style={{ elevation: 1 }}
                 >
-                  {c.partnerPhotoUrl ? (
+                  {c.isAdmin ? (
+                    <Image
+                      source={require('../../assets/icon.png')}
+                      style={{ width: 48, height: 48, borderRadius: 24 }}
+                      contentFit="cover"
+                    />
+                  ) : c.partnerPhotoUrl ? (
                     <Image
                       source={{ uri: c.partnerPhotoUrl }}
                       style={{ width: 48, height: 48, borderRadius: 24 }}
                       contentFit="cover"
+                      cachePolicy="reload"
                     />
                   ) : (
                     <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-100">
@@ -175,7 +183,7 @@ function ChatsScreen() {
                   )}
                   <View className="flex-1">
                     <View className="flex-row items-center justify-between">
-                      <Text className="font-bold text-sm text-ink-900" numberOfLines={1}>{c.partnerName ?? 'Unknown'}</Text>
+                      <Text className="font-bold text-sm text-ink-900" numberOfLines={1}>{c.isAdmin ? 'Admin JasaBersih' : (c.partnerName ?? 'Unknown')}</Text>
                       {c.lastTimestamp && (
                         <Text className="font-sans text-[10px] text-ink-400">
                           {timeAgo(c.lastTimestamp)}

@@ -100,7 +100,7 @@ export class CustomerWalletController {
       minWithdrawal: cfg.minAmount,
       pendingWithdrawalAmount: Number(pendingRows[0]?.amount ?? 0),
       pendingWithdrawalCount: Number(pendingRows[0]?.count ?? 0),
-      notice: 'Saldo refund dan komisi referral masuk ke wallet ini. Sekarang saldo bisa dipakai untuk booking atau ditarik ke rekening/e-wallet terverifikasi.',
+      notice: 'Saldo dari refund & komisi referral. Bisa dipakai untuk pesanan atau ditarik ke rekening/e-wallet terverifikasi.',
     };
   }
 

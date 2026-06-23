@@ -57,6 +57,7 @@ export class ChatController {
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.id ELSE cu.id END AS "partnerId",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.name ELSE cu.name END AS "partnerName",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.photo_url ELSE cu.photo_url END AS "partnerPhotoUrl",
+        CASE WHEN b.customer_id = ${req.user.id}::uuid THEN (cl.phone = '+62000000000001') ELSE (cu.phone = '+62000000000001') END AS "isAdmin",
         (SELECT CASE WHEN message_type = 'image' THEN '📷 Foto' ELSE content END FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastMessage",
         (SELECT created_at FROM chat_messages WHERE booking_id = b.id AND status != 'blocked' ORDER BY created_at DESC LIMIT 1) AS "lastTimestamp",
         (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND recipient_id = ${req.user.id}::uuid AND status = 'sent' AND read_at IS NULL) AS "unread"
