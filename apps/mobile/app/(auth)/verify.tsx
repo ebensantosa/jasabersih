@@ -53,6 +53,12 @@ export default function Verify() {
     return () => clearInterval(t);
   }, [cooldown]);
 
+  // Paksa fokus setelah screen transition selesai — autoFocus sering gagal di Android
+  useEffect(() => {
+    const t = setTimeout(() => otpInputRef.current?.focus(), 400);
+    return () => clearTimeout(t);
+  }, []);
+
   async function onSubmit() {
     if (otp.length !== OTP_LENGTH) {
       toast.error(`Kode harus ${OTP_LENGTH} digit`);
@@ -146,9 +152,9 @@ export default function Verify() {
           </View>
         )}
 
-        {/* OTP visual boxes — TextInput transparan di-overlay langsung di atas boxes */}
-        <View className="mt-6" style={{ position: 'relative' }}>
-          <View className="flex-row justify-center gap-2" pointerEvents="none">
+        {/* OTP visual boxes */}
+        <Pressable className="mt-6" onPress={() => otpInputRef.current?.focus()}>
+          <View className="flex-row justify-center gap-2">
             {otpDigits.map((d, i) => {
               const filled = d.trim().length > 0;
               const isCursor = i === otp.length;
@@ -164,18 +170,17 @@ export default function Verify() {
               );
             })}
           </View>
-          {/* Overlay transparan seluas area boxes — tap langsung ke TextInput */}
-          <TextInput
-            ref={otpInputRef}
-            value={otp}
-            onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, OTP_LENGTH))}
-            keyboardType="number-pad"
-            maxLength={OTP_LENGTH}
-            autoFocus
-            caretHidden
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0 }}
-          />
-        </View>
+        </Pressable>
+        {/* TextInput tersembunyi — fokus dipaksa via useEffect + Pressable di atas */}
+        <TextInput
+          ref={otpInputRef}
+          value={otp}
+          onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, OTP_LENGTH))}
+          keyboardType="number-pad"
+          maxLength={OTP_LENGTH}
+          caretHidden
+          style={{ position: 'absolute', opacity: 0, top: 0, left: 0, width: 1, height: 1 }}
+        />
 
         {/* Resend */}
         <View className="mt-5 flex-row items-center justify-center gap-1">
