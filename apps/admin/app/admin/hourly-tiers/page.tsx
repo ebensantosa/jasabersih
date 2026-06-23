@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Clock, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -23,7 +23,7 @@ function rupiah(n: number) {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
-export default function HourlyTiersPage() {
+export default function HourlyTiersPage(): React.ReactElement {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<Tier[]>([]);
@@ -106,7 +106,7 @@ export default function HourlyTiersPage() {
         </div>
         {!perRoomEnabled && !perHourEnabled && (
           <div className="mt-3 rounded border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
-            ⚠ Kedua mode dinonaktifkan — customer tidak bisa booking sama sekali.
+            âš  Kedua mode dinonaktifkan â€” customer tidak bisa booking sama sekali.
           </div>
         )}
       </div>
@@ -115,7 +115,7 @@ export default function HourlyTiersPage() {
       <div className="mt-5">
         <h2 className="text-sm font-semibold text-slate-900">Tier Per-Jam</h2>
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+          <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
         ) : list.length === 0 ? (
           <div className="mt-3 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
             <Clock size={28} className="mx-auto mb-2 text-slate-400" />
@@ -129,7 +129,7 @@ export default function HourlyTiersPage() {
                   <th className="px-3 py-2 text-left">Code</th>
                   <th className="px-3 py-2 text-left">Nama</th>
                   <th className="px-3 py-2 text-right">Tarif/Jam</th>
-                  <th className="px-3 py-2 text-center">Min–Max</th>
+                  <th className="px-3 py-2 text-center">Minâ€“Max</th>
                   <th className="px-3 py-2 text-right">Komisi Cleaner</th>
                   <th className="px-3 py-2 text-center">Status</th>
                   <th className="px-3 py-2 text-right">Aksi</th>
@@ -144,7 +144,7 @@ export default function HourlyTiersPage() {
                       {t.description && <div className="text-xs text-slate-500">{t.description}</div>}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">{rupiah(Number(t.pricePerHour))}</td>
-                    <td className="px-3 py-2 text-center text-xs">{t.minHours}–{t.maxHours} jam</td>
+                    <td className="px-3 py-2 text-center text-xs">{t.minHours}â€“{t.maxHours} jam</td>
                     <td className="px-3 py-2 text-right">{Number(t.cleanerSharePct)}%</td>
                     <td className="px-3 py-2 text-center">
                       <button onClick={() => toggleActive(t)}>
@@ -195,7 +195,7 @@ function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose:
       return;
     }
     if (minHours < 1 || maxHours < minHours) {
-      toast.error('Min jam ≥ 1 dan Max ≥ Min');
+      toast.error('Min jam â‰¥ 1 dan Max â‰¥ Min');
       return;
     }
     setBusy(true);
@@ -251,7 +251,7 @@ function TierFormModal({ tier, onClose, onSaved }: { tier: Tier | null; onClose:
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose}>Batal</Button>
-          <Button variant="primary" onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
+          <Button variant="primary" onClick={save} disabled={busy}>{busy ? 'Menyimpanâ€¦' : 'Simpan'}</Button>
         </div>
       </div>
     </Modal>

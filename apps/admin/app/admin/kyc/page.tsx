@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { BadgeCheck, Eye, X, Check, Clock, AlertCircle, Plus, RefreshCcw, Trash2 } from 'lucide-react';
@@ -19,7 +19,7 @@ const TABS: Array<{ key: 'pending' | 'under_review' | 'approved' | 'rejected'; l
   { key: 'rejected', label: 'Rejected' },
 ];
 
-export default function KycPage() {
+export default function KycPage(): React.ReactElement {
   const toast = useToast();
   const [tab, setTab] = useState<'pending' | 'under_review' | 'approved' | 'rejected'>('pending');
   const [list, setList] = useState<Cleaner[]>([]);
@@ -96,7 +96,7 @@ export default function KycPage() {
         <div className="flex gap-2">
           {selectedIds.size > 0 && tab !== 'approved' && (
             <Button variant="primary" loading={bulkBusy} onClick={bulkApprove}>
-              ✓ Approve {selectedIds.size} terpilih
+              âœ“ Approve {selectedIds.size} terpilih
             </Button>
           )}
           <Button variant="primary" icon={<Plus size={14} />} onClick={() => setAddOpen(true)}>Tambah Cleaner</Button>
@@ -117,7 +117,7 @@ export default function KycPage() {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
       ) : list.length === 0 ? (
         <div className="rounded-md border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
           <BadgeCheck size={32} className="mx-auto mb-2 text-slate-400" />
@@ -232,7 +232,7 @@ function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () 
     >
       <div className="space-y-3">
         <div className="rounded-md bg-amber-50 p-2 text-[11px] text-amber-900">
-          ⓘ Cleaner dibuat tanpa OTP (admin-trusted). Mereka langsung bisa login dengan nomor HP + password yang kamu set.
+          â“˜ Cleaner dibuat tanpa OTP (admin-trusted). Mereka langsung bisa login dengan nomor HP + password yang kamu set.
         </div>
         <Input label="Nama Lengkap" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
         <Input label="Nomor HP" required value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="08123456789" error={errors.phone} />
@@ -276,7 +276,7 @@ function KycDetailModal({ data, onClose, onDone }: { data: Detail; onClose: () =
         }
       >
         <div className="text-xs text-slate-500">
-          {data.profile.phone} · {data.profile.email ?? 'no email'} · Status: <span className="font-semibold">{data.profile.kyc_status}</span>
+          {data.profile.phone} Â· {data.profile.email ?? 'no email'} Â· Status: <span className="font-semibold">{data.profile.kyc_status}</span>
         </div>
 
         {data.profile.rejection_reason && (

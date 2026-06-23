@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Play, Trash2 } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Play, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-export default function FraudPage() {
+export default function FraudPage(): React.ReactElement {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -26,7 +26,7 @@ export default function FraudPage() {
     setRunning(true);
     try {
       const r = await api.admin.fraudRunDetection();
-      toast.success(`Selesai — High cancel: ${r.results.highCancelRateCleaners}, Refund: ${r.results.highRefundRateCustomers}, Device: ${r.results.sharedDevices}, Chat: ${r.results.offPlatformChats}`);
+      toast.success(`Selesai â€” High cancel: ${r.results.highCancelRateCleaners}, Refund: ${r.results.highRefundRateCustomers}, Device: ${r.results.sharedDevices}, Chat: ${r.results.offPlatformChats}`);
       void load();
     } catch (e: any) { toast.error(e?.message); } finally { setRunning(false); }
   }
@@ -52,7 +52,7 @@ export default function FraudPage() {
 
       <div className="mt-6">
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+          <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
         ) : list.length === 0 ? (
           <div className="rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
             Belum ada fraud signal. Klik <b>Run Detection</b> untuk scan sekarang.
@@ -75,7 +75,7 @@ export default function FraudPage() {
                   <tr key={s.id} className="border-t hover:bg-slate-50 align-top">
                     <td className="px-4 py-2 text-xs text-slate-500">{new Date(s.createdAt).toLocaleString('id-ID')}</td>
                     <td className="px-4 py-2">
-                      <div className="font-medium">{s.userName ?? '—'}</div>
+                      <div className="font-medium">{s.userName ?? 'â€”'}</div>
                       <div className="text-xs text-slate-500">{s.userPhone}</div>
                       {s.userStatus && s.userStatus !== 'active' && <Badge variant="red">{s.userStatus}</Badge>}
                     </td>
@@ -84,7 +84,7 @@ export default function FraudPage() {
                       <Badge variant={s.totalStrikes >= 3 ? 'red' : 'slate'}>{s.totalStrikes}x</Badge>
                     </td>
                     <td className="px-4 py-2 max-w-xs text-xs text-slate-600">
-                      {s.details ? <code className="block max-h-16 overflow-auto break-all text-[10px]">{JSON.stringify(s.details)}</code> : '—'}
+                      {s.details ? <code className="block max-h-16 overflow-auto break-all text-[10px]">{JSON.stringify(s.details)}</code> : 'â€”'}
                     </td>
                     <td className="px-4 py-2 text-right">
                       <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => setDismissing(s)}>Dismiss</Button>
@@ -131,8 +131,8 @@ function DismissModal({ strike, onClose, onDone }: { strike: any; onClose: () =>
       }
     >
       <div className="space-y-3">
-        <p className="text-sm">User: <b>{strike.userName ?? '—'}</b> · {strike.strikeType}</p>
-        <Textarea label="Alasan dismiss" required rows={3} value={reason} onChange={setReason} helpText="Min 5 karakter — masuk audit log." />
+        <p className="text-sm">User: <b>{strike.userName ?? 'â€”'}</b> Â· {strike.strikeType}</p>
+        <Textarea label="Alasan dismiss" required rows={3} value={reason} onChange={setReason} helpText="Min 5 karakter â€” masuk audit log." />
         {errors.reason && <p className="text-xs text-red-600">{errors.reason}</p>}
       </div>
     </Modal>

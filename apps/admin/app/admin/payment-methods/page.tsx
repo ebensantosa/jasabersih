@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, CreditCard, Smartphone, XCircle } from 'lucide-react';
@@ -42,7 +42,7 @@ const KNOWN_METHODS: Method[] = [
   { code: 'CREDIT_CARD', name: 'Kartu Kredit', type: 'card' },
 ];
 
-export default function PaymentMethodsPage() {
+export default function PaymentMethodsPage(): React.ReactElement {
   const toast = useToast();
   const [disabled, setDisabled] = useState<Set<string>>(new Set());
   const [health, setHealth] = useState<Record<string, BankHealth>>({});

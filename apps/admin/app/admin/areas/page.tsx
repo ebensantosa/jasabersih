@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Inbox, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -9,7 +9,7 @@ import { MapPicker } from '../../../components/MapPicker';
 
 type SubTab = 'areas' | 'requests';
 
-export default function AreasPage() {
+export default function AreasPage(): React.ReactElement {
   const [tab, setTab] = useState<SubTab>('areas');
   const [requestCount, setRequestCount] = useState(0);
 
@@ -57,7 +57,7 @@ function SubTabBtn({ active, onClick, icon, label, badge }: { active: boolean; o
   );
 }
 
-// ============ AREAS (existing service areas — copied from old content/page) ============
+// ============ AREAS (existing service areas â€” copied from old content/page) ============
 function AreasTab() {
   const toast = useToast();
   const confirm = useConfirm();
@@ -93,7 +93,7 @@ function AreasTab() {
                 <td className="px-4 py-2 font-medium">{a.name}</td>
                 <td className="px-4 py-2">{a.city}</td>
                 <td className="px-4 py-2 text-xs">{(Number(a.radiusM) / 1000).toFixed(1)} km</td>
-                <td className="px-4 py-2 text-xs">{Number(a.surgeMultiplier).toFixed(2)}×</td>
+                <td className="px-4 py-2 text-xs">{Number(a.surgeMultiplier).toFixed(2)}Ã—</td>
                 <td className="px-4 py-2"><button onClick={() => toggle(a)}><Badge>{a.isActive ? 'aktif' : 'nonaktif'}</Badge></button></td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(a)}>Edit</Button>
@@ -201,7 +201,7 @@ function RequestsTab({ onChange }: { onChange: () => void }) {
       <h2 className="text-base font-semibold">Request Kota Baru ({list.length} kota)</h2>
       <p className="mt-1 text-xs text-slate-500">Customer di kota yang belum dilayani submit lewat mobile app. Diurutkan berdasarkan jumlah request terbanyak.</p>
       {loading ? (
-        <div className="mt-8 text-center text-sm text-slate-500">Memuat…</div>
+        <div className="mt-8 text-center text-sm text-slate-500">Memuatâ€¦</div>
       ) : list.length === 0 ? (
         <div className="mt-8 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           Belum ada request kota baru.
@@ -214,10 +214,10 @@ function RequestsTab({ onChange }: { onChange: () => void }) {
                 <div>
                   <div className="text-base font-bold capitalize text-slate-900">{r.city}</div>
                   <div className="text-xs text-slate-500">
-                    {r.requestCount} request · terakhir {new Date(r.lastRequestAt).toLocaleDateString('id-ID')}
+                    {r.requestCount} request Â· terakhir {new Date(r.lastRequestAt).toLocaleDateString('id-ID')}
                   </div>
                 </div>
-                <Badge>{r.requestCount}×</Badge>
+                <Badge>{r.requestCount}Ã—</Badge>
               </div>
               {r.samples?.length > 0 && (
                 <details className="mt-3">
@@ -230,9 +230,9 @@ function RequestsTab({ onChange }: { onChange: () => void }) {
                       {r.samples.map((s: any) => (
                         <tr key={s.id} className="border-t">
                           <td className="px-2 py-1">{new Date(s.createdAt).toLocaleString('id-ID')}</td>
-                          <td className="px-2 py-1">{s.contactName ?? '—'}</td>
-                          <td className="px-2 py-1">{s.contactPhone ?? '—'}</td>
-                          <td className="px-2 py-1">{s.notes ?? '—'}</td>
+                          <td className="px-2 py-1">{s.contactName ?? 'â€”'}</td>
+                          <td className="px-2 py-1">{s.contactPhone ?? 'â€”'}</td>
+                          <td className="px-2 py-1">{s.notes ?? 'â€”'}</td>
                           <td className="px-2 py-1 flex gap-3">
                             <button onClick={() => ackEntry(s.id)} className="text-green-600 hover:underline">Acc</button>
                             <button onClick={() => delEntry(s.id, r.city)} className="text-red-600 hover:underline">Hapus</button>

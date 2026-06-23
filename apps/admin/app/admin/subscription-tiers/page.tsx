@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -17,7 +17,7 @@ type Tier = {
   displayOrder: number;
 };
 
-export default function SubscriptionTiersPage() {
+export default function SubscriptionTiersPage(): React.ReactElement {
   const toast = useToast();
   const [list, setList] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,7 @@ export default function SubscriptionTiersPage() {
 
       <div className="mt-5">
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+          <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
         ) : (
           <div className="overflow-x-auto rounded-md border bg-white">
             <table className="min-w-full text-sm">
@@ -72,11 +72,11 @@ export default function SubscriptionTiersPage() {
                       <div className="font-semibold">{t.label}</div>
                       {t.tagline && <div className="text-xs text-slate-500">{t.tagline}</div>}
                     </td>
-                    <td className="px-3 py-2 text-center font-semibold">{Number(t.multiplier).toFixed(2)}×</td>
+                    <td className="px-3 py-2 text-center font-semibold">{Number(t.multiplier).toFixed(2)}Ã—</td>
                     <td className="px-3 py-2">
                       <div className="text-xs text-slate-600">{(t.scope ?? []).length} layanan</div>
                       {(t.scope ?? []).slice(0, 2).map((s, i) => (
-                        <div key={i} className="text-[10px] text-slate-500 truncate max-w-xs">✓ {s}</div>
+                        <div key={i} className="text-[10px] text-slate-500 truncate max-w-xs">âœ“ {s}</div>
                       ))}
                       {(t.scope ?? []).length > 2 && <div className="text-[10px] text-slate-400">+{t.scope.length - 2} lainnya</div>}
                     </td>
@@ -156,7 +156,7 @@ function TierFormModal({ tier, onClose, onSaved }: { tier: Tier; onClose: () => 
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose}>Batal</Button>
-          <Button variant="primary" onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
+          <Button variant="primary" onClick={save} disabled={busy}>{busy ? 'Menyimpanâ€¦' : 'Simpan'}</Button>
         </div>
       </div>
     </Modal>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Settings as SettingsIcon } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Modal, Input, Textarea, Select, Button, Badge, useConfirm, useToast } f
 const CATEGORIES = ['general', 'branding', 'typography', 'feature', 'pricing', 'contact', 'app', 'email', 'payment'] as const;
 
 const HINT: Record<string, string> = {
-  'brand.app_name': 'Nama app — muncul di header & splash.',
+  'brand.app_name': 'Nama app â€” muncul di header & splash.',
   'brand.tagline': 'Tagline pendek di splash screen.',
   'brand.logo_url': 'URL logo (R2 public). Upload dulu via Content > Banner.',
   'brand.primary_color': 'Warna utama hex (#1D4ED8).',
@@ -31,19 +31,19 @@ const HINT: Record<string, string> = {
   'referral.commission_pct': 'Persen komisi referral ke referrer tiap order completed dari user yg di-refer. Default 5. Set 0 utk disable.',
   'referral.enabled': 'Master switch program referral. true/false. Set false utk pause sementara.',
   'withdrawal.max_daily': 'Maksimum total withdraw per cleaner per hari (Rupiah). 0 = no limit. Default 0.',
-  'home.cta_image_url': 'Gambar/GIF icon di card "Bersih Full Custom" di home. Recommended ukuran 112×112 atau persegi. Support GIF animated.',
+  'home.cta_image_url': 'Gambar/GIF icon di card "Bersih Full Custom" di home. Recommended ukuran 112Ã—112 atau persegi. Support GIF animated.',
   'home.cta_animated': 'Aktifkan animasi pulse di tombol panah CTA (true/false).',
   'app.play_store_url': 'URL Google Play Store (https://play.google.com/store/apps/details?id=...). Dipakai di referral landing & banner download.',
   'app.app_store_url': 'URL Apple App Store (https://apps.apple.com/...). Dipakai di referral landing & banner download.',
   'app.deep_link_scheme': 'Deep link scheme untuk auto-open app dari share link. Contoh: jasabersih://referral (jangan ganti kecuali tahu yang dilakukan).',
-  // ── Flip.id payment gateway ──
+  // â”€â”€ Flip.id payment gateway â”€â”€
   'payment.flip_enabled': 'Aktifkan Flip sebagai payment gateway. Set true setelah credential terisi.',
   'payment.flip_is_production': 'true = pakai bigflip.id production. false = pakai sandbox untuk testing.',
-  'payment.flip_secret_key': 'Secret key dari Flip for Business → Settings → API & Callback. Disimpan ter-mask.',
-  'payment.flip_validation_token': 'Validation Token dari Flip — dipakai verify callback (string-equal). Webhook URL yang harus di-set di Flip dashboard: https://api.jasabersih.com/v1/payments/flip/callback',
+  'payment.flip_secret_key': 'Secret key dari Flip for Business â†’ Settings â†’ API & Callback. Disimpan ter-mask.',
+  'payment.flip_validation_token': 'Validation Token dari Flip â€” dipakai verify callback (string-equal). Webhook URL yang harus di-set di Flip dashboard: https://api.jasabersih.com/v1/payments/flip/callback',
 };
 
-export default function AppSettingsPage() {
+export default function AppSettingsPage(): React.ReactElement {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
@@ -67,12 +67,12 @@ export default function AppSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">App Settings</h1>
-          <p className="text-sm text-slate-500">Konfigurasi global app — branding, typography, feature flags, kontak. Mobile auto-fetch saat boot.</p>
+          <p className="text-sm text-slate-500">Konfigurasi global app â€” branding, typography, feature flags, kontak. Mobile auto-fetch saat boot.</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Config</Button>
       </div>
 
-      {/* Branding shortcut — quick upload logo + app name */}
+      {/* Branding shortcut â€” quick upload logo + app name */}
       <BrandingPanel list={list} onSaved={load} />
 
       <div className="mt-4 flex gap-1 border-b">
@@ -84,7 +84,7 @@ export default function AppSettingsPage() {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+        <div className="py-10 text-center text-sm text-slate-500">Memuatâ€¦</div>
       ) : filtered.length === 0 ? (
         <div className="mt-4 rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
           <SettingsIcon size={28} className="mx-auto mb-2 text-slate-400" />
@@ -111,8 +111,8 @@ export default function AppSettingsPage() {
                   <td className="px-4 py-2 max-w-xs">
                     <ValuePreview value={c.value} keyName={c.key} />
                   </td>
-                  <td className="px-4 py-2 text-xs text-slate-500">{c.description ?? HINT[c.key] ?? '—'}</td>
-                  <td className="px-4 py-2 text-xs text-slate-500">{c.updatedAt ? new Date(c.updatedAt).toLocaleDateString('id-ID') : '—'}</td>
+                  <td className="px-4 py-2 text-xs text-slate-500">{c.description ?? HINT[c.key] ?? 'â€”'}</td>
+                  <td className="px-4 py-2 text-xs text-slate-500">{c.updatedAt ? new Date(c.updatedAt).toLocaleDateString('id-ID') : 'â€”'}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(c)}>Edit</Button>
                     <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(c)}>Hapus</Button>
@@ -134,7 +134,7 @@ function ValuePreview({ value, keyName }: { value: any; keyName: string }) {
   const isSensitive = /(_key|_secret|_private|password|token)/i.test(keyName);
   if (isSensitive && typeof value === 'string') {
     if (!value) return <span className="text-xs italic text-amber-700">(belum diset)</span>;
-    return <code className="text-xs">••••••••{value.slice(-4)}</code>;
+    return <code className="text-xs">â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢{value.slice(-4)}</code>;
   }
   if (typeof value === 'string') {
     if (keyName.includes('color')) {
@@ -183,7 +183,7 @@ function ImageUploadField({ value, onChange, folder }: { value: string; onChange
         onChange={(e) => { const f = e.target.files?.[0]; if (f) void pickAndUpload(f); }}
         className="text-xs"
       />
-      {busy && <p className="mt-1 text-xs text-slate-500">Uploading…</p>}
+      {busy && <p className="mt-1 text-xs text-slate-500">Uploadingâ€¦</p>}
       <p className="mt-1 text-[10px] text-slate-500">Atau paste URL manual di atas.</p>
     </div>
   );
@@ -381,7 +381,7 @@ function BrandingPanel({ list, onSaved }: { list: any[]; onSaved: () => void }) 
               Reset (pakai default)
             </button>
           )}
-          <p className="mt-1 text-[10px] text-slate-500">PNG/SVG, 1:1 ratio (1024×1024 ideal)</p>
+          <p className="mt-1 text-[10px] text-slate-500">PNG/SVG, 1:1 ratio (1024Ã—1024 ideal)</p>
         </div>
 
         <div className="flex-1 space-y-3">

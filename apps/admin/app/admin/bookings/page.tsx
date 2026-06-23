@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
@@ -16,9 +16,9 @@ import {
 
 const FILTERS: { key: OrderStatus | 'all' | 'needs_manual' | 'manual_admin'; label: string }[] = [
   { key: 'all', label: 'Semua' },
-  { key: 'needs_manual', label: '⚠️ Butuh Assign Manual' },
-  { key: 'manual_admin', label: '🛠️ Pesanan Admin' },
-  { key: 'pending_payment', label: '💳 Belum Bayar' },
+  { key: 'needs_manual', label: 'âš ï¸ Butuh Assign Manual' },
+  { key: 'manual_admin', label: 'ðŸ› ï¸ Pesanan Admin' },
+  { key: 'pending_payment', label: 'ðŸ’³ Belum Bayar' },
   { key: 'searching', label: 'Cari Cleaner' },
   { key: 'matched', label: 'Sudah Match' },
   { key: 'in_progress', label: 'Dikerjakan' },
@@ -27,7 +27,7 @@ const FILTERS: { key: OrderStatus | 'all' | 'needs_manual' | 'manual_admin'; lab
   { key: 'canceled', label: 'Batal' },
 ];
 
-export default function Bookings() {
+export default function Bookings(): React.ReactElement {
   const [filter, setFilter] = useState<OrderStatus | 'all' | 'needs_manual' | 'manual_admin'>('all');
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
@@ -242,7 +242,7 @@ export default function Bookings() {
             onClick={exportCsv}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            ⬇ Export CSV
+            â¬‡ Export CSV
           </button>
           <button
             onClick={() => setShowCreate(true)}
@@ -266,14 +266,14 @@ export default function Bookings() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari ID, nama, layanan, kota…"
+            placeholder="Cari ID, nama, layanan, kotaâ€¦"
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label className="text-xs text-slate-500">Tanggal:</label>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-md border border-slate-300 px-2 py-1 text-xs" />
-          <span className="text-xs text-slate-400">→</span>
+          <span className="text-xs text-slate-400">â†’</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-md border border-slate-300 px-2 py-1 text-xs" />
           <button onClick={() => void load()} className="rounded-md bg-blue-700 px-3 py-1 text-xs font-medium text-white">Apply</button>
           {(from || to) && (
@@ -300,16 +300,16 @@ export default function Bookings() {
       {needsAttention.length > 0 && (
         <div className="mt-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
           <div className="flex items-center gap-2">
-            <span className="text-lg">⚠️</span>
+            <span className="text-lg">âš ï¸</span>
             <div className="text-sm font-bold text-amber-900">
-              {needsAttention.length} booking belum diambil cleaner — kemungkinan di luar coverage area, butuh assign manual
+              {needsAttention.length} booking belum diambil cleaner â€” kemungkinan di luar coverage area, butuh assign manual
             </div>
           </div>
           <div className="mt-2 space-y-1.5">
             {needsAttention.slice(0, 5).map((b) => (
               <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-slate-900">{b.customerName ?? '—'} · {b.serviceName ?? '—'}</div>
+                  <div className="font-semibold text-slate-900">{b.customerName ?? 'â€”'} Â· {b.serviceName ?? 'â€”'}</div>
                   <div className="truncate text-slate-500">{b.addressLine}</div>
                   <div className="text-amber-700">Searching {Math.floor(b.searchingSec / 60)} menit</div>
                 </div>
@@ -352,7 +352,7 @@ export default function Bookings() {
       <div className="mt-4 rounded-xl border border-slate-200 bg-white">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
-            <Loader2 className="animate-spin" size={16} /> Memuat data…
+            <Loader2 className="animate-spin" size={16} /> Memuat dataâ€¦
           </div>
         ) : (
           <table className="w-full">
@@ -395,13 +395,13 @@ export default function Bookings() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{o.id}</td>
                     <td className="px-4 py-3">
-                      <div className="font-medium">{o.customerName ?? '—'}</div>
+                      <div className="font-medium">{o.customerName ?? 'â€”'}</div>
                       <div className="text-[11px] text-slate-500">{o.customerPhone}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{o.service ?? o.pricingMode}</td>
                     <td className="px-4 py-3 text-xs text-slate-600">{formatDateTimeWithTz(o.scheduledAt, (o as any).address)}</td>
                     <td className="px-4 py-3">
-                      {o.cleanerName ?? <span className="text-amber-700">—</span>}
+                      {o.cleanerName ?? <span className="text-amber-700">â€”</span>}
                     </td>
                     <td className="px-4 py-3 font-semibold">{formatRupiah(o.total ?? 0)}</td>
                     <td className="px-4 py-3">
@@ -501,7 +501,7 @@ export default function Bookings() {
         {totalOrders > PAGE_SIZE && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs">
             <span className="text-slate-600">
-              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalOrders)} dari {totalOrders.toLocaleString('id-ID')} order
+              {(page - 1) * PAGE_SIZE + 1}â€“{Math.min(page * PAGE_SIZE, totalOrders)} dari {totalOrders.toLocaleString('id-ID')} order
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -509,7 +509,7 @@ export default function Bookings() {
                 disabled={page === 1 || loading}
                 className="rounded border border-slate-200 px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-40"
               >
-                ← Prev
+                â† Prev
               </button>
               <span className="px-3 font-bold text-slate-700">
                 {page} / {Math.max(1, Math.ceil(totalOrders / PAGE_SIZE))}
@@ -519,7 +519,7 @@ export default function Bookings() {
                 disabled={page >= Math.ceil(totalOrders / PAGE_SIZE) || loading}
                 className="rounded border border-slate-200 px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-40"
               >
-                Next →
+                Next â†’
               </button>
             </div>
           </div>
@@ -588,7 +588,7 @@ function AdminChatPanel({ bookingId }: { bookingId: string }) {
   return (
     <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50">
       <div className="border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
-        💬 Chat Booking
+        ðŸ’¬ Chat Booking
       </div>
       <div className="flex h-64 flex-col gap-1 overflow-y-auto p-3">
         {messages.length === 0 ? (
@@ -603,11 +603,11 @@ function AdminChatPanel({ bookingId }: { bookingId: string }) {
                 )}
                 <div className={`max-w-[80%] rounded-xl px-3 py-1.5 text-xs ${isAdmin ? 'bg-blue-600 text-white' : 'bg-white text-slate-800 border border-slate-200'}`}>
                   {m.messageType === 'image' ? (
-                    <a href={m.attachmentUrl ?? m.content} target="_blank" rel="noreferrer" className="underline">📷 Foto</a>
+                    <a href={m.attachmentUrl ?? m.content} target="_blank" rel="noreferrer" className="underline">ðŸ“· Foto</a>
                   ) : m.content}
                 </div>
                 <div className="mt-0.5 text-[9px] text-slate-400">
-                  {isAdmin ? 'Admin JasaBersih · ' : ''}{new Date(m.createdAt).toLocaleString('id-ID')}
+                  {isAdmin ? 'Admin JasaBersih Â· ' : ''}{new Date(m.createdAt).toLocaleString('id-ID')}
                 </div>
               </div>
             );
@@ -620,7 +620,7 @@ function AdminChatPanel({ bookingId }: { bookingId: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-          placeholder="Tulis pesan sebagai Admin JasaBersih…"
+          placeholder="Tulis pesan sebagai Admin JasaBersihâ€¦"
           className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         <button
@@ -628,7 +628,7 @@ function AdminChatPanel({ bookingId }: { bookingId: string }) {
           disabled={!text.trim() || sending}
           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
         >
-          {sending ? '…' : 'Kirim'}
+          {sending ? 'â€¦' : 'Kirim'}
         </button>
       </div>
     </div>
@@ -646,19 +646,19 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
   return (
     <Modal title="Detail Pesanan" open={true} onClose={onClose} size="lg">
       {!data ? (
-        <div className="py-12 text-center text-sm text-slate-500">Memuat…</div>
+        <div className="py-12 text-center text-sm text-slate-500">Memuatâ€¦</div>
       ) : (
         <div className="space-y-4">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-slate-500">ID</div>
             <div className="font-mono text-xs">{(data.booking as any)?.id}</div>
             <div className="mt-2 grid grid-cols-2 gap-3 text-xs">
-              <div><b>Customer:</b><br/>{(data.booking as any)?.customer_name} · {(data.booking as any)?.customer_phone}</div>
-              <div><b>Cleaner:</b><br/>{(data.booking as any)?.cleaner_name ?? '—'}</div>
+              <div><b>Customer:</b><br/>{(data.booking as any)?.customer_name} Â· {(data.booking as any)?.customer_phone}</div>
+              <div><b>Cleaner:</b><br/>{(data.booking as any)?.cleaner_name ?? 'â€”'}</div>
               <div><b>Status:</b> {(data.booking as any)?.status}</div>
               <div><b>Total:</b> Rp {Number((data.booking as any)?.total_amount ?? 0).toLocaleString('id-ID')}</div>
               <div><b>Jadwal:</b> {formatDateTimeWithTz((data.booking as any)?.scheduled_at, (data.booking as any)?.address_line)}</div>
-              <div><b>Bayar:</b> {(data.booking as any)?.paid_at ? new Date((data.booking as any).paid_at).toLocaleString('id-ID') : '—'}</div>
+              <div><b>Bayar:</b> {(data.booking as any)?.paid_at ? new Date((data.booking as any).paid_at).toLocaleString('id-ID') : 'â€”'}</div>
             </div>
             <div className="mt-2 text-xs">
               {(() => {
@@ -683,7 +683,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
                     rel="noreferrer"
                     className="ml-2 inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-100"
                   >
-                    📍 Buka di Maps
+                    ðŸ“ Buka di Maps
                   </a>
                 ) : null;
               })()}
@@ -712,7 +712,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
                   </div>
                 </div>
                 {payout === 0 && (
-                  <div className="mt-1.5 text-[10px] text-amber-700">⚠️ Cleaner payout belum di-set (kemungkinan booking belum match cleaner).</div>
+                  <div className="mt-1.5 text-[10px] text-amber-700">âš ï¸ Cleaner payout belum di-set (kemungkinan booking belum match cleaner).</div>
                 )}
               </div>
             );
@@ -741,7 +741,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
               <div className="text-sm font-bold text-slate-900 mb-2">Foto Pengerjaan</div>
               <PhotoSection title="Sebelum" photos={before} />
               <PhotoSection title="Sesudah" photos={after} />
-              {damage.length > 0 && <PhotoSection title="⚠️ Kerusakan" photos={damage} />}
+              {damage.length > 0 && <PhotoSection title="âš ï¸ Kerusakan" photos={damage} />}
             </div>
           )}
 
@@ -757,7 +757,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
                 <thead className="bg-slate-50 text-left text-[10px] uppercase text-slate-500"><tr><th className="px-2 py-1">Status</th><th className="px-2 py-1">Amount</th><th className="px-2 py-1">Paid At</th></tr></thead>
                 <tbody>
                   {data.payments.map((p: any) => (
-                    <tr key={p.id} className="border-t"><td className="px-2 py-1">{p.status}</td><td className="px-2 py-1">Rp {Number(p.amount).toLocaleString('id-ID')}</td><td className="px-2 py-1">{p.paidAt ? new Date(p.paidAt).toLocaleString('id-ID') : '—'}</td></tr>
+                    <tr key={p.id} className="border-t"><td className="px-2 py-1">{p.status}</td><td className="px-2 py-1">Rp {Number(p.amount).toLocaleString('id-ID')}</td><td className="px-2 py-1">{p.paidAt ? new Date(p.paidAt).toLocaleString('id-ID') : 'â€”'}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -889,7 +889,7 @@ function AssignModal({
         <p className="mt-1 text-xs text-slate-500">Order: {bookingId}</p>
         {isReassign && (
           <p className="mt-1 text-xs text-amber-700">
-            Cleaner sekarang: <b>{currentCleanerName}</b> — pilih pengganti.
+            Cleaner sekarang: <b>{currentCleanerName}</b> â€” pilih pengganti.
           </p>
         )}
         <div className="mt-3">
@@ -910,7 +910,7 @@ function AssignModal({
         <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
           {loading && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 size={14} className="animate-spin" /> Loading cleaner…
+              <Loader2 size={14} className="animate-spin" /> Loading cleanerâ€¦
             </div>
           )}
           {!loading && cleaners.length === 0 && (
@@ -927,11 +927,11 @@ function AssignModal({
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-semibold">{c.name}</span>
-                <span className="font-mono text-[10px] text-slate-400">#{c.id?.slice(0, 8) ?? '—'}</span>
+                <span className="font-mono text-[10px] text-slate-400">#{c.id?.slice(0, 8) ?? 'â€”'}</span>
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
-                {c.rating != null && <span>⭐ {Number(c.rating).toFixed(1)}</span>}
-                {c.phone && <span>· {c.phone}</span>}
+                {c.rating != null && <span>â­ {Number(c.rating).toFixed(1)}</span>}
+                {c.phone && <span>Â· {c.phone}</span>}
               </div>
             </button>
           ))}
@@ -1046,7 +1046,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   async function submit() {
     if (!form.customerPhone || !form.addressLine || !form.scheduledAt || !form.totalAmount || !form.cityName) {
-      toast.error('Field wajib kosong — pastikan No HP Customer dan Kota sudah diisi'); return;
+      toast.error('Field wajib kosong â€” pastikan No HP Customer dan Kota sudah diisi'); return;
     }
     const amount = parseInt(form.totalAmount.replace(/[^\d]/g, ''), 10);
     if (!amount || amount <= 0) { toast.error('Total amount tidak valid'); return; }
@@ -1088,7 +1088,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
               type="button"
               onClick={() => {
                 setForm({ ...form, customerPhone: adminCustomer.phone, customerName: adminCustomer.name });
-                setSelectedCustomerLabel(`${adminCustomer.name} · ${adminCustomer.phone}`);
+                setSelectedCustomerLabel(`${adminCustomer.name} Â· ${adminCustomer.phone}`);
                 setCustomerSearch('');
               }}
               className="ml-auto rounded-md bg-blue-700 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-800"
@@ -1111,12 +1111,12 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
               }}
               onFocus={() => { if (customerSearch) setShowCustomerList(true); }}
               onBlur={() => setTimeout(() => setShowCustomerList(false), 150)}
-              placeholder="Cari nama atau No HP customer…"
+              placeholder="Cari nama atau No HP customerâ€¦"
               className={`mt-1 w-full rounded-md border px-3 py-2 text-sm ${!form.customerPhone && selectedCustomerLabel === '' && customerSearch ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
             />
             {selectedCustomerLabel && (
               <button type="button" onClick={() => { setForm({ ...form, customerPhone: '', customerName: '' }); setSelectedCustomerLabel(''); setCustomerSearch(''); }}
-                className="absolute right-2 top-7 text-xs text-slate-400 hover:text-red-600">×</button>
+                className="absolute right-2 top-7 text-xs text-slate-400 hover:text-red-600">Ã—</button>
             )}
             {showCustomerList && customerMatches.length > 0 && (
               <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
@@ -1124,7 +1124,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
                   <button key={c.id} type="button" onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       setForm({ ...form, customerPhone: c.phone, customerName: c.name });
-                      setSelectedCustomerLabel(`${c.name} · ${c.phone}`);
+                      setSelectedCustomerLabel(`${c.name} Â· ${c.phone}`);
                       setCustomerSearch('');
                       setShowCustomerList(false);
                     }}
@@ -1137,7 +1137,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
               </div>
             )}
             {!selectedCustomerLabel && customerSearch && customerMatches.length === 0 && (
-              <p className="mt-1 text-[10px] text-red-600">Customer tidak ditemukan — tambah dulu di halaman <b>Customers</b></p>
+              <p className="mt-1 text-[10px] text-red-600">Customer tidak ditemukan â€” tambah dulu di halaman <b>Customers</b></p>
             )}
           </div>
         </div>
@@ -1156,7 +1156,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
               <button type="button" onClick={geocodeAddress} disabled={geocoding}
                 className="shrink-0 rounded-md bg-slate-700 px-2 py-1 text-[11px] font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
                 title="Cari titik di peta">
-                {geocoding ? '…' : '📍'}
+                {geocoding ? 'â€¦' : 'ðŸ“'}
               </button>
             </div>
           </div>
@@ -1176,7 +1176,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
         </div>
 
-        {/* Peta Leaflet — muncul setelah geocode */}
+        {/* Peta Leaflet â€” muncul setelah geocode */}
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <iframe
             key={mapKey}
@@ -1185,10 +1185,10 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
             title="Peta lokasi"
           />
           <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 text-[10px] text-slate-500">
-            <span>📍 {form.lat.toFixed(6)}, {form.lng.toFixed(6)}</span>
+            <span>ðŸ“ {form.lat.toFixed(6)}, {form.lng.toFixed(6)}</span>
             <a href={`https://www.openstreetmap.org/?mlat=${form.lat}&mlon=${form.lng}#map=17/${form.lat}/${form.lng}`}
               target="_blank" rel="noreferrer"
-              className="font-semibold text-blue-600 hover:underline">Buka di OSM →</a>
+              className="font-semibold text-blue-600 hover:underline">Buka di OSM â†’</a>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1217,7 +1217,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
                 type="button"
                 onClick={() => { setForm({ ...form, cleanerId: '' }); setSelectedCleanerName(''); setCleanerSearch(''); }}
                 className="absolute right-2 top-7 text-xs text-slate-400 hover:text-red-600"
-              >×</button>
+              >Ã—</button>
             )}
             {showCleanerList && cleanerMatches.length > 0 && (
               <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
@@ -1240,7 +1240,7 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
                 ))}
                 {cleanerMatches.length === 20 && (
                   <div className="border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-center text-[10px] text-slate-500">
-                    Max 20 hasil — ketik lebih spesifik kalau gak ketemu
+                    Max 20 hasil â€” ketik lebih spesifik kalau gak ketemu
                   </div>
                 )}
               </div>
@@ -1267,12 +1267,12 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
                   type="button"
                   onClick={() => setConditionPhotos((prev) => prev.filter((_, idx) => idx !== i))}
                   className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white"
-                >×</button>
+                >Ã—</button>
               </div>
             ))}
             {conditionPhotos.length < 5 && (
               <label className={`flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-[10px] text-slate-500 hover:border-blue-400 hover:text-blue-500 ${uploadingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
-                <span className="text-xl leading-none">{uploadingPhoto ? '…' : '+'}</span>
+                <span className="text-xl leading-none">{uploadingPhoto ? 'â€¦' : '+'}</span>
                 <span>Foto</span>
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ''; }} />
               </label>

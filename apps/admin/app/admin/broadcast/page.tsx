@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Bookmark, Calendar, History, Save, Send, Trash2, Users, X } from 'lucide-react';
@@ -15,7 +15,7 @@ const AUDIENCES = [
   { value: 'inactive_30d', label: 'Customer tidak aktif 30 hari' },
 ];
 
-export default function BroadcastPage() {
+export default function BroadcastPage(): React.ReactElement {
   const toast = useToast();
   const confirm = useConfirm();
   const [form, setForm] = useState({ title: '', body: '', audience: 'all', ctaLink: '' });
@@ -186,7 +186,7 @@ export default function BroadcastPage() {
           <div className="rounded-md border bg-white p-4">
             <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Users size={14} /> Audience</h2>
             {loadingEst ? (
-              <div className="py-6 text-center text-xs text-slate-500">Hitung…</div>
+              <div className="py-6 text-center text-xs text-slate-500">Hitungâ€¦</div>
             ) : estimate ? (
               <>
                 <div className="text-3xl font-bold text-blue-700">{estimate.reachable}</div>
@@ -281,7 +281,7 @@ export default function BroadcastPage() {
                 onChange={(v) => setTemplateForm({ ...templateForm, category: v })}
               />
               <div className="rounded border bg-slate-50 p-2 text-[11px] text-slate-600">
-                Preview: <b>{form.title}</b> — {form.body} (audience: {form.audience})
+                Preview: <b>{form.title}</b> â€” {form.body} (audience: {form.audience})
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
@@ -357,7 +357,7 @@ export default function BroadcastPage() {
                     <tr key={h.id} className="border-t">
                       <td className="px-4 py-2 text-xs text-slate-500">{new Date(h.performedAt).toLocaleString('id-ID')}</td>
                       <td className="px-4 py-2 text-xs">{h.adminName ?? h.adminEmail}</td>
-                      <td className="px-4 py-2 max-w-xs truncate text-sm">{c.title ?? '—'}</td>
+                      <td className="px-4 py-2 max-w-xs truncate text-sm">{c.title ?? 'â€”'}</td>
                       <td className="px-4 py-2"><Badge>{c.audience}</Badge></td>
                       <td className="px-4 py-2 text-right">
                         <span className="font-bold text-green-700">{c.sent ?? 0}</span>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -8,7 +8,7 @@ import { loginAdmin } from '../../lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/v1';
 
-export default function LoginPage() {
+export default function LoginPage(): React.ReactElement {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 className="flex-1 text-sm outline-none"
                 autoComplete="current-password"
               />
@@ -115,7 +115,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-primary py-3 text-sm font-bold text-white disabled:opacity-50"
           >
-            {loading ? 'Memproses…' : 'Sign In'}
+            {loading ? 'Memprosesâ€¦' : 'Sign In'}
           </button>
         </form>
 

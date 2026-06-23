@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Briefcase, Eye, Loader2, Pencil, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
@@ -25,7 +25,7 @@ type Row = {
   serviceAreas?: unknown;
 };
 
-export default function UsersPage() {
+export default function UsersPage(): React.ReactElement {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('customer');
   const [rows, setRows] = useState<Row[]>([]);
@@ -52,7 +52,7 @@ export default function UsersPage() {
     if (!reason) return;
     try {
       await api.admin.rejectCleanerPhoto(r.id, reason);
-      toast.success('Foto ditolak — cleaner dipaksa offline & upload ulang');
+      toast.success('Foto ditolak â€” cleaner dipaksa offline & upload ulang');
       void load();
     } catch (e: any) { toast.error(e?.message ?? 'Gagal tolak foto'); }
   }
@@ -117,7 +117,7 @@ export default function UsersPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load()}
-            placeholder="Cari nama / email / no HP…"
+            placeholder="Cari nama / email / no HPâ€¦"
             className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm"
           />
         </div>
@@ -131,7 +131,7 @@ export default function UsersPage() {
 
       <div className="mt-4">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500"><Loader2 className="animate-spin" size={16} /> Memuat…</div>
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500"><Loader2 className="animate-spin" size={16} /> Memuatâ€¦</div>
         ) : rows.length === 0 ? (
           <div className="rounded-md border border-dashed p-10 text-center text-sm text-slate-500">Belum ada {tab}.</div>
         ) : (
@@ -170,10 +170,10 @@ export default function UsersPage() {
                             {(r.name ?? r.phone ?? '?')[0]?.toUpperCase()}
                           </div>
                         )}
-                        <span>{r.name ?? '—'}</span>
+                        <span>{r.name ?? 'â€”'}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-xs"><div>{r.email ?? '—'}</div><div className="text-slate-500">{r.phone}</div></td>
+                    <td className="px-4 py-2 text-xs"><div>{r.email ?? 'â€”'}</div><div className="text-slate-500">{r.phone}</div></td>
                     {tab === 'customer' ? (
                       <>
                         <td className="px-4 py-2 font-bold">{Number(r.totalOrders ?? 0)}</td>
@@ -181,7 +181,7 @@ export default function UsersPage() {
                       </>
                     ) : (
                       <>
-                        <td className="px-4 py-2">⭐ {r.rating != null ? Number(r.rating).toFixed(2) : '—'}</td>
+                        <td className="px-4 py-2">â­ {r.rating != null ? Number(r.rating).toFixed(2) : 'â€”'}</td>
                         <td className="px-4 py-2 font-bold">{Number(r.jobsDone ?? 0)}</td>
                         <td className="px-4 py-2">
                           <button
@@ -200,7 +200,7 @@ export default function UsersPage() {
                       </>
                     )}
                     <td className="px-4 py-2"><StatusBadge status={r.status ?? 'active'} /></td>
-                    <td className="px-4 py-2 text-xs text-slate-500">{r.joinedAt ? new Date(r.joinedAt).toLocaleDateString('id-ID') : '—'}</td>
+                    <td className="px-4 py-2 text-xs text-slate-500">{r.joinedAt ? new Date(r.joinedAt).toLocaleDateString('id-ID') : 'â€”'}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>
@@ -365,7 +365,7 @@ function AddUserModal({ role, onClose, onDone }: { role: 'customer' | 'cleaner';
     >
       <div className="space-y-3">
         <div className="rounded-md bg-amber-50 p-2 text-[11px] text-amber-900">
-          ⓘ Akun dibuat tanpa OTP (admin-trusted). User langsung bisa login dengan nomor HP + password yang kamu set.
+          â“˜ Akun dibuat tanpa OTP (admin-trusted). User langsung bisa login dengan nomor HP + password yang kamu set.
         </div>
         <Input label="Nama Lengkap" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} error={errors.name} />
         <Input label="Nomor HP" required value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="08123456789" error={errors.phone} />
@@ -420,15 +420,15 @@ function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () =>
   }
 
   return (
-    <Modal title={`${row.name ?? '—'} (${row.phone})`} open={true} onClose={onClose} size="lg">
+    <Modal title={`${row.name ?? 'â€”'} (${row.phone})`} open={true} onClose={onClose} size="lg">
       {loading ? (
-        <div className="py-8 text-center text-sm text-slate-500">Memuat…</div>
+        <div className="py-8 text-center text-sm text-slate-500">Memuatâ€¦</div>
       ) : !detail ? null : (
         <div className="space-y-4">
           <div className="grid gap-2 md:grid-cols-2">
             <InfoRow label="Status" value={<StatusBadge status={detail.user.status ?? 'active'} />} />
-            <InfoRow label="Email" value={detail.user.email ?? '—'} />
-            <InfoRow label="Phone Verified" value={detail.user.phoneVerifiedAt ? '✓' : '✗'} />
+            <InfoRow label="Email" value={detail.user.email ?? 'â€”'} />
+            <InfoRow label="Phone Verified" value={detail.user.phoneVerifiedAt ? 'âœ“' : 'âœ—'} />
             <InfoRow label="Total Strikes" value={String(detail.strikes?.length ?? 0)} />
           </div>
 
@@ -441,16 +441,16 @@ function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () =>
 
           <div>
             <h3 className="mb-2 text-sm font-semibold">Recent Bookings ({detail.recentBookings.length})</h3>
-            {detail.recentBookings.length === 0 ? <p className="text-xs text-slate-500">—</p> : (
+            {detail.recentBookings.length === 0 ? <p className="text-xs text-slate-500">â€”</p> : (
               <div className="overflow-hidden rounded-md border">
                 <table className="w-full text-xs">
                   <tbody>
                     {detail.recentBookings.slice(0, 10).map((b: any) => (
                       <tr key={b.id} className="border-t first:border-t-0">
-                        <td className="px-3 py-1.5 font-mono">{b.id?.slice(0, 8)}…</td>
+                        <td className="px-3 py-1.5 font-mono">{b.id?.slice(0, 8)}â€¦</td>
                         <td className="px-3 py-1.5"><Badge>{b.status}</Badge></td>
                         <td className="px-3 py-1.5 text-right font-bold">Rp {Number(b.total ?? 0).toLocaleString('id-ID')}</td>
-                        <td className="px-3 py-1.5 text-right text-slate-500">{b.createdAt ? new Date(b.createdAt).toLocaleDateString('id-ID') : '—'}</td>
+                        <td className="px-3 py-1.5 text-right text-slate-500">{b.createdAt ? new Date(b.createdAt).toLocaleDateString('id-ID') : 'â€”'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -507,7 +507,7 @@ function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () =>
       {suspending && <ReasonModal title="Suspend User" placeholder="Alasan suspend (akan ditampilkan ke user)" durationField onClose={() => setSuspending(false)} onSubmit={async (reason, days) => {
         try { await api.admin.suspendUser(row.id, reason, days); toast.success('User di-suspend.'); onChanged(); } catch (e: any) { toast.error(e?.message); }
       }} />}
-      {banning && <ReasonModal title="Ban User (Permanen)" placeholder="Alasan ban — auto-cancel pending bookings" variant="danger" onClose={() => setBanning(false)} onSubmit={async (reason) => {
+      {banning && <ReasonModal title="Ban User (Permanen)" placeholder="Alasan ban â€” auto-cancel pending bookings" variant="danger" onClose={() => setBanning(false)} onSubmit={async (reason) => {
         try { await api.admin.banUser(row.id, reason); toast.success('User di-ban.'); onChanged(); } catch (e: any) { toast.error(e?.message); }
       }} />}
     </Modal>
@@ -582,7 +582,7 @@ function WalletModal({ user, onClose }: { user: Row; onClose: () => void }) {
   }
 
   return (
-    <Modal title={`Saldo · ${user.name ?? user.phone}`} open={true} onClose={onClose} size="lg">
+    <Modal title={`Saldo Â· ${user.name ?? user.phone}`} open={true} onClose={onClose} size="lg">
       {loading ? (
         <div className="flex items-center justify-center py-8 text-slate-500"><Loader2 className="animate-spin" /></div>
       ) : (
@@ -596,7 +596,7 @@ function WalletModal({ user, onClose }: { user: Row; onClose: () => void }) {
             <div className="mb-2 text-sm font-bold text-slate-900">Adjust Saldo Manual</div>
             <div className="flex gap-2">
               <button onClick={() => setType('credit')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${type === 'credit' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>+ Tambah Saldo</button>
-              <button onClick={() => setType('debit')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${type === 'debit' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200'}`}>− Kurangi Saldo</button>
+              <button onClick={() => setType('debit')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${type === 'debit' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200'}`}>âˆ’ Kurangi Saldo</button>
             </div>
             <div className="mt-3 space-y-2">
               <Input label="Nominal (Rp)" type="text" value={amount} onChange={setAmount} placeholder="mis. 50000" />
@@ -621,7 +621,7 @@ function WalletModal({ user, onClose }: { user: Row; onClose: () => void }) {
                       return (
                         <tr key={e.id} className="border-t">
                           <td className="px-3 py-2 font-mono text-[10px]">{e.accountType}</td>
-                          <td className={`px-3 py-2 font-bold ${isOut ? 'text-red-600' : 'text-emerald-600'}`}>{isOut ? '−' : '+'} Rp {Number(e.amount).toLocaleString('id-ID')}</td>
+                          <td className={`px-3 py-2 font-bold ${isOut ? 'text-red-600' : 'text-emerald-600'}`}>{isOut ? 'âˆ’' : '+'} Rp {Number(e.amount).toLocaleString('id-ID')}</td>
                           <td className="px-3 py-2">{e.status}</td>
                           <td className="px-3 py-2 text-slate-500">{new Date(e.createdAt).toLocaleString('id-ID')}</td>
                           <td className="px-3 py-2 text-slate-600">{e.description ?? '-'}</td>
