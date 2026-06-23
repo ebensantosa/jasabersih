@@ -310,6 +310,7 @@ function Withdraw() {
                   placeholder={method.kind === 'bank' ? '1234567890' : '08xxxxxxxxxx'}
                   placeholderTextColor="#94A3B8"
                   keyboardType="number-pad"
+                  maxLength={20}
                   className="font-sans flex-1 text-sm text-ink-900"
                 />
               </Field>
@@ -324,6 +325,7 @@ function Withdraw() {
                   }}
                   placeholder="Nama lengkap"
                   placeholderTextColor="#94A3B8"
+                  maxLength={50}
                   className="font-sans flex-1 text-sm text-ink-900"
                 />
               </Field>
@@ -346,6 +348,7 @@ function Withdraw() {
                 placeholder="0"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
+                maxLength={12}
                 className="font-bold flex-1 text-lg text-ink-900"
               />
             </View>
@@ -407,7 +410,7 @@ function Withdraw() {
                 </View>
               </View>
               <Text className="font-sans mt-2 text-[10px] text-ink-500">
-                Tujuan: {selectedAccount?.bankCode.toUpperCase() ?? method.label} · {selectedAccount?.accountNumber ?? '(pilih rekening dulu)'} a.n. {selectedAccount?.accountHolderName ?? '...'}
+                Tujuan: {selectedAccount?.bankCode.toUpperCase() ?? method.label} ï¿½ {selectedAccount?.accountNumber ?? '(pilih rekening dulu)'} a.n. {selectedAccount?.accountHolderName ?? '...'}
               </Text>
             </View>
           )}

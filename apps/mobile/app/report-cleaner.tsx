@@ -121,6 +121,7 @@ function ReportCleanerScreen() {
               placeholder={'{Kronologi singkat}\n\nWaktu: ...\nLokasi: ...\nKejadian: ...\nBukti: ...'}
               multiline
               numberOfLines={6}
+              maxLength={1000}
               className="rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 font-sans text-sm text-ink-900"
               style={{ minHeight: 140, textAlignVertical: 'top' }}
             />

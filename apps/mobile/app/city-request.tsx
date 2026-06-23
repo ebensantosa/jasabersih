@@ -90,9 +90,9 @@ export default function CityRequestScreen() {
           </View>
 
           <View className="rounded-2xl bg-white p-4">
-            <Field label="Nama Kota *" value={city} onChange={setCity} placeholder="Misal: Bandung, Surabaya" />
-            <Field label="Nama Kamu (opsional)" value={name} onChange={setName} placeholder="Untuk dihubungi balik" />
-            <Field label="Nomor HP (opsional)" value={phone} onChange={setPhone} placeholder="08xxxxxxxxxx" keyboardType="phone-pad" />
+            <Field label="Nama Kota *" value={city} onChange={setCity} placeholder="Misal: Bandung, Surabaya" maxLength={50} />
+            <Field label="Nama Kamu (opsional)" value={name} onChange={setName} placeholder="Untuk dihubungi balik" maxLength={50} />
+            <Field label="Nomor HP (opsional)" value={phone} onChange={setPhone} placeholder="08xxxxxxxxxx" keyboardType="phone-pad" maxLength={15} />
             <Field label="Catatan (opsional)" value={notes} onChange={setNotes} placeholder="Misal: butuh untuk daerah xxx" multiline />
           </View>
 
@@ -110,9 +110,9 @@ export default function CityRequestScreen() {
   );
 }
 
-function Field({ label, value, onChange, placeholder, keyboardType, multiline }: {
+function Field({ label, value, onChange, placeholder, keyboardType, multiline, maxLength }: {
   label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; keyboardType?: any; multiline?: boolean;
+  placeholder?: string; keyboardType?: any; multiline?: boolean; maxLength?: number;
 }) {
   return (
     <View className="mb-3">
@@ -124,6 +124,7 @@ function Field({ label, value, onChange, placeholder, keyboardType, multiline }:
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
+        maxLength={maxLength}
         className="rounded-xl border border-ink-200 bg-white px-3 py-2.5 font-sans text-sm text-ink-900"
         style={multiline ? { minHeight: 70, textAlignVertical: 'top' } : undefined}
       />

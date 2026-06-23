@@ -210,6 +210,7 @@ export default function Register() {
                 }}
                 placeholder="Nama lengkap kamu"
                 placeholderTextColor="#94A3B8"
+                maxLength={50}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
@@ -231,6 +232,7 @@ export default function Register() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                maxLength={100}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
@@ -252,6 +254,7 @@ export default function Register() {
                 keyboardType="phone-pad"
                 autoCapitalize="none"
                 autoCorrect={false}
+                maxLength={15}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
@@ -275,6 +278,7 @@ export default function Register() {
                 placeholder="••••••••"
                 placeholderTextColor="#94A3B8"
                 secureTextEntry={!showPwd}
+                maxLength={100}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
               <Pressable onPress={() => setShowPwd((v) => !v)} hitSlop={8}>

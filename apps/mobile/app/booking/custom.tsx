@@ -752,6 +752,7 @@ function CustomBooking() {
               placeholder="Contoh: ada hewan peliharaan, akses pintu samping, atau area prioritas"
               multiline
               numberOfLines={3}
+              maxLength={500}
               className="rounded-xl border border-ink-200 bg-white p-3 text-sm text-ink-900"
               style={{ textAlignVertical: 'top', minHeight: 70 }}
             />

@@ -157,6 +157,7 @@ export function DisputeFormModal({
                   : 'Ceritakan detail masalah yang kamu alami (min 10 karakter)…'}
                 placeholderTextColor="#94A3B8"
                 multiline
+                maxLength={2000}
                 style={{ minHeight: 100, textAlignVertical: 'top' }}
                 className="font-sans rounded-xl border border-ink-200 bg-ink-50 p-3 text-sm text-ink-900"
               />

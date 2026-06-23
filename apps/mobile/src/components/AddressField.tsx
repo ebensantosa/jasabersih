@@ -80,6 +80,7 @@ export function AddressField({
             multiline
             placeholder="Atau ketik alamat manual..."
             placeholderTextColor="#94A3B8"
+            maxLength={200}
             className={`font-sans rounded-xl border bg-white px-4 py-3 text-sm ${
               error ? 'border-danger' : 'border-ink-200'
             }`}

@@ -232,6 +232,7 @@ export default function Login() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                maxLength={100}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
@@ -250,6 +251,7 @@ export default function Login() {
                 placeholder="••••••••"
                 placeholderTextColor="#94A3B8"
                 secureTextEntry={!showPwd}
+                maxLength={100}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
               <Pressable onPress={() => setShowPwd((v) => !v)}>

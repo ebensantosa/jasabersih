@@ -126,6 +126,7 @@ function PwdField({ label, value, onChange, show, toggle, hint, error }: {
           secureTextEntry={!show}
           placeholder="••••••••"
           placeholderTextColor="#94A3B8"
+          maxLength={100}
           className="font-sans flex-1 py-3 text-sm text-ink-900"
         />
         <Pressable onPress={toggle} hitSlop={8}>

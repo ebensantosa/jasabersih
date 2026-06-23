@@ -91,6 +91,7 @@ export default function ForgotPassword() {
                     placeholderTextColor="#94A3B8"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    maxLength={100}
                     className="font-sans flex-1 py-3 text-sm text-ink-900"
                   />
                 </View>
@@ -141,6 +142,7 @@ export default function ForgotPassword() {
                       secureTextEntry={!show}
                       placeholder="••••••••"
                       placeholderTextColor="#94A3B8"
+                      maxLength={100}
                       className="font-sans flex-1 py-3 text-sm text-ink-900"
                     />
                     <Pressable onPress={() => setShow((v) => !v)} hitSlop={8}>

@@ -212,6 +212,7 @@ function WithdrawCustomer() {
                 placeholder="0"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
+                maxLength={12}
                 className="flex-1 text-lg font-bold text-ink-900"
               />
             </View>

@@ -136,6 +136,7 @@ function EditAddress() {
               onChangeText={setLabel}
               placeholder="Tulis label custom"
               placeholderTextColor="#94A3B8"
+              maxLength={30}
               className="font-sans mt-2 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900"
             />
           )}
@@ -149,6 +150,7 @@ function EditAddress() {
                 onChangeText={setRecipientName}
                 placeholder="Nama yang menerima cleaner"
                 placeholderTextColor="#94A3B8"
+                maxLength={50}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
@@ -161,6 +163,7 @@ function EditAddress() {
                 placeholder="08xxxxxxxxxx"
                 placeholderTextColor="#94A3B8"
                 keyboardType="phone-pad"
+                maxLength={15}
                 className="font-sans flex-1 text-sm text-ink-900"
               />
             </Field>
@@ -230,6 +233,7 @@ function EditAddress() {
             multiline
             placeholder="Wajib: patokan, blok, no. rumah, lantai, kode pintu, dll"
             placeholderTextColor="#94A3B8"
+            maxLength={200}
             className={`font-sans rounded-xl border bg-white px-4 py-3 text-sm text-ink-900 ${
               errors.detailNote ? 'border-danger' : 'border-ink-200'
             }`}

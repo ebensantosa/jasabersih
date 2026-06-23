@@ -78,6 +78,7 @@ export function RatingFormModal({
                 placeholder="Bagi pengalamanmu untuk customer lain…"
                 placeholderTextColor="#94A3B8"
                 multiline
+                maxLength={500}
                 style={{ minHeight: 80, textAlignVertical: 'top' }}
                 className="font-sans rounded-xl border border-ink-200 bg-ink-50 p-3 text-sm text-ink-900"
               />

@@ -1343,6 +1343,7 @@ function BookingDetail() {
                   keyboardType="number-pad"
                   placeholder="Contoh: 75000"
                   placeholderTextColor="#94A3B8"
+                  maxLength={12}
                   className="font-sans flex-1 text-sm text-ink-900"
                 />
                 <Pressable

@@ -106,6 +106,7 @@ export function UpchargeFormModal({
               onChangeText={(v) => setAmountStr(v.replace(/[^\d]/g, ''))}
               placeholder="mis. 50000"
               keyboardType="numeric"
+              maxLength={12}
               className="mt-1 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900"
             />
 
@@ -124,6 +125,7 @@ export function UpchargeFormModal({
               placeholder="Mis. tingkat kotor jauh lebih parah, banyak noda lemak di dapur..."
               multiline
               numberOfLines={3}
+              maxLength={500}
               className="mt-1 rounded-xl border border-ink-200 bg-white p-3 text-sm text-ink-900"
               style={{ textAlignVertical: 'top', minHeight: 80 }}
             />
