@@ -20,13 +20,14 @@ module.exports = {
     {
       name: 'jasabersih-admin',
       cwd: '/var/www/jasabersih/apps/admin',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 5001',
+      script: 'pnpm',
+      args: 'exec next start -p 3001',
+      interpreter: 'none',
       instances: 1,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 5001,
+        PORT: 3001,
       },
       max_memory_restart: '300M',
       error_file: '/var/log/jasabersih/admin-error.log',
