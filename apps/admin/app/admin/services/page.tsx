@@ -61,7 +61,7 @@ function ImageUpload({ value, onChange, folder, label, previewClass, hint }: {
   );
 }
 
-export default function ServicesPage() {
+export default function ServicesPage(): React.ReactElement | null {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);

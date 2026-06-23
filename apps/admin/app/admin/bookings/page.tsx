@@ -27,7 +27,7 @@ const FILTERS: { key: OrderStatus | 'all' | 'needs_manual' | 'manual_admin'; lab
   { key: 'canceled', label: 'Batal' },
 ];
 
-export default function Bookings() {
+export default function Bookings(): React.ReactElement | null {
   const [filter, setFilter] = useState<OrderStatus | 'all' | 'needs_manual' | 'manual_admin'>('all');
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');

@@ -15,7 +15,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'audit', label: 'Audit Log', icon: Activity },
 ];
 
-export default function SettingsPage() {
+export default function SettingsPage(): React.ReactElement | null {
   const [tab, setTab] = useState<Tab>('admins');
   return (
     <div>

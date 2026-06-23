@@ -56,7 +56,7 @@ const NAV = [
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function AdminShell({ children }: { children: React.ReactNode }) {
+export default function AdminShell({ children }: { children: React.ReactNode }): React.ReactElement | null {
   const router = useRouter();
   const [session, setSession] = useState<AdminSession | null | 'loading'>('loading');
   const [cityRequestsCount, setCityRequestsCount] = useState(0);

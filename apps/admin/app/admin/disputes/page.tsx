@@ -14,7 +14,7 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'resolved', label: 'Resolved' },
 ];
 
-export default function DisputesPage() {
+export default function DisputesPage(): React.ReactElement | null {
   const toast = useToast();
   const [tab, setTab] = useState<Status>('open');
   const [list, setList] = useState<any[]>([]);

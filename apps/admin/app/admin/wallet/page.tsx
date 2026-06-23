@@ -8,7 +8,7 @@ import { Modal, Input, Textarea, Button, Badge, useToast } from '../../../compon
 
 type Tab = 'pending' | 'approved' | 'rejected';
 
-export default function WalletPage() {
+export default function WalletPage(): React.ReactElement | null {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('pending');
   const [list, setList] = useState<any[]>([]);

@@ -17,7 +17,7 @@ type Tier = {
   displayOrder: number;
 };
 
-export default function SubscriptionTiersPage() {
+export default function SubscriptionTiersPage(): React.ReactElement | null {
   const toast = useToast();
   const [list, setList] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);

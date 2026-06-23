@@ -19,7 +19,7 @@ const TABS: Array<{ key: 'pending' | 'under_review' | 'approved' | 'rejected'; l
   { key: 'rejected', label: 'Rejected' },
 ];
 
-export default function KycPage() {
+export default function KycPage(): React.ReactElement | null {
   const toast = useToast();
   const [tab, setTab] = useState<'pending' | 'under_review' | 'approved' | 'rejected'>('pending');
   const [list, setList] = useState<Cleaner[]>([]);

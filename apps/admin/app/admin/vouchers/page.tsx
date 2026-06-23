@@ -6,7 +6,7 @@ import { Plus, Tag, Pencil } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Select, Switch, Button, Badge, useToast } from '../../../components/ui';
 
-export default function VouchersPage() {
+export default function VouchersPage(): React.ReactElement | null {
   const toast = useToast();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

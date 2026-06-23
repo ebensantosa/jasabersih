@@ -32,7 +32,7 @@ function InfoRow({ icon, label, value, wide, highlight, badge, badgeColor }: {
   );
 }
 
-export default function PesanPage() {
+export default function PesanPage(): React.ReactElement | null {
   const [threads, setThreads] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [search, setSearch] = useState('');

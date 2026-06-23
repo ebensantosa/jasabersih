@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Megaphone } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Switch, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-export default function PopupsPage() {
+export default function PopupsPage(): React.ReactElement | null {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);

@@ -16,7 +16,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'addons', label: 'Add-Ons', icon: Plus },
 ];
 
-export default function CmsPage() {
+export default function CmsPage(): React.ReactElement | null {
   const [tab, setTab] = useState<Tab>('banners');
   return (
     <div>

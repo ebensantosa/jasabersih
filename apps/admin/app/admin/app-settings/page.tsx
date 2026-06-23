@@ -43,7 +43,7 @@ const HINT: Record<string, string> = {
   'payment.flip_validation_token': 'Validation Token dari Flip â€” dipakai verify callback (string-equal). Webhook URL yang harus di-set di Flip dashboard: https://api.jasabersih.com/v1/payments/flip/callback',
 };
 
-export default function AppSettingsPage() {
+export default function AppSettingsPage(): React.ReactElement | null {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);

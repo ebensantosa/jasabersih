@@ -13,7 +13,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: 'Lainnya',
 };
 
-export default function FraudReportsPage() {
+export default function FraudReportsPage(): React.ReactElement | null {
   const toast = useToast();
   const confirm = useConfirm();
   const prompt = usePrompt();

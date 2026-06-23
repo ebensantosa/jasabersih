@@ -8,7 +8,7 @@ import { Modal, Input, Button, Badge, useToast } from '../../../components/ui';
 
 type Tab = 'bookings' | 'blocked' | 'stats';
 
-export default function ChatAuditPage() {
+export default function ChatAuditPage(): React.ReactElement | null {
   const [tab, setTab] = useState<Tab>('bookings');
   return (
     <div>

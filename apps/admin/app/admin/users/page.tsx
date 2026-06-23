@@ -25,7 +25,7 @@ type Row = {
   serviceAreas?: unknown;
 };
 
-export default function UsersPage() {
+export default function UsersPage(): React.ReactElement | null {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('customer');
   const [rows, setRows] = useState<Row[]>([]);

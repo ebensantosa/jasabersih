@@ -30,7 +30,7 @@ function fmtRp(n: number | string | null | undefined): string {
   return 'Rp ' + Number(n).toLocaleString('id-ID');
 }
 
-export default function AdminOverview() {
+export default function AdminOverview(): React.ReactElement | null {
   const toast = useToast();
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);

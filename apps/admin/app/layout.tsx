@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'Internal admin dashboard',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactElement | null {
   return (
     <html lang="id">
       <body>{children}</body>

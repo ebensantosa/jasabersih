@@ -21,7 +21,7 @@ function rp(n: number | string | null | undefined): string {
   return 'Rp ' + Number(n ?? 0).toLocaleString('id-ID');
 }
 
-export default function ReferralsAdminPage() {
+export default function ReferralsAdminPage(): React.ReactElement | null {
   const toast = useToast();
   const [tab, setTab] = useState<'overview' | 'leaderboard' | 'all'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);

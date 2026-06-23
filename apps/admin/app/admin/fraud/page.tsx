@@ -6,7 +6,7 @@ import { Play, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { Modal, Textarea, Button, Badge, useConfirm, useToast } from '../../../components/ui';
 
-export default function FraudPage() {
+export default function FraudPage(): React.ReactElement | null {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);

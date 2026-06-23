@@ -9,7 +9,7 @@ import { MapPicker } from '../../../components/MapPicker';
 
 type SubTab = 'areas' | 'requests';
 
-export default function AreasPage() {
+export default function AreasPage(): React.ReactElement | null {
   const [tab, setTab] = useState<SubTab>('areas');
   const [requestCount, setRequestCount] = useState(0);
 

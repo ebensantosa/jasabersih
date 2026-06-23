@@ -23,7 +23,7 @@ function rupiah(n: number) {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
-export default function HourlyTiersPage() {
+export default function HourlyTiersPage(): React.ReactElement | null {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<Tier[]>([]);
