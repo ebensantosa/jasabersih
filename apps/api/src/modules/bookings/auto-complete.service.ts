@@ -34,6 +34,43 @@ export class AutoCompleteService {
 
     for (const b of stale) {
       try {
+        // Safety net: kalau cleaner_payout null/0, hitung dulu sebelum complete
+        if (b.cleaner_id && (!b.cleaner_payout || Number(b.cleaner_payout) <= 0)) {
+          const ctx = await this.prisma.$queryRaw<{ base: number; travel: number; brings_tools: boolean | null; pricing_mode: string | null; hourly_share_pct: number | null }[]>`
+            SELECT COALESCE(bk.base_amount, bk.total_amount) AS base,
+                   COALESCE(bk.travel_fee, 0) AS travel,
+                   cp.brings_tools,
+                   bk.pricing_mode,
+                   ht.cleaner_share_pct AS hourly_share_pct
+              FROM bookings bk
+              LEFT JOIN cleaner_profiles cp ON cp.user_id = ${b.cleaner_id}::uuid
+              LEFT JOIN pricing_hourly_tiers ht ON ht.id = bk.hourly_tier_id
+             WHERE bk.id = ${b.id}::uuid LIMIT 1
+          `;
+          if (ctx[0]) {
+            const base = Number(ctx[0].base ?? 0);
+            const travel = Number(ctx[0].travel ?? 0);
+            const bringsTools = !!ctx[0].brings_tools;
+            const isHourly = ctx[0].pricing_mode === 'hourly';
+            let sharePct: number;
+            if (isHourly && ctx[0].hourly_share_pct != null) {
+              sharePct = Number(ctx[0].hourly_share_pct);
+            } else {
+              const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+                SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
+                  FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+              `;
+              const tier = tiers.find((t) => base >= Number(t.range_min ?? 0) && (t.range_max == null || base <= Number(t.range_max)));
+              sharePct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+            }
+            const payout = Math.round(base * sharePct / 100) + travel;
+            if (payout > 0) {
+              await this.prisma.$executeRaw`UPDATE bookings SET cleaner_payout = ${payout}::bigint WHERE id = ${b.id}::uuid`;
+              b.cleaner_payout = payout;
+            }
+          }
+        }
+
         await this.prisma.$transaction([
           this.prisma.$executeRaw`
             UPDATE bookings
