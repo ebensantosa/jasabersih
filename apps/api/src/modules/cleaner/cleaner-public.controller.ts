@@ -15,7 +15,7 @@ export class CleanerPublicController {
   async featured() {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT u.id, u.name, u.photo_url AS "photoUrl",
-             cp.tier, cp.rating_avg AS "ratingAvg", cp.rating_count AS "ratingCount",
+             cp.rating_avg AS "ratingAvg", cp.rating_count AS "ratingCount",
              cp.total_jobs_done AS "totalJobsDone", cp.brings_tools AS "bringsTools"
         FROM cleaner_profiles cp
         INNER JOIN users u ON u.id = cp.user_id
@@ -36,7 +36,7 @@ export class CleanerPublicController {
         u.id, u.name, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         cp.bio, cp.brings_tools AS "bringsTools",
         cp.service_areas AS "serviceAreas", cp.languages,
-        cp.tier, cp.kyc_status AS "kycStatus",
+        cp.kyc_status AS "kycStatus",
         cp.rating_avg AS "ratingAvg", cp.rating_count AS "ratingCount",
         cp.acceptance_rate AS "acceptanceRate", cp.completion_rate AS "completionRate",
         cp.total_jobs_done AS "totalJobsDone"

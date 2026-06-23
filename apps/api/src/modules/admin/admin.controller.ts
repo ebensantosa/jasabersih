@@ -147,7 +147,6 @@ export class AdminController {
       SELECT
         u.id, u.name, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         cp.kyc_status AS status,
-        cp.tier,
         cp.brings_tools AS "bringsTools",
         cp.rating_avg AS rating,
         cp.total_jobs_done AS "jobsDone",
@@ -248,7 +247,7 @@ export class AdminController {
   @Post('cleaners')
   @Roles('super_admin', 'ops')
   async createCleaner(
-    @Body() body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean },
+    @Body() body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; autoApprove?: boolean },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
@@ -272,7 +271,6 @@ export class AdminController {
     const passwordHash = await bcrypt.hash(body.password, 12);
     // autoApprove dibatasi hanya super_admin — ops/support harus lewat workflow KYC normal.
     const kycStatus = body.autoApprove && admin.role === 'super_admin' ? 'approved' : 'pending';
-    const tier = body.tier || 'standard';
 
     const userRows = await this.prisma.$queryRaw<{ id: string }[]>`
       INSERT INTO users (phone, name, email, password_hash, phone_verified_at, is_customer, is_freelancer, status)
@@ -283,11 +281,10 @@ export class AdminController {
 
     // Create cleaner_profile (idempotent kalau row sudah ada)
     await this.prisma.$executeRaw`
-      INSERT INTO cleaner_profiles (user_id, kyc_status, tier, brings_tools, service_areas)
-      VALUES (${userId}::uuid, ${kycStatus}, ${tier}, ${body.bringsTools ?? false}, ${JSON.stringify(body.serviceAreas ?? [])}::jsonb)
+      INSERT INTO cleaner_profiles (user_id, kyc_status, brings_tools, service_areas)
+      VALUES (${userId}::uuid, ${kycStatus}, ${body.bringsTools ?? false}, ${JSON.stringify(body.serviceAreas ?? [])}::jsonb)
       ON CONFLICT (user_id) DO UPDATE
         SET kyc_status = EXCLUDED.kyc_status,
-            tier = EXCLUDED.tier,
             brings_tools = EXCLUDED.brings_tools,
             service_areas = EXCLUDED.service_areas
     `;
@@ -344,20 +341,17 @@ export class AdminController {
     return { ok: true };
   }
 
-  // PATCH /admin/cleaners/:id — admin update bringsTools / tier / serviceAreas
+  // PATCH /admin/cleaners/:id — admin update bringsTools / serviceAreas
   @Patch('cleaners/:id')
   @Roles('super_admin', 'ops')
   async updateCleaner(
     @Param('id') id: string,
-    @Body() body: { bringsTools?: boolean; tier?: string; serviceAreas?: string[] },
+    @Body() body: { bringsTools?: boolean; serviceAreas?: string[] },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
     if (body.bringsTools !== undefined) {
       await this.prisma.$executeRaw`UPDATE cleaner_profiles SET brings_tools = ${body.bringsTools}, updated_at = NOW() WHERE user_id = ${id}::uuid`;
-    }
-    if (body.tier !== undefined) {
-      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET tier = ${body.tier}, updated_at = NOW() WHERE user_id = ${id}::uuid`;
     }
     if (body.serviceAreas !== undefined) {
       await this.prisma.$executeRaw`UPDATE cleaner_profiles SET service_areas = ${JSON.stringify(body.serviceAreas)}::jsonb, updated_at = NOW() WHERE user_id = ${id}::uuid`;

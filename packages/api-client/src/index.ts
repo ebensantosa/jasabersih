@@ -154,11 +154,11 @@ export function createClient(opts: ClientOptions) {
         ),
       listCleaners: (params?: { status?: string; q?: string; limit?: number }) =>
         request<unknown[]>('GET', `/admin/cleaners${qs(params ? { status: params.status, q: params.q, limit: params.limit != null ? String(params.limit) : undefined } : undefined)}`),
-      createCleaner: (body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; tier?: string; autoApprove?: boolean }) =>
+      createCleaner: (body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; autoApprove?: boolean }) =>
         request<{ id: string; phone: string; name: string }>('POST', '/admin/cleaners', body),
       deleteCleaner: (id: string, reason?: string) =>
         request<{ ok: true }>('DELETE', `/admin/cleaners/${id}`, { reason }),
-      updateCleaner: (id: string, body: { bringsTools?: boolean; tier?: string; serviceAreas?: string[] }) =>
+      updateCleaner: (id: string, body: { bringsTools?: boolean; serviceAreas?: string[] }) =>
         request<{ ok: true }>('PATCH', `/admin/cleaners/${id}`, body),
       updateUserAccount: (id: string, body: { name?: string; email?: string; password?: string }) =>
         request<{ ok: true }>('PATCH', `/admin/users/${id}`, body),

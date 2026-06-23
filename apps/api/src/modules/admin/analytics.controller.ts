@@ -86,7 +86,7 @@ export class AdminAnalyticsController {
           (SELECT COUNT(*)::int FROM fraud_strikes WHERE created_at >= NOW() - INTERVAL '24 hours') AS fraud_strikes_24h
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
-        SELECT u.id, u.name, u.phone, cp.tier,
+        SELECT u.id, u.name, u.phone,
                cp.rating_avg AS "ratingAvg", cp.rating_count AS "ratingCount",
                cp.total_jobs_done AS "totalJobsDone"
           FROM cleaner_profiles cp

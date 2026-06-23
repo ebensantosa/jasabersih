@@ -19,7 +19,7 @@ type ProfileData = {
     bringsTools: boolean;
     serviceAreas: any;
     languages: string[] | null;
-    tier: string;
+
     ratingAvg: number | null;
     ratingCount: number | null;
     totalJobsDone: number;
@@ -107,7 +107,7 @@ export default function CleanerPublicProfile() {
           {/* Stats */}
           <View className="flex-row gap-2">
             <Stat label="Job Selesai" value={String(p.totalJobsDone ?? 0)} sub="all-time" />
-            <Stat label="Tier" value={(p.tier ?? 'pending').toUpperCase()} sub="" />
+            <Stat label="Bawa Alat" value={p.bringsTools ? 'Ya' : 'Tidak'} sub={p.bringsTools ? 'lengkap' : ''} />
             <Stat label="Bawa Alat" value={p.bringsTools ? 'Ya' : 'Tidak'} sub={p.bringsTools ? 'lengkap' : ''} />
           </View>
 

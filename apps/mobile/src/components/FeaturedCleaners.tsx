@@ -12,7 +12,7 @@ type Cleaner = {
   id: string;
   name: string | null;
   photoUrl: string | null;
-  tier: string | null;
+
   ratingAvg: number | null;
   ratingCount: number | null;
   totalJobsDone: number;

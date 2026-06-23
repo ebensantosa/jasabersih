@@ -58,7 +58,7 @@ export class AdminWithdrawalsController {
              w.failure_reason AS "failureReason",
              w.flip_disbursement_id AS "flipDisbursementId",
              w.processed_at AS "processedAt",
-             (SELECT cp.tier FROM cleaner_profiles cp WHERE cp.user_id = w.user_id) AS "cleanerTier"
+             NULL AS "cleanerTier"
         FROM withdrawals w
         LEFT JOIN users u ON u.id = w.user_id
        WHERE w.review_status = ANY(${statuses}::text[])

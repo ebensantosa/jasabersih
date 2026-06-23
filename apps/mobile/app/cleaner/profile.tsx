@@ -21,7 +21,7 @@ type Profile = {
   languages: string[] | null;
   isAvailable: boolean;
   kycStatus: string;
-  tier: string;
+
   ratingAvg: number | null;
   ratingCount: number | null;
   totalJobsDone: number;
@@ -185,7 +185,7 @@ function CleanerProfileScreen() {
               <View className="mt-3 flex-row gap-3">
                 <Stat icon={<Star size={14} color="#FACC15" fill="#FACC15" strokeWidth={1} />} label="Rating" value={profile?.ratingAvg != null ? `${Number(profile.ratingAvg).toFixed(2)}` : '–'} sub={`${profile?.ratingCount ?? 0} review`} />
                 <Stat icon={<BadgeCheck size={14} color="#1D4ED8" />} label="Job Selesai" value={String(profile?.totalJobsDone ?? 0)} sub="all-time" />
-                <Stat icon={<Wrench size={14} color="#475569" />} label="Tier" value={(profile?.tier ?? 'pending').toUpperCase()} sub="" />
+                <Stat icon={<Wrench size={14} color="#475569" />} label="Bawa Alat" value={profile?.bringsTools ? 'Ya' : 'Tidak'} sub={profile?.bringsTools ? 'lengkap' : ''} />
               </View>
             </View>
 

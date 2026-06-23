@@ -181,7 +181,7 @@ function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () 
   const toast = useToast();
   const [form, setForm] = useState({
     name: '', phone: '', email: '', password: '',
-    bringsTools: false, autoApprove: false, tier: 'standard',
+    bringsTools: false, autoApprove: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -207,7 +207,6 @@ function AddCleanerModal({ onClose, onDone }: { onClose: () => void; onDone: () 
         password: form.password,
         bringsTools: form.bringsTools,
         autoApprove: form.autoApprove,
-        tier: form.tier,
       });
       toast.success(`Cleaner ${form.name} dibuat`);
       onDone();

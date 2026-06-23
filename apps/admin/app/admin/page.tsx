@@ -19,7 +19,7 @@ type Overview = {
   users: { total: number; active: number; suspended: number; banned: number; new_30d: number };
   cleaners: { total: number; approved: number; pending: number; under_review: number; rejected: number };
   pending: { kyc_pending: number; withdrawal_pending: number; disputes_open: number; blocked_chat_24h: number; fraud_strikes_24h: number };
-  topCleaners: { id: string; name: string | null; phone: string; tier: string | null; ratingAvg: number | null; ratingCount: number | null; totalJobsDone: number }[];
+  topCleaners: { id: string; name: string | null; phone: string; ratingAvg: number | null; ratingCount: number | null; totalJobsDone: number }[];
   topServices: { name: string; orders: number; gmv: number }[];
   geoBreakdown: { city: string; orders: number; gmv: number }[];
   funnel30d: { totalOrders: number; completed: number; cancelled: number; completionRate: number; cancelRate: number };
