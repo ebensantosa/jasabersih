@@ -52,7 +52,8 @@ if ss -tln 2>/dev/null | grep -qE ':(5000|5001)\b'; then
 fi
 
 log "pm2 start ecosystem.config.js (fresh)"
-pm2 start "$APP_DIR/deploy/ecosystem.config.js" --update-env
+pm2 delete jasabersih-api jasabersih-admin 2>/dev/null || true
+pm2 start "$APP_DIR/deploy/ecosystem.config.js"
 pm2 save
 
 log "Health checks"
