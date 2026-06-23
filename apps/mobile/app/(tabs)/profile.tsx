@@ -212,9 +212,7 @@ function ProfileScreen() {
           </Pressable>
         )}
 
-        <Text className="font-sans mt-3 text-center text-[11px] text-ink-400">
-          JasaBersih v0.1.0
-        </Text>
+
       </ScrollView>
     </View>
   );
