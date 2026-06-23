@@ -186,6 +186,9 @@ export type Booking = {
   cleanerId?: string;
   cleanerName?: string;
   cleanerPhotoUrl?: string;
+  // Customer info (visible to cleaner)
+  customerName?: string;
+  customerPhotoUrl?: string;
   messages: ChatMessage[];
 };
 
@@ -300,8 +303,10 @@ export const useBookingsStore = create<State>((set, get) => ({
           totalPrice: total,
           cleanerPayout,
           cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? existing.cleanerId,
-          cleanerName: s.cleanerName ?? existing.cleanerName,
+          cleanerName: s.cleanerName ?? (s as any).cleaner_name ?? existing.cleanerName,
           cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? existing.cleanerPhotoUrl,
+          customerName: (s as any).customerName ?? (s as any).customer_name ?? existing.customerName,
+          customerPhotoUrl: (s as any).customerPhotoUrl ?? (s as any).customer_photo_url ?? existing.customerPhotoUrl,
           customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? existing.customerNotes,
         }
           : {
@@ -318,8 +323,10 @@ export const useBookingsStore = create<State>((set, get) => ({
               addOns: [], basePrice: total, dirtSurcharge: 0, totalPrice: total,
               cleanerPayout,
               cleanerId: (s as any).cleanerId ?? (s as any).cleaner_id ?? undefined,
-              cleanerName: s.cleanerName ?? undefined,
+              cleanerName: s.cleanerName ?? (s as any).cleaner_name ?? undefined,
               cleanerPhotoUrl: (s as any).cleanerPhotoUrl ?? (s as any).cleaner_photo_url ?? undefined,
+              customerName: (s as any).customerName ?? (s as any).customer_name ?? undefined,
+              customerPhotoUrl: (s as any).customerPhotoUrl ?? (s as any).customer_photo_url ?? undefined,
               customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? undefined,
               messages: [],
             } as Booking;
@@ -379,6 +386,8 @@ export const useBookingsStore = create<State>((set, get) => ({
         cleanerId: s.cleaner_id ?? s.cleanerId ?? undefined,
         cleanerName: s.cleaner_name ?? s.cleanerName ?? undefined,
         cleanerPhotoUrl: s.cleaner_photo_url ?? s.cleanerPhotoUrl ?? undefined,
+        customerName: s.customer_name ?? s.customerName ?? undefined,
+        customerPhotoUrl: s.customer_photo_url ?? s.customerPhotoUrl ?? undefined,
         customerNotes: s.customer_notes ?? s.customerNotes ?? undefined,
         paidAt: s.paid_at ? (Number.isFinite(Date.parse(s.paid_at)) ? Date.parse(s.paid_at) : undefined) : undefined,
         startedAt: (s.started_at ?? s.startedAt) ? (Number.isFinite(Date.parse(s.started_at ?? s.startedAt)) ? Date.parse(s.started_at ?? s.startedAt) : undefined) : undefined,

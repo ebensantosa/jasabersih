@@ -144,7 +144,7 @@ export class BookingsController {
               b.reclean_requested_at AS "recleanRequestedAt", b.reclean_reason AS "recleanReason",
               ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
               s.name AS service_name, s.icon_url AS service_icon,
-              cu.name AS customer_name, cu.phone AS customer_phone,
+              cu.name AS customer_name, cu.phone AS customer_phone, cu.photo_url AS customer_photo_url,
               cl.name AS cleaner_name, cl.phone AS cleaner_phone, cl.photo_url AS cleaner_photo_url
          FROM bookings b
          LEFT JOIN services s ON s.id = b.service_id

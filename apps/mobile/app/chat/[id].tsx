@@ -297,6 +297,33 @@ function Chat() {
                 );
               }
 
+              if (isCleaner) {
+                // Cleaner views chat: show customer name + photo
+                const customerPhotoUrl = (booking as any)?.customerPhotoUrl;
+                const customerName = (booking as any)?.customerName ?? 'Pelanggan';
+                return (
+                  <>
+                    {customerPhotoUrl ? (
+                      <Image
+                        source={{ uri: customerPhotoUrl }}
+                        style={{ width: 40, height: 40, borderRadius: 20 }}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <View className="h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                        <Text className="font-bold text-sm text-emerald-700">{customerName[0]?.toUpperCase() ?? 'P'}</Text>
+                      </View>
+                    )}
+                    <View className="flex-1">
+                      <Text className="font-semibold text-sm text-ink-900">{customerName}</Text>
+                      <Text className="font-medium text-[11px] text-ink-500">
+                        {status === 'connecting' ? 'Menyambung…' : status === 'error' ? 'Koneksi error' : 'Pelanggan'}
+                      </Text>
+                    </View>
+                  </>
+                );
+              }
+
               return (
                 <>
                   {booking?.cleanerPhotoUrl ? (
