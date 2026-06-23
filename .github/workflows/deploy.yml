@@ -39,7 +39,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=yes \
               deploy@${{ secrets.VPS_HOST }} \
-              "bash /var/www/jasabersih/deploy/deploy.sh"
+              "CI=true bash /var/www/jasabersih/deploy/deploy.sh"
 
       - name: Notify on failure
         if: failure()
