@@ -23,7 +23,7 @@ NEW_SHA="$(git rev-parse HEAD)"
 log "Deploying commit: ${NEW_SHA:0:7}"
 
 log "pnpm install (root + workspaces, include devDependencies)"
-pnpm install --frozen-lockfile --prod=false
+CI=true pnpm install --frozen-lockfile --prod=false
 
 log "Generate Prisma client"
 (cd apps/api && pnpm exec prisma generate)
