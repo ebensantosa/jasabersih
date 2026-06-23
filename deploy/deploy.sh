@@ -2,8 +2,8 @@
 set -euo pipefail
 
 APP_DIR="/var/www/jasabersih"
-HEALTH_API="http://127.0.0.1:5000/v1/health"
-HEALTH_ADMIN="http://127.0.0.1:5001"
+HEALTH_API="http://127.0.0.1:5000/v1/app/content"
+HEALTH_ADMIN="http://127.0.0.1:3001"
 
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; N='\033[0m'
 log()  { echo -e "${G}>${N} $*"; }
