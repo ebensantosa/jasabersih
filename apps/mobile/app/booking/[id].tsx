@@ -156,6 +156,7 @@ function BookingDetail() {
   const [hasRated, setHasRated] = useState(false);
   const [bookingRating, setBookingRating] = useState<BookingRating>(null);
   const [advancing, setAdvancing] = useState(false);
+  const [startCountdown, setStartCountdown] = useState<number | null>(null);
   const [photoSummary, setPhotoSummary] = useState({ beforeCount: 0, afterCount: 0, damageCount: 0 });
   const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
   const [showUpchargeModal, setShowUpchargeModal] = useState(false);
@@ -216,14 +217,19 @@ function BookingDetail() {
       void advanceStatus('in_progress');
       return;
     }
-    Alert.alert(
-      'Mulai hitung durasi kerja?',
-      'Untuk layanan per jam, menekan Mulai Kerja akan langsung menjalankan hitungan waktu. Gunakan Jeda Kerja bila perlu istirahat.',
-      [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Mulai Sekarang', onPress: () => { void advanceStatus('in_progress'); } },
-      ],
-    );
+    // Tampilkan countdown 5 detik sebelum timer jam mulai berjalan
+    setStartCountdown(5);
+    const interval = setInterval(() => {
+      setStartCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          setStartCountdown(null);
+          void advanceStatus('in_progress');
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   }
 
   // Cleaner advance status - pakai API kalau bukan local-only booking
@@ -1238,13 +1244,19 @@ function BookingDetail() {
                     </Pressable>
                   )}
                   {booking.status === 'on_the_way' && (
-                    <Pressable
-                      onPress={confirmStartWork}
-                      disabled={advancing}
-                      className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
-                    >
-                      <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.start_work')}</Text>
-                    </Pressable>
+                    startCountdown !== null ? (
+                      <View className="flex-1 items-center rounded-2xl bg-amber-500 py-3.5">
+                        <Text className="font-bold text-sm text-white">Timer mulai dalam {startCountdown}...</Text>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={confirmStartWork}
+                        disabled={advancing}
+                        className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
+                      >
+                        <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.start_work')}</Text>
+                      </Pressable>
+                    )
                   )}
                   {booking.status === 'in_progress' && (
                     <View className="flex-1">
