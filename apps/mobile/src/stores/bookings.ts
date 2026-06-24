@@ -296,6 +296,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         const paidAtMs = paidAtRaw ? safeTimestamp(paidAtRaw) : undefined;
         return existing ? {
           ...existing,
+          pricingMode: ((s.pricingMode ?? s.pricing_mode) as PricingMode | undefined) ?? existing.pricingMode,
           status: mapServerStatus(s.status),
           categoryCode: s.categoryCode ?? s.category_code ?? s.formSnapshot?.categoryCode ?? s.form_snapshot?.categoryCode ?? existing.categoryCode,
           categoryName: pickBookingTitle(s),
