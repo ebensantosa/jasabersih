@@ -322,20 +322,25 @@ function BookingDetail() {
   );
   useVisiblePoll(pollSearchStatus, 10_000, booking?.status === 'searching' && !!id && !id.startsWith('bk_'));
 
-  // Saat booking belum ada di store + bukan local stub: kasih kesempatan
-  // fetchOne (~1-2 detik). Tanpa loading state, user kena flash "tidak ditemukan"
-  // walau sebenarnya lagi loading dari server.
-  // Loading state explicit (not timer) supaya gak race di slow network.
-  const [fetchTriedAt, setFetchTriedAt] = useState(0);
-  useEffect(() => { setFetchTriedAt(Date.now()); }, [id]);
-  // Retry fetchOne sekali kalau masih kosong setelah 3 detik (kasus accept job
-  // -> store blm sync padahal server udh oke).
+  // Fetch immediately on mount (fixes "memuat pesanan" stuck forever when cleaner
+  // accepts a job — booking isn't in store yet, and time-based stillFetching
+  // never re-evaluates without a re-render).
+  const [fetchDone, setFetchDone] = useState(false);
   useEffect(() => {
-    if (booking || !id || id.startsWith('bk_')) return;
-    const t = setTimeout(() => { if (!useBookingsStore.getState().list.find((b) => b.id === id)) void fetchOne(id); }, 3000);
-    return () => clearTimeout(t);
-  }, [id, booking, fetchOne]);
-  const stillFetching = !booking && id && !id.startsWith('bk_') && (Date.now() - fetchTriedAt < 10000);
+    setFetchDone(false);
+    if (!id || id.startsWith('bk_')) { setFetchDone(true); return; }
+    let cancelled = false;
+    void (async () => {
+      try { await fetchOne(id); } catch {} finally { if (!cancelled) setFetchDone(true); }
+    })();
+    // Retry once after 3s for race between socket ACK and DB commit
+    const t = setTimeout(async () => {
+      if (cancelled || useBookingsStore.getState().list.find((b) => b.id === id)) return;
+      try { await fetchOne(id); } catch {} finally { if (!cancelled) setFetchDone(true); }
+    }, 3000);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stillFetching = !booking && !fetchDone;
 
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [payNavigating, setPayNavigating] = useState(false);

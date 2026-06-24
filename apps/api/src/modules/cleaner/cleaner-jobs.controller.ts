@@ -365,18 +365,23 @@ export class CleanerJobsController {
         throw new BadRequestException('Kamu sudah punya job di jam yang dekat. Selesaikan dulu sebelum ambil yang baru.');
       }
 
-      // Cek working hours kalau ada di-set
-      const dayOfWeek = new Date(schedAt).getDay();
-      const minutesOfDay = new Date(schedAt).getHours() * 60 + new Date(schedAt).getMinutes();
-      const wh = await this.prisma.$queryRaw<{ start_minute: number; end_minute: number }[]>`
-        SELECT start_minute, end_minute FROM cleaner_working_hours
-         WHERE user_id = ${user.id}::uuid AND day_of_week = ${dayOfWeek}
-      `;
-      if (wh.length > 0) {
-        const inHours = wh.some((s) => minutesOfDay >= s.start_minute && minutesOfDay < s.end_minute);
-        if (!inHours) {
-          throw new BadRequestException('Job ini di luar jam kerjamu. Atur jam kerja di profile.');
+      // Cek working hours kalau ada di-set (table mungkin belum ada di env lama)
+      try {
+        const dayOfWeek = new Date(schedAt).getDay();
+        const minutesOfDay = new Date(schedAt).getHours() * 60 + new Date(schedAt).getMinutes();
+        const wh = await this.prisma.$queryRaw<{ start_minute: number; end_minute: number }[]>`
+          SELECT start_minute, end_minute FROM cleaner_working_hours
+           WHERE user_id = ${user.id}::uuid AND day_of_week = ${dayOfWeek}
+        `;
+        if (wh.length > 0) {
+          const inHours = wh.some((s) => minutesOfDay >= s.start_minute && minutesOfDay < s.end_minute);
+          if (!inHours) {
+            throw new BadRequestException('Job ini di luar jam kerjamu. Atur jam kerja di profile.');
+          }
         }
+      } catch (e: any) {
+        if (e?.status) throw e; // BadRequestException dari dalam try — rethrow
+        // DB error (table not exist, etc.) — skip check, jangan block accept
       }
     }
 
