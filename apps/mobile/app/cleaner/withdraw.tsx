@@ -1,7 +1,7 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, CreditCard, Plus, User, Wallet, Zap } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Field, validateMinLength } from '../../src/components/Field';
@@ -62,6 +62,7 @@ function Withdraw() {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   // Live bank health status dari Flip - utk indicator + safeguard submit.
   const [bankHealth, setBankHealth] = useState<Record<string, 'normal' | 'delayed' | 'down'>>({});
+  const [successModal, setSuccessModal] = useState<{ amount: number; autoDisburse: boolean; fee?: number; transferAmount?: number } | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoadingAccounts(true);
@@ -137,13 +138,7 @@ function Withdraw() {
           account: selectedAccount?.accountNumber ?? '',
           name: selectedAccount?.accountHolderName ?? '',
         });
-        if (res.autoDisburse) {
-          const feeNote = res.fee ? `\n\nBiaya admin: Rp ${res.fee.toLocaleString('id-ID')}\nDiterima: Rp ${(res.transferAmount ?? amount - (res.fee ?? 0)).toLocaleString('id-ID')}` : '';
-          toast.success(`Dana sedang diproses transfer otomatis. Tiba dalam beberapa menit.${feeNote}`);
-        } else {
-          toast.success(res.message ?? 'Permintaan tarik terkirim. Admin akan review.');
-        }
-        safeBack();
+        setSuccessModal({ amount, autoDisburse: res.autoDisburse, fee: res.fee, transferAmount: res.transferAmount });
       })
       .catch((err: any) => {
         const msg = err?.response?.data?.error?.message ?? err?.message ?? 'Gagal request penarikan';
@@ -155,6 +150,42 @@ function Withdraw() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Success Modal */}
+      <Modal visible={!!successModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 24, padding: 28, alignItems: 'center', width: '100%', maxWidth: 340 }}>
+            <View style={{ backgroundColor: '#D1FAE5', borderRadius: 999, padding: 20, marginBottom: 16 }}>
+              <CheckCircle2 color="#059669" size={48} />
+            </View>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: '#0F172A', marginBottom: 8 }}>Penarikan Berhasil!</Text>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 22, color: '#1D4ED8', marginBottom: 4 }}>{formatRupiah(successModal?.amount ?? 0)}</Text>
+            {successModal?.autoDisburse ? (
+              <>
+                {successModal.fee ? (
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#64748B', textAlign: 'center', marginBottom: 4 }}>
+                    Biaya admin: {formatRupiah(successModal.fee)} · Diterima: {formatRupiah(successModal.transferAmount ?? (successModal.amount - (successModal.fee ?? 0)))}
+                  </Text>
+                ) : null}
+                <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20 }}>
+                  Dana sedang diproses transfer otomatis. Tiba dalam beberapa menit.
+                </Text>
+              </>
+            ) : (
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20 }}>
+                Permintaan tarik diterima. Admin akan memproses segera.
+              </Text>
+            )}
+            <Pressable
+              onPress={() => { setSuccessModal(null); safeBack(); }}
+              style={{ backgroundColor: '#1D4ED8', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center' }}
+            >
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>OK</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-brand-700">
           <View className="flex-row items-center px-3 py-2">

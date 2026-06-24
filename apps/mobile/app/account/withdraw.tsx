@@ -1,7 +1,7 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, Plus, Wallet } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MaintenanceBanner } from '../../src/components/MaintenanceBanner';
@@ -37,6 +37,7 @@ function WithdrawCustomer() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [amountStr, setAmountStr] = useState('');
+  const [successModal, setSuccessModal] = useState<{ amount: number; autoDisburse: boolean } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,8 +107,7 @@ function WithdrawCustomer() {
     try {
       const r = await api.post('/customer/withdrawal', { amount, bankAccountId: selectedBankAccountId });
       const data = r.data?.data ?? r.data;
-      toast.success(data?.autoDisburse ? 'Dana sedang diproses ke rekening tujuan.' : (data?.message ?? 'Permintaan penarikan terkirim.'));
-      router.replace('/account/wallet');
+      setSuccessModal({ amount, autoDisburse: !!data?.autoDisburse });
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal tarik saldo');
     } finally {
@@ -118,6 +118,30 @@ function WithdrawCustomer() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Success Modal */}
+      <Modal visible={!!successModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 24, padding: 28, alignItems: 'center', width: '100%', maxWidth: 340 }}>
+            <View style={{ backgroundColor: '#D1FAE5', borderRadius: 999, padding: 20, marginBottom: 16 }}>
+              <CheckCircle2 color="#059669" size={48} />
+            </View>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: '#0F172A', marginBottom: 8 }}>Penarikan Berhasil!</Text>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 22, color: '#1D4ED8', marginBottom: 12 }}>{formatRupiah(successModal?.amount ?? 0)}</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 24 }}>
+              {successModal?.autoDisburse
+                ? 'Dana sedang diproses ke rekening tujuan. Tiba dalam beberapa menit.'
+                : 'Permintaan penarikan diterima. Admin akan memproses segera.'}
+            </Text>
+            <Pressable
+              onPress={() => { setSuccessModal(null); router.replace('/account/wallet'); }}
+              style={{ backgroundColor: '#1D4ED8', borderRadius: 16, paddingVertical: 14, width: '100%', alignItems: 'center' }}
+            >
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>OK</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
       <View className="flex-1 bg-ink-50">
         <SafeAreaView edges={['top']} className="bg-brand-700">
           <View className="flex-row items-center px-3 py-2">
