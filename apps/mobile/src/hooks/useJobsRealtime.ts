@@ -62,6 +62,19 @@ export function useJobsRealtime() {
     function onConnect() {
       socket.emit('go-online', {}, (res: { ok: boolean }) => {
         onlineRef.current = !!res?.ok;
+        if (res?.ok) {
+          // Fetch jobs yg sudah 'searching' sebelum kita go-online (misal: customer bayar saldo saat cleaner offline)
+          void api.get('/cleaner/jobs/available').then((r) => {
+            const list = ((r.data?.data ?? r.data ?? []) as IncomingJob[]).filter((job) => isPopupEligible(job));
+            if (list.length === 0) return;
+            setQueue((prev) => {
+              const existing = new Set(prev.map((j) => j.id));
+              const merged = [...prev];
+              for (const j of list) if (!existing.has(j.id)) merged.push(j);
+              return merged;
+            });
+          }).catch(() => {});
+        }
       });
     }
     function onIncoming(job: IncomingJob) {

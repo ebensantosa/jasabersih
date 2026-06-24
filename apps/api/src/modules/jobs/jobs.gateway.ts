@@ -276,7 +276,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .map((area) => area.trim().toLowerCase())
             .filter(Boolean)
         : [];
-      if (areas.length === 0) return false;
+      if (areas.length === 0) return true; // belum set area = dapat semua job (onboarding)
       return areas.some((area) => normalizedAddress.includes(area));
     });
 
