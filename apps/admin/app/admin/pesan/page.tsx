@@ -311,7 +311,7 @@ export default function PesanPage(): React.ReactElement | null  {
                   <MessageSquare size={28} className="mb-2" />
                   <span className="text-xs">Belum ada pesan</span>
                 </div>
-              ) : [...messages].reverse().map((m) => {
+              ) : messages.map((m) => {
                 const isAdmin = m.isAdmin || m.senderPhone === ADMIN_PHONE;
                 const isImage = m.messageType === 'image' || (m.content && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(m.content));
                 return (
