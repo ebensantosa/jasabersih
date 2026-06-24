@@ -241,7 +241,11 @@ export class FlipService {
     });
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok || json?.code) {
-      this.log.error(`flip inquiry failed (status=${res.status}): ${JSON.stringify(json)}`);
+      const flipErrors: any[] = json?.errors ?? [];
+      const isInvalidBankCode = flipErrors.some((e: any) => e?.code === 1033) || res.status === 422;
+      this.log.error(`flip inquiry failed (bank=${input.bankCode} status=${res.status}): ${JSON.stringify(json)}`);
+      // Bank code tidak didukung Flip untuk inquiry — simpan tanpa verifikasi
+      if (isInvalidBankCode) return null;
       throw new BadRequestException(json?.message ?? `Verifikasi rekening gagal (${res.status})`);
     }
     return json; // contains: bank_code, account_number, account_holder, status ("SUCCESS"|...)

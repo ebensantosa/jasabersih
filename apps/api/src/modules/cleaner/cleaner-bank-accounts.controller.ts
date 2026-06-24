@@ -160,10 +160,7 @@ export class CleanerBankAccountsController {
 
     const isEwallet = EWALLET_CODES.has(body.bankCode);
 
-    // Inquiry Flip - verify nama pemilik & rekening valid.
-    // E-wallet: Flip sometimes return empty account_holder (OVO privacy), tetep
-    // accept asal status=SUCCESS. Nama yg disimpen = nama user di profile.
-    let inquiry: any;
+    let inquiry: any = null;
     try {
       inquiry = await this.flip.inquiryBankAccount({
         bankCode: body.bankCode,
@@ -173,7 +170,9 @@ export class CleanerBankAccountsController {
       throw new BadRequestException(`Verifikasi ${isEwallet ? 'e-wallet' : 'rekening'} gagal: ${e?.message ?? 'Coba lagi'}`);
     }
 
-    if (inquiry?.status !== 'SUCCESS' && !inquiry?.account_holder) {
+    const inquirySupported = inquiry !== null;
+
+    if (inquirySupported && inquiry?.status !== 'SUCCESS' && !inquiry?.account_holder) {
       throw new BadRequestException(
         isEwallet
           ? 'E-wallet tidak ditemukan / belum terdaftar. Cek nomor HP & pastikan wallet aktif.'
@@ -181,27 +180,28 @@ export class CleanerBankAccountsController {
       );
     }
 
-    // Verify nama pemilik match nama user (case-insensitive substring).
-    // Skip kalau e-wallet & Flip gak return holder name (privacy).
     const u = await this.prisma.$queryRaw<{ name: string | null }[]>`SELECT name FROM users WHERE id = ${user.id}::uuid`;
-    const userName = u[0]?.name ?? '';
-    const holderName = inquiry.account_holder ?? '';
-    if (userName && holderName && !namesLikelyMatch(userName, holderName)) {
-      throw new BadRequestException(`Nama pemilik ${isEwallet ? 'e-wallet' : 'rekening'} (${inquiry.account_holder}) tidak sesuai akun. Gunakan ${isEwallet ? 'e-wallet' : 'rekening'} atas nama sendiri.`);
-    }
-    // Kalau e-wallet & holder name kosong (OVO privacy), pakai nama user.
-    if (isEwallet && !inquiry.account_holder) {
-      inquiry.account_holder = u[0]?.name ?? 'Cleaner';
+    if (inquirySupported) {
+      const userName = u[0]?.name ?? '';
+      const holderName = inquiry.account_holder ?? '';
+      if (userName && holderName && !namesLikelyMatch(userName, holderName)) {
+        throw new BadRequestException(`Nama pemilik ${isEwallet ? 'e-wallet' : 'rekening'} (${inquiry.account_holder}) tidak sesuai akun. Gunakan ${isEwallet ? 'e-wallet' : 'rekening'} atas nama sendiri.`);
+      }
+      if (isEwallet && !inquiry.account_holder) {
+        inquiry.account_holder = u[0]?.name ?? 'Cleaner';
+      }
     }
 
+    const holderName = inquiry?.account_holder ?? u[0]?.name ?? null;
     // Save
     const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
       INSERT INTO cleaner_bank_accounts (
         user_id, bank_code, account_number, account_holder_name,
         is_verified, flip_inquiry_id, inquiry_result, verified_at
       ) VALUES (
-        ${user.id}::uuid, ${body.bankCode}, ${body.accountNumber}, ${inquiry.account_holder},
-        TRUE, ${inquiry.inquiry_key ?? null}, ${JSON.stringify(inquiry)}::jsonb, NOW()
+        ${user.id}::uuid, ${body.bankCode}, ${body.accountNumber}, ${holderName},
+        ${inquirySupported}, ${inquiry?.inquiry_key ?? null}, ${JSON.stringify(inquiry ?? {})}::jsonb,
+        ${inquirySupported ? new Date() : null}
       )
       RETURNING id
     `;
@@ -214,7 +214,7 @@ export class CleanerBankAccountsController {
          AND NOT EXISTS (SELECT 1 FROM cleaner_bank_accounts WHERE user_id = ${user.id}::uuid AND is_default = TRUE AND id <> ${id}::uuid)
     `;
 
-    return { id, isVerified: true, accountHolderName: inquiry.account_holder };
+    return { id, isVerified: inquirySupported, accountHolderName: holderName };
   }
 
   @Patch(':id/set-default')
