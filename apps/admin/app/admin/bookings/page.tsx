@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
 import { Button, Input, Modal, Textarea } from '../../../components/ui';
+import { MapPicker } from '../../../components/MapPicker';
 
 import { ApiOffline, api } from '../../../lib/api';
 import { formatDateTimeWithTz } from '../../../lib/datetime';
@@ -988,7 +989,6 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
     lng: 110.3695,
   });
   const [geocoding, setGeocoding] = useState(false);
-  const [mapKey, setMapKey] = useState(0);
   const [serviceAreas, setServiceAreas] = useState<{ id: string; name: string; city: string }[]>([]);
   const [cleanerMatches, setCleanerMatches] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [cleanerSearch, setCleanerSearch] = useState('');
@@ -1055,7 +1055,6 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
       const data = await res.json();
       if (data[0]) {
         setForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
-        setMapKey((k) => k + 1);
         toast.success('Titik lokasi ditemukan');
       } else {
         toast.error('Alamat tidak ditemukan di peta');
@@ -1199,21 +1198,12 @@ function CreateBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
         </div>
 
-        {/* Peta Leaflet — muncul setelah geocode */}
-        <div className="overflow-hidden rounded-xl border border-slate-200">
-          <iframe
-            key={mapKey}
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${form.lng - 0.005},${form.lat - 0.004},${form.lng + 0.005},${form.lat + 0.004}&layer=mapnik&marker=${form.lat},${form.lng}`}
-            className="h-48 w-full"
-            title="Peta lokasi"
-          />
-          <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 text-[10px] text-slate-500">
-            <span> {form.lat.toFixed(6)}, {form.lng.toFixed(6)}</span>
-            <a href={`https://www.openstreetmap.org/?mlat=${form.lat}&mlon=${form.lng}#map=17/${form.lat}/${form.lng}`}
-              target="_blank" rel="noreferrer"
-              className="font-semibold text-blue-600 hover:underline">Buka di OSM →</a>
-          </div>
-        </div>
+        <MapPicker
+          lat={form.lat}
+          lng={form.lng}
+          onChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+          height={260}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Tanggal & Jam" required type="datetime-local" value={form.scheduledAt} onChange={(v) => setForm({ ...form, scheduledAt: v })} />
           <Input label="Total Bayar (Rp)" required value={form.totalAmount} onChange={(v) => setForm({ ...form, totalAmount: v.replace(/[^\d]/g, '') })} placeholder="150000" />
