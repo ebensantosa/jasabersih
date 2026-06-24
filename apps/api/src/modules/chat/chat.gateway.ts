@@ -201,9 +201,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Push notification ke recipient (fire-and-forget)
       if (recipientId) {
-        const room = this.server.sockets.adapter.rooms.get(roomName(body.bookingId));
+        const room = this.server?.sockets?.adapter?.rooms?.get(roomName(body.bookingId));
         const recipientOnline = !!room && Array.from(room).some((sid) => {
-          const s = this.server.sockets.sockets.get(sid) as AuthedSocket | undefined;
+          const s = this.server?.sockets?.sockets?.get(sid) as AuthedSocket | undefined;
           return s?.data?.userId === recipientId;
         });
         if (!recipientOnline) {

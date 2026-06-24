@@ -13,6 +13,15 @@ import { PushService } from '../notifications/push.service';
 import { TripayService } from './tripay.service';
 import { FlipService } from './flip.service';
 
+// Flip returns bill_payment.id (small int) as the canonical payment ID used in callbacks.
+// link_id is the bill-level ID which may be a large BigInt in newer Flip API versions.
+// We store whichever field matches what Flip sends as bill_link_id in callbacks.
+function resolveFlipLinkId(result: any): string {
+  const paymentId = result?.bill_payment?.id ?? result?.bill_link_id ?? result?.id;
+  const billId = result?.link_id;
+  return String(paymentId ?? billId ?? '');
+}
+
 type CheckoutMethodGroup = 'qris' | 'virtual_account' | 'bank_transfer' | 'ewallet' | 'retail' | 'credit_card';
 type CheckoutSenderBankType = 'virtual_account' | 'qris' | 'wallet_account' | 'bank_transfer' | 'retail' | 'credit_card';
 
@@ -394,7 +403,7 @@ export class PaymentsController {
 
       await this.prisma.$executeRaw`
         UPDATE payments
-           SET flip_link_id = ${String(result.link_id)},
+           SET flip_link_id = ${resolveFlipLinkId(result)},
                payment_url = ${checkoutUrl}
          WHERE id = ${paymentId}::uuid
       `;
@@ -570,7 +579,7 @@ export class PaymentsController {
 
       await this.prisma.$executeRaw`
         UPDATE payments
-           SET flip_link_id = ${String(result.link_id ?? '')},
+           SET flip_link_id = ${resolveFlipLinkId(result)},
                pay_code = ${accountNumber ?? null},
                payment_url = ${result.link_url ?? null},
                expired_at = ${expiresAt},
@@ -787,7 +796,7 @@ export class PaymentsController {
       }
 
       await this.prisma.$executeRaw`
-        UPDATE payments SET flip_link_id = ${String(result.link_id ?? '')},
+        UPDATE payments SET flip_link_id = ${resolveFlipLinkId(result)},
               pay_code = ${accountNumber ?? null},
               payment_url = ${result.link_url ?? null},
               expired_at = ${expiresAt},
