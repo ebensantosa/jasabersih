@@ -242,15 +242,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Called dari AdminChatController.sendMessage() untuk broadcast pesan admin ke room.
-  broadcastAdminMessage(payload: { id: string; bookingId: string; senderId: string; recipientId: string; content: string; createdAt: string; isAdmin: true }): void {
+  broadcastAdminMessage(payload: { id: string; bookingId: string; senderId: string; recipientId: string; content: string; messageType: 'text' | 'image'; attachmentUrl?: string | null; createdAt: string; isAdmin: true }): void {
     this.server.to(roomName(payload.bookingId)).emit('message', {
       id: payload.id,
       bookingId: payload.bookingId,
       senderId: payload.senderId,
       recipientId: payload.recipientId,
-      messageType: 'text',
+      messageType: payload.messageType,
       content: payload.content,
-      attachmentUrl: null,
+      attachmentUrl: payload.attachmentUrl ?? null,
       createdAt: payload.createdAt,
       isAdmin: true,
     });

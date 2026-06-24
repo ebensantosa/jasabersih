@@ -87,7 +87,8 @@ export class BookingsController {
               pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId",
               cl.photo_url AS "cleanerPhotoUrl",
               b.subscription_total_visits AS "subscriptionTotalVisits",
-              (SELECT COUNT(*)::int FROM bookings c WHERE c.parent_booking_id = b.id AND c.status = 'completed') AS "subscriptionCompletedVisits"
+              (SELECT COUNT(*)::int FROM bookings c WHERE c.parent_booking_id = b.id AND c.status = 'completed') AS "subscriptionCompletedVisits",
+              (b.form_snapshot->>'createdByAdmin')::boolean AS "isManual"
        FROM bookings b
        LEFT JOIN services s ON s.id = b.service_id
        LEFT JOIN pricing_packages pp ON pp.id = b.package_id

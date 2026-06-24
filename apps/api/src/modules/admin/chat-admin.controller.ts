@@ -168,12 +168,14 @@ export class AdminChatController {
   @Roles('super_admin', 'ops', 'support')
   async sendMessage(
     @Param('id') id: string,
-    @Body() body: { content: string },
+    @Body() body: { content: string; messageType?: 'text' | 'image' },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
     if (!body?.content?.trim()) throw new BadRequestException('content wajib.');
     if (body.content.length > 2000) throw new BadRequestException('pesan terlalu panjang (max 2000).');
+    const isImageUrl = /\.(jpg|jpeg|png|gif|webp|avif)(\?[^#]*)?$/i.test(body.content.trim());
+    const messageType: 'text' | 'image' = body.messageType ?? (isImageUrl ? 'image' : 'text');
 
     // Ambil booking + participants
     const rows = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string | null }[]>`
@@ -192,9 +194,11 @@ export class AdminChatController {
     // Kirim ke customer (primary recipient). Kalau cleaner sudah assigned, kirim ke cleaner juga
     const recipientId = cleaner_id ?? customer_id;
 
+    const content = body.content.trim();
+    const attachmentUrl = messageType === 'image' ? content : null;
     const inserted = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
-      INSERT INTO chat_messages (booking_id, sender_id, recipient_id, message_type, content, status, block_reason)
-      VALUES (${id}::uuid, ${adminUserId}::uuid, ${recipientId}::uuid, 'text', ${body.content.trim()}, 'sent', NULL)
+      INSERT INTO chat_messages (booking_id, sender_id, recipient_id, message_type, content, attachment_url, status, block_reason)
+      VALUES (${id}::uuid, ${adminUserId}::uuid, ${recipientId}::uuid, ${messageType}, ${content}, ${attachmentUrl}, 'sent', NULL)
       RETURNING id, created_at
     `;
     const msg = inserted[0];
@@ -206,24 +210,27 @@ export class AdminChatController {
         bookingId: id,
         senderId: adminUserId,
         recipientId,
-        content: body.content.trim(),
+        content,
+        messageType,
+        attachmentUrl,
         createdAt: msg.created_at.toISOString(),
         isAdmin: true,
       });
     }
 
     // Push notif ke recipient
+    const pushBody = messageType === 'image' ? '📷 Foto dari Admin JasaBersih' : (content.length > 80 ? content.slice(0, 80) + '…' : content);
     void this.push.send({
       userId: recipientId,
       title: 'Pesan dari Admin JasaBersih',
-      body: body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content,
+      body: pushBody,
       channel: 'chat',
       data: { type: 'chat', bookingId: id },
     }).catch(() => {});
 
     await this.audit.log({
       adminId: admin.id, action: 'chat.send_admin_message', resourceType: 'booking', resourceId: id,
-      changes: { contentLength: body.content.length },
+      changes: { contentLength: content.length, messageType },
       ipAddress: req.ip ?? null,
     });
 

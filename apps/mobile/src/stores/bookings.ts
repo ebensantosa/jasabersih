@@ -182,6 +182,7 @@ export type Booking = {
   customerNotes?: string;
   // Anti-fraud snapshot
   formSnapshot?: FormSnapshot;
+  isManual?: boolean;
   // Cleaner (assigned later)
   cleanerId?: string;
   cleanerName?: string;
@@ -308,6 +309,7 @@ export const useBookingsStore = create<State>((set, get) => ({
           customerName: (s as any).customerName ?? (s as any).customer_name ?? existing.customerName,
           customerPhotoUrl: (s as any).customerPhotoUrl ?? (s as any).customer_photo_url ?? existing.customerPhotoUrl,
           customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? existing.customerNotes,
+          isManual: (s as any).isManual ?? existing.isManual,
         }
           : {
               id: s.id,
@@ -328,6 +330,7 @@ export const useBookingsStore = create<State>((set, get) => ({
               customerName: (s as any).customerName ?? (s as any).customer_name ?? undefined,
               customerPhotoUrl: (s as any).customerPhotoUrl ?? (s as any).customer_photo_url ?? undefined,
               customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? undefined,
+              isManual: (s as any).isManual ?? false,
               messages: [],
             } as Booking;
       });
@@ -399,6 +402,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         hourlyTierName: s.hourlyTierName ?? snapshot.hourlyTierName ?? undefined,
         packageName: s.packageName ?? snapshot.packageName ?? undefined,
         formSnapshot: snapshot,
+        isManual: snapshot.createdByAdmin === true || snapshot.createdByAdmin === 'true' || (s as any).isManual === true,
         messages: [],
       };
       const cur = get().list;

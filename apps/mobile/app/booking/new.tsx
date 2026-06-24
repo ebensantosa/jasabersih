@@ -430,21 +430,26 @@ function NewBooking() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     defaultAddress?.id ?? null,
   );
-  // Kalau store belum hydrated saat mount, sync selectedAddressId ke defaultAddress begitu tersedia.
+  // Auto-select default address kalau belum ada pilihan valid (store belum hydrated atau baru tambah alamat).
   useEffect(() => {
-    if (!selectedAddressId && defaultAddress?.id) {
-      setSelectedAddressId(defaultAddress.id);
-    }
-  }, [defaultAddress?.id, selectedAddressId]);
+    if (!defaultAddress?.id) return;
+    const hasValidSelection = addressList.some((a) => a.id === selectedAddressId);
+    if (!hasValidSelection) setSelectedAddressId(defaultAddress.id);
+  }, [defaultAddress?.id, selectedAddressId, addressList]);
   const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
+
+  const [address, setAddress] = useState(
+    selectedAddress?.addressLine ?? savedLocation?.address ?? '',
+  );
+  // Sync address text setiap kali selectedAddress berubah (misal setelah tambah alamat baru).
+  useEffect(() => {
+    if (selectedAddress?.addressLine) setAddress(selectedAddress.addressLine);
+  }, [selectedAddress?.id]);
 
   const [scheduleAt, setScheduleAt] = useState<Date>(() => earliestAvailable());
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [schedModalOpen, setSchedModalOpen] = useState(false);
   const scheduleIso = scheduleAt.toISOString();
-  const [address, setAddress] = useState(
-    selectedAddress?.addressLine ?? savedLocation?.address ?? '',
-  );
 
   // Prefill form dari pesanan sebelumnya (fitur "Pesan Lagi")
   useEffect(() => {
@@ -816,54 +821,38 @@ function NewBooking() {
       : userLoc
         ? { lat: userLoc.lat, lng: userLoc.lng }
         : null;
-  const cov = checkCoverage(checkLoc, areas);
+  const cov = checkLoc ? checkCoverage(checkLoc, areas) : { covered: true };
   if (!cov.covered) {
-    const hasChosenLocation = Boolean(checkLoc);
-    const title = hasChosenLocation ? 'Belum tersedia di area kamu' : 'Set lokasi dulu';
-    const description = hasChosenLocation
-      ? cov.nearestAreaName
-        ? `Area terdekat yang kami layani: ${cov.nearestAreaName} (${Math.round((cov.distanceM ?? 0) / 1000)} km dari lokasi kamu).`
-        : 'Area ini belum masuk jangkauan layanan kami saat ini.'
-      : 'Kamu belum pilih lokasi. Set lokasi dulu dari Beranda supaya kami bisa cek coverage area dan tampilkan layanan yang tersedia.';
     return (
       <View className="flex-1 items-center justify-center bg-white p-8">
         <View className="h-20 w-20 items-center justify-center rounded-full bg-amber-100">
           <AlertTriangle color="#B45309" size={40} />
         </View>
-        <Text className="font-bold mt-4 text-center text-lg text-ink-900">{title}</Text>
+        <Text className="font-bold mt-4 text-center text-lg text-ink-900">Belum tersedia di area kamu</Text>
         <Text className="font-sans mt-2 text-center text-sm text-ink-600">
-          {description}
+          {(cov as any).nearestAreaName
+            ? `Area terdekat yang kami layani: ${(cov as any).nearestAreaName} (${Math.round(((cov as any).distanceM ?? 0) / 1000)} km dari lokasi kamu).`
+            : 'Area ini belum masuk jangkauan layanan kami saat ini.'}
         </Text>
-        {hasChosenLocation ? (
-          <>
-            <Pressable
-              onPress={() => router.replace({ pathname: '/city-request', params: { city: userLoc?.shortLabel ?? '' } })}
-              className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
-            >
-              <Text className="font-bold text-white">Request Kota Saya</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
-                const msg = encodeURIComponent(
-                  `Halo admin JasaBersih, saya mau konsultasi booking di area ${userLoc?.shortLabel ?? 'lokasi saya'} (di luar coverage). Bisa tolong dibantu?`,
-                );
-                Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
-              }}
-              className="mt-3 w-full max-w-xs flex-row items-center justify-center gap-2 rounded-2xl bg-success px-6 py-3"
-            >
-              <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
-              <Text className="font-bold text-white">Hubungi Admin (WA)</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Pressable
-            onPress={() => router.replace('/')}
-            className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
-          >
-            <Text className="font-bold text-white">Set Lokasi di Beranda</Text>
-          </Pressable>
-        )}
+        <Pressable
+          onPress={() => router.replace({ pathname: '/city-request', params: { city: userLoc?.shortLabel ?? '' } })}
+          className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
+        >
+          <Text className="font-bold text-white">Request Kota Saya</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
+            const msg = encodeURIComponent(
+              `Halo admin JasaBersih, saya mau konsultasi booking di area ${userLoc?.shortLabel ?? 'lokasi saya'} (di luar coverage). Bisa tolong dibantu?`,
+            );
+            Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
+          }}
+          className="mt-3 w-full max-w-xs flex-row items-center justify-center gap-2 rounded-2xl bg-success px-6 py-3"
+        >
+          <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
+          <Text className="font-bold text-white">Hubungi Admin (WA)</Text>
+        </Pressable>
         <Pressable onPress={() => safeBack()} className="mt-3">
           <Text className="font-semibold text-brand-600">Kembali</Text>
         </Pressable>

@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
+import { formatRupiah } from '../../src/data/catalog';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, ArrowLeft, Camera, Check, CheckCheck, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
@@ -273,9 +274,9 @@ function Chat() {
             {(() => {
               const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id;
               const hasAdminChat = messages.some((m) => m.isAdmin);
-              const isManualBooking = (booking as any)?.formSnapshot?.createdByAdmin === true
-                || (booking as any)?.formSnapshot?.createdByAdmin === 'true'
-                || (booking as any)?.isManual === true;
+              const isManualBooking = booking?.isManual === true
+                || (booking as any)?.formSnapshot?.createdByAdmin === true
+                || (booking as any)?.formSnapshot?.createdByAdmin === 'true';
 
               // Hanya tampilkan Admin header kalau ada bukti explisit (pesan admin atau booking manual)
               // Jangan gunakan !cleanerId karena booking bisa belum ter-load
@@ -384,7 +385,7 @@ function Chat() {
                 </View>
               </View>
               <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>
-                {formatScheduleWithTz(booking.scheduledAt, booking.addressLine)} · Rp {Number(booking.totalPrice ?? 0).toLocaleString('id-ID')}
+                {formatScheduleWithTz(booking.scheduledAt, booking.addressLine)}{(() => { const price = isCleaner ? (booking.cleanerPayout ?? booking.totalPrice ?? 0) : (booking.totalPrice ?? 0); return price > 0 ? ` · ${formatRupiah(price)}` : ''; })()}
               </Text>
             </View>
             <ChevronRight color="#94A3B8" size={16} strokeWidth={2.4} />
@@ -567,7 +568,8 @@ function Bubble({
   onImagePress?: (url: string) => void;
 }) {
   const t = new Date(time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  const isImage = messageType === 'image' && (attachmentUrl || text);
+  const looksLikeImageUrl = /\.(jpg|jpeg|png|gif|webp|avif)(\?[^#]*)?$/i.test(attachmentUrl ?? text);
+  const isImage = (messageType === 'image' || looksLikeImageUrl) && (attachmentUrl || text);
   const imageUrl = attachmentUrl ?? text;
   const bubbleBg = isMe ? 'bg-brand-600' : isAdmin ? 'bg-amber-50' : 'bg-white';
   const textColor = isMe ? 'text-white' : 'text-ink-800';

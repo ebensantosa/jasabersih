@@ -391,8 +391,8 @@ export function createClient(opts: ClientOptions) {
       chatBlocked: (limit?: number) =>
         request<any[]>('GET', `/admin/chat/blocked${limit ? `?limit=${limit}` : ''}`),
       chatStats: () => request<{ last7Days: any; blockedByReason: any[] }>('GET', '/admin/chat/stats'),
-      chatSend: (bookingId: string, content: string) =>
-        request<{ ok: boolean; messageId?: string }>('POST', `/admin/chat/booking/${bookingId}/send`, { content }),
+      chatSend: (bookingId: string, content: string, messageType?: 'text' | 'image') =>
+        request<{ ok: boolean; messageId?: string }>('POST', `/admin/chat/booking/${bookingId}/send`, { content, ...(messageType ? { messageType } : {}) }),
       chatInbox: () =>
         request<any[]>('GET', '/admin/chat/inbox'),
     },

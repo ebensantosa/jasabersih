@@ -96,7 +96,7 @@ export default function PesanPage(): React.ReactElement | null  {
     if (!imageUrl) setText('');
     setSending(true);
     try {
-      await api.admin.chatSend(selected.bookingId, content);
+      await api.admin.chatSend(selected.bookingId, content, imageUrl ? 'image' : 'text');
       await loadMessages(selected.bookingId);
       void loadThreads(true);
     } catch {} finally {
