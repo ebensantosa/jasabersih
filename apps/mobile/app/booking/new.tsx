@@ -430,6 +430,12 @@ function NewBooking() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     defaultAddress?.id ?? null,
   );
+  // Kalau store belum hydrated saat mount, sync selectedAddressId ke defaultAddress begitu tersedia.
+  useEffect(() => {
+    if (!selectedAddressId && defaultAddress?.id) {
+      setSelectedAddressId(defaultAddress.id);
+    }
+  }, [defaultAddress?.id, selectedAddressId]);
   const selectedAddress = addressList.find((a) => a.id === selectedAddressId);
 
   const [scheduleAt, setScheduleAt] = useState<Date>(() => earliestAvailable());
