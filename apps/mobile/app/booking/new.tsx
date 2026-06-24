@@ -190,6 +190,7 @@ function NewBooking() {
   const [useCredit, setUseCredit] = useState(false);
   const [travelQuote, setTravelQuote] = useState<{ enabled: boolean; distanceKm: number; travelFee: number; freeKm: number; perKmIdr: number; nearestAreaName: string | null } | null>(null);
   const [travelErr, setTravelErr] = useState<string | null>(null);
+  const [travelErrCode, setTravelErrCode] = useState<string | null>(null);
   useEffect(() => {
     void (async () => {
       try {
@@ -501,9 +502,11 @@ function NewBooking() {
         };
         setTravelQuote({ ...safe, _key: key } as any);
         setTravelErr(null);
+        setTravelErrCode(null);
       } catch (e: any) {
         const err = e?.response?.data?.error;
         setTravelErr(err?.message ?? 'Gagal hitung biaya transport');
+        setTravelErrCode(err?.code ?? null);
         setTravelQuote(null);
       }
     }, 800);
@@ -637,7 +640,7 @@ function NewBooking() {
       || extraBedrooms + extraBathrooms >= 5
       || ['Ruko', 'Kantor', 'Villa'].includes(propertyType)
     );
-  const needsWaConsultation = ((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1;
+  const needsWaConsultation = ((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit || travelErrCode === 'OUT_OF_RANGE') && step === 1;
 
   async function applyVoucher() {
     if (!voucherInput.trim()) return;
@@ -743,6 +746,8 @@ function NewBooking() {
       packageId: selectedPackage?.id,
       packageName: selectedPackage ? (cleanMode === 'deep' ? `${selectedPackage.name} (Deep Cleaning)` : selectedPackage.name) : category.name,
       addressLine: address,
+      lat: coords?.lat ?? undefined,
+      lng: coords?.lng ?? undefined,
       scheduledAt: scheduleIso,
       addOns: ADDONS.filter((a) => selectedAddons.has(a.code)).map((a) => ({
         code: a.code,

@@ -183,6 +183,8 @@ export type Booking = {
   // Anti-fraud snapshot
   formSnapshot?: FormSnapshot;
   isManual?: boolean;
+  lat?: number;
+  lng?: number;
   // Cleaner (assigned later)
   cleanerId?: string;
   cleanerName?: string;
@@ -445,6 +447,8 @@ export const useBookingsStore = create<State>((set, get) => ({
         hoursBooked: b.hours,
         scheduledAt: b.scheduledAt,
         addressLine: b.addressLine,
+        lat: b.lat,
+        lng: b.lng,
         baseAmount: Math.round(b.basePrice),
         totalAmount: Math.round(b.totalPrice),
         formSnapshot: {
