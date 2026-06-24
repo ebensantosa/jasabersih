@@ -891,15 +891,27 @@ export class PaymentsController {
 
     const linkId: string | number | undefined = data.bill_link_id ?? data.id;
     const status: string | undefined = data.status; // SUCCESSFUL | FAILED | PENDING | CANCELLED
-    this.flipLog.log(`callback verified — linkId=${linkId} status=${status}`);
+    const referenceId: string | undefined = typeof data.reference_id === 'string' ? data.reference_id : undefined;
+    this.flipLog.log(`callback verified — linkId=${linkId} status=${status} refId=${referenceId ?? 'none'}`);
 
     if (!linkId) return { ok: false, reason: 'no link id' };
 
-    const payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string; amount: number; payment_type: string | null; extra_metadata: any }[]>`
+    let payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string; amount: number; payment_type: string | null; extra_metadata: any }[]>`
       SELECT id, booking_id, user_id, status, amount, payment_type, extra_metadata FROM payments WHERE flip_link_id = ${String(linkId)} LIMIT 1
     `;
+    // Fallback: Flip may store different link_id formats; match by reference_id (our merchant ref) as safety net.
+    if (!payRows[0] && referenceId) {
+      payRows = await this.prisma.$queryRaw<{ id: string; booking_id: string | null; user_id: string | null; status: string; amount: number; payment_type: string | null; extra_metadata: any }[]>`
+        SELECT id, booking_id, user_id, status, amount, payment_type, extra_metadata FROM payments WHERE tripay_merchant_ref = ${referenceId} AND provider = 'flip' LIMIT 1
+      `;
+      if (payRows[0]) {
+        // Repair the stored flip_link_id so future lookups work correctly.
+        await this.prisma.$executeRaw`UPDATE payments SET flip_link_id = ${String(linkId)} WHERE id = ${payRows[0].id}::uuid`;
+        this.flipLog.log(`callback: matched by refId=${referenceId} (flip_link_id was stale/mismatched) — repaired to ${linkId}`);
+      }
+    }
     const p = payRows[0];
-    if (!p) { this.flipLog.warn(`payment not found for linkId=${linkId} (this is expected for Flip test buttons)`); return { ok: false, reason: 'payment not found' }; }
+    if (!p) { this.flipLog.warn(`payment not found for linkId=${linkId} refId=${referenceId ?? 'none'} (this is expected for Flip test buttons)`); return { ok: false, reason: 'payment not found' }; }
 
     const raw = JSON.stringify(data);
     // Amount mismatch guard — Flip QRIS sometimes accepts arbitrary amount if
