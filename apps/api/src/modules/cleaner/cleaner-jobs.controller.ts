@@ -195,13 +195,14 @@ export class CleanerJobsController {
              b.created_at AS "createdAt",
              b.total_amount AS "totalAmount",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, ht.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'tierName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              s.icon_url AS "serviceIconUrl",
              b.form_snapshot AS "formSnapshot",
              b.customer_notes AS "customerNotes"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
        WHERE b.status = 'searching' AND b.cleaner_id IS NULL
        ORDER BY b.created_at DESC LIMIT 50
     `;
@@ -234,13 +235,15 @@ export class CleanerJobsController {
       SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, ht.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'tierName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              s.icon_url AS "serviceIcon",
              pp.name AS "packageName",
+             ht.name AS "hourlyTierName",
              u.name AS "customerName"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
         LEFT JOIN users u ON u.id = b.customer_id
        WHERE b.cleaner_id = ${user.id}::uuid
          AND b.status IN ('matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started')
@@ -257,13 +260,15 @@ export class CleanerJobsController {
              b.completed_at AS "completedAt",
              b.canceled_at AS "canceledAt",
              b.created_at AS "createdAt",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, ht.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'tierName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              s.icon_url AS "serviceIcon",
              pp.name AS "packageName",
+             ht.name AS "hourlyTierName",
              u.name AS "customerName"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
         LEFT JOIN users u ON u.id = b.customer_id
        WHERE b.cleaner_id = ${user.id}::uuid
          AND b.status IN ('completed', 'canceled', 'cancelled', 'failed', 'rejected')
@@ -288,11 +293,12 @@ export class CleanerJobsController {
       SELECT b.id, b.status, b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
              b.address_line AS "addressLine",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             COALESCE(s.name, pp.name, ht.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'tierName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
              u.name AS "customerName"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+        LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
         LEFT JOIN users u ON u.id = b.customer_id
        WHERE b.cleaner_id = ${user.id}::uuid
          AND b.scheduled_at >= ${start}::timestamptz

@@ -86,6 +86,7 @@ export class BookingsController {
               s.name AS "serviceName", s.icon_url AS "serviceIcon",
               pp.name AS "packageName", cl.name AS "cleanerName", cl.id AS "cleanerId",
               cl.photo_url AS "cleanerPhotoUrl",
+              COALESCE(ht.name, b.form_snapshot->>'tierName', b.form_snapshot->>'categoryName') AS "hourlyTierName",
               b.subscription_total_visits AS "subscriptionTotalVisits",
               (SELECT COUNT(*)::int FROM bookings c WHERE c.parent_booking_id = b.id AND c.status = 'completed') AS "subscriptionCompletedVisits",
               (b.form_snapshot->>'createdByAdmin')::boolean AS "isManual"
@@ -93,6 +94,7 @@ export class BookingsController {
        LEFT JOIN services s ON s.id = b.service_id
        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
        LEFT JOIN users cl ON cl.id = b.cleaner_id
+       LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
        WHERE b.customer_id = $1::uuid
          AND b.parent_booking_id IS NULL  -- hide child visits, cuma list parent + non-subscription
        ORDER BY b.created_at DESC LIMIT 50`,

@@ -39,10 +39,12 @@ function pickBookingTitle(source: any): string {
     ?? source?.formSnapshot?.categoryName
     ?? source?.formSnapshot?.packageName
     ?? source?.formSnapshot?.hourlyTierName
+    ?? source?.formSnapshot?.tierName
     ?? source?.form_snapshot?.categoryName
     ?? source?.form_snapshot?.packageName
     ?? source?.form_snapshot?.hourlyTierName
-    ?? 'Layanan';
+    ?? source?.form_snapshot?.tierName
+    ?? (source?.pricingMode === 'hourly' || source?.pricing_mode === 'hourly' ? 'Layanan Per Jam' : 'Layanan');
 }
 
 function resolveBookingImage(source: any, fallback?: string): string {
