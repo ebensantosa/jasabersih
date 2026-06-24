@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
 import { PrismaService } from '../../common/prisma.service';
+import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 import { FlipService } from './flip.service';
 import { TripayService } from './tripay.service';
@@ -30,6 +31,7 @@ export class PaymentSyncService {
     private readonly flip: FlipService,
     private readonly tripay: TripayService,
     private readonly push: PushService,
+    private readonly jobs: JobsGateway,
   ) {}
 
   // Every 30 seconds — fallback agresif kalau webhook Flip gagal terkirim
@@ -39,9 +41,9 @@ export class PaymentSyncService {
   // ke-detect di tick berikutnya.
   @Cron('*/30 * * * * *')
   async syncPending(): Promise<void> {
-    const pending = await this.prisma.$queryRaw<{ id: string; booking_id: string; user_id: string; amount: number; provider: string | null; flip_bill_id: string | null; tripay_merchant_ref: string | null }[]>`
+    const pending = await this.prisma.$queryRaw<{ id: string; booking_id: string; user_id: string; amount: number; provider: string | null; flip_bill_id: string | null; flip_link_id: string | null; tripay_merchant_ref: string | null }[]>`
       SELECT id, booking_id, user_id, amount,
-             provider, flip_bill_id, tripay_merchant_ref
+             provider, flip_bill_id, flip_link_id, tripay_merchant_ref
         FROM payments
        WHERE status = 'pending'
          AND created_at < NOW() - INTERVAL '10 seconds'
@@ -55,13 +57,16 @@ export class PaymentSyncService {
       try {
         let provider = (p.provider ?? '').toLowerCase();
         if (!provider) {
-          provider = p.flip_bill_id ? 'flip' : p.tripay_merchant_ref ? 'tripay' : '';
+          provider = (p.flip_bill_id || p.flip_link_id) ? 'flip' : p.tripay_merchant_ref ? 'tripay' : '';
         }
         let nextStatus: 'paid' | 'failed' | 'expired' | null = null;
         let rawResponse: any = null;
 
-        if (provider === 'flip' && p.flip_bill_id) {
-          const result = await this.flip.getAcceptPaymentStatus(p.flip_bill_id);
+        // flip_bill_id set saat callback tiba; flip_link_id set saat payment dibuat.
+        // Kalau belum ada callback, fallback ke flip_link_id supaya sync tetap jalan.
+        const flipPollId = p.flip_bill_id ?? p.flip_link_id;
+        if (provider === 'flip' && flipPollId) {
+          const result = await this.flip.getAcceptPaymentStatus(flipPollId);
           if (!result) continue;
           rawResponse = result;
           const status = String(result?.status ?? '').toUpperCase();
@@ -97,6 +102,9 @@ export class PaymentSyncService {
               body: `Rp ${Number(p.amount).toLocaleString('id-ID')} ke-konfirmasi. Mencari cleaner...`,
               data: { type: 'payment_completed', bookingId: p.booking_id },
             }).catch(() => {});
+          }
+          if (p.booking_id) {
+            void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
           }
         }
 
