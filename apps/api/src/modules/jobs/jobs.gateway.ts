@@ -35,12 +35,29 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
+  // Commission tiers in-memory cache — refreshed every 5 min (rarely changes)
+  private commissionCache: { data: { range_min: number | null; range_max: number | null; cleaner_share_no_tools: number }[]; ts: number } | null = null;
+  private readonly COMMISSION_CACHE_TTL = 5 * 60 * 1000;
+
   constructor(
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly push: PushService,
   ) {}
+
+  private async getCommissionTiers() {
+    const now = Date.now();
+    if (this.commissionCache && now - this.commissionCache.ts < this.COMMISSION_CACHE_TTL) {
+      return this.commissionCache.data;
+    }
+    const data = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number }[]>`
+      SELECT range_min, range_max, cleaner_share_no_tools
+        FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+    `.catch(() => [] as any[]);
+    this.commissionCache = { data, ts: now };
+    return data;
+  }
 
   async handleConnection(client: AuthedSocket): Promise<void> {
     const token = (client.handshake.auth?.token as string | undefined)
@@ -241,13 +258,9 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!rows[0]) return;
     const job = rows[0];
 
-    // Estimasi cleaner_payout — kolom asli baru di-set saat cleaner accept.
-    // Pakai commission_tiers no_tools share (lebih konservatif = aman).
+    // Estimasi cleaner_payout dari cache — tidak perlu hit DB setiap broadcast
     if (!job.cleanerPayout || Number(job.cleanerPayout) <= 0) {
-      const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number }[]>`
-        SELECT range_min, range_max, cleaner_share_no_tools
-          FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
-      `.catch(() => [] as any[]);
+      const tiers = await this.getCommissionTiers();
       const total = Number(job.totalAmount ?? 0);
       const tier = tiers.find((t) => total >= Number(t.range_min ?? 0) && (t.range_max == null || total <= Number(t.range_max)));
       const pct = Number(tier?.cleaner_share_no_tools ?? 40);
@@ -255,9 +268,20 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const { totalAmount: _hidden, ...jobForCleaner } = job;
+
+    // ── 1. SOCKET: emit langsung, tidak tunggu apa-apa ──────────────────────
     this.server.to(ROOM_AVAILABLE).emit('incoming-job', jobForCleaner);
     const onlineCount = this.server.sockets.adapter.rooms.get(ROOM_AVAILABLE)?.size ?? 0;
+    this.log.log(`broadcast incoming-job ${bookingId} -> socket=${onlineCount}`);
 
+    // ── 2. FCM: fire-and-forget, tidak block socket ─────────────────────────
+    void this.sendCleanerFcmBatch(bookingId, job).catch(() => {});
+  }
+
+  private async sendCleanerFcmBatch(
+    bookingId: string,
+    job: { addressLine: string; serviceName: string | null; cleanerPayout: number | null; totalAmount: number },
+  ): Promise<void> {
     const normalizedAddress = String(job.addressLine ?? '').toLowerCase();
     const cleaners = await this.prisma.$queryRaw<{ user_id: string; service_areas: unknown }[]>`
       SELECT cp.user_id, cp.service_areas
@@ -269,33 +293,33 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
        LIMIT 100
     `.catch(() => [] as { user_id: string; service_areas: unknown }[]);
 
-    const eligibleCleaners = cleaners.filter((cleaner) => {
+    const eligible = cleaners.filter((cleaner) => {
       const areas = Array.isArray(cleaner.service_areas)
         ? cleaner.service_areas
             .filter((area): area is string => typeof area === 'string')
             .map((area) => area.trim().toLowerCase())
             .filter(Boolean)
         : [];
-      if (areas.length === 0) return true; // belum set area = dapat semua job (onboarding)
+      if (areas.length === 0) return true;
       return areas.some((area) => normalizedAddress.includes(area));
     });
+
+    if (eligible.length === 0) return;
 
     const payout = Number(job.cleanerPayout ?? 0);
     const title = `Job baru: ${job.serviceName ?? 'Layanan'}`;
     const body = `${payout > 0 ? `Pendapatan Rp ${payout.toLocaleString('id-ID')} · ` : ''}${job.addressLine.split(',').slice(0, 2).join(',')}`;
 
-    await Promise.all(
-      eligibleCleaners.map((cleaner) =>
-        this.push.send({
-          userId: cleaner.user_id,
-          channel: 'booking',
-          title,
-          body,
-          data: { type: 'incoming_job', bookingId },
-        }).catch(() => {}),
-      ),
+    await this.push.sendBatch(
+      eligible.map((c) => ({
+        userId: c.user_id,
+        title,
+        body,
+        channel: 'booking' as const,
+        data: { type: 'incoming_job', bookingId },
+        targetMode: 'freelancer' as const,
+      })),
     );
-
-    this.log.log(`broadcast incoming-job ${bookingId} -> socket=${onlineCount} push=${eligibleCleaners.length}`);
+    this.log.log(`FCM batch incoming-job ${bookingId} -> ${eligible.length} cleaners`);
   }
 }

@@ -38,6 +38,7 @@ function WithdrawCustomer() {
   const [submitting, setSubmitting] = useState(false);
   const [amountStr, setAmountStr] = useState('');
   const [successModal, setSuccessModal] = useState<{ amount: number; autoDisburse: boolean } | null>(null);
+  const [confirmModal, setConfirmModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,7 +86,7 @@ function WithdrawCustomer() {
     return null;
   }, [amount, hasPendingWithdrawal, minWithdrawal, wallet.balance]);
 
-  async function submit() {
+  function submit() {
     if (!selectedBankAccountId) {
       toast.error('Pilih rekening tersimpan dulu.');
       return;
@@ -102,7 +103,11 @@ function WithdrawCustomer() {
       toast.error('Jumlah melebihi saldo yang tersedia');
       return;
     }
+    setConfirmModal(true);
+  }
 
+  async function doSubmit() {
+    setConfirmModal(false);
     setSubmitting(true);
     try {
       const r = await api.post('/customer/withdrawal', { amount, bankAccountId: selectedBankAccountId });
@@ -118,6 +123,37 @@ function WithdrawCustomer() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Confirmation Modal */}
+      <Modal visible={confirmModal} transparent animationType="fade" onRequestClose={() => setConfirmModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 24, padding: 24, width: '100%', maxWidth: 340 }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 17, color: '#0F172A', marginBottom: 8 }}>Konfirmasi Penarikan</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#475569', marginBottom: 4 }}>
+              Jumlah: <Text style={{ fontFamily: 'Inter_700Bold', color: '#0F172A' }}>{formatRupiah(amount)}</Text>
+            </Text>
+            {selectedAccount && (
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#475569', marginBottom: 16 }}>
+                Tujuan: {selectedAccount.bankCode.toUpperCase()} · {selectedAccount.accountNumber} a.n. {selectedAccount.accountHolderName}
+              </Text>
+            )}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable
+                onPress={() => setConfirmModal(false)}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: '#CBD5E1' }}
+              >
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: '#475569' }}>Batal</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { void doSubmit(); }}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 14, backgroundColor: '#1D4ED8' }}
+              >
+                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: 'white' }}>Ya, Tarik</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Success Modal */}
       <Modal visible={!!successModal} transparent animationType="fade">

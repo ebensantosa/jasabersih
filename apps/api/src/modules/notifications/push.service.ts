@@ -13,6 +13,15 @@ export type PushPayload = {
   targetMode?: 'customer' | 'freelancer';
 };
 
+export type PushBatchItem = {
+  userId: string;
+  title: string;
+  body: string;
+  channel: 'booking' | 'chat' | 'wallet' | 'system';
+  data: Record<string, unknown>;
+  targetMode?: 'customer' | 'freelancer';
+};
+
 @Injectable()
 export class PushService {
   private readonly log = new Logger(PushService.name);
@@ -134,5 +143,87 @@ export class PushService {
       failed += messages.length;
     }
     return { sent, failed };
+  }
+
+  // Kirim FCM ke banyak user sekaligus dengan minimal DB round-trips:
+  // 1 query token + 1 dedup check + 1 notif insert per user (parallel) + 1 Expo HTTP per 100 msg.
+  // Jauh lebih efisien dari N kali send() untuk broadcast ke banyak cleaner.
+  async sendBatch(items: PushBatchItem[]): Promise<void> {
+    if (items.length === 0) return;
+
+    const firstItem = items[0]!;
+    const userIds = items.map((i) => i.userId);
+    const notifType = String((firstItem.data as any)?.type ?? 'system');
+    const bookingId = (firstItem.data as any)?.bookingId as string | undefined;
+
+    // ── 1. Dedup: satu query untuk semua user ──────────────────────────────
+    const dedupedUsers = new Set<string>();
+    if (bookingId) {
+      const dupRows = await this.prisma.$queryRaw<{ user_id: string }[]>`
+        SELECT DISTINCT user_id::text FROM notifications
+         WHERE user_id = ANY(${userIds}::uuid[])
+           AND data->>'type' = ${notifType}
+           AND data->>'bookingId' = ${bookingId}
+           AND created_at > NOW() - INTERVAL '1 hour'
+      `.catch(() => []);
+      dupRows.forEach((r) => dedupedUsers.add(r.user_id));
+    }
+
+    const eligible = items.filter((i) => !dedupedUsers.has(i.userId));
+    if (eligible.length === 0) return;
+
+    const eligibleUserIds = eligible.map((i) => i.userId);
+    const targetMode = eligible[0]!.targetMode ?? null;
+
+    // ── 2. Tokens: satu query untuk semua user ─────────────────────────────
+    const tokenRows = await this.prisma.$queryRaw<{ user_id: string; fcm_token: string }[]>`
+      SELECT user_id::text, fcm_token FROM user_devices
+       WHERE user_id = ANY(${eligibleUserIds}::uuid[])
+         AND fcm_token IS NOT NULL
+         AND fcm_token <> ''
+         AND (
+           ${targetMode}::text IS NULL
+           OR current_mode IS NULL
+           OR current_mode = ${targetMode}
+         )
+    `.catch(() => []);
+
+    const validTokens = tokenRows.filter((r) => r.fcm_token.startsWith('ExponentPushToken['));
+
+    // ── 3. Persist in-app notifications (parallel, non-blocking for push) ──
+    const itemMap = new Map(eligible.map((i) => [i.userId, i]));
+    void Promise.all(
+      eligible.map((item) =>
+        this.prisma.$executeRaw`
+          INSERT INTO notifications (user_id, type, title, body, data)
+          VALUES (${item.userId}::uuid, ${item.channel}, ${item.title}, ${item.body},
+                  ${JSON.stringify(item.data)}::jsonb)
+        `.catch(() => {}),
+      ),
+    );
+
+    if (validTokens.length === 0) return;
+
+    // ── 4. Satu Expo HTTP call per 100 token ───────────────────────────────
+    const messages = validTokens.map((r) => {
+      const item = itemMap.get(r.user_id) ?? eligible[0]!;
+      return {
+        to: r.fcm_token,
+        title: item.title,
+        body: item.body,
+        data: item.data,
+        sound: 'default' as const,
+        channelId: item.channel,
+      };
+    });
+
+    for (let i = 0; i < messages.length; i += 100) {
+      const batch = messages.slice(i, i + 100);
+      await fetch(EXPO_PUSH_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify(batch),
+      }).catch((e: any) => this.log.error(`expo batch push failed: ${e?.message}`));
+    }
   }
 }

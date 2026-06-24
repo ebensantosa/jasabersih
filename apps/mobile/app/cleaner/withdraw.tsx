@@ -63,6 +63,7 @@ function Withdraw() {
   // Live bank health status dari Flip - utk indicator + safeguard submit.
   const [bankHealth, setBankHealth] = useState<Record<string, 'normal' | 'delayed' | 'down'>>({});
   const [successModal, setSuccessModal] = useState<{ amount: number; autoDisburse: boolean; fee?: number; transferAmount?: number } | null>(null);
+  const [confirmModal, setConfirmModal] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     setLoadingAccounts(true);
@@ -111,14 +112,10 @@ function Withdraw() {
   const receive = Math.max(0, amount - fee);
 
   function submit() {
-    // WAJIB pakai rekening verified - manual input dihapus.
-    // Hindari redundan ngetik (user udh tambah rekening + verifikasi nama, masa
-    // ngetik lagi pas tarik) + cegah typo nominal rekening salah kirim ke org lain.
     if (!selectedBankAccountId) {
       toast.error('Pilih rekening tersimpan dulu. Kalau belum ada, tambah di "Kelola Rekening".');
       return;
     }
-    // SAFEGUARD: cegah submit kalau bank tujuan lagi DOWN.
     if (selectedBankStatus === 'down') {
       toast.error(`${selectedAccount?.bankCode.toUpperCase() ?? 'Bank'} sedang gangguan. Pilih rekening lain atau tunggu sampai normal.`);
       return;
@@ -129,6 +126,11 @@ function Withdraw() {
       toast.error('Lengkapi jumlah yang ingin ditarik');
       return;
     }
+    setConfirmModal(true);
+  }
+
+  function doSubmit() {
+    setConfirmModal(false);
     setSubmitting(true);
     const destination = { bankAccountId: selectedBankAccountId };
     requestWithdrawalApi(amount, destination)
@@ -150,6 +152,40 @@ function Withdraw() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Confirmation Modal */}
+      <Modal visible={confirmModal} transparent animationType="fade" onRequestClose={() => setConfirmModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 24, padding: 24, width: '100%', maxWidth: 340 }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 17, color: '#0F172A', marginBottom: 8 }}>Konfirmasi Penarikan</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#475569', marginBottom: 4 }}>
+              Jumlah: <Text style={{ fontFamily: 'Inter_700Bold', color: '#0F172A' }}>{formatRupiah(amount)}</Text>
+            </Text>
+            {selectedAccount && (
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#475569', marginBottom: 4 }}>
+                Tujuan: {selectedAccount.bankCode.toUpperCase()} · {selectedAccount.accountNumber}
+              </Text>
+            )}
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#64748B', marginBottom: 20 }}>
+              Diterima: {formatRupiah(receive)} (setelah biaya admin {formatRupiah(fee)})
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable
+                onPress={() => setConfirmModal(false)}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: '#CBD5E1' }}
+              >
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: '#475569' }}>Batal</Text>
+              </Pressable>
+              <Pressable
+                onPress={doSubmit}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 14, backgroundColor: '#1D4ED8' }}
+              >
+                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: 'white' }}>Ya, Tarik</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Success Modal */}
       <Modal visible={!!successModal} transparent animationType="fade">

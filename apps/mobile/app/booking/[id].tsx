@@ -17,7 +17,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -151,6 +151,7 @@ function BookingDetail() {
   // isCleaner: mode freelancer OR user ini adalah cleaner yang di-assign ke booking ini
   const isCleaner = mode === 'freelancer' || (!!myUserId && !!cleanerId && myUserId === cleanerId);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelModal, setCancelModal] = useState<{ title: string; body: string; confirmText: string; onConfirm: () => void } | null>(null);
   const [showDispute, setShowDispute] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
@@ -428,39 +429,27 @@ function BookingDetail() {
 
     const elapsedSec = Math.floor((Date.now() - booking.paidAt) / 1000);
     if (elapsedSec <= FREE_CANCEL_WINDOW_SEC) {
-      Alert.alert(
-        'Batalkan Pesanan?',
-        `Masih dalam window gratis (${FREE_CANCEL_WINDOW_SEC - elapsedSec}s sisa). Refund 100%.`,
-        [
-          { text: 'Tidak' },
-          {
-            text: 'Ya, batalkan',
-            style: 'destructive',
-            onPress: () => {
-              cancel(booking.id, booking.totalPrice);
-              toast.success(`Dibatalkan. Refund ${formatRupiah(booking.totalPrice)} (100%)`);
-            },
-          },
-        ],
-      );
+      setCancelModal({
+        title: 'Batalkan Pesanan?',
+        body: `Masih dalam waktu gratis (sisa ${FREE_CANCEL_WINDOW_SEC - elapsedSec}s). Refund 100%.`,
+        confirmText: 'Ya, batalkan',
+        onConfirm: () => {
+          cancel(booking.id, booking.totalPrice);
+          toast.success(`Dibatalkan. Refund ${formatRupiah(booking.totalPrice)} (100%)`);
+        },
+      });
     } else {
       const penalty = Math.round(booking.totalPrice * PENALTY_PCT);
       const refund = booking.totalPrice - penalty;
-      Alert.alert(
-        '⚠️ Cancel Mendadak',
-        `Lewat ${FREE_CANCEL_WINDOW_SEC}s setelah bayar - kena potongan ${PENALTY_PCT * 100}%.\n\nTotal: ${formatRupiah(booking.totalPrice)}\nPotongan: -${formatRupiah(penalty)}\nRefund: ${formatRupiah(refund)}`,
-        [
-          { text: 'Batal' },
-          {
-            text: 'Tetap Cancel',
-            style: 'destructive',
-            onPress: () => {
-              cancel(booking.id, refund);
-              toast.warning(`Dibatalkan. Refund ${formatRupiah(refund)} (potong 25%)`);
-            },
-          },
-        ],
-      );
+      setCancelModal({
+        title: 'Cancel Mendadak',
+        body: `Lewat batas waktu gratis - kena potongan ${PENALTY_PCT * 100}%.\n\nTotal: ${formatRupiah(booking.totalPrice)}\nPotongan: -${formatRupiah(penalty)}\nRefund: ${formatRupiah(refund)}`,
+        confirmText: 'Tetap Cancel',
+        onConfirm: () => {
+          cancel(booking.id, refund);
+          toast.warning(`Dibatalkan. Refund ${formatRupiah(refund)} (potong 25%)`);
+        },
+      });
     }
   }
 
@@ -1426,6 +1415,29 @@ function BookingDetail() {
                 className="flex-1 items-center rounded-xl bg-danger py-3"
               >
                 <Text className="font-bold text-sm text-white">Ya, batalkan</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!cancelModal} transparent animationType="fade" onRequestClose={() => setCancelModal(null)}>
+        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+          <View className="w-full max-w-sm rounded-2xl bg-white p-5">
+            <Text className="font-bold text-base text-ink-900">{cancelModal?.title}</Text>
+            <Text className="mt-2 text-sm text-ink-600">{cancelModal?.body}</Text>
+            <View className="mt-5 flex-row gap-2">
+              <Pressable
+                onPress={() => setCancelModal(null)}
+                className="flex-1 items-center rounded-xl border border-ink-300 bg-white py-3"
+              >
+                <Text className="font-semibold text-sm text-ink-700">Tidak</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { cancelModal?.onConfirm(); setCancelModal(null); }}
+                className="flex-1 items-center rounded-xl bg-danger py-3"
+              >
+                <Text className="font-bold text-sm text-white">{cancelModal?.confirmText}</Text>
               </Pressable>
             </View>
           </View>
