@@ -140,7 +140,13 @@ function ThreadModal({ booking, onClose }: { booking: any; onClose: () => void }
               <div key={m.id} className={`flex ${m.senderId === booking.customerId ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[70%] rounded-lg p-2 text-sm ${m.status === 'blocked' ? 'border border-red-300 bg-red-50' : m.senderId === booking.customerId ? 'bg-white' : 'bg-blue-100'}`}>
                   <div className="text-[10px] text-slate-500">{m.senderName ?? m.senderPhone ?? '—'} · {new Date(m.createdAt).toLocaleString('id-ID')}</div>
-                  <div className={m.status === 'blocked' ? 'mt-1 italic text-red-800' : 'mt-1'}>{m.content}</div>
+                  {m.messageType === 'image' ? (
+                    <a href={m.attachmentUrl ?? m.content} target="_blank" rel="noreferrer" className="mt-1 block">
+                      <img src={m.attachmentUrl ?? m.content} alt="foto" className="max-h-48 max-w-full rounded object-cover" />
+                    </a>
+                  ) : (
+                    <div className={m.status === 'blocked' ? 'mt-1 italic text-red-800' : 'mt-1'}>{m.content}</div>
+                  )}
                   {m.status === 'blocked' && (
                     <div className="mt-1 flex items-center gap-1 text-[10px] text-red-700">
                       <AlertTriangle size={10} /> Blocked: {m.blockReason}
