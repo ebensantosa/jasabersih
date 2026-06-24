@@ -16,6 +16,21 @@ api.interceptors.request.use(async (req) => {
   return req;
 });
 
+// Retry network errors (ECONNREFUSED, ETIMEDOUT, etc.) up to 3x with backoff.
+// Happens when API restarts mid-deploy and app already has a pending request.
+api.interceptors.response.use(undefined, async (error) => {
+  const cfg = error.config as any;
+  if (!error.response && cfg && !cfg._retryCount) {
+    cfg._retryCount = 0;
+  }
+  if (!error.response && cfg && cfg._retryCount < 3) {
+    cfg._retryCount += 1;
+    await new Promise((r) => setTimeout(r, cfg._retryCount * 800));
+    return api(cfg);
+  }
+  return Promise.reject(error);
+});
+
 let refreshing: Promise<void> | null = null;
 
 api.interceptors.response.use(

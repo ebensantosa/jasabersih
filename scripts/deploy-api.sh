@@ -38,10 +38,13 @@ fi
 echo "    OK: dist/main.js exists ($(stat -c%s dist/main.js) bytes)"
 
 echo "==> [6/6] restart pm2"
-pm2 delete jasabersih-api 2>/dev/null || true
-pm2 start "$REPO_DIR/ecosystem.config.js" --only jasabersih-api --update-env
+if pm2 describe jasabersih-api > /dev/null 2>&1; then
+  pm2 reload jasabersih-api --update-env
+else
+  pm2 start "$REPO_DIR/ecosystem.config.js" --only jasabersih-api --update-env
+fi
 pm2 save
-sleep 2
+sleep 3
 pm2 logs jasabersih-api --lines 30 --nostream
 echo ""
 echo "==> DONE. Tail with: pm2 logs jasabersih-api"
