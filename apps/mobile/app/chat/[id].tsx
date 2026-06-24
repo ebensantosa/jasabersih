@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { formatRupiah } from '../../src/data/catalog';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, ArrowLeft, Camera, Check, CheckCheck, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -603,8 +603,8 @@ function Bubble({
         <Text className="font-sans text-[10px] text-ink-400">{t}</Text>
         {isMe && (
           readAt
-            ? <CheckCheck color="#1D4ED8" size={12} strokeWidth={2.4} />
-            : <Check color="#94A3B8" size={12} strokeWidth={2.4} />
+            ? <Text className="font-sans text-[10px] text-blue-600">baca</Text>
+            : <Text className="font-sans text-[10px] text-ink-400">belum dibaca</Text>
         )}
       </View>
     </View>
