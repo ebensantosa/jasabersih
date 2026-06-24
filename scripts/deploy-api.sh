@@ -16,6 +16,7 @@ pnpm install --frozen-lockfile --prod=false 2>&1 | tail -20
 
 echo "==> [3/6] ensure workspace CLIs available"
 command -v pnpm >/dev/null 2>&1 || { echo "FAIL: pnpm not installed"; exit 1; }
+cd "$API_DIR"
 pnpm exec nest --version >/dev/null 2>&1 || { echo "FAIL: nest CLI unavailable after install"; exit 1; }
 pnpm exec prisma --version >/dev/null 2>&1 || { echo "FAIL: prisma CLI unavailable after install"; exit 1; }
 echo "    OK: workspace CLIs ready"
