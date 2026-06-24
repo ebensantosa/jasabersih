@@ -843,7 +843,7 @@ function BookingDetail() {
             </View>
           )}
 
-          {booking.formSnapshot && hasSnapshotDetails && (
+          {booking.formSnapshot && hasSnapshotDetails && booking.pricingMode !== 'hourly' && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
                 {isCleaner ? 'Info dari Customer' : 'Detail Properti'}
