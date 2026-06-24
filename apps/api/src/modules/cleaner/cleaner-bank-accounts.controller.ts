@@ -143,6 +143,11 @@ export class CleanerBankAccountsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(AddBankSchema)) body: AddBankDto,
   ) {
+    const countRows = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM cleaner_bank_accounts WHERE user_id = ${user.id}::uuid
+    `;
+    if (Number(countRows[0]?.c ?? 0) >= 5) throw new BadRequestException('Maksimal 5 rekening/e-wallet.');
+
     // Cek duplicate
     const existing = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM cleaner_bank_accounts
@@ -239,10 +244,16 @@ export class CleanerBankAccountsController {
     if (Number(inFlight[0]?.c ?? 0) > 0) {
       throw new ForbiddenException('Masih ada penarikan diproses dengan rekening ini.');
     }
-    const del = await this.prisma.$executeRaw`
-      DELETE FROM cleaner_bank_accounts WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid
+    const own = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM cleaner_bank_accounts WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid LIMIT 1
     `;
-    if (!del) throw new NotFoundException('Rekening tidak ditemukan.');
+    if (!own[0]) throw new NotFoundException('Rekening tidak ditemukan.');
+    await this.prisma.$executeRaw`
+      UPDATE withdrawals SET bank_account_id = NULL WHERE bank_account_id = ${id}::uuid
+    `;
+    await this.prisma.$executeRaw`
+      DELETE FROM cleaner_bank_accounts WHERE id = ${id}::uuid
+    `;
     return { ok: true };
   }
 }
