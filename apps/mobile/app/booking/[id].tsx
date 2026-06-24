@@ -244,6 +244,8 @@ function BookingDetail() {
       await api.post(`/cleaner/jobs/${booking.id}/status`, { to });
       setStatus(booking.id, to);
       toast.success(to === 'on_the_way' ? 'Status: OTW' : to === 'in_progress' ? 'Pekerjaan dimulai' : 'Job selesai');
+      // Sync startedAt/completedAt dari server agar HourlyCountdown langsung muncul
+      if (to === 'in_progress' || to === 'completed') void fetchOne(booking.id).catch(() => {});
       if (to === 'completed') {
         router.replace('/(tabs)/bookings');
       }
