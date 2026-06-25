@@ -902,9 +902,18 @@ function PaymentInstructions({ data, onCopy, bookingId, onManualSync }: { data: 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} style={{ backgroundColor: '#F1F5F9' }}>
         {CountdownBanner}
         <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, alignItems: 'center', gap: 12 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-            <WalletIcon color="#1D4ED8" size={40} />
-          </View>
+          {(() => {
+            const logo = EWALLET_METHODS.find((m) => m.code === data.senderBank)?.logo;
+            return logo ? (
+              <View style={{ width: 100, height: 60, alignItems: 'center', justifyContent: 'center' }}>
+                <Image source={logo} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+              </View>
+            ) : (
+              <View style={{ width: 80, height: 80, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                <WalletIcon color="#1D4ED8" size={40} />
+              </View>
+            );
+          })()}
           <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>{walletName}</Text>
           <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A' }}>{formatRupiah(data.amount)}</Text>
           {isOvo ? (
