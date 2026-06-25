@@ -4,7 +4,8 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma.service';
 import { StorageService } from '../storage/storage.service';
 
-const RETENTION_DAYS = 40;
+const PHOTO_RETENTION_DAYS = 7;
+const BOOKING_ANON_DAYS = 40;
 
 @Injectable()
 export class RetentionService {
@@ -30,10 +31,10 @@ export class RetentionService {
   async run(): Promise<{ chatDeleted: number; photosDeleted: number; r2FilesDeleted: number; bookingsAnonymized: number }> {
     let r2FilesDeleted = 0;
 
-    // Delete booking_photos > 40 days + cleanup file di R2.
+    // Delete booking_photos > 7 days + cleanup file di R2.
     const oldBookingPhotos = await this.prisma.$queryRaw<{ storage_path: string | null }[]>`
       SELECT storage_path FROM booking_photos
-       WHERE uploaded_at < NOW() - INTERVAL '${RETENTION_DAYS} days'
+       WHERE uploaded_at < NOW() - INTERVAL '${PHOTO_RETENTION_DAYS} days'
     `;
     for (const row of oldBookingPhotos) {
       if (row.storage_path) {
@@ -46,7 +47,7 @@ export class RetentionService {
       }
     }
     const photos = await this.prisma.$executeRaw`
-      DELETE FROM booking_photos WHERE uploaded_at < NOW() - INTERVAL '${RETENTION_DAYS} days'
+      DELETE FROM booking_photos WHERE uploaded_at < NOW() - INTERVAL '${PHOTO_RETENTION_DAYS} days'
     `;
 
     // Anonymize old bookings - keep aggregate but null out PII.
@@ -54,7 +55,7 @@ export class RetentionService {
       UPDATE bookings
          SET form_snapshot = '{}'::jsonb,
              customer_notes = NULL
-       WHERE created_at < NOW() - INTERVAL '${RETENTION_DAYS} days'
+       WHERE created_at < NOW() - INTERVAL '${BOOKING_ANON_DAYS} days'
          AND form_snapshot::text != '{}'
     `;
 

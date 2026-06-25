@@ -53,7 +53,15 @@ export class ChatController {
       SELECT
         b.id AS "bookingId",
         b.status,
-        pp.name AS "packageName",
+        COALESCE(
+          s.name,
+          pp.name,
+          ht.name,
+          NULLIF(b.form_snapshot->>'packageName', ''),
+          NULLIF(b.form_snapshot->>'tierName', ''),
+          NULLIF(b.form_snapshot->>'categoryName', ''),
+          CASE WHEN b.pricing_mode = 'hourly' THEN 'Layanan Per Jam' ELSE NULL END
+        ) AS "packageName",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.id ELSE cu.id END AS "partnerId",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.name ELSE cu.name END AS "partnerName",
         CASE WHEN b.customer_id = ${req.user.id}::uuid THEN cl.photo_url ELSE cu.photo_url END AS "partnerPhotoUrl",
@@ -65,10 +73,12 @@ export class ChatController {
       LEFT JOIN users cu ON cu.id = b.customer_id
       LEFT JOIN users cl ON cl.id = b.cleaner_id
       LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+      LEFT JOIN services s ON s.id = b.service_id
+      LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
       WHERE (b.customer_id = ${req.user.id}::uuid OR b.cleaner_id = ${req.user.id}::uuid)
         AND b.cleaner_id IS NOT NULL
         AND b.status IN ('matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started', 'completed')
-        AND (b.completed_at IS NULL OR b.completed_at > NOW() - INTERVAL '24 hours')
+        AND (b.completed_at IS NULL OR b.completed_at > NOW() - INTERVAL '7 days')
         AND EXISTS (SELECT 1 FROM chat_messages cm WHERE cm.booking_id = b.id)
       ORDER BY "lastTimestamp" DESC NULLS LAST
       LIMIT 50
