@@ -577,7 +577,11 @@ function BookingDetail() {
                 <Text className="font-medium text-[10px] uppercase tracking-wider text-ink-400">
                   {isCleaner ? getCleanerHeaderLabel(booking.status) : 'PESANANMU'}
                 </Text>
-                <Text className="font-bold text-base text-ink-900">{booking.categoryName}</Text>
+                <Text className="font-bold text-base text-ink-900">
+                  {booking.pricingMode === 'hourly'
+                    ? `Layanan Per Jam${booking.hours ? ` · ${booking.hours}j` : ''}`
+                    : (booking.categoryName ?? 'Layanan')}
+                </Text>
                 <Text className="font-medium text-[11px] text-ink-500">{modeLabel}</Text>
                 <Pressable
                   onPress={async () => {

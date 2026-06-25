@@ -151,7 +151,11 @@ export default function Bookings() {
                 </View>
                 <View className="flex-1 justify-center">
                   <View className="flex-row items-center justify-between">
-                    <Text className="font-semibold text-sm text-ink-900">{b.categoryName}</Text>
+                    <Text className="font-semibold text-sm text-ink-900">
+                      {b.pricingMode === 'hourly'
+                        ? `Layanan Per Jam${b.hours ? ` · ${b.hours}j` : ''}`
+                        : (b.categoryName ?? 'Layanan')}
+                    </Text>
                     <ChevronRight color="#CBD5E1" size={16} />
                   </View>
                   <Text className="font-sans mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>

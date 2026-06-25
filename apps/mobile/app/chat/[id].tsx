@@ -378,7 +378,9 @@ function Chat() {
             <View className="flex-1">
               <View className="flex-row items-center gap-1.5">
                 <Text className="font-semibold text-[12px] text-ink-900" numberOfLines={1}>
-                  {booking.packageName ?? booking.categoryName ?? 'Pesanan'}
+                  {booking.pricingMode === 'hourly'
+                    ? `Layanan Per Jam${booking.hours ? ` · ${booking.hours}j` : ''}`
+                    : (booking.packageName ?? booking.categoryName ?? 'Pesanan')}
                 </Text>
                 <View className="rounded bg-ink-100 px-1.5 py-0.5">
                   <Text className="font-mono text-[9px] text-ink-600">#{booking.id.slice(0, 8)}</Text>
