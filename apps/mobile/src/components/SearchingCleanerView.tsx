@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BellRing, MapPin, Search, Users } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
 import { Animated, Easing, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_MESSAGES: { min: number; text: string }[] = [
   { min: 0, text: 'Mencari cleaner terdekat dari lokasi kamu.' },
@@ -22,6 +22,7 @@ type Props = {
 };
 
 export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo, footerCta }: Props) {
+  const insets = useSafeAreaInsets();
   const safeElapsed = Number.isFinite(elapsedSec) ? Math.max(0, elapsedSec) : 0;
   const safeTimeout = Number.isFinite(timeoutSec) && timeoutSec > 0 ? timeoutSec : 15 * 60;
   const remainingSec = Math.max(0, safeTimeout - safeElapsed);
@@ -97,6 +98,12 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             : [1, 0.45, 0.35, 1],
     });
 
+  // In full-screen mode (footerCta present), apply safe area insets manually
+  // so the button is never hidden behind the system navigation bar.
+  // In embedded mode (inside a ScrollView), no insets needed.
+  const topPad = footerCta ? insets.top + 16 : 16;
+  const botPad = footerCta ? Math.max(insets.bottom + 16, 80) : 0;
+
   return (
     <LinearGradient
       colors={['#1E3A8A', '#047857', '#0E7490']}
@@ -104,10 +111,9 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: topPad, paddingBottom: botPad, justifyContent: 'space-between' }}>
           {/* Header label */}
-          <View style={{ alignItems: 'center', paddingTop: 16 }}>
+          <View style={{ alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }}>
               {[0, 1, 2].map((index) => (
                 <Animated.View
@@ -241,7 +247,6 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             )}
           </View>
         </View>
-      </SafeAreaView>
     </LinearGradient>
   );
 }
