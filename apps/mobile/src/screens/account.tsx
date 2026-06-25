@@ -1,3 +1,4 @@
+import * as Updates from 'expo-updates';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -16,7 +17,7 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../data/catalog';
@@ -263,6 +264,38 @@ export function Help() {
 
 export function SettingsView() {
   const router = useRouter();
+  const [checking, setChecking] = useState(false);
+
+  async function checkUpdate() {
+    if (checking) return;
+    setChecking(true);
+    try {
+      if (!Updates.isEnabled) {
+        toast.info('OTA tidak aktif di build ini. Update masuk saat rilis versi baru.');
+        return;
+      }
+      const result = await Updates.checkForUpdateAsync();
+      if (result.isAvailable) {
+        toast.info('Update ditemukan, mengunduh...');
+        await Updates.fetchUpdateAsync();
+        toast.info('Update selesai, memuat ulang...');
+        await Updates.reloadAsync();
+      } else {
+        toast.info('Aplikasi sudah versi terbaru');
+      }
+    } catch (e: any) {
+      const msg: string = e?.message ?? '';
+      if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
+        toast.error('Cek koneksi internet lalu coba lagi');
+      } else {
+        // OTA tetap apply otomatis saat restart — cukup minta user restart
+        toast.info('Tutup dan buka ulang app untuk dapat update terbaru');
+      }
+    } finally {
+      setChecking(false);
+    }
+  }
+
   return (
     <>
       <View className="rounded-2xl bg-white">
@@ -275,7 +308,9 @@ export function SettingsView() {
         <Row
           icon={SettingsIcon}
           label="Versi Aplikasi"
-          valueLabel={`v${currentVersion()}`}
+          valueLabel={`v${currentVersion()} · ${Updates.isEmbeddedLaunch ? 'build asli' : Updates.updateId ? `OTA ${Updates.updateId.slice(0, 8)}` : 'OTA aktif'}`}
+          onPress={checkUpdate}
+          loading={checking}
           last
         />
       </View>
@@ -289,6 +324,7 @@ function Row({
   valueLabel,
   danger,
   onPress,
+  loading,
   last,
 }: {
   icon: React.ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
@@ -296,6 +332,7 @@ function Row({
   valueLabel?: string;
   danger?: boolean;
   onPress?: () => void;
+  loading?: boolean;
   last?: boolean;
 }) {
   const interactive = !!onPress;
@@ -321,8 +358,12 @@ function Row({
       <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: danger ? '#DC2626' : '#1E293B' }} numberOfLines={1}>
         {label}
       </Text>
-      {valueLabel ? <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: '#94A3B8', marginRight: interactive ? 6 : 0 }}>{valueLabel}</Text> : null}
-      {interactive && <ChevronRight color="#CBD5E1" size={18} />}
+      {loading
+        ? <ActivityIndicator size="small" color="#94A3B8" style={{ marginRight: 6 }} />
+        : valueLabel
+          ? <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: '#94A3B8', marginRight: interactive ? 6 : 0 }}>{valueLabel}</Text>
+          : null}
+      {interactive && !loading && <ChevronRight color="#CBD5E1" size={18} />}
     </Container>
   );
 }
