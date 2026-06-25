@@ -102,7 +102,7 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
   // so the button is never hidden behind the system navigation bar.
   // In embedded mode (inside a ScrollView), no insets needed.
   const topPad = footerCta ? insets.top + 16 : 16;
-  const botPad = footerCta ? Math.max(insets.bottom + 16, 80) : 0;
+  const botPad = footerCta ? Math.max(insets.bottom + 48, 120) : 0;
 
   return (
     <LinearGradient
