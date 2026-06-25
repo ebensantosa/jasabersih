@@ -137,6 +137,11 @@ function BookingDetail() {
   useEffect(() => {
     if (id && !id.startsWith('bk_') && !booking) void fetchOne(id);
   }, [id, booking, fetchOne]);
+
+  // Poll server setiap 10 detik saat status 'searching' supaya perubahan
+  // status dari admin (manual assign) langsung terdeteksi tanpa perlu refresh manual.
+  const isSearching = !!id && !id.startsWith('bk_') && booking?.status === 'searching';
+  useVisiblePoll(() => { if (id) void fetchOne(id); }, 10_000, isSearching);
   const mode = useModeStore((s) => s.mode);
   const token = useAuthStore((s) => s.tokens?.accessToken);
   const myUserId = (() => {
