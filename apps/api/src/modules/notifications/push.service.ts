@@ -8,7 +8,7 @@ export type PushPayload = {
   title: string;
   body: string;
   data?: Record<string, unknown>;
-  channel?: 'booking' | 'chat' | 'wallet' | 'system';
+  channel?: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job';
   // Kalau diisi, hanya kirim ke device yang mode-nya cocok (cegah notif cleaner masuk ke device customer dan sebaliknya)
   targetMode?: 'customer' | 'freelancer';
 };
@@ -17,7 +17,7 @@ export type PushBatchItem = {
   userId: string;
   title: string;
   body: string;
-  channel: 'booking' | 'chat' | 'wallet' | 'system';
+  channel: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job';
   data: Record<string, unknown>;
   targetMode?: 'customer' | 'freelancer';
 };

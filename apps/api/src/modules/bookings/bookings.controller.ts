@@ -537,7 +537,6 @@ export class BookingsController {
       body: 'Sistem sedang mencarikan cleaner terbaik di area kamu. Kamu akan diberitahu saat cleaner ditemukan.',
       data: { type: 'booking_searching', bookingId: id },
       channel: 'booking',
-      referenceId: id,
       targetMode: 'customer',
     }).catch(() => {});
 
