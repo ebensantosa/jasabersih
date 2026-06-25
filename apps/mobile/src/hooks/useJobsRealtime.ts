@@ -22,14 +22,18 @@ export function useJobsRealtime() {
   const queuedCount = Math.max(0, queue.length - 1);
   const [takenIds, setTakenIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const takenIdsRef = useRef(takenIds);
+  const dismissedIdsRef = useRef(dismissedIds);
+  takenIdsRef.current = takenIds;
+  dismissedIdsRef.current = dismissedIds;
   const onlineRef = useRef(false);
   const lastSurfacedIdRef = useRef<string | null>(null);
   const SEARCH_TIMEOUT_SEC = 15 * 60;
 
   function isPopupEligible(job: IncomingJob): boolean {
     if (!job?.id) return false;
-    if (takenIds.has(job.id)) return false;
-    if (dismissedIds.has(job.id)) return false;
+    if (takenIdsRef.current.has(job.id)) return false;
+    if (dismissedIdsRef.current.has(job.id)) return false;
     if (!matchesArea(job)) return false;
     const createdAtMs = job.createdAt ? Date.parse(job.createdAt) : Date.now();
     if (!Number.isFinite(createdAtMs)) return true;

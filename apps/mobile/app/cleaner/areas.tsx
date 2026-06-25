@@ -244,8 +244,8 @@ function CleanerAreas() {
           </Pressable>
         </Modal>
 
-        <Modal visible={showRequestNewCity} transparent animationType="fade" onRequestClose={() => setShowRequestCity(false)}>
-          <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
+        <Modal visible={showRequestNewCity} transparent animationType="fade" onRequestClose={() => setShowRequestNewCity(false)}>
+          <Pressable onPress={() => setShowRequestNewCity(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
             <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
               <Text className="font-extrabold text-lg text-ink-900">Request Kota Baru</Text>
               <Text className="font-medium mt-1 text-[12px] text-ink-600">
@@ -262,7 +262,7 @@ function CleanerAreas() {
                 />
               </View>
               <View className="mt-4 flex-row gap-2">
-                <Pressable onPress={() => setShowRequestCity(false)} className="flex-1 rounded-xl border border-ink-200 bg-white py-3">
+                <Pressable onPress={() => setShowRequestNewCity(false)} className="flex-1 rounded-xl border border-ink-200 bg-white py-3">
                   <Text className="font-bold text-center text-sm text-ink-700">Batal</Text>
                 </Pressable>
                 <Pressable onPress={requestNewCity} className="flex-1 rounded-xl bg-brand-600 py-3">
