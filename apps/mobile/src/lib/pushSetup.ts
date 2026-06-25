@@ -57,8 +57,18 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
         name: ch,
         importance: Notifications.AndroidImportance.HIGH,
         sound: 'default',
+        vibrationPattern: [0, 250, 150, 250],
       });
     }
+    // Channel khusus untuk job masuk — getaran lebih panjang supaya cleaner sadar
+    await Notifications.setNotificationChannelAsync('incoming_job', {
+      name: 'Job Masuk',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'default',
+      vibrationPattern: [0, 500, 200, 500, 200, 500],
+      enableVibrate: true,
+      showBadge: true,
+    });
   }
 
   // Permission

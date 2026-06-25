@@ -9,6 +9,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
 import { router, Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,6 +18,9 @@ import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
+
+// Tahan native splash sampai fonts + auth siap — di-hide manual via SplashScreen.hideAsync()
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { PopupRenderer } from '../src/components/PopupRenderer';
@@ -69,8 +73,6 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
-  // Tahan SplashOverlay sebentar biar transisi smooth (no flash).
-  const [splashHold, setSplashHold] = useState(true);
   // Visible diagnostic - kalau ada error startup, tampilin di layar (bukan silent blank)
   const [startupError, setStartupError] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -102,8 +104,16 @@ export default function RootLayout() {
     );
   }
 
+  // Hide native splash (icon) segera saat fonts ready — JS SplashOverlay cover selama auth wait
   useEffect(() => {
-    const t = setTimeout(() => setSplashHold(false), 800);
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded]);
+
+  // Safety net: max 6 detik JS SplashOverlay supaya tidak stuck kalau API lambat/offline
+  useEffect(() => {
+    const t = setTimeout(() => setAuthReady(true), 6000);
     return () => clearTimeout(t);
   }, []);
 
@@ -208,23 +218,25 @@ export default function RootLayout() {
 
   // Notification tap → deep link
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
-      const data = res.notification.request.content.data as Record<string, unknown> | undefined;
+    function handleNotifData(data: Record<string, unknown> | undefined) {
       const type = data?.type as string | undefined;
       const bookingId = data?.bookingId as string | undefined;
       const mode = useModeStore.getState().mode;
       if (type) Track.notificationTapped(type);
-      if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
-      else if ((type === 'booking_completed' || type === 'wallet_credit') && bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
-      else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.push(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
+      if (type === 'chat' && bookingId) router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+      else if ((type === 'booking_completed' || type === 'wallet_credit') && bookingId) router.navigate({ pathname: '/booking/[id]', params: { id: bookingId } });
+      else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.navigate(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
+    }
+    // Cold-start: app was killed, user tapped notification
+    Notifications.getLastNotificationResponseAsync().then((res) => {
+      if (res) handleNotifData(res.notification.request.content.data as Record<string, unknown> | undefined);
+    }).catch(() => {});
+    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
+      handleNotifData(res.notification.request.content.data as Record<string, unknown> | undefined);
     });
     return () => sub.remove();
   }, []);
 
-  const splashVisible = !fontsLoaded || splashHold;
-
-  // Saat fonts belum siap, render minimal tree (cuma SplashOverlay) - Stack belum
-  // boleh render karena akan crash kalau ada navigation call sebelum siap.
   // Kalau ada error startup, render visible fallback - jangan blank
   if (startupError) {
     return (
@@ -246,19 +258,8 @@ export default function RootLayout() {
     );
   }
 
-  if (!fontsLoaded) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <ErrorBoundary>
-            <QueryProvider>
-              <SplashOverlay visible />
-            </QueryProvider>
-          </ErrorBoundary>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    );
-  }
+  // Native splash masih tampil saat fonts belum siap — render null agar Stack tidak crash
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -313,7 +314,7 @@ export default function RootLayout() {
         {authReady && profile ? <PopupRenderer event="app_open" /> : null}
         <SuspendedOverlay />
         <CleanerLockOverlay />
-        <SplashOverlay visible={splashVisible} />
+        <SplashOverlay visible={!authReady} />
           </QueryProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

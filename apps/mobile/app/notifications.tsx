@@ -54,8 +54,8 @@ function NotificationsScreen() {
       } catch {/* silent */}
     }
 
-    if (type === 'chat' && bookingId) router.push({ pathname: '/chat/[id]', params: { id: bookingId } });
-    else if (bookingId) router.push({ pathname: '/booking/[id]', params: { id: bookingId } });
+    if (type === 'chat' && bookingId) router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+    else if (bookingId) router.navigate({ pathname: '/booking/[id]', params: { id: bookingId } });
     else if (type === 'kyc_approved' || type === 'kyc_rejected') router.push('/cleaner/kyc');
     else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.push(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
   }

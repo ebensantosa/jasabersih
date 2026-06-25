@@ -316,7 +316,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId: c.user_id,
         title,
         body,
-        channel: 'booking' as const,
+        channel: 'incoming_job' as const,
         data: { type: 'incoming_job', bookingId },
         targetMode: 'freelancer' as const,
       })),

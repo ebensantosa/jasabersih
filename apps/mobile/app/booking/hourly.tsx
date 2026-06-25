@@ -2,9 +2,9 @@
 // Submit ke /bookings dengan pricingMode='hourly' + hourlyTierId + hoursBooked.
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Calendar, Check, Clock, Info, Minus, Plus, Sparkles, Wrench } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, Calendar, Check, Clock, Info, MessageCircle, Minus, Plus, Sparkles, Wrench } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -13,8 +13,9 @@ import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { useServices } from '../../src/hooks/useServices';
 import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { safeBack } from '../../src/lib/safeBack';
+import { checkCoverage, nearestAreaDistanceM } from '../../src/lib/coverage';
 import { useAddressesStore } from '../../src/stores/addresses';
-import { useApiHourlyTiers } from '../../src/stores/appContent';
+import { useApiHourlyTiers, useAppContent, useConfig } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
 import { toast } from '../../src/stores/ui';
@@ -91,6 +92,7 @@ export default function HourlyBooking() {
   const [scheduleAt, setScheduleAt] = useState<Date>(() => earliestAvailable());
   const [schedModalOpen, setSchedModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const travelMaxKm = Number(useConfig('travel.max_km' as any, 15 as any)) || 15;
 
   // Auto-pick first tier saat data tiers selesai load
   useEffect(() => {
@@ -161,6 +163,81 @@ export default function HourlyBooking() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  const areas = useAppContent.getState().content.serviceAreas;
+  const checkLoc = coords ?? (savedLocation ? { lat: savedLocation.lat, lng: savedLocation.lng } : null);
+  const cov = checkLoc ? checkCoverage(checkLoc, areas) : { covered: true };
+  const nearestDistanceKm = nearestAreaDistanceM(checkLoc, areas) / 1000;
+
+  if (!cov.covered) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-8">
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-amber-100">
+          <AlertTriangle color="#B45309" size={40} />
+        </View>
+        <Text className="font-bold mt-4 text-center text-lg text-ink-900">Belum tersedia di area kamu</Text>
+        <Text className="font-sans mt-2 text-center text-sm text-ink-600">
+          {(cov as any).nearestAreaName
+            ? `Area terdekat yang kami layani: ${(cov as any).nearestAreaName} (${Math.round(((cov as any).distanceM ?? 0) / 1000)} km dari lokasi kamu).`
+            : 'Area ini belum masuk jangkauan layanan kami saat ini.'}
+        </Text>
+        <Pressable
+          onPress={() => router.replace({ pathname: '/city-request', params: { city: savedLocation?.shortLabel ?? '' } })}
+          className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
+        >
+          <Text className="font-bold text-white">Request Kota Saya</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
+            const msg = encodeURIComponent(`Halo admin JasaBersih, saya mau konsultasi booking di area ${savedLocation?.shortLabel ?? 'lokasi saya'} (di luar coverage). Bisa tolong dibantu?`);
+            Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
+          }}
+          className="mt-3 w-full max-w-xs flex-row items-center justify-center gap-2 rounded-2xl bg-success px-6 py-3"
+        >
+          <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
+          <Text className="font-bold text-white">Hubungi Admin (WA)</Text>
+        </Pressable>
+        <Pressable onPress={() => safeBack()} className="mt-3">
+          <Text className="font-semibold text-brand-600">Kembali</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (areas.length > 0 && checkLoc && nearestDistanceKm > travelMaxKm) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-8">
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-amber-100">
+          <AlertTriangle color="#B45309" size={40} />
+        </View>
+        <Text className="font-bold mt-4 text-center text-lg text-ink-900">Lokasi di luar jangkauan</Text>
+        <Text className="font-sans mt-2 text-center text-sm text-ink-600">
+          Alamat kamu {nearestDistanceKm.toFixed(1)} km dari area layanan kami, melebihi batas {travelMaxKm} km. Kamu bisa request supaya kota kamu segera kami layani.
+        </Text>
+        <Pressable
+          onPress={() => router.replace({ pathname: '/city-request', params: { city: savedLocation?.shortLabel ?? '' } })}
+          className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
+        >
+          <Text className="font-bold text-white">Request Kota Saya</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
+            const msg = encodeURIComponent(`Halo admin JasaBersih, saya mau booking di area ${savedLocation?.shortLabel ?? 'lokasi saya'} (jarak ${nearestDistanceKm.toFixed(1)} km). Bisa tolong dibantu?`);
+            Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
+          }}
+          className="mt-3 w-full max-w-xs flex-row items-center justify-center gap-2 rounded-2xl bg-success px-6 py-3"
+        >
+          <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
+          <Text className="font-bold text-white">Hubungi Admin (WA)</Text>
+        </Pressable>
+        <Pressable onPress={() => safeBack()} className="mt-3">
+          <Text className="font-semibold text-brand-600">Kembali</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   return (

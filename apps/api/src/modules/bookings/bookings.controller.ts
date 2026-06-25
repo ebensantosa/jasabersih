@@ -529,6 +529,18 @@ export class BookingsController {
     } else {
       void this.jobs.broadcastIncomingJob(id).catch(() => {});
     }
+
+    // Notifikasi ke customer supaya ada getaran & tanda pembayaran berhasil + pencarian dimulai
+    void this.push.send({
+      userId: user.id,
+      title: 'Pembayaran berhasil — Mencari cleaner 🔍',
+      body: 'Sistem sedang mencarikan cleaner terbaik di area kamu. Kamu akan diberitahu saat cleaner ditemukan.',
+      data: { type: 'booking_searching', bookingId: id },
+      channel: 'booking',
+      referenceId: id,
+      targetMode: 'customer',
+    }).catch(() => {});
+
     return { ok: true };
   }
 

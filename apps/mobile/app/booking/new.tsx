@@ -48,7 +48,7 @@ import {
 } from '../../src/data/catalog';
 import { useAddressesStore } from '../../src/stores/addresses';
 import { useApiAddons, useApiPackagesForService, useApiSubscriptionTiers, useAppContent, useConfig } from '../../src/stores/appContent';
-import { checkCoverage } from '../../src/lib/coverage';
+import { checkCoverage, nearestAreaDistanceM } from '../../src/lib/coverage';
 import { useServices } from '../../src/hooks/useServices';
 import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -278,6 +278,7 @@ function NewBooking() {
   const setCleaningMode = useCleaningModeStore((s) => s.setMode);
   const deepMultiplierRaw = useConfig('pricing.deep_clean_multiplier' as any, 1.45 as any);
   const deepMultiplier = Number(deepMultiplierRaw) || 1.45;
+  const travelMaxKm = Number(useConfig('travel.max_km' as any, 15 as any)) || 15;
 
   const isLargeScale = category?.code === 'skala_besar';
   const isPostReno = category?.code === 'pasca_renovasi';
@@ -640,7 +641,7 @@ function NewBooking() {
       || extraBedrooms + extraBathrooms >= 5
       || ['Ruko', 'Kantor', 'Villa'].includes(propertyType)
     );
-  const needsWaConsultation = ((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit || travelErrCode === 'OUT_OF_RANGE') && step === 1;
+  const needsWaConsultation = ((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1;
 
   async function applyVoucher() {
     if (!voucherInput.trim()) return;
@@ -850,6 +851,43 @@ function NewBooking() {
             const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
             const msg = encodeURIComponent(
               `Halo admin JasaBersih, saya mau konsultasi booking di area ${userLoc?.shortLabel ?? 'lokasi saya'} (di luar coverage). Bisa tolong dibantu?`,
+            );
+            Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
+          }}
+          className="mt-3 w-full max-w-xs flex-row items-center justify-center gap-2 rounded-2xl bg-success px-6 py-3"
+        >
+          <MessageCircle color="white" size={18} fill="white" strokeWidth={0} />
+          <Text className="font-bold text-white">Hubungi Admin (WA)</Text>
+        </Pressable>
+        <Pressable onPress={() => safeBack()} className="mt-3">
+          <Text className="font-semibold text-brand-600">Kembali</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const nearestDistanceKm = nearestAreaDistanceM(checkLoc, areas) / 1000;
+  if (areas.length > 0 && checkLoc && nearestDistanceKm > travelMaxKm) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-8">
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-amber-100">
+          <AlertTriangle color="#B45309" size={40} />
+        </View>
+        <Text className="font-bold mt-4 text-center text-lg text-ink-900">Lokasi di luar jangkauan</Text>
+        <Text className="font-sans mt-2 text-center text-sm text-ink-600">
+          Alamat kamu {nearestDistanceKm.toFixed(1)} km dari area layanan kami, melebihi batas {travelMaxKm} km. Kamu bisa request supaya kota kamu segera kami layani.
+        </Text>
+        <Pressable
+          onPress={() => router.replace({ pathname: '/city-request', params: { city: userLoc?.shortLabel ?? '' } })}
+          className="mt-6 w-full max-w-xs rounded-2xl bg-brand-600 px-6 py-3 items-center"
+        >
+          <Text className="font-bold text-white">Request Kota Saya</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            const waNumber = useAppContent.getState().content.config['contact.whatsapp'] || '6285124363374';
+            const msg = encodeURIComponent(
+              `Halo admin JasaBersih, saya mau booking di area ${userLoc?.shortLabel ?? 'lokasi saya'} (jarak ${nearestDistanceKm.toFixed(1)} km). Bisa tolong dibantu?`,
             );
             Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`).catch(() => {});
           }}
@@ -2184,7 +2222,7 @@ function NewBooking() {
                       value={travelQuote.travelFee > 0 ? formatRupiah(travelQuote.travelFee) : 'Gratis'}
                     />
                   )}
-                  {travelErr && (
+                  {travelErr && travelErrCode !== 'OUT_OF_RANGE' && (
                     <Text className="font-medium mt-1 text-[10px] text-amber-700">{travelErr}</Text>
                   )}
                   <View className="mt-2 border-t border-ink-100 pt-2">

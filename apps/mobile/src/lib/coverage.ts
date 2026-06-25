@@ -18,6 +18,20 @@ export type CoverageResult = {
   distanceM?: number;
 };
 
+// Jarak (meter) ke centroid service_area terdekat. Returns Infinity kalau areas kosong.
+export function nearestAreaDistanceM(
+  userLoc: { lat: number; lng: number } | null,
+  areas: ServiceArea[],
+): number {
+  if (!userLoc || areas.length === 0) return Infinity;
+  let min = Infinity;
+  for (const a of areas) {
+    const d = distanceMeters(userLoc, { lat: a.lat, lng: a.lng });
+    if (d < min) min = d;
+  }
+  return min;
+}
+
 // User dianggap "covered" kalau lokasi mereka berada dalam radius_m dari salah satu service_area.
 // Kalau gak ada service_area sama sekali (admin belum config), default ALLOW (jangan blok user).
 export function checkCoverage(

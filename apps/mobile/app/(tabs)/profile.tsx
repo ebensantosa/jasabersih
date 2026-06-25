@@ -117,7 +117,7 @@ function ProfileScreen() {
             className="overflow-hidden rounded-2xl"
             style={{ elevation: 4 }}
           >
-            <LinearGradient colors={['#1D4ED8', '#0E7490']} style={{ padding: 18 }}>
+            <LinearGradient colors={['#1E3A8A', '#2563EB']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18 }}>
               <View className="flex-row items-center gap-3">
                 <View className="h-12 w-12 items-center justify-center rounded-full bg-white/20">
                   <LogIn color="white" size={22} strokeWidth={2.2} />

@@ -49,7 +49,7 @@ module.exports = {
     newArchEnabled: true,
     icon: './assets/icon.png',
     splash: {
-      image: './assets/splash-logo.png',
+      image: './assets/adaptive-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
@@ -76,10 +76,9 @@ module.exports = {
       [
         'expo-splash-screen',
         {
-          image: './assets/splash-logo.png',
+          image: './assets/adaptive-icon.png',
           resizeMode: 'contain',
           backgroundColor: '#ffffff',
-          imageWidth: 280,
         },
       ],
     ],

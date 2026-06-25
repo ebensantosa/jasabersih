@@ -21,7 +21,6 @@ import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
-import { FeaturedCleaners } from '../../src/components/FeaturedCleaners';
 import { WaIcon } from '../../src/components/BrandIcon';
 import { NotifBell } from '../../src/components/NotifBell';
 import { useBookingsStore } from '../../src/stores/bookings';
@@ -329,11 +328,11 @@ export default function Home() {
           <View className="mt-6">
             <View className="mb-3 flex-row items-center justify-between px-4">
               <Text className="font-extrabold text-sm text-ink-900">Pesan Lagi</Text>
-              <Pressable onPress={() => router.push('/(tabs)/orders')}>
+              <Pressable onPress={() => router.push('/(tabs)/bookings')}>
                 <Text className="font-semibold text-xs text-brand-600">Lihat Semua</Text>
               </Pressable>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 6, gap: 12 }}>
               {recentOrders.map((b) => {
                 const snap = b.formSnapshot ?? {};
                 const subtitle = [
@@ -346,7 +345,7 @@ export default function Home() {
                   <Pressable
                     key={b.id}
                     onPress={() => router.push(`/booking/new?category=${b.categoryCode}${b.packageId ? `&package=${b.packageId}` : ''}&reorder=${b.id}`)}
-                    style={{ width: 180, backgroundColor: 'white', borderRadius: 16, padding: 14, elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.07, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}
+                    style={{ width: 200, backgroundColor: 'white', borderRadius: 16, padding: 14, elevation: 3, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } }}
                   >
                     {b.categoryImage ? (
                       <Image source={{ uri: b.categoryImage }} style={{ width: 36, height: 36, borderRadius: 10, marginBottom: 8 }} />
@@ -480,9 +479,6 @@ export default function Home() {
           <BannerCarousel />
         </View>
 
-        <View className="mt-8">
-          <FeaturedCleaners />
-        </View>
 
         <View className="mt-8">
           <View className="mb-3 flex-row items-center justify-between px-4">

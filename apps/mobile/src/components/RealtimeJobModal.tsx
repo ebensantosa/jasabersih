@@ -85,7 +85,9 @@ export function RealtimeJobModal() {
                   </Text>
                 </View>
                 <Text className="mt-2 font-bold text-2xl text-white">
-                  {incoming.serviceName ?? 'Layanan'}
+                  {incoming.pricingMode === 'hourly'
+                    ? `Layanan Per Jam${incoming.hours ? ` · ${incoming.hours}j` : ''}`
+                    : (incoming.serviceName ?? 'Layanan')}
                 </Text>
                 <Text className="mt-1 text-[12px] text-white/80">
                   Job ini dikirim ke cleaner aktif di area yang sesuai. Siapa cepat dia dapat.
@@ -124,7 +126,11 @@ export function RealtimeJobModal() {
                 </View>
               ) : null}
               <View className="flex-1">
-                <Text className="font-bold text-sm text-ink-900">{incoming.serviceName ?? 'Layanan'}</Text>
+                <Text className="font-bold text-sm text-ink-900">
+                  {incoming.pricingMode === 'hourly'
+                    ? `Layanan Per Jam${incoming.hours ? ` · ${incoming.hours}j` : ''}`
+                    : (incoming.serviceName ?? 'Layanan')}
+                </Text>
                 <Text className="font-medium text-[11px] text-brand-600">
                   {incoming.pricingMode === 'package'
                     ? (incoming.packageName ?? 'Paket Tetap')

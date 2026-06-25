@@ -108,6 +108,7 @@ export class PushService {
       data: payload.data ?? {},
       sound: 'default' as const,
       channelId: payload.channel ?? 'default',
+      priority: 'high' as const,
     }));
 
     let sent = 0;
@@ -214,6 +215,7 @@ export class PushService {
         data: item.data,
         sound: 'default' as const,
         channelId: item.channel,
+        priority: 'high' as const,
       };
     });
 
