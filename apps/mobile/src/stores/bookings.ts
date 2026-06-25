@@ -345,8 +345,9 @@ export const useBookingsStore = create<State>((set, get) => ({
               messages: [],
             } as Booking;
       });
-      // Keep local-only (not yet on server - likely fresh creates not synced)
-      const localOnly = local.filter((b) => !serverIds.has(b.id));
+      // Keep only truly local bookings (id starts with 'bk_') that haven't reached server yet.
+      // Server-UUIDs not returned by API = deleted/purged by admin → drop them.
+      const localOnly = local.filter((b) => !serverIds.has(b.id) && b.id.startsWith('bk_'));
       const merged = [...serverMapped, ...localOnly].slice(0, MAX_PERSISTED_BOOKINGS);
       persist(merged);
       bookingsLastSyncedAt = Date.now();
