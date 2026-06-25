@@ -1073,6 +1073,117 @@ export class CleanerJobsController {
     return { ok: true, cancellationFee: total };
   }
 
+  // ===== EXTENSION REQUESTS (cleaner-side) =====
+
+  @Post(':id/accept-extension/:requestId')
+  async acceptExtension(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+  ) {
+    const rows = await this.prisma.$queryRaw<{
+      id: string; customer_id: string; cleaner_id: string;
+      hours_requested: number; price_per_hour: number; total_price: number; status: string;
+    }[]>`
+      SELECT id, customer_id, cleaner_id, hours_requested, price_per_hour, total_price, status
+        FROM booking_extension_requests
+       WHERE id = ${requestId}::uuid AND booking_id = ${id}::uuid LIMIT 1
+    `;
+    const req = rows[0];
+    if (!req) throw new BadRequestException('Request perpanjangan tidak ditemukan');
+    if (req.cleaner_id !== user.id) throw new ForbiddenException('Bukan job kamu');
+    if (req.status !== 'pending') throw new BadRequestException('Request sudah diputuskan');
+
+    const totalPrice = Number(req.total_price);
+
+    // Cek saldo customer cukup
+    const balRows = await this.prisma.$queryRaw<{ balance: number }[]>`
+      SELECT (COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup') AND status='CLEARED' THEN amount ELSE 0 END),0)
+            - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0))::bigint AS balance
+        FROM wallet_ledger_entries WHERE user_id = ${req.customer_id}::uuid
+    `;
+    const balance = Number(balRows[0]?.balance ?? 0);
+    if (balance < totalPrice) {
+      throw new BadRequestException(
+        `Saldo wallet customer tidak cukup (Rp ${balance.toLocaleString('id-ID')}). Minta customer top-up dulu.`,
+      );
+    }
+
+    // Hitung share cleaner
+    const bookingRow = await this.prisma.$queryRaw<{ total_amount: number }[]>`
+      SELECT total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const { cleanerShare, platformFee } = await this.computeCleanerShare(
+      Number(bookingRow[0]?.total_amount ?? 0), user.id, totalPrice,
+    );
+
+    await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        UPDATE booking_extension_requests SET status = 'accepted', decided_at = NOW()
+         WHERE id = ${requestId}::uuid
+      `,
+      this.prisma.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+        VALUES (${req.customer_id}::uuid, 'credit_use', ${totalPrice}::bigint, 'extension', ${requestId}::uuid,
+                'CLEARED', NOW(), ${`Perpanjangan ${req.hours_requested} jam (booking ${id.slice(0, 8)})`})
+      `,
+      this.prisma.$executeRaw`
+        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+        VALUES (${user.id}::uuid, 'earnings', ${cleanerShare}::bigint, 'extension', ${requestId}::uuid,
+                'CLEARED', NOW(), ${`Perpanjangan ${req.hours_requested} jam — share ${Math.round((cleanerShare / totalPrice) * 100)}%`})
+      `,
+      this.prisma.$executeRaw`
+        UPDATE bookings
+           SET total_amount = total_amount + ${totalPrice}::bigint,
+               cleaner_payout = COALESCE(cleaner_payout, 0) + ${cleanerShare}::bigint
+         WHERE id = ${id}::uuid
+      `,
+    ]);
+
+    void this.push.send({
+      userId: req.customer_id,
+      channel: 'booking',
+      title: 'Perpanjangan disetujui!',
+      body: `Cleaner setuju lanjut ${req.hours_requested} jam. Rp ${totalPrice.toLocaleString('id-ID')} berhasil dibayar.`,
+      data: { type: 'extension_accepted', bookingId: id, requestId },
+      targetMode: 'customer',
+    }).catch(() => {});
+
+    return { ok: true, cleanerShare, platformFee };
+  }
+
+  @Post(':id/decline-extension/:requestId')
+  async declineExtension(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+  ) {
+    const rows = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string; status: string }[]>`
+      SELECT customer_id, cleaner_id, status FROM booking_extension_requests
+       WHERE id = ${requestId}::uuid AND booking_id = ${id}::uuid LIMIT 1
+    `;
+    const req = rows[0];
+    if (!req) throw new BadRequestException('Request tidak ditemukan');
+    if (req.cleaner_id !== user.id) throw new ForbiddenException('Bukan job kamu');
+    if (req.status !== 'pending') throw new BadRequestException('Request sudah diputuskan');
+
+    await this.prisma.$executeRaw`
+      UPDATE booking_extension_requests SET status = 'declined', decided_at = NOW()
+       WHERE id = ${requestId}::uuid
+    `;
+
+    void this.push.send({
+      userId: req.customer_id,
+      channel: 'booking',
+      title: 'Permintaan perpanjangan ditolak',
+      body: 'Cleaner tidak bisa lanjut. Silakan selesaikan sesi saat ini.',
+      data: { type: 'extension_declined', bookingId: id, requestId },
+      targetMode: 'customer',
+    }).catch(() => {});
+
+    return { ok: true };
+  }
+
   // POST /cleaner/jobs/:id/accept-reclean — cleaner setuju balik benerin.
   // Booking sudah di-flip ke status='in_progress' oleh request-reclean.
   // Tinggal mark reclean_status='accepted' + notif customer.

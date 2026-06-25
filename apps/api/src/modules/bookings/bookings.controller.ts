@@ -671,6 +671,104 @@ export class BookingsController {
     return { ok: true };
   }
 
+  // ============ EXTENSION REQUESTS (customer-side) ============
+
+  @Get(':id/extension-requests')
+  async listExtensionRequests(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const owns = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string | null }[]>`
+      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const b = owns[0];
+    if (!b || (b.customer_id !== user.id && b.cleaner_id !== user.id)) {
+      throw new BadRequestException('Bukan booking kamu');
+    }
+    const requests = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, hours_requested AS "hoursRequested", price_per_hour AS "pricePerHour",
+             total_price AS "totalPrice", status, created_at AS "createdAt", decided_at AS "decidedAt"
+        FROM booking_extension_requests
+       WHERE booking_id = ${id}::uuid
+       ORDER BY created_at DESC LIMIT 20
+    `;
+    // Derive extension price per hour from config / cheapest hourly tier
+    const cfgRows = await this.prisma.$queryRaw<{ value: any }[]>`
+      SELECT value FROM app_config WHERE key = 'extension.price_per_hour_idr' LIMIT 1
+    `;
+    let pricePerHour = 0;
+    if (cfgRows[0]?.value != null) {
+      const v = cfgRows[0].value;
+      pricePerHour = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
+    }
+    if (!pricePerHour || pricePerHour <= 0) {
+      const tierRow = await this.prisma.$queryRaw<{ price_per_hour: number }[]>`
+        SELECT price_per_hour FROM pricing_hourly_tiers ORDER BY price_per_hour ASC LIMIT 1
+      `.catch(() => [] as { price_per_hour: number }[]);
+      pricePerHour = Number(tierRow[0]?.price_per_hour ?? 100000);
+    }
+    return { requests, pricePerHour };
+  }
+
+  @Post(':id/request-extension')
+  async requestExtension(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { hours?: number },
+  ) {
+    const hours = Math.max(1, Math.floor(Number(body?.hours ?? 1)));
+    const rows = await this.prisma.$queryRaw<{ status: string; customer_id: string; cleaner_id: string | null; pricing_mode: string }[]>`
+      SELECT status, customer_id, cleaner_id, pricing_mode FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    const b = rows[0];
+    if (!b) throw new BadRequestException('Booking tidak ditemukan');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu');
+    if (b.status !== 'in_progress') throw new BadRequestException('Perpanjangan hanya bisa diminta saat pekerjaan berlangsung');
+    if (b.pricing_mode === 'hourly') throw new BadRequestException('Perpanjangan tidak tersedia untuk layanan per jam');
+    if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner di booking ini');
+
+    const pendingCnt = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM booking_extension_requests
+       WHERE booking_id = ${id}::uuid AND status = 'pending'
+    `;
+    if (Number(pendingCnt[0]?.c ?? 0) > 0) {
+      throw new BadRequestException('Ada permintaan perpanjangan yang masih menunggu respons cleaner');
+    }
+
+    // Harga per jam dari config atau tier termurah
+    const cfgRows = await this.prisma.$queryRaw<{ value: any }[]>`
+      SELECT value FROM app_config WHERE key = 'extension.price_per_hour_idr' LIMIT 1
+    `;
+    let pricePerHour = 0;
+    if (cfgRows[0]?.value != null) {
+      const v = cfgRows[0].value;
+      pricePerHour = Number(typeof v === 'string' ? v.replace(/"/g, '') : v);
+    }
+    if (!pricePerHour || pricePerHour <= 0) {
+      const tierRow = await this.prisma.$queryRaw<{ price_per_hour: number }[]>`
+        SELECT price_per_hour FROM pricing_hourly_tiers ORDER BY price_per_hour ASC LIMIT 1
+      `.catch(() => [] as { price_per_hour: number }[]);
+      pricePerHour = Number(tierRow[0]?.price_per_hour ?? 100000);
+    }
+    const totalPrice = pricePerHour * hours;
+
+    const created = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO booking_extension_requests
+             (booking_id, customer_id, cleaner_id, hours_requested, price_per_hour, total_price, status)
+      VALUES (${id}::uuid, ${user.id}::uuid, ${b.cleaner_id}::uuid,
+              ${hours}, ${pricePerHour}::bigint, ${totalPrice}::bigint, 'pending')
+      RETURNING id
+    `;
+
+    void this.push.send({
+      userId: b.cleaner_id,
+      channel: 'booking',
+      title: 'Customer minta perpanjangan waktu',
+      body: `Customer minta tambah ${hours} jam. Setujui untuk terus bekerja.`,
+      data: { type: 'extension_requested', bookingId: id, requestId: created[0]?.id },
+      targetMode: 'freelancer',
+    }).catch(() => {});
+
+    return { id: created[0]?.id, hoursRequested: hours, pricePerHour, totalPrice, status: 'pending' };
+  }
+
   // ============ UPCHARGE customer-side ============
   @Get(':id/upcharges')
   async listUpcharges(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {

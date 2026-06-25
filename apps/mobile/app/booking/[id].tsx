@@ -166,7 +166,57 @@ function BookingDetail() {
   const [photoSummary, setPhotoSummary] = useState({ beforeCount: 0, afterCount: 0, damageCount: 0 });
   const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
   const [showUpchargeModal, setShowUpchargeModal] = useState(false);
+  const [extensionRequests, setExtensionRequests] = useState<Array<{
+    id: string; hoursRequested: number; pricePerHour: number; totalPrice: number;
+    status: 'pending' | 'accepted' | 'declined'; createdAt: string;
+  }>>([]);
+  const [extensionPricePerHour, setExtensionPricePerHour] = useState(0);
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
+  const [extensionBusy, setExtensionBusy] = useState(false);
   const [subscriptionVisits, setSubscriptionVisits] = useState<Array<{ id: string; status: string; scheduledAt: string; visitIndex: number; visitTotal: number; cleanerName: string | null; completedAt: string | null }> | null>(null);
+
+  async function loadExtensionRequests() {
+    if (!id || id.startsWith('bk_') || !booking || booking.pricingMode === 'hourly') return;
+    try {
+      const r = await api.get(`/bookings/${id}/extension-requests`);
+      const d = r.data?.data ?? r.data;
+      setExtensionRequests(d?.requests ?? []);
+      if (d?.pricePerHour) setExtensionPricePerHour(Number(d.pricePerHour));
+    } catch { /* silent */ }
+  }
+
+  async function requestExtension() {
+    if (!booking || extensionBusy) return;
+    setExtensionBusy(true);
+    try {
+      await api.post(`/bookings/${booking.id}/request-extension`, { hours: 1 });
+      toast.success('Permintaan perpanjangan terkirim ke cleaner');
+      setShowExtensionModal(false);
+      void loadExtensionRequests();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim permintaan');
+    } finally {
+      setExtensionBusy(false);
+    }
+  }
+
+  async function respondExtension(requestId: string, action: 'accept' | 'decline') {
+    if (!booking || extensionBusy) return;
+    setExtensionBusy(true);
+    try {
+      const path = action === 'accept'
+        ? `/cleaner/jobs/${booking.id}/accept-extension/${requestId}`
+        : `/cleaner/jobs/${booking.id}/decline-extension/${requestId}`;
+      await api.post(path);
+      toast.success(action === 'accept' ? 'Perpanjangan disetujui!' : 'Perpanjangan ditolak');
+      void loadExtensionRequests();
+      void fetchOne(booking.id).catch(() => {});
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal respons permintaan');
+    } finally {
+      setExtensionBusy(false);
+    }
+  }
 
   async function loadUpcharges() {
     if (!id || id.startsWith('bk_')) return;
@@ -184,6 +234,9 @@ function BookingDetail() {
   // BookingPhotos juga refetch internal-nya saat parent re-render.
   const upchargePollEnabled = !!id && !id.startsWith('bk_') && !!booking && ['matched', 'on_the_way', 'in_progress'].includes(booking?.status as string);
   useVisiblePoll(loadUpcharges, 15_000, upchargePollEnabled);
+  const extensionPollEnabled = !!id && !id.startsWith('bk_') && !!booking && booking.status === 'in_progress' && booking.pricingMode !== 'hourly';
+  useEffect(() => { if (extensionPollEnabled) void loadExtensionRequests(); }, [extensionPollEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  useVisiblePoll(loadExtensionRequests, 15_000, extensionPollEnabled);
 
   // Fetch subscription child visits kalau parent
   async function loadSubscriptionVisits() {
@@ -219,23 +272,7 @@ function BookingDetail() {
 
   function confirmStartWork() {
     if (!booking) return;
-    if (booking.pricingMode !== 'hourly') {
-      void advanceStatus('in_progress');
-      return;
-    }
-    // Tampilkan countdown 5 detik sebelum timer jam mulai berjalan
-    setStartCountdown(5);
-    const interval = setInterval(() => {
-      setStartCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          setStartCountdown(null);
-          void advanceStatus('in_progress');
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    void advanceStatus('in_progress');
   }
 
   // Cleaner advance status - pakai API kalau bukan local-only booking
@@ -753,6 +790,79 @@ function BookingDetail() {
             />
           )}
 
+          {booking.pricingMode !== 'hourly' && booking.status === 'in_progress' && booking.startedAt && (
+            <PerRoomWorkTimer startedAt={booking.startedAt} />
+          )}
+
+          {/* Extension requests — per-ruangan saja, tampil untuk customer dan cleaner */}
+          {booking.pricingMode !== 'hourly' && booking.status === 'in_progress' && !booking.id.startsWith('bk_') && (() => {
+            const pendingExt = extensionRequests.find((r) => r.status === 'pending');
+            const acceptedExt = extensionRequests.filter((r) => r.status === 'accepted');
+            if (isCleaner) {
+              if (!pendingExt) return null;
+              return (
+                <View className="mx-4 mt-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4">
+                  <Text className="font-bold text-sm text-amber-900">⏱ Customer minta perpanjangan waktu</Text>
+                  <Text className="mt-1 text-[12px] leading-5 text-amber-800">
+                    +{pendingExt.hoursRequested} jam · Rp {Number(pendingExt.pricePerHour).toLocaleString('id-ID')}/jam
+                  </Text>
+                  <Text className="mt-1 text-[11px] text-amber-700">
+                    Terima = lanjut bekerja + dibayar otomatis dari wallet customer.{'\n'}
+                    Tolak = kamu bisa selesaikan job sekarang.
+                  </Text>
+                  <View className="mt-3 flex-row gap-2">
+                    <Pressable
+                      onPress={() => void respondExtension(pendingExt.id, 'accept')}
+                      disabled={extensionBusy}
+                      className="flex-1 items-center rounded-xl bg-emerald-600 py-2.5"
+                      style={{ opacity: extensionBusy ? 0.6 : 1 }}
+                    >
+                      {extensionBusy
+                        ? <ActivityIndicator color="white" size="small" />
+                        : <Text className="font-bold text-sm text-white">Terima</Text>}
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void respondExtension(pendingExt.id, 'decline')}
+                      disabled={extensionBusy}
+                      className="flex-1 items-center rounded-xl border border-red-300 bg-white py-2.5"
+                      style={{ opacity: extensionBusy ? 0.6 : 1 }}
+                    >
+                      <Text className="font-bold text-sm text-red-700">Tolak</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            }
+            // Customer side
+            return (
+              <>
+                {acceptedExt.length > 0 && (
+                  <View className="mx-4 mt-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-3">
+                    <Text className="font-semibold text-[11px] text-emerald-900">
+                      ✓ Perpanjangan x{acceptedExt.length} disetujui · Rp {acceptedExt.reduce((s, r) => s + Number(r.totalPrice), 0).toLocaleString('id-ID')} dibayar
+                    </Text>
+                  </View>
+                )}
+                {pendingExt ? (
+                  <View className="mx-4 mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-3">
+                    <Text className="font-semibold text-[11px] text-amber-900">⏳ Menunggu konfirmasi cleaner</Text>
+                    <Text className="mt-0.5 text-[11px] text-amber-800">
+                      Permintaan +{pendingExt.hoursRequested} jam sudah dikirim. Tunggu respons cleaner.
+                    </Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => { void loadExtensionRequests(); setShowExtensionModal(true); }}
+                    className="mx-4 mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-brand-300 bg-brand-50 py-3"
+                  >
+                    <Clock color="#1D4ED8" size={15} strokeWidth={2.4} />
+                    <Text className="font-semibold text-sm text-brand-700">Minta Perpanjangan +1 Jam</Text>
+                  </Pressable>
+                )}
+              </>
+            );
+          })()}
+
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
               Detail
@@ -1247,19 +1357,13 @@ function BookingDetail() {
                     </Pressable>
                   )}
                   {booking.status === 'on_the_way' && (
-                    startCountdown !== null ? (
-                      <View className="flex-1 items-center rounded-2xl bg-amber-500 py-3.5">
-                        <Text className="font-bold text-sm text-white">Timer mulai dalam {startCountdown}...</Text>
-                      </View>
-                    ) : (
-                      <Pressable
-                        onPress={confirmStartWork}
-                        disabled={advancing}
-                        className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
-                      >
-                        <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.start_work')}</Text>
-                      </Pressable>
-                    )
+                    <Pressable
+                      onPress={confirmStartWork}
+                      disabled={advancing}
+                      className={`flex-1 items-center rounded-2xl py-3.5 ${advancing ? 'bg-brand-400' : 'bg-brand-600'}`}
+                    >
+                      <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.start_work')}</Text>
+                    </Pressable>
                   )}
                   {booking.status === 'in_progress' && (
                     <View className="flex-1">
@@ -1322,6 +1426,54 @@ function BookingDetail() {
           </View>
         )}
       </View>
+
+      <Modal visible={showExtensionModal} transparent animationType="fade" onRequestClose={() => setShowExtensionModal(false)}>
+        <Pressable onPress={() => setShowExtensionModal(false)} className="flex-1 items-center justify-center bg-black/50 px-6">
+          <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5">
+            <Text className="font-extrabold text-lg text-ink-900">⏱ Perpanjangan Waktu</Text>
+            <Text className="mt-2 text-[13px] leading-5 text-ink-600">
+              Minta cleaner lanjut bekerja +1 jam. Cleaner perlu menyetujui dulu sebelum lanjut.
+            </Text>
+            <View className="mt-4 rounded-2xl bg-brand-50 p-4">
+              <View className="flex-row items-center justify-between">
+                <Text className="font-semibold text-sm text-ink-700">+1 jam kerja</Text>
+                <Text className="font-extrabold text-sm text-brand-700">
+                  {extensionPricePerHour > 0 ? `Rp ${extensionPricePerHour.toLocaleString('id-ID')}` : 'Memuat harga…'}
+                </Text>
+              </View>
+              <Text className="mt-1 text-[11px] text-ink-500">
+                Dibayar dari saldo wallet kamu saat cleaner menyetujui.
+              </Text>
+              {walletBalance > 0 && (
+                <Text className="mt-1 text-[11px] text-ink-500">
+                  Saldo kamu: Rp {walletBalance.toLocaleString('id-ID')}
+                  {extensionPricePerHour > 0 && walletBalance < extensionPricePerHour && (
+                    <Text className="text-red-600"> (kurang, top-up dulu)</Text>
+                  )}
+                </Text>
+              )}
+            </View>
+            <View className="mt-5 flex-row gap-2">
+              <Pressable
+                onPress={() => setShowExtensionModal(false)}
+                className="flex-1 items-center rounded-xl border border-ink-300 bg-white py-3"
+              >
+                <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void requestExtension()}
+                disabled={extensionBusy || extensionPricePerHour <= 0 || (walletBalance > 0 && walletBalance < extensionPricePerHour)}
+                className="flex-1 items-center rounded-xl bg-brand-600 py-3"
+                style={{ opacity: extensionBusy || extensionPricePerHour <= 0 ? 0.5 : 1 }}
+              >
+                {extensionBusy
+                  ? <ActivityIndicator color="white" size="small" />
+                  : <Text className="font-bold text-sm text-white">Kirim Permintaan</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {showUpchargeModal && id && (
         <UpchargeFormModal
@@ -1476,6 +1628,29 @@ function BookingDetail() {
         />
       )}
     </>
+  );
+}
+
+function PerRoomWorkTimer({ startedAt }: { startedAt: string }) {
+  const [elapsedSec, setElapsedSec] = useState(() => Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)));
+  useEffect(() => {
+    const t = setInterval(() => {
+      setElapsedSec(Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [startedAt]);
+  const h = Math.floor(elapsedSec / 3600);
+  const m = Math.floor((elapsedSec % 3600) / 60);
+  const s = elapsedSec % 60;
+  const fmt = h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return (
+    <View className="mx-4 mt-3 rounded-2xl bg-brand-600 p-4 items-center">
+      <Text className="font-sans text-xs text-white/70 uppercase tracking-widest mb-1">Sedang Dikerjakan</Text>
+      <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 42, color: 'white', letterSpacing: -1 }}>{fmt}</Text>
+      <Text className="font-sans text-xs text-white/60 mt-1">Waktu berjalan sejak cleaner mulai</Text>
+    </View>
   );
 }
 
