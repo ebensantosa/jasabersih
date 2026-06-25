@@ -755,17 +755,16 @@ function BookingDetail() {
                 <Detail icon={Clock} label="Durasi" value={`${booking.hours} jam`} />
               )}
             </View>
-            {/* Maps button - single, prominent (cleaner pakai untuk navigasi).
-                Chat dipindah ke bottom action bar biar gak duplikat. */}
-            {['matched', 'on_the_way', 'in_progress'].includes(booking.status) && (
+            {/* Maps button - tampil untuk semua status biar customer bisa lihat lokasi */}
+            {booking.addressLine ? (
               <Pressable
-                onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.addressLine)}`)}
+                onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.addressLine)}`).catch(() => {})}
                 className="mt-3 flex-row items-center justify-center gap-1.5 rounded-xl bg-brand-50 py-2.5"
               >
                 <MapPin color="#1D4ED8" size={14} />
                 <Text className="font-bold text-xs text-brand-700">Buka di Google Maps</Text>
               </Pressable>
-            )}
+            ) : null}
           </View>
 
           {/* Subscription parent — list child visits dengan status live + link per visit */}
@@ -923,7 +922,9 @@ function BookingDetail() {
                   label={
                     booking.pricingMode === 'package'
                       ? booking.packageName ?? 'Paket'
-                      : `${booking.hourlyTierName} × ${booking.hours}j`
+                      : booking.pricingMode === 'hourly'
+                        ? `Layanan Per Jam × ${booking.hours}j`
+                        : booking.packageName ?? booking.categoryName ?? 'Layanan'
                   }
                   value={formatRupiah(booking.basePrice)}
                 />
@@ -1171,16 +1172,18 @@ function BookingDetail() {
                         className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 px-4 py-3.5"
                       >
                         <MessageCircle color="white" size={16} strokeWidth={2.4} />
-                        <Text className="font-bold text-sm text-white">Chat</Text>
+                        <Text className="font-bold text-sm text-white">Chat Cleaner</Text>
                       </Pressable>
                     ) : (
-                      <View className="flex-1 items-center justify-center rounded-2xl bg-ink-100 py-3.5">
-                        <Text className="font-medium text-sm text-ink-500">
-                          {booking.pricingMode === 'wa_survey'
-                            ? t('bd.cs_will_wa')
-                            : t('bd.waiting_cleaner')}
+                      <Pressable
+                        onPress={openWaHelp}
+                        className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3.5"
+                      >
+                        <WaIcon size={16} />
+                        <Text className="font-bold text-sm text-emerald-800">
+                          {booking.pricingMode === 'wa_survey' ? 'Chat CS via WhatsApp' : 'Hubungi CS'}
                         </Text>
-                      </View>
+                      </Pressable>
                     )}
                   </View>
                   {canReschedule && (

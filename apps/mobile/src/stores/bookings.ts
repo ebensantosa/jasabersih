@@ -315,6 +315,9 @@ export const useBookingsStore = create<State>((set, get) => ({
           customerPhotoUrl: (s as any).customerPhotoUrl ?? (s as any).customer_photo_url ?? existing.customerPhotoUrl,
           customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? existing.customerNotes,
           isManual: (s as any).isManual ?? existing.isManual,
+          hourlyTierName: (s as any).hourlyTierName ?? (s as any).hourly_tier_name ?? existing.hourlyTierName,
+          hours: (s as any).hoursBooked ?? (s as any).hours_booked ?? existing.hours,
+          packageName: (s as any).packageName ?? existing.packageName,
         }
           : {
               id: s.id,
@@ -336,6 +339,9 @@ export const useBookingsStore = create<State>((set, get) => ({
               customerPhotoUrl: (s as any).customerPhotoUrl ?? (s as any).customer_photo_url ?? undefined,
               customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? undefined,
               isManual: (s as any).isManual ?? false,
+              hourlyTierName: (s as any).hourlyTierName ?? (s as any).hourly_tier_name ?? undefined,
+              hours: (s as any).hoursBooked ?? (s as any).hours_booked ?? undefined,
+              packageName: (s as any).packageName ?? undefined,
               messages: [],
             } as Booking;
       });
@@ -544,6 +550,7 @@ export const useBookingsStore = create<State>((set, get) => ({
     }
   },
   cancel: (id, refund) => {
+    const prevStatus = get().list.find((b) => b.id === id)?.status;
     const next = get().list.map((b) =>
       b.id === id ? { ...b, status: 'canceled' as const, cancelRefund: refund } : b,
     );
@@ -553,12 +560,12 @@ export const useBookingsStore = create<State>((set, get) => ({
     if (!id.startsWith('bk_')) {
       api.post(`/bookings/${id}/cancel`).catch(async (e: any) => {
         const { toast } = await import('./ui');
-        // Rollback optimistic update kalau server tolak
-        const rolled = get().list.map((b) => b.id === id ? { ...b, status: 'pending_payment' as const, cancelRefund: undefined } : b);
-        const trimmed = rolled.slice(0, MAX_PERSISTED_BOOKINGS);
-        persist(trimmed);
-        set({ list: trimmed });
-        toast.error(e?.response?.data?.error?.message ?? 'Gagal batalkan pesanan');
+        // Rollback optimistic update kalau server tolak - kembalikan ke status asli
+        const rolled = get().list.map((b) => b.id === id ? { ...b, status: (prevStatus ?? 'pending_payment') as any, cancelRefund: undefined } : b);
+        const trimmedRolled = rolled.slice(0, MAX_PERSISTED_BOOKINGS);
+        persist(trimmedRolled);
+        set({ list: trimmedRolled });
+        toast.error(e?.response?.data?.error?.message ?? 'Gagal batalkan pesanan. Coba lagi.');
       });
     }
   },
