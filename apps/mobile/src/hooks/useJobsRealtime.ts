@@ -105,8 +105,6 @@ export function useJobsRealtime() {
     };
   }, [tokens, mode, areas, userIsAvailable]);
 
-  // Polling fallback HANYA kalau websocket gak connect - kalau socket online,
-  // server push job real-time, polling jadi noise (request /available tiap 12s).
   const [socketConnected, setSocketConnected] = useState(false);
   useEffect(() => {
     const socket = getJobsSocket();
@@ -118,10 +116,13 @@ export function useJobsRealtime() {
     return () => { socket.off('connect', onConn); socket.off('disconnect', onDisc); };
   }, []);
 
-  const fallbackEnabled = !!tokens && mode === 'freelancer' && userIsAvailable && !socketConnected;
-  const pullAvailableFallback = async () => {
-    if (!fallbackEnabled) return;
-    if (incoming) return;
+  const shouldBeOnline = !!tokens && mode === 'freelancer' && userIsAvailable;
+  const fallbackEnabled = shouldBeOnline && !socketConnected;
+
+  // Sweep /available dan tambah ke queue kalau ada job yang terlewat socket event
+  // (misal: order dibayar sebelum cleaner masuk ROOM_AVAILABLE).
+  const sweepAvailable = async () => {
+    if (queue.length > 0) return; // sudah ada popup, skip
     try {
       const r = await api.get('/cleaner/jobs/available');
       const list = ((r.data?.data ?? r.data ?? []) as IncomingJob[]).filter((job) => isPopupEligible(job));
@@ -134,14 +135,15 @@ export function useJobsRealtime() {
         return merged;
       });
     } catch {
-      // silent fallback
+      // silent
     }
   };
   useEffect(() => {
-    if (fallbackEnabled) void pullAvailableFallback();
+    if (fallbackEnabled) void sweepAvailable();
   }, [fallbackEnabled]);
-  // 30s (bukan 12s) - tetep fallback tapi gak agresif. Real-time tetep dari socket.
-  useVisiblePoll(pullAvailableFallback, 30_000, fallbackEnabled);
+  // 30s saat socket putus (fallback aktif), 60s saat socket nyambung (tangkap missed events)
+  useVisiblePoll(sweepAvailable, 30_000, fallbackEnabled);
+  useVisiblePoll(sweepAvailable, 60_000, shouldBeOnline && socketConnected);
 
   function dismiss(bookingId?: string) {
     if (bookingId) {
