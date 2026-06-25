@@ -280,7 +280,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async sendCleanerFcmBatch(
     bookingId: string,
-    job: { addressLine: string; serviceName: string | null; cleanerPayout: number | null; totalAmount: number },
+    job: { addressLine: string; serviceName: string | null; cleanerPayout: number | null; totalAmount: number; pricingMode: string },
   ): Promise<void> {
     const normalizedAddress = String(job.addressLine ?? '').toLowerCase();
     const cleaners = await this.prisma.$queryRaw<{ user_id: string; service_areas: unknown }[]>`
@@ -307,7 +307,8 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (eligible.length === 0) return;
 
     const payout = Number(job.cleanerPayout ?? 0);
-    const title = `Job baru: ${job.serviceName ?? 'Layanan'}`;
+    const displayName = job.pricingMode === 'hourly' ? 'Layanan Per Jam' : (job.serviceName ?? 'Layanan');
+    const title = `Job baru: ${displayName}`;
     const body = `${payout > 0 ? `Pendapatan Rp ${payout.toLocaleString('id-ID')} · ` : ''}${job.addressLine.split(',').slice(0, 2).join(',')}`;
 
     await this.push.sendBatch(
