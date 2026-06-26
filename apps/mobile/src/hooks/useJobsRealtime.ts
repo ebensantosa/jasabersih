@@ -46,8 +46,9 @@ export function useJobsRealtime() {
       .map((area) => String(area).trim().toLowerCase())
       .filter(Boolean);
     const address = String(job.addressLine ?? '').toLowerCase();
+    const city = String(job.cityName ?? '').toLowerCase();
     if (normalizedAreas.length === 0) return true;
-    return normalizedAreas.some((area) => address.includes(area));
+    return normalizedAreas.some((area) => address.includes(area) || (city.length > 0 && city.includes(area)));
   }
 
   useEffect(() => {

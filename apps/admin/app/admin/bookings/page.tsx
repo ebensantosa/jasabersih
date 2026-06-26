@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Eye, Loader2, MoreHorizontal, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
+import { CheckCircle2, Eye, Loader2, MoreHorizontal, Radio, Search, Trash2, UserPlus, Wallet, WifiOff, XCircle } from 'lucide-react';
 import { Button, Input, Modal, Textarea } from '../../../components/ui';
 import { MapPicker } from '../../../components/MapPicker';
 
@@ -314,12 +314,28 @@ export default function Bookings(): React.ReactElement | null  {
                   <div className="truncate text-slate-500">{b.addressLine}</div>
                   <div className="text-amber-700">Searching {Math.floor(b.searchingSec / 60)} menit</div>
                 </div>
-                <button
-                  onClick={() => setAssigning(b.id)}
-                  className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white"
-                >
-                  Assign Manual
-                </button>
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.admin.broadcastJob(b.id);
+                        toast.success('Broadcast ulang terkirim ke cleaner online');
+                      } catch {
+                        toast.error('Gagal broadcast');
+                      }
+                    }}
+                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white"
+                    title="Kirim ulang notifikasi ke semua cleaner online"
+                  >
+                    Re-broadcast
+                  </button>
+                  <button
+                    onClick={() => setAssigning(b.id)}
+                    className="rounded-lg bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white"
+                  >
+                    Assign Manual
+                  </button>
+                </div>
               </div>
             ))}
             {needsAttention.length > 5 && (
@@ -452,6 +468,22 @@ export default function Bookings(): React.ReactElement | null  {
                                 {o.status === 'pending_payment' && (
                                   <button onClick={() => rowAction(o.id, 'mark_paid')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50">
                                     <Wallet size={12} className="text-emerald-600" /> Tandai Lunas
+                                  </button>
+                                )}
+                                {o.status === 'searching' && !o.cleanerName && (
+                                  <button
+                                    onClick={async () => {
+                                      setOpenMenu(null);
+                                      try {
+                                        await api.admin.broadcastJob(o.id);
+                                        toast.success('Broadcast ulang terkirim ke cleaner online');
+                                      } catch {
+                                        toast.error('Gagal broadcast');
+                                      }
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50"
+                                  >
+                                    <Radio size={12} className="text-blue-600" /> Broadcast Ulang
                                   </button>
                                 )}
                                 {o.cleanerName && ['searching', 'matched', 'on_the_way', 'in_progress', 'disputed'].includes(o.status) && (

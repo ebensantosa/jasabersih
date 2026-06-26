@@ -33,6 +33,8 @@ type AvailableJob = {
 type ActiveJob = {
   id: string;
   status: string;
+  pricingMode?: string | null;
+  hoursBooked?: number | null;
   serviceName: string | null;
   scheduledAt: string;
   cleanerPayout?: number | null;
@@ -320,7 +322,11 @@ function JobsScreen() {
                   className="flex-row items-center gap-2 rounded-xl bg-white p-3"
                 >
                   <View className="flex-1">
-                    <Text className="font-semibold text-sm text-ink-900">{j.serviceName ?? 'Layanan'}</Text>
+                    <Text className="font-semibold text-sm text-ink-900">
+                      {j.pricingMode === 'hourly'
+                        ? (j.hoursBooked != null ? (j.hoursBooked < 1 ? `${j.hoursBooked * 60} Menit` : `${j.hoursBooked} Jam`) : 'Layanan Per Jam')
+                        : (j.serviceName ?? 'Layanan')}
+                    </Text>
                     <Text className="font-medium text-[11px]" style={{ color: '#047857' }}>
                       {j.status === 'matched' ? 'Dijadwalkan' :
                        j.status === 'on_the_way' || j.status === 'cleaner_otw' ? 'Otw lokasi' :
@@ -364,7 +370,11 @@ function JobsScreen() {
                 <Pressable key={b.id} onPress={() => setPreviewJob(b)} className="rounded-2xl bg-white p-3">
                   <View className="flex-row items-start justify-between gap-2">
                     <View className="flex-1">
-                      <Text className="font-semibold text-sm text-ink-900">{b.serviceName ?? 'Layanan'}</Text>
+                      <Text className="font-semibold text-sm text-ink-900">
+                        {b.pricingMode === 'hourly'
+                          ? (b.hours != null ? (b.hours < 1 ? `${b.hours * 60} Menit` : `${b.hours} Jam`) : 'Layanan Per Jam')
+                          : (b.serviceName ?? 'Layanan')}
+                      </Text>
                       <Text className="font-medium text-[11px] text-brand-600">
                         {b.pricingMode === 'package' ? 'Paket Tetap' : b.pricingMode === 'hourly' ? 'Per Jam' : b.pricingMode}
                       </Text>
@@ -518,7 +528,11 @@ function JobDetailContent({
   return (
     <View className="gap-3">
       <View>
-        <Text className="font-extrabold text-xl text-ink-900">{job.serviceName ?? 'Layanan'}</Text>
+        <Text className="font-extrabold text-xl text-ink-900">
+          {job.pricingMode === 'hourly'
+            ? (job.hours != null ? (job.hours < 1 ? `${job.hours * 60} Menit` : `${job.hours} Jam`) : 'Layanan Per Jam')
+            : (job.serviceName ?? 'Layanan')}
+        </Text>
         <Text className="font-medium mt-0.5 text-[11px] text-brand-600">
           {job.pricingMode === 'package' ? 'Paket Tetap' : job.pricingMode === 'hourly' ? 'Per Jam' : job.pricingMode}
         </Text>

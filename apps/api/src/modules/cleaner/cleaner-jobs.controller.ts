@@ -170,9 +170,6 @@ export class CleanerJobsController {
     const areas: string[] = Array.isArray(rawAreas)
       ? rawAreas.filter((a) => typeof a === 'string' && a.trim().length > 0)
       : [];
-    // Areas kosong = belum pilih kota kerja -> jangan kasih liat job. Cegah
-    // cleaner asal accept job di luar kota dan bikin masalah ke customer.
-    if (areas.length === 0) return [];
 
     // NOTE: kolom total_amount sengaja TIDAK di-expose ke cleaner.
     // Compute estimated cleaner_payout on-the-fly via commission_tiers
@@ -189,8 +186,9 @@ export class CleanerJobsController {
       return Math.round(total * pct / 100);
     }
 
-    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; scheduledAt: Date; createdAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null; formSnapshot: any; customerNotes: string | null }[]>`
+    const rows = await this.prisma.$queryRaw<{ id: string; pricingMode: string; addressLine: string; cityName: string | null; scheduledAt: Date; createdAt: Date; totalAmount: number; cleanerPayout: number | null; serviceName: string | null; serviceIconUrl: string | null; formSnapshot: any; customerNotes: string | null }[]>`
       SELECT b.id, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
+             b.form_snapshot->>'cityName' AS "cityName",
              b.scheduled_at AS "scheduledAt",
              b.created_at AS "createdAt",
              b.total_amount AS "totalAmount",
@@ -217,14 +215,14 @@ export class CleanerJobsController {
     });
 
     // HARD FILTER: cleaner yang sudah pilih area cuma lihat job di area mereka.
-    // Cegah cleaner Jakarta dapat customer Yogyakarta. Cleaner yang belum
-    // pilih area sama sekali (areas=[]) tetap lihat semua (biar gak block
-    // onboarding flow).
+    // Cek addressLine DAN cityName supaya booking dengan alamat pendek (misal
+    // "Jl Kusniii") tetap match kalau cityName-nya cocok (misal "Yogyakarta").
     if (areas.length === 0) return enriched;
     const lcAreas = areas.map((a) => a.toLowerCase());
     return enriched.filter((r) => {
       const addr = String(r.addressLine ?? '').toLowerCase();
-      return lcAreas.some((a) => addr.includes(a));
+      const city = String(r.cityName ?? '').toLowerCase();
+      return lcAreas.some((a) => addr.includes(a) || (city.length > 0 && city.includes(a)));
     });
   }
 
@@ -235,7 +233,18 @@ export class CleanerJobsController {
       SELECT b.id, b.status, b.pricing_mode AS "pricingMode", b.address_line AS "addressLine",
              b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, ht.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'tierName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+             b.hours_booked AS "hoursBooked",
+             CASE WHEN b.pricing_mode = 'hourly'
+               THEN COALESCE(
+                 CASE WHEN b.hours_booked IS NOT NULL
+                   THEN CASE WHEN b.hours_booked < 1
+                     THEN (b.hours_booked * 60)::int::text || ' Menit'
+                     ELSE b.hours_booked::text || ' Jam'
+                   END
+                 END,
+                 ht.name, 'Layanan Per Jam')
+               ELSE COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan')
+             END AS "serviceName",
              s.icon_url AS "serviceIcon",
              pp.name AS "packageName",
              ht.name AS "hourlyTierName",
@@ -345,11 +354,15 @@ export class CleanerJobsController {
       ? rawAreas.filter((a: any) => typeof a === 'string' && a.trim().length > 0)
       : [];
     if (areas.length > 0) {
-      const addrRow = await this.prisma.$queryRaw<{ address_line: string | null }[]>`
-        SELECT address_line FROM bookings WHERE id = ${id}::uuid LIMIT 1
+      const addrRow = await this.prisma.$queryRaw<{ address_line: string | null; city_name: string | null }[]>`
+        SELECT address_line, form_snapshot->>'cityName' AS city_name FROM bookings WHERE id = ${id}::uuid LIMIT 1
       `;
       const addr = String(addrRow[0]?.address_line ?? '').toLowerCase();
-      const inArea = areas.some((a) => addr.includes(a.toLowerCase()));
+      const city = String(addrRow[0]?.city_name ?? '').toLowerCase();
+      const inArea = areas.some((a) => {
+        const lc = a.toLowerCase();
+        return addr.includes(lc) || (city.length > 0 && city.includes(lc));
+      });
       if (!inArea) throw new ForbiddenException('Job ini di luar area layananmu.');
     }
 

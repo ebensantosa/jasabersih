@@ -399,7 +399,12 @@ function Chat() {
         {!isCleaner && <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />}
 
         <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ padding: 16, gap: 8 }} showsVerticalScrollIndicator={false}>
-          {messages.length === 0 ? (
+          {status === 'connecting' ? (
+            <View className="flex-1 items-center justify-center py-12 gap-2">
+              <ActivityIndicator size="small" color="#6366F1" />
+              <Text className="font-sans text-xs text-ink-400">Memuat pesan...</Text>
+            </View>
+          ) : messages.length === 0 ? (
             <View className="self-center rounded-full bg-ink-200 px-3 py-1">
               <Text className="font-sans text-[11px] text-ink-600">Mulai percakapan</Text>
             </View>

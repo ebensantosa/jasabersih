@@ -220,6 +220,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       id: string;
       pricingMode: string;
       addressLine: string;
+      cityName: string | null;
       scheduledAt: Date;
       createdAt: Date;
       totalAmount: number;
@@ -235,6 +236,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       SELECT b.id,
              b.pricing_mode AS "pricingMode",
              b.address_line AS "addressLine",
+             b.form_snapshot->>'cityName' AS "cityName",
              b.scheduled_at AS "scheduledAt",
              b.created_at AS "createdAt",
              b.total_amount AS "totalAmount",
@@ -280,9 +282,10 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async sendCleanerFcmBatch(
     bookingId: string,
-    job: { addressLine: string; serviceName: string | null; cleanerPayout: number | null; totalAmount: number; pricingMode: string },
+    job: { addressLine: string; cityName?: string | null; serviceName: string | null; cleanerPayout: number | null; totalAmount: number; pricingMode: string },
   ): Promise<void> {
     const normalizedAddress = String(job.addressLine ?? '').toLowerCase();
+    const normalizedCity = String(job.cityName ?? '').toLowerCase();
     const cleaners = await this.prisma.$queryRaw<{ user_id: string; service_areas: unknown }[]>`
       SELECT cp.user_id, cp.service_areas
         FROM cleaner_profiles cp
@@ -301,7 +304,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .filter(Boolean)
         : [];
       if (areas.length === 0) return true;
-      return areas.some((area) => normalizedAddress.includes(area));
+      return areas.some((area) => normalizedAddress.includes(area) || (normalizedCity.length > 0 && normalizedCity.includes(area)));
     });
 
     if (eligible.length === 0) return;

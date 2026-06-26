@@ -181,6 +181,15 @@ export class AdminBookingsController {
     return { id: bookingId, customerId, status };
   }
 
+  // Trigger ulang broadcast incoming-job ke semua cleaner online untuk booking
+  // yang sudah di-searching tapi belum ada yang ambil (misal cleaner offline saat broadcast pertama).
+  @Post(':id/broadcast')
+  @Roles('super_admin', 'ops', 'support')
+  async broadcastJob(@Param('id') id: string) {
+    await this.jobs.broadcastIncomingJob(id);
+    return { ok: true };
+  }
+
   // Bookings yang searching > 5 menit dan belum ada cleaner ambil — kemungkinan
   // di luar coverage area. Admin perlu lihat ini untuk assign manual.
   @Get('needs-attention')

@@ -173,6 +173,7 @@ function BookingDetail() {
   const [extensionPricePerHour, setExtensionPricePerHour] = useState(0);
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   const [extensionBusy, setExtensionBusy] = useState(false);
+  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [subscriptionVisits, setSubscriptionVisits] = useState<Array<{ id: string; status: string; scheduledAt: string; visitIndex: number; visitTotal: number; cleanerName: string | null; completedAt: string | null }> | null>(null);
 
   async function loadExtensionRequests() {
@@ -778,7 +779,7 @@ function BookingDetail() {
               BookingTimeline (server-driven, auto-refresh on status change).
               Hindari dua source yg bisa kelihatan out-of-sync. */}
 
-          {booking.pricingMode === 'hourly' && booking.status === 'in_progress' && booking.startedAt && booking.hours && (
+          {booking.pricingMode === 'hourly' && booking.status === 'in_progress' && booking.startedAt && (
             <HourlyCountdown
               bookingId={booking.id}
               startedAt={booking.startedAt}
@@ -786,13 +787,39 @@ function BookingDetail() {
               isCleaner={isCleaner}
               pauseStartedAt={booking.pauseStartedAt}
               pausedTotalSec={booking.pausedTotalSec ?? 0}
+              pricePerHour={booking.hourlyPricePerHour}
               onRefresh={() => { if (id) void fetchOne(String(id)); }}
+              onExtend={() => setShowOvertimeModal(true)}
             />
           )}
 
-          {booking.pricingMode !== 'hourly' && booking.status === 'in_progress' && booking.startedAt && (
-            <PerRoomWorkTimer startedAt={booking.startedAt} />
-          )}
+          <Modal visible={showOvertimeModal} transparent animationType="slide" onRequestClose={() => setShowOvertimeModal(false)}>
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setShowOvertimeModal(false)} />
+            <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 4 }}>Perpanjang Waktu Kerja</Text>
+              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Pilih durasi tambahan. Kamu akan diarahkan ke halaman pembayaran.</Text>
+              {([0.5, 1, 2, 3] as const).map((dur) => {
+                const price = Math.round((booking.hourlyPricePerHour ?? 0) * dur);
+                return (
+                  <Pressable
+                    key={dur}
+                    onPress={() => {
+                      setShowOvertimeModal(false);
+                      router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id, extra: `overtime:${dur}`, amount: String(price) } });
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '600' }}>{dur < 1 ? `${dur * 60} Menit` : `${dur} Jam`}</Text>
+                    <Text style={{ fontSize: 14, color: '#4b5563' }}>{formatRupiah(price)}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable onPress={() => setShowOvertimeModal(false)} style={{ marginTop: 16, alignItems: 'center', paddingVertical: 12 }}>
+                <Text style={{ color: '#6b7280', fontSize: 14 }}>Batal</Text>
+              </Pressable>
+            </View>
+          </Modal>
+
 
           {/* Extension requests — per-ruangan saja, tampil untuk customer dan cleaner */}
           {booking.pricingMode !== 'hourly' && booking.status === 'in_progress' && !booking.id.startsWith('bk_') && (() => {
@@ -1631,28 +1658,6 @@ function BookingDetail() {
   );
 }
 
-function PerRoomWorkTimer({ startedAt }: { startedAt: string }) {
-  const [elapsedSec, setElapsedSec] = useState(() => Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)));
-  useEffect(() => {
-    const t = setInterval(() => {
-      setElapsedSec(Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [startedAt]);
-  const h = Math.floor(elapsedSec / 3600);
-  const m = Math.floor((elapsedSec % 3600) / 60);
-  const s = elapsedSec % 60;
-  const fmt = h > 0
-    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return (
-    <View className="mx-4 mt-3 rounded-2xl bg-brand-600 p-4 items-center">
-      <Text className="font-sans text-xs text-white/70 uppercase tracking-widest mb-1">Sedang Dikerjakan</Text>
-      <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 42, color: 'white', letterSpacing: -1 }}>{fmt}</Text>
-      <Text className="font-sans text-xs text-white/60 mt-1">Waktu berjalan sejak cleaner mulai</Text>
-    </View>
-  );
-}
 
 function HourlyCountdown({
   bookingId,
@@ -1661,15 +1666,19 @@ function HourlyCountdown({
   isCleaner,
   pauseStartedAt,
   pausedTotalSec,
+  pricePerHour,
   onRefresh,
+  onExtend,
 }: {
   bookingId: string;
   startedAt: number;
-  hours: number;
+  hours?: number;
   isCleaner: boolean;
   pauseStartedAt?: number;
   pausedTotalSec?: number;
+  pricePerHour?: number;
   onRefresh?: () => void;
+  onExtend?: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
   const [timerBusy, setTimerBusy] = useState(false);
@@ -1677,19 +1686,24 @@ function HourlyCountdown({
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const totalMs = hours * 3600 * 1000;
+
+  const hasEndTime = hours != null && hours > 0;
   const isPaused = !!pauseStartedAt;
   const effectiveNow = isPaused ? pauseStartedAt! : now;
   const elapsedMs = Math.max(0, effectiveNow - startedAt - ((pausedTotalSec ?? 0) * 1000));
-  const remainingMs = totalMs - elapsedMs;
-  const overtime = remainingMs < 0;
-  const absMs = Math.abs(remainingMs);
+  const totalMs = hasEndTime ? hours! * 3600 * 1000 : 0;
+  const remainingMs = hasEndTime ? totalMs - elapsedMs : 0;
+  const overtime = hasEndTime && remainingMs < 0;
+  const absMs = hasEndTime ? Math.abs(remainingMs) : elapsedMs;
   const hh = Math.floor(absMs / 3600000);
   const mm = Math.floor((absMs % 3600000) / 60000);
   const ss = Math.floor((absMs % 60000) / 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
   const elapsedH = Math.floor(elapsedMs / 3600000);
   const elapsedM = Math.floor((elapsedMs % 3600000) / 60000);
+  const isCritical = hasEndTime && !overtime && remainingMs <= 10 * 60 * 1000;
+  const isWarning = hasEndTime && !overtime && !isCritical && remainingMs <= 30 * 60 * 1000;
+  const nearEnd = hasEndTime && !overtime && remainingMs <= 5 * 60 * 1000;
 
   async function togglePause() {
     if (timerBusy) return;
@@ -1707,14 +1721,14 @@ function HourlyCountdown({
 
   return (
     <View
-      className={`mx-4 mt-3 rounded-2xl p-4 ${overtime ? 'border-2 border-amber-300 bg-amber-50' : 'bg-white'}`}
+      className={`mx-4 mt-3 rounded-2xl p-4 ${overtime ? 'border-2 border-amber-300 bg-amber-50' : isCritical ? 'border-2 border-red-300 bg-red-50' : isWarning ? 'border border-yellow-300 bg-yellow-50' : 'bg-white'}`}
       style={{ elevation: 3 }}
     >
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1 flex-row items-center gap-2">
-          <Clock color={overtime ? '#B45309' : '#1D4ED8'} size={16} strokeWidth={2.4} />
-          <Text className={`font-bold text-sm ${overtime ? 'text-amber-900' : 'text-ink-900'}`}>
-            {overtime ? 'OVERTIME' : 'Sisa Waktu Pengerjaan'}
+          <Clock color={overtime ? '#B45309' : isCritical ? '#DC2626' : isWarning ? '#D97706' : '#1D4ED8'} size={16} strokeWidth={2.4} />
+          <Text className={`font-bold text-sm ${overtime ? 'text-amber-900' : isCritical ? 'text-red-900' : isWarning ? 'text-yellow-900' : 'text-ink-900'}`}>
+            {overtime ? 'OVERTIME' : isCritical ? '⚡ Hampir Habis!' : hasEndTime ? 'Sisa Waktu Pengerjaan' : 'Waktu Berjalan'}
           </Text>
         </View>
         {isCleaner && (
@@ -1734,11 +1748,13 @@ function HourlyCountdown({
           </Pressable>
         )}
       </View>
-      <Text className={`font-extrabold mt-2 text-4xl ${overtime ? 'text-amber-700' : 'text-brand-700'}`} style={{ fontVariant: ['tabular-nums'] }}>
+      <Text className={`font-extrabold mt-2 text-4xl ${overtime ? 'text-amber-700' : isCritical ? 'text-red-600' : isWarning ? 'text-yellow-700' : 'text-brand-700'}`} style={{ fontVariant: ['tabular-nums'] }}>
         {pad(hh)}:{pad(mm)}:{pad(ss)}
       </Text>
       <Text className="font-sans mt-1 text-[11px] text-ink-500">
-        Sudah kerja {elapsedH}j {elapsedM}m dari {hours} jam yang di-book
+        {hasEndTime
+          ? `Sudah kerja ${elapsedH}j ${elapsedM}m dari ${hours} jam yang di-book`
+          : `Sudah berjalan ${elapsedH}j ${elapsedM}m`}
       </Text>
       {isPaused && (
         <View className="mt-2 self-start rounded-full bg-amber-100 px-3 py-1">
@@ -1748,11 +1764,26 @@ function HourlyCountdown({
       <Text className="font-sans mt-1 text-[11px] text-ink-500">
         Countdown ini tampil sama di aplikasi customer dan cleaner sebagai acuan durasi kerja.
       </Text>
+
+      {nearEnd && !isCleaner && pricePerHour && (
+        <Pressable
+          onPress={onExtend}
+          className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5"
+        >
+          <Clock color="white" size={14} strokeWidth={2.4} />
+          <Text className="font-bold text-sm text-white">Perpanjang Waktu Kerja</Text>
+        </Pressable>
+      )}
+      {nearEnd && isCleaner && (
+        <View className="mt-2 rounded-lg bg-red-100 px-3 py-2">
+          <Text className="font-semibold text-[11px] text-red-800">⚡ Sisa waktu hampir habis. Segera selesaikan atau tunggu keputusan customer.</Text>
+        </View>
+      )}
       {overtime && (
         <Text className="font-medium mt-1.5 text-[11px] text-amber-800">
           {isCleaner
-            ? '⚠ Waktu udah lewat. 30 menit pertama free, lebih dari itu admin yang konfirmasi extra charge ke customer.'
-            : '⚠ Cleaner masih nerusin kerjaan. 30 menit pertama free; lebih dari itu admin akan tinjau extra charge.'}
+            ? '⚠ Waktu udah lewat. Segera selesaikan pekerjaan.'
+            : '⚠ Cleaner masih melanjutkan pekerjaan.'}
         </Text>
       )}
     </View>

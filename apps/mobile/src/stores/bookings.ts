@@ -173,6 +173,7 @@ export type Booking = {
   hourlyTierId?: string;
   hourlyTierCode?: string;
   hourlyTierName?: string;
+  hourlyPricePerHour?: number;
   hours?: number;
   surveyDescription?: string;
   // Add-ons & price
@@ -305,6 +306,9 @@ export const useBookingsStore = create<State>((set, get) => ({
           scheduledAt: safeIsoDate(s.scheduledAt ?? existing.scheduledAt),
           createdAt: safeTimestamp(s.createdAt ?? existing.createdAt),
           paidAt: paidAtMs ?? existing.paidAt,
+          startedAt: (s as any).startedAt ?? (s as any).started_at ? safeTimestamp((s as any).startedAt ?? (s as any).started_at) : existing.startedAt,
+          pauseStartedAt: (s as any).pauseStartedAt ?? (s as any).pause_started_at ? safeTimestamp((s as any).pauseStartedAt ?? (s as any).pause_started_at) : existing.pauseStartedAt,
+          pausedTotalSec: (s as any).pausedTotalSec != null ? Number((s as any).pausedTotalSec) : ((s as any).paused_total_sec != null ? Number((s as any).paused_total_sec) : existing.pausedTotalSec),
           completedAt: (s.completedAt ?? s.completed_at) ? safeTimestamp(s.completedAt ?? s.completed_at) : existing.completedAt,
           totalPrice: total,
           cleanerPayout,
@@ -316,6 +320,7 @@ export const useBookingsStore = create<State>((set, get) => ({
           customerNotes: (s as any).customerNotes ?? (s as any).customer_notes ?? existing.customerNotes,
           isManual: (s as any).isManual ?? existing.isManual,
           hourlyTierName: (s as any).hourlyTierName ?? (s as any).hourly_tier_name ?? existing.hourlyTierName,
+          hourlyPricePerHour: (s as any).hourlyPricePerHour != null ? Number((s as any).hourlyPricePerHour) : existing.hourlyPricePerHour,
           hours: (s as any).hoursBooked ?? (s as any).hours_booked ?? existing.hours,
           packageName: (s as any).packageName ?? existing.packageName,
         }
@@ -412,6 +417,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         hours: (s.hoursBooked ?? s.hours_booked) != null ? Number(s.hoursBooked ?? s.hours_booked) : undefined,
         hourlyTierId: s.hourlyTierId ?? undefined,
         hourlyTierName: s.hourlyTierName ?? snapshot.hourlyTierName ?? undefined,
+        hourlyPricePerHour: s.hourlyPricePerHour != null ? Number(s.hourlyPricePerHour) : undefined,
         packageName: s.packageName ?? snapshot.packageName ?? undefined,
         formSnapshot: snapshot,
         isManual: snapshot.createdByAdmin === true || snapshot.createdByAdmin === 'true' || (s as any).isManual === true,

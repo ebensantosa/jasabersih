@@ -30,6 +30,7 @@ export type IncomingJob = {
   id: string;
   pricingMode: string;
   addressLine: string;
+  cityName?: string | null;
   scheduledAt: string;
   createdAt?: string;
   totalAmount: number;

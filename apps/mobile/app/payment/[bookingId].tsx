@@ -134,16 +134,18 @@ function PaymentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ bookingId: string; extra?: string; amount?: string }>();
   const bookingId = params.bookingId;
-  // Extra mode: bayar tagihan tambahan (upcharge) atau tip - bukan pelunasan booking.
-  // Format: extra="upcharge:UUID" atau extra="tip"; amount=Rp untuk tip.
-  const extraType: 'upcharge' | 'tip' | null = (() => {
+  // Extra mode: bayar tagihan tambahan (upcharge), tip, atau overtime.
+  // Format: extra="upcharge:UUID" | extra="tip" | extra="overtime:0.5"; amount=Rp untuk tip/overtime.
+  const extraType: 'upcharge' | 'tip' | 'overtime' | null = (() => {
     if (!params.extra) return null;
     const head = params.extra.split(':')[0];
     if (head === 'upcharge') return 'upcharge';
     if (head === 'tip') return 'tip';
+    if (head === 'overtime') return 'overtime';
     return null;
   })();
   const extraUpchargeId = extraType === 'upcharge' ? (params.extra?.split(':')[1] ?? null) : null;
+  const extraDurationHours = extraType === 'overtime' ? Number(params.extra?.split(':')[1] ?? 0) : null;
   const extraAmount = params.amount ? Number(params.amount) : 0;
 
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === bookingId));
@@ -158,8 +160,8 @@ function PaymentScreen() {
   const [upchargeAmount, setUpchargeAmount] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const totalToPay = extraType === 'upcharge' ? upchargeAmount : extraType === 'tip' ? extraAmount : (booking?.totalPrice ?? 0);
-  const headerLabel = extraType === 'upcharge' ? 'Bayar Charge Tambahan' : extraType === 'tip' ? 'Bayar Tip Cleaner' : 'Pilih Metode';
+  const totalToPay = extraType === 'upcharge' ? upchargeAmount : (extraType === 'tip' || extraType === 'overtime') ? extraAmount : (booking?.totalPrice ?? 0);
+  const headerLabel = extraType === 'upcharge' ? 'Bayar Charge Tambahan' : extraType === 'tip' ? 'Bayar Tip Cleaner' : extraType === 'overtime' ? `Perpanjang +${extraDurationHours}j` : 'Pilih Metode';
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
@@ -287,7 +289,7 @@ function PaymentScreen() {
         ? {
             bookingId,
             type: extraType,
-            ...(extraType === 'upcharge' ? { upchargeId: extraUpchargeId } : { tipAmount: extraAmount }),
+            ...(extraType === 'upcharge' ? { upchargeId: extraUpchargeId } : extraType === 'overtime' ? { durationHours: extraDurationHours } : { tipAmount: extraAmount }),
             senderBank, senderBankType, useCredit,
           }
         : { bookingId, senderBank, senderBankType, useCredit };

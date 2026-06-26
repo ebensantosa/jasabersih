@@ -630,9 +630,10 @@ export class PaymentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: {
       bookingId: string;
-      type: 'upcharge' | 'tip';
+      type: 'upcharge' | 'tip' | 'overtime';
       upchargeId?: string;
       tipAmount?: number;
+      durationHours?: number;
       senderBank: string;
       senderBankType: CheckoutSenderBankType;
       useCredit?: boolean;
@@ -643,6 +644,7 @@ export class PaymentsController {
     }
     if (body.type === 'upcharge' && !body.upchargeId) throw new BadRequestException('upchargeId wajib untuk upcharge.');
     if (body.type === 'tip' && (!body.tipAmount || body.tipAmount <= 0)) throw new BadRequestException('tipAmount wajib > 0 untuk tip.');
+    if (body.type === 'overtime' && (!body.durationHours || ![0.5, 1, 2, 3].includes(body.durationHours))) throw new BadRequestException('durationHours harus 0.5, 1, 2, atau 3.');
     await this.assertMethodEnabled(body.senderBank, body.senderBankType);
 
     const bRows = await this.prisma.$queryRaw<{ id: string; customer_id: string; cleaner_id: string | null; status: string }[]>`
@@ -664,10 +666,23 @@ export class PaymentsController {
       if (u.status !== 'pending') throw new BadRequestException('Upcharge sudah diputuskan.');
       amount = Number(u.amount);
       extra = { ...extra, upchargeId: body.upchargeId };
-    } else {
+    } else if (body.type === 'tip') {
       if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner untuk dikasih tip.');
       amount = Number(body.tipAmount);
       extra = { ...extra, tipAmount: amount, cleanerId: b.cleaner_id };
+    } else {
+      // overtime
+      if (b.status !== 'in_progress') throw new BadRequestException('Booking tidak sedang berjalan.');
+      const tierRow = await this.prisma.$queryRaw<{ price_per_hour: number }[]>`
+        SELECT ht.price_per_hour
+          FROM bookings b
+          JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
+         WHERE b.id = ${body.bookingId}::uuid LIMIT 1
+      `;
+      if (!tierRow[0]) throw new BadRequestException('Booking ini bukan per jam atau tier tidak ditemukan.');
+      const pricePerHour = Number(tierRow[0].price_per_hour);
+      amount = Math.round(pricePerHour * body.durationHours!);
+      extra = { ...extra, durationHours: body.durationHours, pricePerHour };
     }
 
     const userRows = await this.prisma.$queryRaw<{ name: string | null; email: string | null; phone: string }[]>`
@@ -714,8 +729,10 @@ export class PaymentsController {
         // Wallet covers full - skip Flip, langsung finalize.
         if (body.type === 'upcharge') {
           await this.finalizeUpcharge(user.id, body.bookingId, body.upchargeId!);
-        } else {
+        } else if (body.type === 'tip') {
           await this.finalizeTip(user.id, body.bookingId, b.cleaner_id!, amount);
+        } else {
+          await this.finalizeOvertime(body.bookingId, body.durationHours!);
         }
         return { ok: true, paidViaWallet: true, walletDeducted: amount, walletRemaining: balance - amount };
       }
@@ -739,7 +756,7 @@ export class PaymentsController {
       const flipSenderBankType = this.toFlipSenderBankType(body.senderBank, body.senderBankType);
       try {
         result = await this.flip.createDirectBill({
-          title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : 'Tip Cleaner'} ${b.id.slice(0, 8)}`,
+          title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : body.type === 'overtime' ? `Overtime +${body.durationHours}j` : 'Tip Cleaner'} ${b.id.slice(0, 8)}`,
           amount: flipAmount,
           refId: merchantRef,
           customerName: u.name ?? 'JasaBersih Customer',
@@ -757,7 +774,7 @@ export class PaymentsController {
         }
         this.flipLog.warn(`createDirect extra failed (${extraErrMsg}), fallback`);
         result = await this.flip.createBill({
-          title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : 'Tip'} ${b.id.slice(0, 8)}`,
+          title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : body.type === 'overtime' ? `Overtime +${body.durationHours}j` : 'Tip'} ${b.id.slice(0, 8)}`,
           amount: flipAmount,
           refId: merchantRef,
           customerName: u.name ?? 'JasaBersih Customer',
@@ -872,6 +889,26 @@ export class PaymentsController {
     `;
   }
 
+  private async finalizeOvertime(bookingId: string, durationHours: number): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE bookings
+         SET hours_booked = hours_booked + ${durationHours}::numeric
+       WHERE id = ${bookingId}::uuid AND status = 'in_progress'
+    `;
+    const rows = await this.prisma.$queryRaw<{ cleaner_id: string | null }[]>`
+      SELECT cleaner_id FROM bookings WHERE id = ${bookingId}::uuid LIMIT 1
+    `;
+    if (rows[0]?.cleaner_id) {
+      void this.push.send({
+        userId: rows[0].cleaner_id,
+        channel: 'booking',
+        title: 'Customer perpanjang waktu!',
+        body: `+${durationHours} jam ditambahkan. Lanjutkan pekerjaan.`,
+        data: { type: 'overtime_paid', bookingId },
+      }).catch(() => {});
+    }
+  }
+
   // Flip webhook. Flip POSTs application/x-www-form-urlencoded with `data` (JSON)
   // and `token` (validation token). No HMAC — just string-equal token check.
   private readonly flipLog = new Logger('FlipCallback');
@@ -955,7 +992,7 @@ export class PaymentsController {
     }
 
     if (status === 'SUCCESSFUL' && p.status !== 'paid') {
-      const isExtra = p.payment_type === 'upcharge' || p.payment_type === 'tip';
+      const isExtra = p.payment_type === 'upcharge' || p.payment_type === 'tip' || p.payment_type === 'overtime';
       if (isExtra) {
         // Extra payment (upcharge/tip): mark paid + finalize via helpers, jangan UPDATE bookings.status
         await this.prisma.$executeRaw`
@@ -970,6 +1007,8 @@ export class PaymentsController {
             await this.finalizeUpcharge(p.user_id, p.booking_id, meta.upchargeId);
           } else if (p.payment_type === 'tip' && meta?.cleanerId && p.booking_id && p.user_id) {
             await this.finalizeTip(p.user_id, p.booking_id, meta.cleanerId, Number(p.amount));
+          } else if (p.payment_type === 'overtime' && meta?.durationHours && p.booking_id) {
+            await this.finalizeOvertime(p.booking_id, Number(meta.durationHours));
           }
         } catch (e: any) {
           this.flipLog.error(`extra payment finalize failed payId=${p.id}: ${e?.message ?? e}`);
@@ -978,7 +1017,7 @@ export class PaymentsController {
           void this.push.send({
             userId: p.user_id, channel: 'booking',
             title: 'Pembayaran berhasil',
-            body: p.payment_type === 'upcharge' ? 'Charge tambahan terbayar. Cleaner sudah dapat notifikasi.' : 'Tip terkirim ke cleaner. Terima kasih!',
+            body: p.payment_type === 'upcharge' ? 'Charge tambahan terbayar. Cleaner sudah dapat notifikasi.' : p.payment_type === 'overtime' ? 'Perpanjangan overtime berhasil dibayar. Timer dilanjutkan!' : 'Tip terkirim ke cleaner. Terima kasih!',
             data: { type: `payment_${p.payment_type}_paid`, bookingId: p.booking_id, paymentId: p.id },
           }).catch(() => {});
         }

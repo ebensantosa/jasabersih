@@ -124,6 +124,8 @@ export function createClient(opts: ClientOptions) {
         cleanerId?: string; paymentStatus?: 'unpaid' | 'paid'; adminNote?: string;
         cityName?: string; customerNotes?: string; conditionPhotos?: string[];
       }) => request<{ id: string; customerId: string; status: string }>('POST', `/admin/bookings`, body),
+      broadcastJob: (bookingId: string) =>
+        request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/broadcast`),
       bookingsNeedsAttention: () =>
         request<{ id: string; addressLine: string; totalAmount: number; scheduledAt: string; createdAt: string; searchingSec: number; serviceName: string | null; customerName: string | null; customerPhone: string | null }[]>(
           'GET', `/admin/bookings/needs-attention`,

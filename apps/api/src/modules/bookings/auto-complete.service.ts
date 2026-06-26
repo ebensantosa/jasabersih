@@ -19,6 +19,61 @@ export class AutoCompleteService {
     private readonly referralPayout: ReferralPayoutService,
   ) {}
 
+  @Cron('*/2 * * * *')
+  async autoCompleteExpiredHourly(): Promise<void> {
+    const expired = await this.prisma.$queryRaw<{ id: string; customer_id: string | null; cleaner_id: string | null; cleaner_payout: number | null }[]>`
+      SELECT id, customer_id, cleaner_id, cleaner_payout
+        FROM bookings
+       WHERE status = 'in_progress'
+         AND pricing_mode = 'hourly'
+         AND started_at IS NOT NULL
+         AND hours_booked IS NOT NULL
+         AND pause_started_at IS NULL
+         AND started_at + (hours_booked::numeric * 3600 - COALESCE(paused_total_sec, 0))::int * INTERVAL '1 second' < NOW() - INTERVAL '1 minute'
+    `;
+    if (expired.length === 0) return;
+    this.log.log(`Auto-complete hourly expired: ${expired.length} booking(s)`);
+
+    for (const b of expired) {
+      try {
+        await this.prisma.$transaction([
+          this.prisma.$executeRaw`
+            UPDATE bookings
+               SET status = 'completed', completed_at = NOW(),
+                   admin_notes = COALESCE(admin_notes, '') || E'\n[auto] hourly timer expired'
+             WHERE id = ${b.id}::uuid AND status = 'in_progress'
+          `,
+          ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 ? [
+            this.prisma.$executeRaw`
+              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+              VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'PENDING', NULL, 'Earning auto-complete hourly — escrow 24 jam')
+              ON CONFLICT DO NOTHING
+            `,
+          ] : []),
+        ]);
+        if (b.customer_id) {
+          void this.push.send({
+            userId: b.customer_id, channel: 'booking',
+            title: 'Waktu kerja selesai',
+            body: 'Durasi booking per jam sudah habis. Yuk kasih rating untuk cleanermu!',
+            data: { type: 'hourly_timer_expired', bookingId: b.id },
+          }).catch(() => {});
+        }
+        if (b.cleaner_id) {
+          void this.push.send({
+            userId: b.cleaner_id, channel: 'booking',
+            title: 'Timer habis',
+            body: 'Durasi kerja sudah selesai. Jangan lupa foto after dan selesaikan booking.',
+            data: { type: 'hourly_timer_expired', bookingId: b.id },
+          }).catch(() => {});
+        }
+        await this.referralPayout.payoutForCompletedBooking(b.id);
+      } catch (e) {
+        this.log.error(`Auto-complete hourly failed for booking ${b.id}: ${e}`);
+      }
+    }
+  }
+
   @Cron(CronExpression.EVERY_30_MINUTES)
   async autoCompleteStale(): Promise<void> {
     const stale = await this.prisma.$queryRaw<{ id: string; customer_id: string | null; cleaner_id: string | null; cleaner_payout: number | null }[]>`
