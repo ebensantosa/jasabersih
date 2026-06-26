@@ -191,7 +191,16 @@ function PaymentScreen() {
       pollRef.current = null;
     }
     void syncBookings();
-    setTimeout(() => router.replace({ pathname: '/booking/[id]', params: { id: bookingId } }), 1500);
+    // extraType (tip/upcharge/overtime): dikunjungi via push dari booking/[id],
+    // jadi cukup back() — replace() akan duplikat booking/[id] di stack.
+    // Initial payment: form booking sudah di-replace sebelumnya, perlu navigate ke booking detail.
+    setTimeout(() => {
+      if (extraType) {
+        router.back();
+      } else {
+        router.replace({ pathname: '/booking/[id]', params: { id: bookingId } });
+      }
+    }, 1500);
   }
 
   // Kalau user back dari VA detail (direct → null), stop polling.
