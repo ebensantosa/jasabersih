@@ -337,13 +337,10 @@ function BookingDetail() {
     }
     previousStatusRef.current = next;
   }, [booking?.status, isCleaner, router]);
-  // Dispute hanya bisa dilaporkan saat aktif atau maks 24 jam setelah selesai
-  const completedWithin24h = booking?.status === 'completed'
-    && booking?.completedAt != null
-    && Date.now() - booking.completedAt < 24 * 60 * 60 * 1000;
+  // Dispute hanya bisa dilaporkan saat booking masih aktif (belum selesai)
   const canDispute = booking
     && !id?.startsWith('bk_')
-    && (['matched', 'on_the_way', 'in_progress'].includes(booking.status) || completedWithin24h);
+    && ['matched', 'on_the_way', 'in_progress'].includes(booking.status);
   const cleanerCanFinish = booking?.status === 'in_progress' && photoSummary.afterCount > 0;
 
   const csWaNumber = useConfig('contact.whatsapp' as any, '6285124363374' as any) as unknown as string;

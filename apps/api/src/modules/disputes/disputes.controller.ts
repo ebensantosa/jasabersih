@@ -59,14 +59,17 @@ export class DisputesController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateDisputeSchema)) body: CreateDisputeDto,
   ) {
-    // Verify booking participant
-    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null }[]>`
-      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    // Verify booking participant + status masih aktif
+    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null; status: string }[]>`
+      SELECT customer_id, cleaner_id, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
     `;
     const b = rows[0];
     if (!b) throw new NotFoundException('Booking tidak ditemukan.');
     if (b.customer_id !== user.id && b.cleaner_id !== user.id) {
       throw new BadRequestException('Kamu bukan participant booking ini.');
+    }
+    if (!['matched', 'on_the_way', 'in_progress'].includes(b.status)) {
+      throw new BadRequestException('Dispute hanya bisa diajukan saat booking masih aktif.');
     }
 
     // Subject = the OTHER party
