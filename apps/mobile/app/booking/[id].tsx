@@ -138,10 +138,12 @@ function BookingDetail() {
     if (id && !id.startsWith('bk_') && !booking) void fetchOne(id);
   }, [id, booking, fetchOne]);
 
-  // Poll server setiap 10 detik saat status 'searching' supaya perubahan
-  // status dari admin (manual assign) langsung terdeteksi tanpa perlu refresh manual.
+  // Poll server untuk semua status aktif supaya perubahan status, timer pause/resume,
+  // dll langsung terdeteksi di customer & cleaner tanpa perlu kembali ke home.
   const isSearching = !!id && !id.startsWith('bk_') && booking?.status === 'searching';
-  useVisiblePoll(() => { if (id) void fetchOne(id); }, 10_000, isSearching);
+  const isActiveBooking = !!id && !id.startsWith('bk_') &&
+    ['searching', 'matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started'].includes(booking?.status ?? '');
+  useVisiblePoll(() => { if (id) void fetchOne(id); }, 5_000, isActiveBooking);
   const mode = useModeStore((s) => s.mode);
   const token = useAuthStore((s) => s.tokens?.accessToken);
   const myUserId = (() => {
