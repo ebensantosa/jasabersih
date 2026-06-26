@@ -1682,8 +1682,13 @@ function HourlyCountdown({
 }) {
   const [now, setNow] = useState(Date.now());
   const [timerBusy, setTimerBusy] = useState(false);
+  const [blinkOn, setBlinkOn] = useState(true);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const t = setInterval(() => setBlinkOn((v) => !v), 600);
     return () => clearInterval(t);
   }, []);
 
@@ -1735,7 +1740,7 @@ function HourlyCountdown({
           <Pressable
             onPress={() => void togglePause()}
             disabled={timerBusy}
-            className={`min-w-[122px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : ''}`}
+            className={`min-w-[122px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : isPaused && !blinkOn ? 'opacity-40' : 'opacity-100'}`}
           >
             {timerBusy ? (
               <ActivityIndicator color="white" size="small" />
