@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { LogIn, ShieldAlert } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { UserMode } from '@jasabersih/shared-types';
 
@@ -20,6 +20,7 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
   const router = useRouter();
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
+  const insets = useSafeAreaInsets();
 
   if (!tokens) {
     return (
@@ -32,7 +33,7 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
         >
           <SafeAreaView edges={['top']} />
         </LinearGradient>
-        <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 24, marginTop: -48 }}>
+        <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 24, marginTop: -48, paddingBottom: insets.bottom + 16 }}>
           <View style={{ height: 96, width: 96, alignItems: 'center', justifyContent: 'center', borderRadius: 48, backgroundColor: 'white', elevation: 6, shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
             <LogIn color="#1D4ED8" size={36} strokeWidth={2} />
           </View>
@@ -61,7 +62,7 @@ export function AuthGate({ children, requireMode, title, message }: Props) {
         <LinearGradient colors={['#7C2D12', '#DC2626']} style={{ height: 180, width: '100%', alignSelf: 'stretch' }}>
           <SafeAreaView edges={['top']} />
         </LinearGradient>
-        <View className="flex-1 items-center px-6 -mt-16">
+        <View className="flex-1 items-center px-6 -mt-16" style={{ paddingBottom: insets.bottom + 16 }}>
           <View className="h-24 w-24 items-center justify-center rounded-full bg-white shadow-md" style={{ elevation: 6 }}>
             <ShieldAlert color="#DC2626" size={36} strokeWidth={2.2} />
           </View>

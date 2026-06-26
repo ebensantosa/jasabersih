@@ -6,6 +6,8 @@ import { useEffect } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { api } from '../lib/api';
 import { useConfig } from '../stores/appContent';
 import { useAuthStore } from '../stores/auth';
@@ -22,6 +24,7 @@ export function SuspendedOverlay() {
   const waNumber = useConfig('contact.whatsapp', '6285124363374');
   const csEmail = useConfig('contact.email', 'cs@jasabersih.com');
 
+  const insets = useSafeAreaInsets();
   const visible = !!kind;
 
   // Auto-unsuspend realtime: poll /auth/me tiap 15s saat suspended/banned.
@@ -108,7 +111,7 @@ export function SuspendedOverlay() {
           </SafeAreaView>
         </LinearGradient>
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} className="-mt-8">
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: Math.max(40, insets.bottom + 24) }} className="-mt-8">
           {/* Countdown card */}
           {!isDeleted && !isBanned && untilLabel && (
             <View className="rounded-2xl bg-white p-4 shadow-sm" style={{ elevation: 6 }}>
