@@ -1683,6 +1683,7 @@ function HourlyCountdown({
   const [now, setNow] = useState(Date.now());
   const [timerBusy, setTimerBusy] = useState(false);
   const [blinkOn, setBlinkOn] = useState(true);
+  const [optimisticPausedAt, setOptimisticPausedAt] = useState<number | null>(null);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
@@ -1691,10 +1692,13 @@ function HourlyCountdown({
     const t = setInterval(() => setBlinkOn((v) => !v), 600);
     return () => clearInterval(t);
   }, []);
+  // Sync optimistic state saat prop dari server sudah update
+  useEffect(() => { setOptimisticPausedAt(null); }, [pauseStartedAt]);
 
   const hasEndTime = hours != null && hours > 0;
-  const isPaused = !!pauseStartedAt;
-  const effectiveNow = isPaused ? pauseStartedAt! : now;
+  const effectivePauseStartedAt = pauseStartedAt ?? optimisticPausedAt ?? undefined;
+  const isPaused = !!effectivePauseStartedAt;
+  const effectiveNow = isPaused ? effectivePauseStartedAt! : now;
   const elapsedMs = Math.max(0, effectiveNow - startedAt - ((pausedTotalSec ?? 0) * 1000));
   const totalMs = hasEndTime ? hours! * 3600 * 1000 : 0;
   const remainingMs = hasEndTime ? totalMs - elapsedMs : 0;
@@ -1713,9 +1717,12 @@ function HourlyCountdown({
   async function togglePause() {
     if (timerBusy) return;
     setTimerBusy(true);
+    const wasPaused = isPaused;
     try {
-      await api.post(`/cleaner/jobs/${bookingId}/timer`, { action: isPaused ? 'resume' : 'pause' });
-      toast.success(isPaused ? 'Timer dilanjutkan' : 'Timer dijeda');
+      await api.post(`/cleaner/jobs/${bookingId}/timer`, { action: wasPaused ? 'resume' : 'pause' });
+      // Optimistic: freeze/unfreeze timer langsung tanpa nunggu fetchOne
+      setOptimisticPausedAt(wasPaused ? null : Date.now());
+      toast.success(wasPaused ? 'Timer dilanjutkan' : 'Timer dijeda');
       onRefresh?.();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal ubah timer');
