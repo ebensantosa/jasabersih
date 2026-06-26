@@ -819,7 +819,7 @@ export class BookingsController {
     @Param('id') id: string,
     @Param('upchargeId') upchargeId: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<{ id: string; amount: number; status: string; cleaner_id: string; booking_customer_id: string }[]>`
         SELECT u.id, u.amount, u.status, u.cleaner_id, b.customer_id AS booking_customer_id
           FROM booking_upcharges u
