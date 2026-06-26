@@ -46,6 +46,14 @@ export default function PesanPage(): React.ReactElement | null  {
   const [infoOpen, setInfoOpen] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+
+  function onMessagesScroll() {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+  }
 
   async function loadThreads(silent = false) {
     try {
@@ -86,9 +94,18 @@ export default function PesanPage(): React.ReactElement | null  {
     return () => clearInterval(t);
   }, [selected?.bookingId]);
 
+  // Auto-scroll hanya kalau sudah di bawah (jangan ganggu kalau admin lagi scroll ke atas baca pesan lama)
   useEffect(() => {
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    if (isNearBottomRef.current) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }
   }, [messages.length]);
+
+  // Ganti thread → selalu scroll ke bawah
+  useEffect(() => {
+    isNearBottomRef.current = true;
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior }), 100);
+  }, [selected?.bookingId]);
 
   async function handleSend(imageUrl?: string) {
     const content = imageUrl ?? text.trim();
@@ -99,6 +116,8 @@ export default function PesanPage(): React.ReactElement | null  {
       await api.admin.chatSend(selected.bookingId, content, imageUrl ? 'image' : 'text');
       await loadMessages(selected.bookingId);
       void loadThreads(true);
+      // Trigger sidebar badge refresh immediately setelah admin reply
+      window.dispatchEvent(new Event('jasabersih:refresh-inbox'));
     } catch {} finally {
       setSending(false);
     }
@@ -303,7 +322,7 @@ export default function PesanPage(): React.ReactElement | null  {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto bg-slate-50 px-5 py-4 space-y-3">
+            <div ref={messagesContainerRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto bg-slate-50 px-5 py-4 space-y-3">
               {loadingMsgs && messages.length === 0 ? (
                 <div className="flex items-center justify-center py-20 text-xs text-slate-400">Memuat pesan…</div>
               ) : messages.length === 0 ? (

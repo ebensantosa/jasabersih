@@ -108,8 +108,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }):
       } catch {/* silent */}
     }
     void fetchInbox();
-    const t2 = setInterval(fetchInbox, 60_000);
-    return () => { cancelled = true; clearInterval(t); clearInterval(t2); };
+    const t2 = setInterval(fetchInbox, 10_000);
+    // Refresh segera setelah admin reply dari halaman Pesan
+    window.addEventListener('jasabersih:refresh-inbox', fetchInbox);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+      clearInterval(t2);
+      window.removeEventListener('jasabersih:refresh-inbox', fetchInbox);
+    };
   }, [session]);
 
   function logout() {
