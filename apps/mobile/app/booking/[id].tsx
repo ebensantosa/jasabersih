@@ -1685,6 +1685,7 @@ function HourlyCountdown({
   const [blinkOn, setBlinkOn] = useState(true);
   const [optimisticPausedAt, setOptimisticPausedAt] = useState<number | null>(null);
   const [forceResumed, setForceResumed] = useState(false);
+  const [pauseCooldownUntil, setPauseCooldownUntil] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
@@ -1715,15 +1716,17 @@ function HourlyCountdown({
   const isWarning = hasEndTime && !overtime && !isCritical && remainingMs <= 30 * 60 * 1000;
   const nearEnd = hasEndTime && !overtime && remainingMs <= 5 * 60 * 1000;
 
+  const pauseOnCooldown = now < pauseCooldownUntil;
+
   async function togglePause() {
-    if (timerBusy) return;
+    if (timerBusy || pauseOnCooldown) return;
     setTimerBusy(true);
     const wasPaused = isPaused;
     try {
       await api.post(`/cleaner/jobs/${bookingId}/timer`, { action: wasPaused ? 'resume' : 'pause' });
-      // Optimistic: freeze/unfreeze timer langsung tanpa nunggu fetchOne
       if (wasPaused) { setForceResumed(true); setOptimisticPausedAt(null); }
       else { setOptimisticPausedAt(Date.now()); setForceResumed(false); }
+      setPauseCooldownUntil(Date.now() + 10_000);
       toast.success(wasPaused ? 'Timer dilanjutkan' : 'Timer dijeda');
       onRefresh?.();
     } catch (e: any) {
@@ -1748,8 +1751,8 @@ function HourlyCountdown({
         {isCleaner && (
           <Pressable
             onPress={() => void togglePause()}
-            disabled={timerBusy}
-            className={`min-w-[122px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy ? 'opacity-60' : isPaused && !blinkOn ? 'opacity-40' : 'opacity-100'}`}
+            disabled={timerBusy || pauseOnCooldown}
+            className={`min-w-[122px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2 ${isPaused ? 'bg-emerald-600' : 'bg-amber-500'} ${timerBusy || pauseOnCooldown ? 'opacity-50' : isPaused && !blinkOn ? 'opacity-40' : 'opacity-100'}`}
           >
             {timerBusy ? (
               <ActivityIndicator color="white" size="small" />
