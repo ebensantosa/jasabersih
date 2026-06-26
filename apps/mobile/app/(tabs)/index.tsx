@@ -323,49 +323,6 @@ export default function Home() {
         </View>
 
 
-        {/* PESAN LAGI — tampil kalau ada riwayat pesanan selesai */}
-        {recentOrders.length > 0 && (
-          <View className="mt-6">
-            <View className="mb-3 flex-row items-center justify-between px-4">
-              <Text className="font-extrabold text-sm text-ink-900">Pesan Lagi</Text>
-              <Pressable onPress={() => router.push('/(tabs)/bookings')}>
-                <Text className="font-semibold text-xs text-brand-600">Lihat Semua</Text>
-              </Pressable>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 6, gap: 12 }}>
-              {recentOrders.map((b) => {
-                const snap = b.formSnapshot ?? {};
-                const subtitle = [
-                  b.packageName ?? snap.subscriptionTier,
-                  snap.bedrooms ? `${snap.bedrooms} KT` : null,
-                  snap.bathrooms ? `${snap.bathrooms} KM` : null,
-                  snap.areaM2 ? `${snap.areaM2} m²` : null,
-                ].filter(Boolean).join(' · ');
-                return (
-                  <Pressable
-                    key={b.id}
-                    onPress={() => router.push(`/booking/new?category=${b.categoryCode}${b.packageId ? `&package=${b.packageId}` : ''}&reorder=${b.id}`)}
-                    style={{ width: 200, backgroundColor: 'white', borderRadius: 16, padding: 14, elevation: 3, shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } }}
-                  >
-                    {b.categoryImage ? (
-                      <Image source={{ uri: b.categoryImage }} style={{ width: 36, height: 36, borderRadius: 10, marginBottom: 8 }} />
-                    ) : (
-                      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#EFF6FF', marginBottom: 8, alignItems: 'center', justifyContent: 'center' }}>
-                        <RotateCcw size={18} color="#3B82F6" />
-                      </View>
-                    )}
-                    <Text style={{ fontWeight: '700', fontSize: 13, color: '#0F172A', marginBottom: 2 }} numberOfLines={1}>{b.categoryName}</Text>
-                    {subtitle ? <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }} numberOfLines={1}>{subtitle}</Text> : null}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <RotateCcw size={11} color="#2563EB" />
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563EB' }}>Pesan Lagi</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
 
         {BUNDLE_SERVICES.length > 0 && (
           <View className="mt-8">
