@@ -132,6 +132,7 @@ export class BookingsController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async get(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     // Explicit columns — exclude `location` (PostGIS GEOGRAPHY tidak bisa
     // di-JSON-serialize → response 500). Pakai ST_X/ST_Y kalau perlu lat/lng.
