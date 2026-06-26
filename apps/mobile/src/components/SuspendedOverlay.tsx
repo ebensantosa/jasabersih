@@ -111,7 +111,7 @@ export function SuspendedOverlay() {
           </SafeAreaView>
         </LinearGradient>
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: Math.max(40, insets.bottom + 24) }} className="-mt-8">
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 8 }} className="-mt-8">
           {/* Countdown card */}
           {!isDeleted && !isBanned && untilLabel && (
             <View className="rounded-2xl bg-white p-4 shadow-sm" style={{ elevation: 6 }}>
@@ -197,6 +197,7 @@ export function SuspendedOverlay() {
               {isDeleted || isBanned ? 'Logout & Kembali ke Beranda' : 'Logout & Coba Lain Waktu'}
             </Text>
           </Pressable>
+          <SafeAreaView edges={['bottom']} />
         </ScrollView>
       </View>
     </Modal>
