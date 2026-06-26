@@ -135,7 +135,9 @@ export function RealtimeJobModal() {
                   {incoming.pricingMode === 'package'
                     ? (incoming.packageName ?? 'Paket Tetap')
                     : incoming.pricingMode === 'hourly'
-                      ? `${incoming.hourlyTierName ?? 'Per Jam'}${incoming.hours ? ` · ${incoming.hours}j` : ''}`
+                      ? incoming.hours
+                        ? `${incoming.hours} Jam${incoming.hourlyTierName ? ` · ${incoming.hourlyTierName}` : ''}`
+                        : (incoming.hourlyTierName ?? 'Per Jam')
                       : 'Konsultasi WA'}
                 </Text>
               </View>
