@@ -64,7 +64,7 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
     await Notifications.setNotificationChannelAsync('incoming_job', {
       name: 'Job Masuk',
       importance: Notifications.AndroidImportance.MAX,
-      sound: 'default',
+      sound: 'order_incoming',   // Android: nama file tanpa ekstensi (dari res/raw/)
       vibrationPattern: [0, 500, 200, 500, 200, 500],
       enableVibrate: true,
       showBadge: true,

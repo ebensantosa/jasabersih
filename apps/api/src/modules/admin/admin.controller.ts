@@ -552,7 +552,7 @@ export class AdminController {
     if (customerId) {
       void this.push.send({ userId: customerId, channel: 'booking', title: 'Cleaner sudah ditemukan', body: 'Tap untuk lihat detail & chat dengan cleaner kamu.', data: { type: 'booking_matched', bookingId: id } }).catch(() => {});
     }
-    void this.push.send({ userId: body.cleanerId, channel: 'booking', title: 'Job baru di-assign', body: 'Kamu mendapat job baru. Buka untuk konfirmasi.', data: { type: 'job_assigned', bookingId: id } }).catch(() => {});
+    void this.push.send({ userId: body.cleanerId, channel: 'incoming_job', title: 'Job baru di-assign', body: 'Kamu mendapat job baru. Buka untuk konfirmasi.', data: { type: 'job_assigned', bookingId: id } }).catch(() => {});
     return { ok: true };
   }
 }

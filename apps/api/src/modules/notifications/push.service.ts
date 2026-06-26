@@ -101,12 +101,13 @@ export class PushService {
 
     if (validTokens.length === 0) return { sent: 0, failed: 0 };
 
+    const sound = payload.channel === 'incoming_job' ? 'order_incoming.wav' : 'default';
     const messages = validTokens.map((to) => ({
       to,
       title: finalTitle,
       body: payload.body,
       data: payload.data ?? {},
-      sound: 'default' as const,
+      sound,
       channelId: payload.channel ?? 'default',
       priority: 'high' as const,
     }));
@@ -208,12 +209,13 @@ export class PushService {
     // ── 4. Satu Expo HTTP call per 100 token ───────────────────────────────
     const messages = validTokens.map((r) => {
       const item = itemMap.get(r.user_id) ?? eligible[0]!;
+      const sound = item.channel === 'incoming_job' ? 'order_incoming.wav' : 'default';
       return {
         to: r.fcm_token,
         title: item.title,
         body: item.body,
         data: item.data,
-        sound: 'default' as const,
+        sound,
         channelId: item.channel,
         priority: 'high' as const,
       };
