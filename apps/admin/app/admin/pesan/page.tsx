@@ -44,7 +44,6 @@ export default function PesanPage(): React.ReactElement | null  {
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -94,18 +93,26 @@ export default function PesanPage(): React.ReactElement | null  {
     return () => clearInterval(t);
   }, [selected?.bookingId]);
 
+  function scrollToBottom(smooth = false) {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
   // Auto-scroll hanya kalau sudah di bawah (jangan ganggu kalau admin lagi scroll ke atas baca pesan lama)
   useEffect(() => {
-    if (isNearBottomRef.current) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-    }
-  }, [messages.length]);
+    if (isNearBottomRef.current) scrollToBottom(true);
+  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ganti thread → selalu scroll ke bawah
+  // Ganti thread → selalu scroll ke bawah (tidak smooth biar langsung)
   useEffect(() => {
     isNearBottomRef.current = true;
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior }), 100);
-  }, [selected?.bookingId]);
+    setTimeout(() => scrollToBottom(false), 100);
+  }, [selected?.bookingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSend(imageUrl?: string) {
     const content = imageUrl ?? text.trim();
@@ -359,7 +366,6 @@ export default function PesanPage(): React.ReactElement | null  {
                   </div>
                 );
               })}
-              <div ref={bottomRef} />
             </div>
 
             {/* Compose bar */}
