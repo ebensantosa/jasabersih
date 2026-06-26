@@ -130,6 +130,7 @@ function BookingDetail() {
   const fetchOne = useBookingsStore((s) => s.fetchOne);
   const cancel = useBookingsStore((s) => s.cancel);
   const setStatus = useBookingsStore((s) => s.setStatus);
+  const reloadSignal = useBookingsStore((s) => id ? s.reloadSignal[id] : undefined);
 
   // Cleaner mostly opens jobs they accepted - those rows aren't in their
   // local store yet (store seeded from /bookings which is customer-only).
@@ -138,12 +139,12 @@ function BookingDetail() {
     if (id && !id.startsWith('bk_') && !booking) void fetchOne(id);
   }, [id, booking, fetchOne]);
 
-  // Poll server untuk semua status aktif supaya perubahan status, timer pause/resume,
-  // dll langsung terdeteksi di customer & cleaner tanpa perlu kembali ke home.
+  // Safety-net poll: WebSocket handles real-time updates. Poll slowly as fallback
+  // for missed events (e.g., socket reconnect gap).
   const isSearching = !!id && !id.startsWith('bk_') && booking?.status === 'searching';
   const isActiveBooking = !!id && !id.startsWith('bk_') &&
     ['searching', 'matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started'].includes(booking?.status ?? '');
-  useVisiblePoll(() => { if (id) void fetchOne(id); }, 5_000, isActiveBooking);
+  useVisiblePoll(() => { if (id) void fetchOne(id); }, 30_000, isActiveBooking);
   const mode = useModeStore((s) => s.mode);
   const token = useAuthStore((s) => s.tokens?.accessToken);
   const myUserId = (() => {
@@ -236,10 +237,17 @@ function BookingDetail() {
   // supaya gak boros bandwidth setelah booking selesai/batal.
   // BookingPhotos juga refetch internal-nya saat parent re-render.
   const upchargePollEnabled = !!id && !id.startsWith('bk_') && !!booking && ['matched', 'on_the_way', 'in_progress'].includes(booking?.status as string);
-  useVisiblePoll(loadUpcharges, 15_000, upchargePollEnabled);
+  useVisiblePoll(loadUpcharges, 60_000, upchargePollEnabled);
   const extensionPollEnabled = !!id && !id.startsWith('bk_') && !!booking && booking.status === 'in_progress' && booking.pricingMode !== 'hourly';
   useEffect(() => { if (extensionPollEnabled) void loadExtensionRequests(); }, [extensionPollEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
-  useVisiblePoll(loadExtensionRequests, 15_000, extensionPollEnabled);
+  useVisiblePoll(loadExtensionRequests, 60_000, extensionPollEnabled);
+
+  // React to WebSocket booking:reload signal (upcharge/extension pushed by server)
+  useEffect(() => {
+    if (!reloadSignal) return;
+    void loadUpcharges();
+    void loadExtensionRequests();
+  }, [reloadSignal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch subscription child visits kalau parent
   async function loadSubscriptionVisits() {
@@ -374,7 +382,8 @@ function BookingDetail() {
       if (booking?.status === 'searching') void pollSearchStatus();
     }, [booking?.status, pollSearchStatus]),
   );
-  useVisiblePoll(pollSearchStatus, 10_000, booking?.status === 'searching' && !!id && !id.startsWith('bk_'));
+  // broadcastedTo counter only — actual status change comes via booking:status WebSocket event
+  useVisiblePoll(pollSearchStatus, 30_000, booking?.status === 'searching' && !!id && !id.startsWith('bk_'));
 
   // Fetch immediately on mount (fixes "memuat pesanan" stuck forever when cleaner
   // accepts a job — booking isn't in store yet, and time-based stillFetching

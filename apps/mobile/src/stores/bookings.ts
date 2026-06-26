@@ -216,6 +216,9 @@ type State = {
   fetchOne: (id: string) => Promise<void>;
   /** Real-time patch: update timer fields only (from WebSocket event). */
   patchTimer: (id: string, data: { pauseStartedAt: number | undefined; pausedTotalSec: number }) => void;
+  /** Signal component to reload supplemental data (upcharges, extensions) for a booking. */
+  reloadSignal: Record<string, number>;
+  signalReload: (id: string) => void;
   syncing: boolean;
   syncError: string | null;
   clearLocal: () => void;
@@ -226,7 +229,7 @@ function persist(list: Booking[]): void {
 }
 
 // Map server status (from API) to mobile UI status
-function mapServerStatus(s: string | null | undefined): BookingStatus {
+export function mapServerStatus(s: string | null | undefined): BookingStatus {
   switch (s) {
     case 'pending_payment': return 'pending_payment';
     case 'searching':
@@ -252,6 +255,7 @@ export const useBookingsStore = create<State>((set, get) => ({
   hydrated: false,
   syncing: false,
   syncError: null,
+  reloadSignal: {},
   clearLocal() {
     storage.delete(BOOKINGS_KEY);
     set({ list: [], hydrated: true, syncError: null });
@@ -451,6 +455,9 @@ export const useBookingsStore = create<State>((set, get) => ({
       persist(list);
       return { list };
     });
+  },
+  signalReload: (id) => {
+    set((s) => ({ reloadSignal: { ...s.reloadSignal, [id]: Date.now() } }));
   },
   create: async ({ initialStatus, ...b }) => {
     const tempId = 'bk_' + Math.random().toString(36).slice(2, 10);

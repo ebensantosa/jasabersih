@@ -501,6 +501,7 @@ export class CleanerJobsController {
     this.jobs.emitJobTaken(id, user.id);
 
     if (b[0]?.customer_id) {
+      this.jobs.emitBookingStatus(b[0].customer_id, { bookingId: id, status: 'matched' });
       void this.push.send({
         userId: b[0].customer_id, channel: 'booking',
         title: 'Cleaner ditemukan!', body: 'Tap untuk lihat detail.',
@@ -706,6 +707,7 @@ export class CleanerJobsController {
       await this.referralPayout.payoutForCompletedBooking(id);
       // Notify customer to rate
       if (booking?.customer_id) {
+        this.jobs.emitBookingStatus(booking.customer_id, { bookingId: id, status: 'completed' });
         void this.push.send({
           userId: booking.customer_id, channel: 'booking',
           title: 'Pesanan selesai', body: 'Yuk beri rating untuk cleaner kamu!',
@@ -722,12 +724,15 @@ export class CleanerJobsController {
         in_progress: { title: 'Cleaner sudah sampai ✓', body: 'Pekerjaan dimulai sekarang.' },
       };
       const t = titles[body.to];
-      if (b[0]?.customer_id && t) {
-        void this.push.send({
-          userId: b[0].customer_id, channel: 'booking',
-          title: t.title, body: t.body,
-          data: { type: 'booking_status_change', bookingId: id, status: body.to },
-        }).catch(() => {});
+      if (b[0]?.customer_id) {
+        this.jobs.emitBookingStatus(b[0].customer_id, { bookingId: id, status: body.to });
+        if (t) {
+          void this.push.send({
+            userId: b[0].customer_id, channel: 'booking',
+            title: t.title, body: t.body,
+            data: { type: 'booking_status_change', bookingId: id, status: body.to },
+          }).catch(() => {});
+        }
       }
     }
     return { ok: true };
@@ -897,7 +902,8 @@ export class CleanerJobsController {
       VALUES (${id}::uuid, ${user.id}::uuid, ${amount}, ${body.reason.trim()}, ${body.photoUrl ?? null}, 'pending')
       RETURNING id
     `;
-    // Notif customer
+    // Real-time + push notif ke customer
+    this.jobs.emitBookingReload(b.customer_id, id);
     void this.push.send({
       userId: b.customer_id,
       channel: 'booking',

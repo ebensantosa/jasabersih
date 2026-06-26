@@ -168,6 +168,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(ROOM_AVAILABLE).emit('job-taken', { bookingId: body.bookingId, by: userId });
 
     if (customerId) {
+      this.emitBookingStatus(customerId, { bookingId: body.bookingId, status: 'matched' });
       void this.push.send({
         userId: customerId,
         channel: 'booking',
@@ -235,6 +236,16 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** Push real-time timer state to a specific user (customer or cleaner) via per-user room. */
   emitBookingTimerUpdate(userId: string, data: { bookingId: string; pauseStartedAt: number | null; pausedTotalSec: number }): void {
     this.server?.to(`user:${userId}`)?.emit('booking:timer', data);
+  }
+
+  /** Push booking status change to a user. Client re-fetches full booking on receive. */
+  emitBookingStatus(userId: string, data: { bookingId: string; status: string }): void {
+    this.server?.to(`user:${userId}`)?.emit('booking:status', data);
+  }
+
+  /** Signal client to reload supplemental booking data (upcharges, extensions). */
+  emitBookingReload(userId: string, bookingId: string): void {
+    this.server?.to(`user:${userId}`)?.emit('booking:reload', { bookingId });
   }
 
   async broadcastIncomingJob(bookingId: string): Promise<void> {

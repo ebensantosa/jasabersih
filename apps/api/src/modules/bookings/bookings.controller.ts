@@ -886,8 +886,11 @@ export class BookingsController {
         INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
         VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${id}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${upchargeAmount.toLocaleString('id-ID')}`})
       `;
-      return { ok: true, cleanerShare, platformFee, pct, walletDeducted: upchargeAmount, walletRemaining: walletBalance - upchargeAmount };
+      return { ok: true, cleanerShare, platformFee, pct, walletDeducted: upchargeAmount, walletRemaining: walletBalance - upchargeAmount, _cleanerId: u.cleaner_id };
     });
+    this.jobs.emitBookingReload(result._cleanerId, id);
+    const { _cleanerId: _c, ...rest } = result;
+    return rest;
   }
 
   @Post(':id/upcharges/:upchargeId/reject')
@@ -896,8 +899,8 @@ export class BookingsController {
     @Param('id') id: string,
     @Param('upchargeId') upchargeId: string,
   ) {
-    const rows = await this.prisma.$queryRaw<{ status: string; customer_id: string }[]>`
-      SELECT u.status, b.customer_id
+    const rows = await this.prisma.$queryRaw<{ status: string; customer_id: string; cleaner_id: string }[]>`
+      SELECT u.status, b.customer_id, u.cleaner_id
         FROM booking_upcharges u JOIN bookings b ON b.id = u.booking_id
        WHERE u.id = ${upchargeId}::uuid AND u.booking_id = ${id}::uuid LIMIT 1
     `;
@@ -909,6 +912,7 @@ export class BookingsController {
          SET status = 'rejected', decided_at = NOW(), decided_by_user_id = ${user.id}::uuid
        WHERE id = ${upchargeId}::uuid
     `;
+    this.jobs.emitBookingReload(rows[0].cleaner_id, id);
     return { ok: true };
   }
 
