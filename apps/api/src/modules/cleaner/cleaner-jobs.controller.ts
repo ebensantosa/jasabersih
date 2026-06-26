@@ -264,6 +264,44 @@ export class CleanerJobsController {
     `;
   }
 
+  @Get(':id')
+  async getOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+      `SELECT b.id, b.status, b.pricing_mode, b.total_amount, b.base_amount,
+              b.scheduled_at, b.address_line, b.customer_notes, b.form_snapshot,
+              b.customer_id, b.cleaner_id, b.service_id, b.package_id,
+              b.cleaner_payout, b.matched_at, b.paid_at, b.canceled_at,
+              b.cleaner_otw_at, b.cleaner_arrived_at,
+              b.started_at AS "startedAt",
+              b.pause_started_at AS "pauseStartedAt",
+              b.paused_total_sec AS "pausedTotalSec",
+              b.completed_at, b.created_at,
+              b.hourly_tier_id AS "hourlyTierId", b.hours_booked AS "hoursBooked",
+              ht.name AS "hourlyTierName", ht.price_per_hour AS "hourlyPricePerHour",
+              pp.name AS "packageName",
+              b.reclean_count AS "recleanCount", b.reclean_status AS "recleanStatus",
+              b.reclean_requested_at AS "recleanRequestedAt", b.reclean_reason AS "recleanReason",
+              ST_X(b.location::geometry) AS lng, ST_Y(b.location::geometry) AS lat,
+              s.name AS service_name, s.icon_url AS service_icon,
+              cu.name AS customer_name, cu.phone AS customer_phone, cu.photo_url AS customer_photo_url,
+              cl.name AS cleaner_name, cl.phone AS cleaner_phone, cl.photo_url AS cleaner_photo_url
+         FROM bookings b
+         LEFT JOIN services s ON s.id = b.service_id
+         LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+         LEFT JOIN users cu ON cu.id = b.customer_id
+         LEFT JOIN users cl ON cl.id = b.cleaner_id
+         LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
+        WHERE b.id = $1::uuid AND b.cleaner_id = $2::uuid
+        LIMIT 1`,
+      id,
+      user.id,
+    );
+    if (!rows[0]) throw new BadRequestException('Booking tidak ditemukan');
+    const row = rows[0] as Record<string, unknown>;
+    row.customer_phone = null;
+    return row;
+  }
+
   @Get('history')
   async history(@CurrentUser() user: AuthenticatedUser) {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`

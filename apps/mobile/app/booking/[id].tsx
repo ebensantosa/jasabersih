@@ -401,6 +401,7 @@ function BookingDetail() {
   const [tipGiven, setTipGiven] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   useEffect(() => {
+    if (isCleaner) return;
     let mounted = true;
     (async () => {
       try {
@@ -411,7 +412,7 @@ function BookingDetail() {
       } catch { /* ignore */ }
     })();
     return () => { mounted = false; };
-  }, [tipGiven]);
+  }, [tipGiven, isCleaner]);
 
   if (!booking) {
     return (

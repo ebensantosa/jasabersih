@@ -386,7 +386,16 @@ export const useBookingsStore = create<State>((set, get) => ({
   },
   fetchOne: async (id: string) => {
     try {
-      const r = await api.get(`/bookings/${id}`);
+      let r: any;
+      try {
+        r = await api.get(`/bookings/${id}`);
+      } catch (e: any) {
+        if (e?.response?.status === 403) {
+          r = await api.get(`/cleaner/jobs/${id}`);
+        } else {
+          throw e;
+        }
+      }
       const s: any = r.data?.data ?? r.data;
       if (!s?.id) return;
       const total = Number(s.total_amount ?? s.total ?? 0);
