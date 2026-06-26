@@ -360,7 +360,7 @@ function PaymentScreen() {
             setDirect(null);
           }
         } catch {}
-      }, 4000);
+      }, 10_000);
     } catch (e: any) {
       const raw = e?.response?.data?.error?.message ?? e?.message ?? 'Gagal create pembayaran';
       // Convert raw Flip error to user-friendly Indonesian message

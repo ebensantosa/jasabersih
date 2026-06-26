@@ -1045,7 +1045,10 @@ export class PaymentsController {
             data: { type: 'payment_paid', bookingId: p.booking_id, paymentId: p.id },
           }).catch(() => {});
         }
-        if (p.booking_id) void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
+        if (p.booking_id) {
+          if (p.user_id) this.jobs.emitBookingStatus(p.user_id, { bookingId: p.booking_id, status: 'searching' });
+          void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
+        }
       }
     } else if ((status === 'FAILED' || status === 'CANCELLED') && !['failed', 'cancelled'].includes(p.status)) {
       const next = status.toLowerCase();

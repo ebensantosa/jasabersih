@@ -219,6 +219,9 @@ type State = {
   /** Signal component to reload supplemental data (upcharges, extensions) for a booking. */
   reloadSignal: Record<string, number>;
   signalReload: (id: string) => void;
+  /** Incremented each time a new chat message arrives via WebSocket — triggers unread count refresh. */
+  chatUnreadSignal: number;
+  signalChatUnread: () => void;
   syncing: boolean;
   syncError: string | null;
   clearLocal: () => void;
@@ -256,6 +259,8 @@ export const useBookingsStore = create<State>((set, get) => ({
   syncing: false,
   syncError: null,
   reloadSignal: {},
+  chatUnreadSignal: 0,
+  signalChatUnread: () => set((s) => ({ chatUnreadSignal: s.chatUnreadSignal + 1 })),
   clearLocal() {
     storage.delete(BOOKINGS_KEY);
     set({ list: [], hydrated: true, syncError: null });

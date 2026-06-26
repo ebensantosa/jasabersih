@@ -92,6 +92,13 @@ export class CleanerJobsController {
     if (body.photoType === 'before' || body.photoType === 'after') {
       await this.syncPhotoLookupColumn(id, body.photoType);
     }
+    // Notify customer that photos changed so their view refreshes.
+    const customerRow = await this.prisma.$queryRaw<{ customer_id: string }[]>`
+      SELECT customer_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (customerRow[0]?.customer_id) {
+      this.jobs.emitBookingReload(customerRow[0].customer_id, id);
+    }
     return { ok: true, publicUrl: this.storage.getPublicUrl(body.storagePath) };
   }
 

@@ -11,6 +11,7 @@ export function useBookingRealtime() {
   const patchTimer = useBookingsStore((s) => s.patchTimer);
   const setStatus = useBookingsStore((s) => s.setStatus);
   const signalReload = useBookingsStore((s) => s.signalReload);
+  const signalChatUnread = useBookingsStore((s) => s.signalChatUnread);
   const fetchOne = useBookingsStore((s) => s.fetchOne);
 
   useEffect(() => {
@@ -39,14 +40,20 @@ export function useBookingRealtime() {
       void fetchOne(data.bookingId).catch(() => {});
     }
 
+    function onChatUnread() {
+      signalChatUnread();
+    }
+
     socket.on('booking:timer', onTimer);
     socket.on('booking:status', onStatus);
     socket.on('booking:reload', onReload);
+    socket.on('chat:unread', onChatUnread);
 
     return () => {
       socket.off('booking:timer', onTimer);
       socket.off('booking:status', onStatus);
       socket.off('booking:reload', onReload);
+      socket.off('chat:unread', onChatUnread);
     };
-  }, [tokens, patchTimer, setStatus, signalReload, fetchOne]);
+  }, [tokens, patchTimer, setStatus, signalReload, signalChatUnread, fetchOne]);
 }

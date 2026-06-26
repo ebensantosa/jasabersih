@@ -10,6 +10,7 @@ import { useAuthStore } from '../../src/stores/auth';
 import { api } from '../../src/lib/api';
 import { useVisiblePoll } from '../../src/lib/useVisiblePoll';
 import { useUserStore } from '../../src/stores/user';
+import { useBookingsStore } from '../../src/stores/bookings';
 
 export default function TabsLayout() {
   const mode = useModeStore((s) => s.mode);
@@ -19,15 +20,19 @@ export default function TabsLayout() {
   const profile = useUserStore((s) => s.profile);
   const insets = useSafeAreaInsets();
   const [chatUnread, setChatUnread] = useState(0);
+  const chatUnreadSignal = useBookingsStore((s) => s.chatUnreadSignal);
 
-  // Poll chat unread tiap 60s (dulu 30s → terlalu sering)
   const fetchChatUnread = useCallback(async () => {
     try {
       const r = await api.get('/chat/unread-count');
       setChatUnread(Number((r.data?.data ?? r.data)?.count ?? 0));
     } catch { /* silent */ }
   }, []);
-  useVisiblePoll(fetchChatUnread, 60_000, !!tokens && !!profile);
+  // WebSocket pushes `chat:unread` → triggers immediate re-fetch; poll as safety net
+  useEffect(() => {
+    if (chatUnreadSignal > 0 && tokens && profile) void fetchChatUnread();
+  }, [chatUnreadSignal, fetchChatUnread, tokens, profile]);
+  useVisiblePoll(fetchChatUnread, 120_000, !!tokens && !!profile);
   useEffect(() => { if (!tokens || !profile) setChatUnread(0); }, [tokens, profile]);
 
   return (

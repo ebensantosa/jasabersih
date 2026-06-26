@@ -15,6 +15,7 @@ import type { Server, Socket } from 'socket.io';
 import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { isAllowedOrigin } from '../../common/cors';
 import { PrismaService } from '../../common/prisma.service';
+import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 
 type AuthedSocket = Socket & { data: { userId: string; role?: string } };
@@ -67,6 +68,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly prisma: PrismaService,
     private readonly push: PushService,
     private readonly abuse: AbuseLimitsService,
+    private readonly jobsGateway: JobsGateway,
   ) {}
 
   // Authenticate on connect via JWT token in handshake.auth.token
@@ -205,6 +207,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         attachmentUrl: body.attachmentUrl ?? null,
         createdAt: msg.created_at.toISOString(),
       });
+
+      // Signal recipient to refresh unread count via /jobs namespace
+      if (recipientId) {
+        this.jobsGateway.emitToUser(recipientId, 'chat:unread', { bookingId: body.bookingId });
+      }
 
       // Push notification ke recipient (fire-and-forget)
       if (recipientId) {

@@ -248,6 +248,11 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server?.to(`user:${userId}`)?.emit('booking:reload', { bookingId });
   }
 
+  /** Emit any named event to a specific user via their per-user room. */
+  emitToUser(userId: string, event: string, data: unknown): void {
+    this.server?.to(`user:${userId}`)?.emit(event, data);
+  }
+
   async broadcastIncomingJob(bookingId: string): Promise<void> {
     // Check in-memory cache first (populated at booking creation) — skip DB query if hit.
     const cached = this.broadcastCache.get(bookingId);

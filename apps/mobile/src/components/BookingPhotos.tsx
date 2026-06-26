@@ -7,6 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View 
 import { useVisiblePoll } from '../lib/useVisiblePoll';
 
 import { api } from '../lib/api';
+import { useBookingsStore } from '../stores/bookings';
 import { compressImage, formatBytes } from '../lib/imageCompress';
 import { uploadWithSignedUrl } from '../lib/signedUpload';
 import { toast } from '../stores/ui';
@@ -33,6 +34,8 @@ export function BookingPhotos({
   const [damageReason, setDamageReason] = useState('');
   const [damageInputOpen, setDamageInputOpen] = useState(false);
 
+  const reloadSignal = useBookingsStore((s) => s.reloadSignal[bookingId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -48,11 +51,12 @@ export function BookingPhotos({
   }, [bookingId, onSummaryChange]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (reloadSignal) void load(); }, [reloadSignal, load]);
 
-  // Poll foto baru saat job aktif, berhenti otomatis saat app di background.
+  // Safety-net poll (WebSocket handles primary refresh via booking:reload → reloadSignal)
   const activeStatuses = ['matched', 'on_the_way', 'in_progress'];
   const isActive = !!status && activeStatuses.includes(status);
-  useVisiblePoll(load, 15_000, isActive);
+  useVisiblePoll(load, 60_000, isActive);
 
   const beforePhotosCount = photos.filter((p) => p.photoType === 'before').length;
 
