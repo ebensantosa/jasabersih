@@ -1,5 +1,6 @@
+'use client';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { ArrowDownToLine, ArrowLeft, CreditCard, Wallet as WalletIcon } from 'lucide-react-native';
+import { ArrowDownToLine, CreditCard, Wallet as WalletIcon, ArrowLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,6 +40,8 @@ const ACCOUNT_LABEL: Record<string, { label: string; sign: '+' | '-'; color: str
   withdrawal: { label: 'Tarik Saldo', sign: '-', color: 'text-ink-700' },
 };
 
+const PAGE_SIZE = 20;
+
 function formatRupiah(n: number) {
   return `Rp ${Number(n).toLocaleString('id-ID')}`;
 }
@@ -46,13 +49,19 @@ function formatRupiah(n: number) {
 function WalletScreen() {
   const router = useRouter();
   const [data, setData] = useState<WalletData | null>(null);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   const load = useCallback(async () => {
     try {
       const r = await api.get('/customer/wallet');
-      setData(r.data?.data ?? r.data);
+      const d: WalletData = r.data?.data ?? r.data;
+      setData(d);
+      setLedger(d.ledger ?? []);
+      setHasMore((d.ledger?.length ?? 0) >= PAGE_SIZE);
     } catch {
       setData((prev) => prev ?? { balance: 0, creditIn: 0, creditOut: 0, ledger: [] });
     } finally {
@@ -63,7 +72,22 @@ function WalletScreen() {
 
   useEffect(() => { void load(); }, [load]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
+
   const onRefresh = () => { setRefreshing(true); void load(); };
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.get(`/customer/wallet/ledger?limit=${PAGE_SIZE}&offset=${ledger.length}`);
+      const more: LedgerEntry[] = (r.data?.data ?? r.data) ?? [];
+      setLedger((prev) => [...prev, ...more]);
+      setHasMore(more.length >= PAGE_SIZE);
+    } catch { /* silent */ } finally {
+      setLoadingMore(false);
+    }
+  }
+
   const minWithdrawal = Number(data?.minWithdrawal ?? 50000);
   const hasPendingWithdrawal = Number(data?.pendingWithdrawalCount ?? 0) > 0;
   const canWithdraw = !!data?.withdrawable && !hasPendingWithdrawal && (data?.balance ?? 0) >= minWithdrawal;
@@ -156,19 +180,20 @@ function WalletScreen() {
               </View>
             </View>
 
-            <View className="mx-4 mb-3">
+            <View className="mx-4 mb-3 flex-row items-center justify-between">
               <Text className="font-semibold text-xs uppercase tracking-wider text-ink-500">
                 Riwayat Transaksi
               </Text>
+              <Text className="text-[10px] text-ink-400">{ledger.length} transaksi</Text>
             </View>
 
-            {(data?.ledger ?? []).length === 0 ? (
+            {ledger.length === 0 ? (
               <View className="mx-4 items-center rounded-2xl bg-white p-6">
                 <Text className="text-sm text-ink-500">Belum ada transaksi saldo</Text>
               </View>
             ) : (
               <View className="mx-4 rounded-2xl bg-white">
-                {(data?.ledger ?? []).map((e, i) => {
+                {ledger.map((e, i) => {
                   const meta = ACCOUNT_LABEL[e.accountType] ?? {
                     label: e.accountType,
                     sign: '+' as const,
@@ -189,12 +214,32 @@ function WalletScreen() {
                         </Text>
                       </View>
                       <Text className={`font-bold text-sm ${meta.color}`}>
-                        {meta.sign}
-                        {formatRupiah(e.amount)}
+                        {meta.sign}{formatRupiah(e.amount)}
                       </Text>
                     </View>
                   );
                 })}
+              </View>
+            )}
+
+            {/* Load More */}
+            {ledger.length > 0 && (
+              <View className="mx-4 mt-3 mb-2">
+                {hasMore ? (
+                  <Pressable
+                    onPress={loadMore}
+                    disabled={loadingMore}
+                    className="items-center rounded-xl border border-ink-200 bg-white py-3"
+                  >
+                    {loadingMore ? (
+                      <ActivityIndicator size="small" color="#1D4ED8" />
+                    ) : (
+                      <Text className="text-sm font-semibold text-brand-600">Muat Lebih Banyak</Text>
+                    )}
+                  </Pressable>
+                ) : (
+                  <Text className="text-center text-[11px] text-ink-400">Semua transaksi sudah ditampilkan</Text>
+                )}
               </View>
             )}
 

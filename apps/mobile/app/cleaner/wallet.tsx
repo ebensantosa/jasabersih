@@ -9,9 +9,10 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { api } from '../../src/lib/api';
 import { formatRupiah } from '../../src/data/catalog';
 import { useCleanerWalletStore, MIN_WITHDRAW, type WalletEntry } from '../../src/stores/cleanerWallet';
 import { toast } from '../../src/stores/ui';
@@ -32,12 +33,18 @@ function CleanerWallet() {
   const [escrowPending, setEscrowPending] = useState(0);
   const [tipInsights, setTipInsights] = useState<{ monthTotal: number; monthCount: number; prevMonthTotal: number }>({ monthTotal: 0, monthCount: 0, prevMonthTotal: 0 });
   const [refreshing, setRefreshing] = useState(false);
+  const [extraEntries, setExtraEntries] = useState<WalletEntry[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const syncFromApi = useCleanerWalletStore((s) => s.syncFromApi);
+
+  const PAGE_SIZE = 20;
 
   async function refresh() {
     setRefreshing(true);
+    setExtraEntries([]);
+    setHasMore(true);
     try {
-      const { api } = await import('../../src/lib/api');
       const r = await api.get('/cleaner/wallet');
       const d = r.data?.data ?? r.data;
       setEscrowPending(Number(d?.earningsPending ?? 0));
@@ -61,6 +68,28 @@ function CleanerWallet() {
   const totalWithdraw = entries
     .filter((e) => e.type === 'withdrawal_complete' || e.type === 'withdrawal_pending')
     .reduce((s, e) => s + Math.abs(e.amount), 0);
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const totalShown = entries.length + extraEntries.length;
+      const r = await api.get(`/cleaner/wallet/ledger?limit=${PAGE_SIZE}&offset=${totalShown}`);
+      const raw: any[] = (r.data?.data ?? r.data) ?? [];
+      const more: WalletEntry[] = raw.map((e) => ({
+        id: e.id,
+        type: e.referenceType ?? e.accountType ?? 'earning',
+        amount: Number(e.amount),
+        description: e.description ?? '',
+        createdAt: e.createdAt,
+        status: e.status ?? 'cleared',
+      }));
+      setExtraEntries((prev) => [...prev, ...more]);
+      setHasMore(more.length >= PAGE_SIZE);
+    } catch { /* silent */ } finally {
+      setLoadingMore(false);
+    }
+  }
 
   function tryWithdraw() {
     if (balance < MIN_WITHDRAW) {
@@ -219,7 +248,10 @@ function CleanerWallet() {
           </View>
 
           {/* Riwayat */}
-          <Text className="font-bold mt-5 mb-2 text-sm text-ink-900">Riwayat Transaksi</Text>
+          <View className="mt-5 mb-2 flex-row items-center justify-between">
+            <Text className="font-bold text-sm text-ink-900">Riwayat Transaksi</Text>
+            <Text className="text-[10px] text-ink-400">{entries.length + extraEntries.length} transaksi</Text>
+          </View>
           {entries.length === 0 ? (
             <View className="items-center rounded-2xl bg-white p-8">
               <Text className="font-semibold text-sm text-ink-700">Belum ada transaksi</Text>
@@ -229,9 +261,30 @@ function CleanerWallet() {
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl bg-white">
-              {entries.map((e, i) => (
-                <EntryRow key={e.id} entry={e} last={i === entries.length - 1} />
+              {[...entries, ...extraEntries].map((e, i, arr) => (
+                <EntryRow key={e.id} entry={e} last={i === arr.length - 1} />
               ))}
+            </View>
+          )}
+
+          {/* Load More */}
+          {entries.length > 0 && (
+            <View className="mt-3 mb-2">
+              {hasMore ? (
+                <Pressable
+                  onPress={loadMore}
+                  disabled={loadingMore}
+                  className="items-center rounded-xl border border-ink-200 bg-white py-3"
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator size="small" color="#1D4ED8" />
+                  ) : (
+                    <Text className="text-sm font-semibold text-brand-600">Muat Lebih Banyak</Text>
+                  )}
+                </Pressable>
+              ) : (
+                <Text className="text-center text-[11px] text-ink-400">Semua transaksi sudah ditampilkan</Text>
+              )}
             </View>
           )}
         </ScrollView>
