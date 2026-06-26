@@ -310,15 +310,21 @@ function BookingDetail() {
 
   // Check if booking already rated. Pakai useFocusEffect supaya re-fetch tiap balik
   // ke screen (misal dari halaman bayar tip - tip baru langsung kelihatan).
+  // stale flag: abaikan response lama yang resolve setelah focus pindah / user sudah submit rating.
   useFocusEffect(
     useCallback(() => {
       if (!id || id.startsWith('bk_') || booking?.status !== 'completed') return;
+      let stale = false;
       api.get(`/ratings/booking/${id}`).then((r) => {
+        if (stale) return;
         const data = (r.data?.data ?? r.data) as BookingRating;
         setBookingRating(data ?? null);
-        setHasRated(!!(data && typeof data.rating === 'number' && data.rating > 0));
+        // Jangan downgrade hasRated dari true→false: kalau user baru submit rating
+        // (hasRated sudah true secara lokal), response stale tidak boleh reset ke false.
+        setHasRated((prev) => prev || !!(data && typeof data.rating === 'number' && data.rating > 0));
         if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
       }).catch(() => {});
+      return () => { stale = true; };
     }, [id, booking?.status])
   );
   const previousStatusRef = useRef<string | undefined>(booking?.status);
