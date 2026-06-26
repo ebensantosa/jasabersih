@@ -214,6 +214,8 @@ type State = {
   syncFromApi: (force?: boolean) => Promise<void>;
   /** Fetch a single booking by id from server (works for cleaner too) and seed into list. */
   fetchOne: (id: string) => Promise<void>;
+  /** Real-time patch: update timer fields only (from WebSocket event). */
+  patchTimer: (id: string, data: { pauseStartedAt: number | undefined; pausedTotalSec: number }) => void;
   syncing: boolean;
   syncError: string | null;
   clearLocal: () => void;
@@ -438,6 +440,17 @@ export const useBookingsStore = create<State>((set, get) => ({
       persist(next);
       set({ list: next });
     } catch { /* silent */ }
+  },
+  patchTimer: (id, data) => {
+    set((s) => {
+      const list = s.list.map((b) =>
+        b.id === id
+          ? { ...b, pauseStartedAt: data.pauseStartedAt, pausedTotalSec: data.pausedTotalSec }
+          : b,
+      );
+      persist(list);
+      return { list };
+    });
   },
   create: async ({ initialStatus, ...b }) => {
     const tempId = 'bk_' + Math.random().toString(36).slice(2, 10);

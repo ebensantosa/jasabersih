@@ -36,6 +36,7 @@ import { useLocaleStore } from '../src/lib/i18n';
 import { registerForPushAsync } from '../src/lib/pushSetup';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
+import { useBookingRealtime } from '../src/hooks/useBookingRealtime';
 import { useAddressesStore } from '../src/stores/addresses';
 import { useAuthStore } from '../src/stores/auth';
 import { useBookingsStore } from '../src/stores/bookings';
@@ -45,6 +46,11 @@ import { useCleaningModeStore } from '../src/stores/cleaningMode';
 import { useUserStore } from '../src/stores/user';
 import { useLocationStore } from '../src/stores/location';
 import { useModeStore } from '../src/stores/mode';
+
+function BookingRealtimeMount() {
+  useBookingRealtime();
+  return null;
+}
 
 export default function RootLayout() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
@@ -315,6 +321,7 @@ export default function RootLayout() {
         <SuspendedOverlay />
         <CleanerLockOverlay />
         <SplashOverlay visible={!authReady} />
+        <BookingRealtimeMount />
           </QueryProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

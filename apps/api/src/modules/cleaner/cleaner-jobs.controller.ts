@@ -748,8 +748,9 @@ export class CleanerJobsController {
       started_at: Date | null;
       pause_started_at: Date | null;
       paused_total_sec: number | null;
+      customer_id: string;
     }[]>`
-      SELECT pricing_mode, status, started_at, pause_started_at, paused_total_sec
+      SELECT pricing_mode, status, started_at, pause_started_at, paused_total_sec, customer_id
         FROM bookings
        WHERE id = ${id}::uuid
          AND cleaner_id = ${user.id}::uuid
@@ -764,12 +765,18 @@ export class CleanerJobsController {
 
     if (body.action === 'pause') {
       if (booking.pause_started_at) throw new BadRequestException('Timer sudah dijeda.');
+      const pauseTs = Date.now();
       await this.prisma.$executeRaw`
         UPDATE bookings
            SET pause_started_at = NOW()
          WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
       `;
-      return { ok: true, paused: true };
+      this.jobs.emitBookingTimerUpdate(booking.customer_id, {
+        bookingId: id,
+        pauseStartedAt: pauseTs,
+        pausedTotalSec: Number(booking.paused_total_sec ?? 0),
+      });
+      return { ok: true, paused: true, pauseStartedAt: pauseTs };
     }
 
     if (!booking.pause_started_at) throw new BadRequestException('Timer tidak sedang dijeda.');
@@ -777,12 +784,18 @@ export class CleanerJobsController {
       0,
       Math.floor((Date.now() - new Date(booking.pause_started_at).getTime()) / 1000),
     );
+    const newPausedTotal = Number(booking.paused_total_sec ?? 0) + pausedSeconds;
     await this.prisma.$executeRaw`
       UPDATE bookings
          SET paused_total_sec = COALESCE(paused_total_sec, 0) + ${pausedSeconds},
              pause_started_at = NULL
        WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
     `;
+    this.jobs.emitBookingTimerUpdate(booking.customer_id, {
+      bookingId: id,
+      pauseStartedAt: null,
+      pausedTotalSec: newPausedTotal,
+    });
     return { ok: true, paused: false };
   }
 

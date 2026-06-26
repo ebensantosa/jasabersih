@@ -20,6 +20,14 @@ type AuthedSocket = Socket & { data: { userId: string } };
 
 const ROOM_AVAILABLE = 'cleaners:available';
 
+type BroadcastJobData = {
+  id: string; pricingMode: string; addressLine: string; cityName: string | null;
+  scheduledAt: Date; createdAt: Date; totalAmount: number; cleanerPayout: number | null;
+  serviceName: string | null; serviceIconUrl: string | null; packageName: string | null;
+  hourlyTierName: string | null; hours: number | null; customerNotes: string | null;
+  formSnapshot: any;
+};
+
 @WebSocketGateway({
   namespace: '/jobs',
   cors: {
@@ -38,6 +46,9 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Commission tiers in-memory cache — refreshed every 5 min (rarely changes)
   private commissionCache: { data: { range_min: number | null; range_max: number | null; cleaner_share_no_tools: number }[]; ts: number } | null = null;
   private readonly COMMISSION_CACHE_TTL = 5 * 60 * 1000;
+
+  // Broadcast data cache — populated at booking creation, consumed at broadcast time
+  private readonly broadcastCache = new Map<string, { job: BroadcastJobData; expiresAt: number }>();
 
   constructor(
     private readonly jwt: JwtService,
@@ -71,6 +82,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
       });
       client.data = { userId: payload.sub };
+      await client.join(`user:${payload.sub}`);
     } catch {
       client.disconnect(true);
     }
@@ -215,50 +227,54 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server?.to(ROOM_AVAILABLE)?.emit('job-taken', { bookingId, by: byUserId });
   }
 
+  /** Cache broadcast data at booking creation — eliminates DB query in broadcastIncomingJob. */
+  cacheBroadcastJob(bookingId: string, job: BroadcastJobData): void {
+    this.broadcastCache.set(bookingId, { job, expiresAt: Date.now() + 30 * 60_000 });
+  }
+
+  /** Push real-time timer state to a specific user (customer or cleaner) via per-user room. */
+  emitBookingTimerUpdate(userId: string, data: { bookingId: string; pauseStartedAt: number | null; pausedTotalSec: number }): void {
+    this.server?.to(`user:${userId}`)?.emit('booking:timer', data);
+  }
+
   async broadcastIncomingJob(bookingId: string): Promise<void> {
-    const rows = await this.prisma.$queryRaw<{
-      id: string;
-      pricingMode: string;
-      addressLine: string;
-      cityName: string | null;
-      scheduledAt: Date;
-      createdAt: Date;
-      totalAmount: number;
-      cleanerPayout: number | null;
-      serviceName: string | null;
-      serviceIconUrl: string | null;
-      packageName: string | null;
-      hourlyTierName: string | null;
-      hours: number | null;
-      customerNotes: string | null;
-      formSnapshot: any;
-    }[]>`
-      SELECT b.id,
-             b.pricing_mode AS "pricingMode",
-             b.address_line AS "addressLine",
-             b.form_snapshot->>'cityName' AS "cityName",
-             b.scheduled_at AS "scheduledAt",
-             b.created_at AS "createdAt",
-             b.total_amount AS "totalAmount",
-             b.cleaner_payout AS "cleanerPayout",
-             COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
-             s.icon_url AS "serviceIconUrl",
-             pp.name AS "packageName",
-             ht.name AS "hourlyTierName",
-             b.hours_booked AS "hours",
-             b.customer_notes AS "customerNotes",
-             b.form_snapshot AS "formSnapshot"
-        FROM bookings b
-        LEFT JOIN services s ON s.id = b.service_id
-        LEFT JOIN pricing_packages pp ON pp.id = b.package_id
-        LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
-       WHERE b.id = ${bookingId}::uuid
-         AND b.status = 'searching'
-         AND b.cleaner_id IS NULL
-       LIMIT 1
-    `;
-    if (!rows[0]) return;
-    const job = rows[0];
+    // Check in-memory cache first (populated at booking creation) — skip DB query if hit.
+    const cached = this.broadcastCache.get(bookingId);
+    let job: BroadcastJobData | undefined;
+    if (cached && cached.expiresAt > Date.now()) {
+      this.broadcastCache.delete(bookingId);
+      job = cached.job;
+    }
+
+    if (!job) {
+      const rows = await this.prisma.$queryRaw<BroadcastJobData[]>`
+        SELECT b.id,
+               b.pricing_mode AS "pricingMode",
+               b.address_line AS "addressLine",
+               b.form_snapshot->>'cityName' AS "cityName",
+               b.scheduled_at AS "scheduledAt",
+               b.created_at AS "createdAt",
+               b.total_amount AS "totalAmount",
+               b.cleaner_payout AS "cleanerPayout",
+               COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+               s.icon_url AS "serviceIconUrl",
+               pp.name AS "packageName",
+               ht.name AS "hourlyTierName",
+               b.hours_booked AS "hours",
+               b.customer_notes AS "customerNotes",
+               b.form_snapshot AS "formSnapshot"
+          FROM bookings b
+          LEFT JOIN services s ON s.id = b.service_id
+          LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+          LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
+         WHERE b.id = ${bookingId}::uuid
+           AND b.status = 'searching'
+           AND b.cleaner_id IS NULL
+         LIMIT 1
+      `;
+      if (!rows[0]) return;
+      job = rows[0];
+    }
 
     // Estimasi cleaner_payout dari cache — tidak perlu hit DB setiap broadcast
     if (!job.cleanerPayout || Number(job.cleanerPayout) <= 0) {

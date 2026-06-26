@@ -462,6 +462,28 @@ export class BookingsController {
       `;
     }
 
+    // Cache broadcast data using request body — eliminates DB JOIN query at payment/broadcast time.
+    if (bookingId) {
+      const snap = body.formSnapshot as any;
+      this.jobs.cacheBroadcastJob(bookingId, {
+        id: bookingId,
+        pricingMode: body.pricingMode,
+        addressLine: body.addressLine,
+        cityName: snap?.cityName ?? null,
+        scheduledAt: new Date(body.scheduledAt),
+        createdAt: new Date(),
+        totalAmount: totalWithTravel,
+        cleanerPayout: null,
+        serviceName: snap?.categoryName ?? snap?.packageName ?? snap?.hourlyTierName ?? snap?.tierName ?? 'Layanan',
+        serviceIconUrl: snap?.categoryImage ?? snap?.serviceIconUrl ?? null,
+        packageName: snap?.packageName ?? null,
+        hourlyTierName: snap?.hourlyTierName ?? snap?.tierName ?? null,
+        hours: body.hoursBooked ?? null,
+        customerNotes: body.customerNotes ?? null,
+        formSnapshot: body.formSnapshot,
+      });
+    }
+
     return { id: bookingId, travelFee, travelDistanceKm, voucherDiscount, referralDiscount, totalAmount: totalWithTravel };
   }
 
