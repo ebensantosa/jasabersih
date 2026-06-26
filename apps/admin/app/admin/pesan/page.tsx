@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, MapPin, MessageSquare, Package, Paperclip, RefreshCw, Search, Send, User, X } from 'lucide-react';
+import { CalendarDays, CheckCheck, ChevronDown, ChevronUp, MapPin, MessageSquare, Package, Paperclip, RefreshCw, Search, Send, User, X } from 'lucide-react';
 import { api } from '../../../lib/api';
 
 const ADMIN_PHONE = '+62000000000001';
@@ -36,7 +36,9 @@ export default function PesanPage(): React.ReactElement | null  {
   const [threads, setThreads] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'resolved'>('unread');
   const [selected, setSelected] = useState<any | null>(null);
+  const [resolving, setResolving] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -79,12 +81,15 @@ export default function PesanPage(): React.ReactElement | null  {
 
   useEffect(() => {
     const q = search.toLowerCase();
-    setFiltered(q ? threads.filter((t) =>
+    let base = threads;
+    if (filter === 'unread') base = threads.filter((t) => !t.isResolved);
+    if (filter === 'resolved') base = threads.filter((t) => t.isResolved);
+    setFiltered(q ? base.filter((t) =>
       (t.customerName ?? '').toLowerCase().includes(q) ||
       (t.customerPhone ?? '').includes(q) ||
       (t.serviceName ?? '').toLowerCase().includes(q)
-    ) : threads);
-  }, [threads, search]);
+    ) : base);
+  }, [threads, search, filter]);
 
   useEffect(() => {
     if (!selected) return;
@@ -147,7 +152,25 @@ export default function PesanPage(): React.ReactElement | null  {
     }
   }
 
-  const unreadCount = threads.filter((t) => t.lastSenderPhone !== ADMIN_PHONE).length;
+  async function toggleResolve() {
+    if (!selected || resolving) return;
+    setResolving(true);
+    try {
+      const isResolved = !!selected.isResolved;
+      await api.admin.chatResolve(selected.bookingId, !isResolved);
+      setSelected((s: any) => s ? { ...s, isResolved: !isResolved } : s);
+      setThreads((prev) => prev.map((t) => t.bookingId === selected.bookingId ? { ...t, isResolved: !isResolved } : t));
+      if (!isResolved) {
+        // Baru di-resolve → kembali ke list
+        setSelected(null);
+        window.dispatchEvent(new Event('jasabersih:refresh-inbox'));
+      }
+    } catch { /* silent */ } finally {
+      setResolving(false);
+    }
+  }
+
+  const unreadCount = threads.filter((t) => !t.isResolved).length;
 
   return (
     <div className="flex h-[calc(100vh-48px)] flex-col gap-0">
@@ -175,6 +198,28 @@ export default function PesanPage(): React.ReactElement | null  {
       <div className="flex flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {/* Thread list */}
         <div className="flex w-72 shrink-0 flex-col border-r border-slate-100">
+          {/* Filter tabs */}
+          <div className="flex border-b border-slate-100">
+            {([
+              { key: 'unread', label: 'Belum Selesai' },
+              { key: 'resolved', label: 'Selesai' },
+              { key: 'all', label: 'Semua' },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
+                className={`flex-1 py-2 text-[11px] font-semibold transition-colors ${filter === tab.key ? 'border-b-2 border-blue-500 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                {tab.label}
+                {tab.key === 'unread' && unreadCount > 0 && (
+                  <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
           {/* Search */}
           <div className="border-b border-slate-100 p-3">
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
@@ -201,7 +246,7 @@ export default function PesanPage(): React.ReactElement | null  {
                 <div className="text-xs">Belum ada percakapan</div>
               </div>
             ) : filtered.map((t) => {
-              const needsReply = t.lastSenderPhone !== ADMIN_PHONE;
+              const needsReply = t.lastSenderPhone !== ADMIN_PHONE && !t.isResolved;
               const isSelected = selected?.bookingId === t.bookingId;
               const initials = (t.customerName ?? t.customerPhone ?? 'U').slice(0, 2).toUpperCase();
               const timeStr = t.lastMessageAt
@@ -285,6 +330,19 @@ export default function PesanPage(): React.ReactElement | null  {
                 }`}>
                   {selected.bookingStatus}
                 </span>
+                <button
+                  onClick={() => void toggleResolve()}
+                  disabled={resolving}
+                  title={selected.isResolved ? 'Buka kembali' : 'Tandai selesai'}
+                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+                    selected.isResolved
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  <CheckCheck size={12} />
+                  {selected.isResolved ? 'Selesai' : 'Tandai Selesai'}
+                </button>
                 <button
                   onClick={() => setInfoOpen((v) => !v)}
                   className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-50 transition-colors"

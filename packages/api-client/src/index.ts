@@ -395,6 +395,8 @@ export function createClient(opts: ClientOptions) {
         request<{ ok: boolean; messageId?: string }>('POST', `/admin/chat/booking/${bookingId}/send`, { content, ...(messageType ? { messageType } : {}) }),
       chatInbox: () =>
         request<any[]>('GET', '/admin/chat/inbox'),
+      chatResolve: (bookingId: string, resolve: boolean) =>
+        request<{ ok: boolean }>('POST', `/admin/chat/booking/${bookingId}/${resolve ? 'resolve' : 'unresolve'}`),
     },
 
     // Catalog (public — no auth needed)

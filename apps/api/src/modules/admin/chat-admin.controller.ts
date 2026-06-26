@@ -143,7 +143,8 @@ export class AdminChatController {
         (SELECT message_type FROM chat_messages WHERE booking_id = b.id AND status = 'sent' ORDER BY created_at DESC LIMIT 1) AS "lastMessageType",
         (SELECT created_at FROM chat_messages WHERE booking_id = b.id AND status = 'sent' ORDER BY created_at DESC LIMIT 1) AS "lastMessageAt",
         (SELECT u2.phone FROM chat_messages cm2 LEFT JOIN users u2 ON u2.id = cm2.sender_id WHERE cm2.booking_id = b.id AND cm2.status = 'sent' ORDER BY cm2.created_at DESC LIMIT 1) AS "lastSenderPhone",
-        (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND status = 'sent') AS "totalMessages"
+        (SELECT COUNT(*)::int FROM chat_messages WHERE booking_id = b.id AND status = 'sent') AS "totalMessages",
+        EXISTS (SELECT 1 FROM chat_resolutions cr WHERE cr.booking_id = b.id) AS "isResolved"
       FROM bookings b
       LEFT JOIN users cu ON cu.id = b.customer_id
       LEFT JOIN users cl ON cl.id = b.cleaner_id
@@ -235,6 +236,27 @@ export class AdminChatController {
     });
 
     return { ok: true, messageId: msg?.id };
+  }
+
+  // Tandai thread selesai (hilang dari inbox "belum dibalas")
+  @Post('booking/:id/resolve')
+  @Roles('super_admin', 'ops', 'support')
+  async resolve(@Param('id') id: string, @CurrentAdmin() admin: AdminPrincipal) {
+    await this.prisma.$executeRaw`
+      INSERT INTO chat_resolutions (booking_id, resolved_by, resolved_at)
+      VALUES (${id}::uuid, ${admin.id}::uuid, NOW())
+      ON CONFLICT (booking_id) DO UPDATE SET resolved_at = NOW(), resolved_by = ${admin.id}::uuid
+    `;
+    return { ok: true };
+  }
+
+  @Post('booking/:id/unresolve')
+  @Roles('super_admin', 'ops', 'support')
+  async unresolve(@Param('id') id: string) {
+    await this.prisma.$executeRaw`
+      DELETE FROM chat_resolutions WHERE booking_id = ${id}::uuid
+    `;
+    return { ok: true };
   }
 
   // Stats untuk dashboard fraud

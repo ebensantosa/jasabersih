@@ -177,6 +177,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     `;
     const msg = inserted[0];
 
+    // Pesan dari user (non-admin) → hapus resolusi supaya thread muncul lagi di inbox admin
+    if (status === 'sent') {
+      void this.prisma.$executeRaw`
+        DELETE FROM chat_resolutions WHERE booking_id = ${body.bookingId}::uuid
+      `.catch(() => {});
+    }
+
     // Record fraud strike kalau berulang
     if (block) {
       await this.prisma.$executeRaw`
