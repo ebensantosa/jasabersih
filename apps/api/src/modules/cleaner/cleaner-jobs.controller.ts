@@ -84,6 +84,13 @@ export class CleanerJobsController {
     if (!['matched', 'on_the_way', 'in_progress'].includes(owns[0].status)) {
       throw new BadRequestException('Tidak bisa upload foto di status ini.');
     }
+    const countRow = await this.prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM booking_photos
+       WHERE booking_id = ${id}::uuid AND photo_type = ${body.photoType}
+    `;
+    if (Number(countRow[0]?.c ?? 0) >= 10) {
+      throw new BadRequestException(`Maksimal 10 foto ${body.photoType} per booking.`);
+    }
     await this.prisma.$executeRaw`
       INSERT INTO booking_photos (booking_id, photo_type, uploaded_by, storage_path, description)
       VALUES (${id}::uuid, ${body.photoType}, ${user.id}::uuid, ${body.storagePath}, ${body.description ?? null})

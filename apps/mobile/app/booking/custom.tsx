@@ -345,6 +345,10 @@ function CustomBooking() {
       if (result.canceled || !result.assets?.[0]) return;
 
       const asset = result.assets[0];
+      if (photos.length >= 10) {
+        toast.warning('Maksimal 10 foto kondisi.');
+        return;
+      }
       setPhotoUploading(true);
 
       const compressed = await compressImage(asset.uri);

@@ -139,10 +139,11 @@ export function BookingPhotos({
   // Hint contextual untuk cleaner
   const needBefore = canManagePhotos && beforePhotos.length === 0;
   const needAfter = canManagePhotos && beforePhotos.length > 0 && afterPhotos.length === 0;
-  const beforeLocked = !canManagePhotos;
+  const MAX_PHOTOS_PER_TYPE = 10;
+  const beforeLocked = !canManagePhotos || beforePhotos.length >= MAX_PHOTOS_PER_TYPE;
   // After locked sampai before ada minimal 1 dan job sudah mulai dikerjakan
-  const afterLocked = !canManagePhotos || beforePhotos.length === 0;
-  const damageLocked = !canManagePhotos;
+  const afterLocked = !canManagePhotos || beforePhotos.length === 0 || afterPhotos.length >= MAX_PHOTOS_PER_TYPE;
+  const damageLocked = !canManagePhotos || damagePhotos.length >= MAX_PHOTOS_PER_TYPE;
   const activeStep = needBefore ? 'before' : needAfter ? 'after' : null;
 
   return (

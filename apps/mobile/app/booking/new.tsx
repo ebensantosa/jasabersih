@@ -364,6 +364,10 @@ function NewBooking() {
         return;
       }
 
+      if (photos.length >= 10) {
+        toast.warning('Maksimal 10 foto kondisi.');
+        return;
+      }
       setPhotoUploading(true);
       const c = await compressImage(asset.uri);
       if (c.oversize) {
