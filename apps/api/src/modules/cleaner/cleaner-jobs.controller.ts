@@ -234,6 +234,10 @@ export class CleanerJobsController {
              b.scheduled_at AS "scheduledAt",
              b.cleaner_payout AS "cleanerPayout",
              b.hours_booked AS "hoursBooked",
+             b.started_at AS "startedAt",
+             b.pause_started_at AS "pauseStartedAt",
+             b.paused_total_sec AS "pausedTotalSec",
+             ht.price_per_hour AS "hourlyPricePerHour",
              CASE WHEN b.pricing_mode = 'hourly'
                THEN COALESCE(
                  CASE WHEN b.hours_booked IS NOT NULL
