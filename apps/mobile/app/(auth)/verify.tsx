@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Mail, ShieldCheck, Tag } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { InteractionManager, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { InteractionManager, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
@@ -53,19 +53,11 @@ export default function Verify() {
     return () => clearInterval(t);
   }, [cooldown]);
 
-  // Paksa fokus setelah animasi navigasi & modal selesai.
-  // Double-attempt: InteractionManager (primary) + delay 350ms (fallback Android).
-  // Cleaner flow punya city-picker Modal di screen sebelumnya — modal dismiss
-  // bisa bikin window focus Android nyangkut, InteractionManager saja kadang
-  // masih terlalu cepat di low-end device.
   useEffect(() => {
-    const focusInput = () => otpInputRef.current?.focus();
-    const task = InteractionManager.runAfterInteractions(focusInput);
-    const fallback = Platform.OS === 'android' ? setTimeout(focusInput, 350) : null;
-    return () => {
-      task.cancel();
-      if (fallback) clearTimeout(fallback);
-    };
+    const task = InteractionManager.runAfterInteractions(() => {
+      otpInputRef.current?.focus();
+    });
+    return () => task.cancel();
   }, []);
 
   async function onSubmit() {
@@ -161,9 +153,11 @@ export default function Verify() {
           </View>
         )}
 
-        {/* OTP visual boxes — seluruh area tap untuk fokus keyboard */}
-        <Pressable className="mt-6" onPress={() => otpInputRef.current?.focus()}>
-          <View className="flex-row justify-center gap-2">
+        {/* OTP: TextInput transparan di atas visual boxes supaya keyboard muncul reliabel.
+            Teknik ini lebih robust dari hidden/offscreen input di Android — input harus
+            dalam viewport dengan ukuran nyata agar Android mau munculkan soft keyboard. */}
+        <View className="mt-6" style={{ alignItems: 'center' }}>
+          <View className="flex-row justify-center gap-2" pointerEvents="none">
             {otpDigits.map((d, i) => {
               const filled = d.trim().length > 0;
               const isCursor = i === otp.length;
@@ -179,23 +173,21 @@ export default function Verify() {
               );
             })}
           </View>
-          {/* Hint tap supaya user tahu bisa tap untuk munculkan keyboard */}
-          {otp.length === 0 && (
-            <Text className="font-sans mt-2 text-center text-[11px] text-ink-400">
-              Tap di sini jika keyboard tidak muncul
-            </Text>
-          )}
-        </Pressable>
-        {/* TextInput tersembunyi — digeser keluar layar (lebih reliable dari opacity:0 1x1 di Android) */}
-        <TextInput
-          ref={otpInputRef}
-          value={otp}
-          onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, OTP_LENGTH))}
-          keyboardType="number-pad"
-          maxLength={OTP_LENGTH}
-          caretHidden
-          style={{ position: 'absolute', left: -9999, width: 1, height: 1 }}
-        />
+          <TextInput
+            ref={otpInputRef}
+            value={otp}
+            onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, OTP_LENGTH))}
+            keyboardType="number-pad"
+            maxLength={OTP_LENGTH}
+            caretHidden
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              color: 'transparent',
+              backgroundColor: 'transparent',
+            }}
+          />
+        </View>
 
         {/* Resend */}
         <View className="mt-5 flex-row items-center justify-center gap-1">
