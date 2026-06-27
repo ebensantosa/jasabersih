@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
+import { PushService } from '../notifications/push.service';
 
 @ApiTags('admin-users')
 @ApiBearerAuth()
@@ -14,6 +15,7 @@ export class AdminUsersController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly push: PushService,
   ) {}
 
   @Get()
@@ -121,6 +123,41 @@ export class AdminUsersController {
     await this.prisma.$executeRaw`DELETE FROM cleaner_area_requests WHERE id = ${id}::uuid`;
     await this.audit.log({ adminId: admin.id, action: 'cleaner_area_request.reject', resourceType: 'cleaner_area_requests', resourceId: id, changes: { city: r.city, cleanerId: r.cleaner_id, reason: body?.reason ?? null }, ipAddress: req.ip ?? null });
     return { ok: true };
+  }
+
+  // Lihat semua push token yang terdaftar untuk user — debug FCM
+  @Get(':id/devices')
+  @Roles('super_admin', 'ops', 'support')
+  async devices(@Param('id') id: string) {
+    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT id, device_id AS "deviceId", fcm_token AS "fcmToken",
+             platform, current_mode AS "currentMode",
+             last_active_at AS "lastActiveAt", created_at AS "createdAt"
+        FROM user_devices
+       WHERE user_id = ${id}::uuid
+       ORDER BY last_active_at DESC NULLS LAST
+    `;
+  }
+
+  // Test kirim push notif langsung ke satu user (debug)
+  @Post(':id/test-push')
+  @Roles('super_admin', 'ops')
+  async testPush(
+    @Param('id') id: string,
+    @Body() body: { title?: string; body?: string; targetMode?: 'customer' | 'freelancer' },
+  ) {
+    const result = await this.push.send({
+      userId: id,
+      title: body.title ?? 'Test Push',
+      body: body.body ?? 'Ini notif test dari admin.',
+      channel: 'system',
+      data: { type: 'system_test' },
+      ...(body.targetMode ? { targetMode: body.targetMode } : {}),
+    });
+    const devices = await this.prisma.$queryRaw<{ fcm_token: string; current_mode: string | null }[]>`
+      SELECT fcm_token, current_mode FROM user_devices WHERE user_id = ${id}::uuid
+    `;
+    return { ...result, devicesFound: devices.length, devices };
   }
 
   @Get(':id')
