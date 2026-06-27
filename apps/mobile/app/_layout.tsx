@@ -14,6 +14,7 @@ import { router, Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { api } from '../src/lib/api';
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -139,6 +140,8 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    // Canary: confirm OTA bundle loaded + API reachable. Check /var/log/jasabersih/api-out-0.log for "[trace]"
+    void api.post('/health/trace', { step: 'boot', ota: '2026-06-28-v1' }).catch(() => {});
     void hydrateStorageCache([
       'app.mode',
       'app.onboarded',
@@ -201,20 +204,24 @@ export default function RootLayout() {
     lastBootstrappedTokenRef.current = accessToken;
     trackEvent('app_open');
     void (async () => {
+      let refreshFailed = false;
       try {
         await refreshAuth();
-      } catch {
-        useAuthStore.getState().logout();
-        setAuthReady(true);
-        return;
+      } catch (e: any) {
+        const status = e?.response?.status;
+        if (status === 401 || status === 403) {
+          useAuthStore.getState().logout();
+          setAuthReady(true);
+          return;
+        }
+        // Network/server error — keep tokens, proceed with cached data
+        refreshFailed = true;
       }
       const profile = await fetchUser();
-      if (!profile) {
-        useAuthStore.getState().logout();
-        setAuthReady(true);
-        return;
-      }
-      setUserId(String((profile as any).id ?? (profile as any).userId ?? ''));
+      // Jangan logout dari fetchUser failure — user mungkin online tapi /auth/me lambat.
+      // Satu-satunya alasan logout yang valid: 401/403 dari refreshAuth (sudah ditangani di atas).
+      // Kalau profile null, lanjut dengan cached profile atau tanpa profile (push tetap bisa register).
+      setUserId(String((profile as any)?.id ?? (profile as any)?.userId ?? ''));
       await syncSessionData(profile);
       const currentMode = useModeStore.getState().mode;
       void registerForPushAsync(currentMode === 'freelancer' ? 'freelancer' : 'customer').catch(() => {});

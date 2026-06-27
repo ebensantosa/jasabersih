@@ -1,4 +1,4 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Logger, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type Redis from 'ioredis';
 
@@ -8,10 +8,18 @@ import { REDIS_CLIENT } from './redis.module';
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
+  private readonly log = new Logger('HealthTrace');
   constructor(
     private readonly prisma: PrismaService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
+
+  // Public - no auth. Used by mobile to confirm OTA bundle loaded + API reachable.
+  @Post('trace')
+  trace(@Body() body: Record<string, unknown>): { ok: boolean } {
+    this.log.log(`[trace] ${JSON.stringify(body)}`);
+    return { ok: true };
+  }
 
   @Get()
   async health(): Promise<{ status: string; db: boolean; redis: boolean }> {
