@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Logger, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -11,6 +11,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 @UseGuards(JwtAuthGuard)
 @Controller('notifications')
 export class NotificationsController {
+  private readonly log = new Logger(NotificationsController.name);
   constructor(private readonly prisma: PrismaService) {}
 
   // Register Expo push token (atau FCM langsung). Dipanggil mobile saat boot setelah auth.
@@ -21,6 +22,7 @@ export class NotificationsController {
   ) {
     if (!body?.token || !body?.deviceId) throw new BadRequestException('token & deviceId wajib.');
     const mode = body.mode ?? null;
+    this.log.log(`register-token user=${user.id} mode=${mode} platform=${body.platform ?? '-'} token=${body.token.slice(0, 30)}...`);
     // 1 token = 1 user — pindah ownership ke user terakhir login.
     await this.prisma.$executeRaw`
       DELETE FROM user_devices
