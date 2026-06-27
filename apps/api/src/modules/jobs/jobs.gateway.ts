@@ -154,7 +154,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
          AND status = 'searching'
     `;
     if (Number(updated) === 0) {
-      return { ok: false, error: 'Job sudah diambil cleaner lain' };
+      return { ok: false, error: 'Job sudah tidak tersedia.' };
     }
 
     const bookingRows = await this.prisma.$queryRaw<{ customer_id: string }[]>`

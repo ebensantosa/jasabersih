@@ -320,6 +320,10 @@ export class AdminBookingsController {
              cancelled_by = ${admin.id}::uuid
        WHERE id = ${id}::uuid
     `;
+    // Tutup modal job di semua HP cleaner yang sedang online kalau booking masih searching
+    if (parties?.status === 'searching') {
+      this.jobs.emitJobTaken(id, 'admin');
+    }
     await this.audit.log({
       adminId: admin.id,
       action: 'booking.force_cancel',
@@ -535,7 +539,9 @@ export class AdminBookingsController {
         } else if (body.action === 'mark_paid') {
           await this.forceMarkPaid(id, { reason: body.reason }, admin, req);
         } else if (body.action === 'delete') {
+          const statusRow = await this.prisma.$queryRaw<{ status: string }[]>`SELECT status FROM bookings WHERE id = ${id}::uuid LIMIT 1`;
           await this.prisma.$executeRaw`DELETE FROM bookings WHERE id = ${id}::uuid`;
+          if (statusRow[0]?.status === 'searching') this.jobs.emitJobTaken(id, 'admin');
           await this.audit.log({
             adminId: admin.id,
             action: 'booking.delete',
