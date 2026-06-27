@@ -36,10 +36,11 @@ function NotificationsScreen() {
 
   useEffect(() => {
     void fetch(true);
-    return () => { void markAllRead(); }; // mark read saat keluar
+    void markAllRead(); // mark read langsung saat buka, bukan cuma saat keluar
   }, []);
 
   async function onTap(n: NotificationItem) {
+    void markAllRead(); // pastikan badge hilang meski user langsung tap dan keluar
     const data = n.data as Record<string, unknown> | null;
     const type = data?.type as string | undefined;
     const bookingId = data?.bookingId as string | undefined;

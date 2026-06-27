@@ -8,7 +8,7 @@ export type PushPayload = {
   title: string;
   body: string;
   data?: Record<string, unknown>;
-  channel?: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job';
+  channel?: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job' | 'incoming_job_v2';
   // Kalau diisi, hanya kirim ke device yang mode-nya cocok (cegah notif cleaner masuk ke device customer dan sebaliknya)
   targetMode?: 'customer' | 'freelancer';
 };
@@ -17,7 +17,7 @@ export type PushBatchItem = {
   userId: string;
   title: string;
   body: string;
-  channel: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job';
+  channel: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job' | 'incoming_job_v2';
   data: Record<string, unknown>;
   targetMode?: 'customer' | 'freelancer';
 };
@@ -101,7 +101,7 @@ export class PushService {
 
     if (validTokens.length === 0) return { sent: 0, failed: 0 };
 
-    const sound = payload.channel === 'incoming_job' ? 'order_incoming.wav' : 'default';
+    const sound = (payload.channel === 'incoming_job' || payload.channel === 'incoming_job_v2') ? 'order_incoming.wav' : 'default';
     const messages = validTokens.map((to) => ({
       to,
       title: finalTitle,
@@ -209,7 +209,7 @@ export class PushService {
     // ── 4. Satu Expo HTTP call per 100 token ───────────────────────────────
     const messages = validTokens.map((r) => {
       const item = itemMap.get(r.user_id) ?? eligible[0]!;
-      const sound = item.channel === 'incoming_job' ? 'order_incoming.wav' : 'default';
+      const sound = (item.channel === 'incoming_job' || item.channel === 'incoming_job_v2') ? 'order_incoming.wav' : 'default';
       return {
         to: r.fcm_token,
         title: item.title,
@@ -221,13 +221,21 @@ export class PushService {
       };
     });
 
+    this.log.log(`sendBatch: ${validTokens.length} valid tokens for ${eligible.length} users`);
     for (let i = 0; i < messages.length; i += 100) {
       const batch = messages.slice(i, i + 100);
-      await fetch(EXPO_PUSH_URL, {
+      const res = await fetch(EXPO_PUSH_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(batch),
-      }).catch((e: any) => this.log.error(`expo batch push failed: ${e?.message}`));
+      }).catch((e: any) => { this.log.error(`expo batch push failed: ${e?.message}`); return null; });
+      if (res) {
+        const json = await res.json().catch(() => ({})) as { data?: any[] };
+        const results = Array.isArray(json.data) ? json.data : [];
+        const failed = results.filter((r) => r?.status !== 'ok');
+        if (failed.length > 0) this.log.warn(`sendBatch expo errors: ${JSON.stringify(failed)}`);
+        else this.log.log(`sendBatch ok: ${results.length} sent`);
+      }
     }
   }
 }

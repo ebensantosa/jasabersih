@@ -339,6 +339,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return areas.some((area) => normalizedAddress.includes(area) || (normalizedCity.length > 0 && normalizedCity.includes(area)));
     });
 
+    this.log.log(`FCM eligible: ${eligible.length}/${cleaners.length} cleaners for job ${bookingId} addr="${job.addressLine}" city="${job.cityName}"`);
     if (eligible.length === 0) return;
 
     const payout = Number(job.cleanerPayout ?? 0);
@@ -351,7 +352,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId: c.user_id,
         title,
         body,
-        channel: 'incoming_job' as const,
+        channel: 'incoming_job_v2' as const,
         data: { type: 'incoming_job', bookingId },
         targetMode: 'freelancer' as const,
       })),

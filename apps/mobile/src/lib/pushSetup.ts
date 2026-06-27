@@ -66,7 +66,9 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
       });
     }
     // Channel khusus untuk job masuk — getaran lebih panjang supaya cleaner sadar
-    await Notifications.setNotificationChannelAsync('incoming_job', {
+    // v2: channel ID dibump agar Android recreate channel dengan sound yang benar
+    // (Android lock sound saat channel pertama dibuat, tidak bisa diubah tanpa ID baru)
+    await Notifications.setNotificationChannelAsync('incoming_job_v2', {
       name: 'Job Masuk',
       importance: Notifications.AndroidImportance.MAX,
       sound: 'order_incoming',   // Android: nama file tanpa ekstensi (dari res/raw/)
