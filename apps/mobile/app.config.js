@@ -57,13 +57,13 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.jasabersih.app',
-      buildNumber: '18',
+      buildNumber: '19',
       icon: './assets/icon.png',
       googleServicesFile: './GoogleService-Info.plist',
     },
     android: {
       package: 'com.jasabersih.app',
-      versionCode: 18,
+      versionCode: 19,
       edgeToEdgeEnabled: false,
       icon: './assets/icon.png',
       adaptiveIcon: {
