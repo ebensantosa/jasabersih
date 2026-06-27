@@ -48,7 +48,10 @@ export async function unregisterPushAsync(overrideAccessToken?: string): Promise
 
 // Call after user is authenticated. Idempotent.
 export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Promise<string | null> {
+  console.log(`[Push] registerForPushAsync called mode=${mode} registered=${registered}`);
   if (registered && !mode) return currentToken; // skip kalau sudah registered dan bukan mode-switch
+
+  void api.post('/notifications/debug-push', { step: 'start', mode, registered }).catch(() => {});
 
   // Android: bikin channel default + custom channels
   if (Platform.OS === 'android') {
@@ -85,6 +88,8 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
     const req = await Notifications.requestPermissionsAsync();
     granted = req.status === 'granted';
   }
+  console.log(`[Push] permission granted=${granted} isDevice=${Device.isDevice}`);
+  void api.post('/notifications/debug-push', { step: 'permission', granted, isDevice: Device.isDevice }).catch(() => {});
   if (!granted) return null;
 
   // Hanya physical device yang bisa push (simulator tidak)
@@ -92,11 +97,16 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
 
   // Get Expo Push Token
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  console.log(`[Push] projectId=${projectId}`);
   let token: string;
   try {
     const t = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     token = t.data;
-  } catch {
+    console.log(`[Push] token obtained: ${token}`);
+    void api.post('/notifications/debug-push', { step: 'token_ok', token: token.slice(0, 30) }).catch(() => {});
+  } catch (e: any) {
+    console.log(`[Push] getExpoPushTokenAsync failed: ${e?.message}`);
+    void api.post('/notifications/debug-push', { step: 'token_failed', error: e?.message }).catch(() => {});
     return null;
   }
   if (!token) return null;
@@ -113,7 +123,9 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
     });
     registered = true;
     currentToken = token;
-  } catch {
+    console.log(`[Push] registered ok token=${token} mode=${mode}`);
+  } catch (e: any) {
+    console.log(`[Push] register-token API failed: ${e?.message}`);
     return token; // token tetap ke-return walau register gagal - bisa di-retry
   }
   return token;

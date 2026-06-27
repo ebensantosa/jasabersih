@@ -57,6 +57,12 @@ export class NotificationsController {
     return { ok: true };
   }
 
+  @Post('debug-push')
+  async debugPush(@CurrentUser() user: AuthenticatedUser, @Body() body: Record<string, unknown>) {
+    this.log.log(`debug-push user=${user.id} ${JSON.stringify(body)}`);
+    return { ok: true };
+  }
+
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser) {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
