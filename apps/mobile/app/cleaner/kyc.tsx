@@ -12,6 +12,7 @@ import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { safeBack } from '../../src/lib/safeBack';
+import { useCleanerKycStore } from '../../src/stores/cleanerKyc';
 
 type DocType = 'ktp' | 'bank_book';
 
@@ -41,12 +42,16 @@ function CleanerKycScreen() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<DocType | null>(null);
+  const setGlobalKycStatus = useCleanerKycStore((s) => s.setStatus);
 
   async function load() {
     setLoading(true);
     try {
       const res = await api.get('/cleaner/kyc/status');
-      setStatus(res.data?.data ?? res.data);
+      const data = res.data?.data ?? res.data;
+      setStatus(data);
+      // Sync ke global store supaya CleanerLockOverlay langsung redirect saat approved
+      if (data?.kycStatus) setGlobalKycStatus(data.kycStatus);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal load status KYC');
     } finally {
