@@ -34,9 +34,16 @@ export const useAuthStore = create<State>((set, get) => ({
     get().setTokens(res.data.data);
   },
   logout: () => {
-    // Unregister push token DULU sebelum clear tokens - perlu JWT valid.
+    // Snapshot JWT sebelum clear — unregister butuh token valid di header
+    // (interceptor tidak override Authorization kalau store sudah null).
+    const accessToken = get().tokens?.accessToken;
+
+    // Clear store segera supaya UI langsung ke login screen.
+    get().setTokens(null);
+
+    // Unregister push token dengan snapshotted JWT — cegah notif bocor ke device.
     void import('../lib/pushSetup').then(async (m) => {
-      try { await m.unregisterPushAsync(); } catch {}
+      try { await m.unregisterPushAsync(accessToken); } catch {}
     }).catch(() => {});
 
     // Disconnect socket connections - cegah kebocoran event jobs/chat
@@ -46,8 +53,6 @@ export const useAuthStore = create<State>((set, get) => ({
       import('../lib/jobsSocket').then((m) => m.disconnectJobsSocket?.()),
       import('../lib/chatSocket').then((m) => m.disconnectChatSocket?.()),
     ]).catch(() => {});
-
-    get().setTokens(null);
     // Wipe all user-bound caches so next session starts clean.
     void Promise.all([
       import('./mode').then((m) => m.useModeStore.getState().setMode('customer')),

@@ -29,13 +29,18 @@ export function getCurrentPushToken(): string | null {
   return currentToken;
 }
 
-// Unregister token dari backend - panggil SEBELUM clear auth tokens (perlu
-// JWT valid utk auth request).
-export async function unregisterPushAsync(): Promise<void> {
+// Unregister token dari backend. Terima optional accessToken override supaya
+// bisa dipanggil setelah JWT store di-clear (race condition saat logout).
+// Interceptor tidak override Authorization jika token store sudah null.
+export async function unregisterPushAsync(overrideAccessToken?: string): Promise<void> {
   const token = currentToken;
   if (!token) return;
   try {
-    await api.post('/notifications/unregister-token', { token });
+    await api.post(
+      '/notifications/unregister-token',
+      { token },
+      overrideAccessToken ? { headers: { Authorization: `Bearer ${overrideAccessToken}` } } : undefined,
+    );
   } catch { /* non-fatal */ }
   resetPushRegistration();
   currentToken = null;
