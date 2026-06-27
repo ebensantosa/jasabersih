@@ -73,7 +73,7 @@ export default function Bookings() {
       <SafeAreaView edges={['top']} className="bg-white">
         <View className="px-4 pb-3 pt-2">
           <Text className="font-bold text-2xl text-ink-900">
-            {isCleaner ? 'Order Cleaner' : 'Pesanan Saya'}
+            {isCleaner ? 'Riwayat Job' : 'Pesanan Saya'}
           </Text>
           <Text className="font-sans mt-0.5 text-xs text-ink-500">
             {visibleList.length === 0

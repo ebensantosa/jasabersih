@@ -94,7 +94,9 @@ function ChatsScreen() {
         <SafeAreaView edges={['top']}>
           <View className="px-5 pb-2 pt-3">
             <Text className="font-extrabold text-2xl text-white">Pesan</Text>
-            <Text className="font-sans text-[12px] text-white/80">Chat dengan cleaner per pesananmu</Text>
+            <Text className="font-sans text-[12px] text-white/80">
+              {isCleaner ? 'Chat dengan customer per job kamu' : 'Chat dengan cleaner per pesananmu'}
+            </Text>
           </View>
         </SafeAreaView>
       </LinearGradient>

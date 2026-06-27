@@ -85,7 +85,7 @@ export default function TabsLayout() {
         options={{
           href: '/(tabs)/bookings',
           tabBarIcon: ({ focused }) => (
-            <TabItem icon={ClipboardList} label={isFreelancer ? 'Riwayat' : t('tab.bookings')} focused={focused} />
+            <TabItem icon={ClipboardList} label={isFreelancer ? 'Riwayat Job' : t('tab.bookings')} focused={focused} />
           ),
         }}
       />
