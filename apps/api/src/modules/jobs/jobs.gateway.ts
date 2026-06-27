@@ -254,12 +254,14 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async broadcastIncomingJob(bookingId: string): Promise<void> {
+    this.log.log(`broadcastIncomingJob called bookingId=${bookingId}`);
     // Check in-memory cache first (populated at booking creation) — skip DB query if hit.
     const cached = this.broadcastCache.get(bookingId);
     let job: BroadcastJobData | undefined;
     if (cached && cached.expiresAt > Date.now()) {
       this.broadcastCache.delete(bookingId);
       job = cached.job;
+      this.log.log(`broadcastIncomingJob cache hit bookingId=${bookingId}`);
     }
 
     if (!job) {
@@ -288,6 +290,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
            AND b.cleaner_id IS NULL
          LIMIT 1
       `;
+      this.log.log(`broadcastIncomingJob DB query result rows=${rows.length} bookingId=${bookingId}`);
       if (!rows[0]) return;
       job = rows[0];
     }

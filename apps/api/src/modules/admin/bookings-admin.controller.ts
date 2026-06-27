@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Logger, NotFoundException, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
@@ -15,6 +15,7 @@ import { StorageService } from '../storage/storage.service';
 @UseGuards(AdminJwtGuard, AdminRbacGuard)
 @Controller('admin/bookings')
 export class AdminBookingsController {
+  private readonly log = new Logger(AdminBookingsController.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
@@ -176,7 +177,10 @@ export class AdminBookingsController {
     }
 
     if (bookingId && !body.cleanerId && body.paymentStatus === 'paid') {
-      void this.jobs.broadcastIncomingJob(bookingId).catch(() => {});
+      this.log.log(`createManual triggering broadcastIncomingJob bookingId=${bookingId} status=${status}`);
+      void this.jobs.broadcastIncomingJob(bookingId).catch((e) => this.log.error(`broadcastIncomingJob error: ${e?.message}`));
+    } else {
+      this.log.log(`createManual skip broadcast bookingId=${bookingId} cleanerId=${body.cleanerId ?? null} paymentStatus=${body.paymentStatus ?? 'unpaid'}`);
     }
 
     return { id: bookingId, customerId, status };
