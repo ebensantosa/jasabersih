@@ -64,6 +64,8 @@ export class PushService {
       .map((t) => t.fcm_token!)
       .filter((t) => t.startsWith('ExponentPushToken['));
 
+    this.log.log(`send user=${payload.userId} type=${(payload.data as any)?.type ?? '-'} targetMode=${targetMode ?? 'null'} rawTokens=${tokens.length} validTokens=${validTokens.length}`);
+
     // Dedup: kalau notif identik (user + type + referenceId) sudah ada di 1 jam terakhir, skip.
     // Covers bookingId, withdrawalId, atau reference lain yg ada di data payload.
     const bookingId = (payload.data as any)?.bookingId;
@@ -126,6 +128,7 @@ export class PushService {
         const r = results[i];
         if (r?.status === 'ok') sent++; else failed++;
       }
+      this.log.log(`send expo response: sent=${sent} failed=${failed} raw=${JSON.stringify(results).slice(0, 300)}`);
       // Log failures only (fire-and-forget, non-blocking)
       const failedResults = results
         .map((r, i) => ({ r, token: messages[i]?.to }))
