@@ -434,11 +434,11 @@ function BookingDetail() {
         {stillFetching ? (
           <>
             <ActivityIndicator color="#1D4ED8" />
-            <Text className="font-sans mt-2 text-ink-500">Memuat pesanan…</Text>
+            <Text className="font-sans mt-2 text-ink-500">{isCleaner ? 'Memuat job…' : 'Memuat pesanan…'}</Text>
           </>
         ) : (
           <>
-            <Text className="font-sans text-ink-500">Pesanan tidak ditemukan</Text>
+            <Text className="font-sans text-ink-500">{isCleaner ? 'Job tidak ditemukan' : 'Pesanan tidak ditemukan'}</Text>
             <Pressable onPress={() => {
               if (router.canGoBack()) safeBack();
               else router.replace(isCleaner ? '/(tabs)/jobs' : '/(tabs)/bookings');

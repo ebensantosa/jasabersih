@@ -55,7 +55,7 @@ export default function Bookings() {
           </View>
           <Text style={{ fontWeight: '800', fontSize: 20, color: '#0F172A', marginTop: 20, textAlign: 'center' }}>Login Dulu, Yuk!</Text>
           <Text style={{ fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
-            Masuk dulu untuk melihat riwayat dan status pesananmu.
+            Masuk dulu untuk melihat riwayat dan status pesanan atau jobmu.
           </Text>
           <Pressable
             onPress={() => router.push('/(auth)/login')}

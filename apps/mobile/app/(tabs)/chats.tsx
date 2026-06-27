@@ -137,7 +137,7 @@ function ChatsScreen() {
             <View className="flex-1">
               <Text className="font-bold text-[12px] text-amber-900">Chat hanya di JasaBersih</Text>
               <Text className="font-sans mt-0.5 text-[11px] leading-4 text-amber-900">
-                Jangan share nomor HP, WA, atau bayar di luar app. Order via app dapat garansi pengerjaan.
+                Jangan share nomor HP, WA, atau bayar di luar app. Transaksi via app dapat garansi pengerjaan.
               </Text>
             </View>
           </View>
