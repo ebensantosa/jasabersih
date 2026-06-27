@@ -181,7 +181,7 @@ function ProfileScreen() {
                   { icon: Tag, label: t('profile.vouchers'), onPress: () => router.push('/account/vouchers') },
                 ]
               : []),
-            ...(tokens && mode !== 'freelancer' ? [{ icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') }] : []),
+            ...(tokens ? [{ icon: Gift, label: t('profile.referral'), onPress: () => router.push('/account/referral') }] : []),
             { icon: Bell, label: 'Notifikasi', onPress: () => router.push('/notifications') },
           ]}
         />
