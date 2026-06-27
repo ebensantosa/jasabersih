@@ -167,10 +167,11 @@ export class AdminBookingsController {
     if (body.cleanerId && bookingId) {
       void this.push.send({
         userId: body.cleanerId,
-        channel: 'incoming_job',
+        channel: 'incoming_job_v2',
         title: 'Job baru di-assign admin',
         body: 'Admin assign job manual untuk kamu. Tap untuk lihat detail.',
         data: { type: 'job_assigned', bookingId },
+        targetMode: 'freelancer',
       }).catch(() => {});
     }
 
