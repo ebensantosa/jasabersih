@@ -129,19 +129,25 @@ export class PushService {
         if (r?.status === 'ok') sent++; else failed++;
       }
       this.log.log(`send expo response: sent=${sent} failed=${failed} raw=${JSON.stringify(results).slice(0, 300)}`);
-      // Log failures only (fire-and-forget, non-blocking)
+      // Log failures + auto-cleanup DeviceNotRegistered tokens
       const failedResults = results
         .map((r, i) => ({ r, token: messages[i]?.to }))
         .filter(({ r }) => r?.status !== 'ok');
       if (failedResults.length > 0) {
-        void Promise.all(failedResults.map(({ r }) =>
-          this.prisma.$executeRaw`
-            INSERT INTO notification_logs (user_id, channel, template_key, status, external_id, failure_reason)
-            VALUES (${payload.userId}::uuid, 'push', ${payload.channel ?? 'system'},
-                    'failed', ${r?.id ?? null},
-                    ${r?.message ?? r?.details?.error ?? 'unknown'})
-          `.catch(() => {}),
-        ));
+        void Promise.all(failedResults.map(({ r, token }) => {
+          const isExpired = r?.details?.error === 'DeviceNotRegistered' || r?.details?.error === 'InvalidCredentials';
+          return Promise.all([
+            this.prisma.$executeRaw`
+              INSERT INTO notification_logs (user_id, channel, template_key, status, external_id, failure_reason)
+              VALUES (${payload.userId}::uuid, 'push', ${payload.channel ?? 'system'},
+                      'failed', ${r?.id ?? null},
+                      ${r?.message ?? r?.details?.error ?? 'unknown'})
+            `.catch(() => {}),
+            isExpired && token
+              ? this.prisma.$executeRaw`DELETE FROM user_devices WHERE fcm_token = ${token}`.catch(() => {})
+              : Promise.resolve(),
+          ]);
+        }));
       }
     } catch (e: any) {
       this.log.error(`expo push failed: ${e?.message}`);
@@ -236,8 +242,21 @@ export class PushService {
         const json = await res.json().catch(() => ({})) as { data?: any[] };
         const results = Array.isArray(json.data) ? json.data : [];
         const failed = results.filter((r) => r?.status !== 'ok');
-        if (failed.length > 0) this.log.warn(`sendBatch expo errors: ${JSON.stringify(failed)}`);
-        else this.log.log(`sendBatch ok: ${results.length} sent`);
+        if (failed.length > 0) {
+          this.log.warn(`sendBatch expo errors: ${JSON.stringify(failed)}`);
+          // Auto-cleanup expired tokens
+          const expiredTokens = results
+            .map((r, idx) => ({ r, token: batch[idx]?.to }))
+            .filter(({ r }) => r?.details?.error === 'DeviceNotRegistered' || r?.details?.error === 'InvalidCredentials')
+            .map(({ token }) => token)
+            .filter(Boolean) as string[];
+          if (expiredTokens.length > 0) {
+            void Promise.all(expiredTokens.map((t) =>
+              this.prisma.$executeRaw`DELETE FROM user_devices WHERE fcm_token = ${t}`.catch(() => {}),
+            ));
+            this.log.log(`sendBatch cleanup: removed ${expiredTokens.length} expired tokens`);
+          }
+        } else this.log.log(`sendBatch ok: ${results.length} sent`);
       }
     }
   }
