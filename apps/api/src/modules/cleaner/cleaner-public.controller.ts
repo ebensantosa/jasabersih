@@ -57,20 +57,7 @@ export class CleanerPublicController {
 
     return {
       profile: rows[0],
-      reviews: reviews.map((review) => ({
-        ...review,
-        raterName: typeof review.raterName === 'string' ? maskName(review.raterName) : null,
-      })),
+      reviews,
     };
   }
-}
-
-function maskName(full: string): string {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'Pengguna';
-  if (parts.length === 1) {
-    const word = parts[0]!;
-    return word.length <= 2 ? word : `${word[0]}${'*'.repeat(Math.max(1, word.length - 2))}${word.slice(-1)}`;
-  }
-  return `${parts[0]} ${parts[parts.length - 1]![0]}.`;
 }

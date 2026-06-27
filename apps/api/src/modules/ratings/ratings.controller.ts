@@ -190,20 +190,6 @@ export class RatingsController {
        WHERE r.ratee_id = ${userId}::uuid
        ORDER BY r.created_at DESC LIMIT 50
     `;
-    // Sensor nama: "Ebentera Santosa" → "Ebentera S."
-    return rows.map((r) => ({
-      ...r,
-      raterName: r.raterName ? maskName(r.raterName) : null,
-    }));
+    return rows;
   }
-}
-
-function maskName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length === 1) {
-    const w = parts[0]!;
-    return w.length <= 2 ? w : w[0]! + '*'.repeat(Math.max(1, w.length - 2)) + w.slice(-1);
-  }
-  // Keep first name, initial of last
-  return `${parts[0]} ${parts[parts.length - 1]![0]!}.`;
 }
