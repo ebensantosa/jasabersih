@@ -255,64 +255,72 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async broadcastIncomingJob(bookingId: string): Promise<void> {
     this.log.log(`broadcastIncomingJob called bookingId=${bookingId}`);
-    // Check in-memory cache first (populated at booking creation) — skip DB query if hit.
-    const cached = this.broadcastCache.get(bookingId);
-    let job: BroadcastJobData | undefined;
-    if (cached && cached.expiresAt > Date.now()) {
-      this.broadcastCache.delete(bookingId);
-      job = cached.job;
-      this.log.log(`broadcastIncomingJob cache hit bookingId=${bookingId}`);
+    try {
+      // Check in-memory cache first (populated at booking creation) — skip DB query if hit.
+      const cached = this.broadcastCache.get(bookingId);
+      let job: BroadcastJobData | undefined;
+      if (cached && cached.expiresAt > Date.now()) {
+        this.broadcastCache.delete(bookingId);
+        job = cached.job;
+        this.log.log(`broadcastIncomingJob cache hit bookingId=${bookingId}`);
+      }
+
+      if (!job) {
+        const rows = await this.prisma.$queryRaw<BroadcastJobData[]>`
+          SELECT b.id,
+                 b.pricing_mode AS "pricingMode",
+                 b.address_line AS "addressLine",
+                 b.form_snapshot->>'cityName' AS "cityName",
+                 b.scheduled_at AS "scheduledAt",
+                 b.created_at AS "createdAt",
+                 b.total_amount AS "totalAmount",
+                 b.cleaner_payout AS "cleanerPayout",
+                 COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
+                 s.icon_url AS "serviceIconUrl",
+                 pp.name AS "packageName",
+                 ht.name AS "hourlyTierName",
+                 b.hours_booked AS "hours",
+                 b.customer_notes AS "customerNotes",
+                 b.form_snapshot AS "formSnapshot"
+            FROM bookings b
+            LEFT JOIN services s ON s.id = b.service_id
+            LEFT JOIN pricing_packages pp ON pp.id = b.package_id
+            LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
+           WHERE b.id = ${bookingId}::uuid
+             AND b.status = 'searching'
+             AND b.cleaner_id IS NULL
+           LIMIT 1
+        `;
+        this.log.log(`broadcastIncomingJob DB query result rows=${rows.length} bookingId=${bookingId}`);
+        if (!rows[0]) return;
+        job = rows[0];
+      }
+
+      this.log.log(`broadcastIncomingJob computing payout bookingId=${bookingId} cleanerPayout=${job.cleanerPayout}`);
+      // Estimasi cleaner_payout dari cache — tidak perlu hit DB setiap broadcast
+      if (!job.cleanerPayout || Number(job.cleanerPayout) <= 0) {
+        const tiers = await this.getCommissionTiers();
+        const total = Number(job.totalAmount ?? 0);
+        const tier = tiers.find((t) => total >= Number(t.range_min ?? 0) && (t.range_max == null || total <= Number(t.range_max)));
+        const pct = Number(tier?.cleaner_share_no_tools ?? 40);
+        job.cleanerPayout = Math.round(total * pct / 100);
+        this.log.log(`broadcastIncomingJob payout computed=${job.cleanerPayout} pct=${pct} tiers=${tiers.length}`);
+      }
+
+      const { totalAmount: _hidden, ...jobForCleaner } = job;
+
+      // ── 1. SOCKET: emit langsung, tidak tunggu apa-apa ──────────────────────
+      this.log.log(`broadcastIncomingJob emitting socket server=${!!this.server}`);
+      this.server?.to(ROOM_AVAILABLE)?.emit('incoming-job', jobForCleaner);
+      const onlineCount = this.server?.sockets?.adapter?.rooms?.get(ROOM_AVAILABLE)?.size ?? 0;
+      this.log.log(`broadcast incoming-job ${bookingId} -> socket=${onlineCount}`);
+
+      // ── 2. FCM: fire-and-forget, tidak block socket ─────────────────────────
+      void this.sendCleanerFcmBatch(bookingId, job).catch((e) => this.log.error(`sendCleanerFcmBatch error: ${e?.message}`));
+    } catch (e: any) {
+      this.log.error(`broadcastIncomingJob UNCAUGHT error bookingId=${bookingId}: ${e?.message}\n${e?.stack}`);
+      throw e;
     }
-
-    if (!job) {
-      const rows = await this.prisma.$queryRaw<BroadcastJobData[]>`
-        SELECT b.id,
-               b.pricing_mode AS "pricingMode",
-               b.address_line AS "addressLine",
-               b.form_snapshot->>'cityName' AS "cityName",
-               b.scheduled_at AS "scheduledAt",
-               b.created_at AS "createdAt",
-               b.total_amount AS "totalAmount",
-               b.cleaner_payout AS "cleanerPayout",
-               COALESCE(s.name, pp.name, NULLIF(b.form_snapshot->>'packageName', ''), NULLIF(b.form_snapshot->>'categoryName', ''), 'Layanan') AS "serviceName",
-               s.icon_url AS "serviceIconUrl",
-               pp.name AS "packageName",
-               ht.name AS "hourlyTierName",
-               b.hours_booked AS "hours",
-               b.customer_notes AS "customerNotes",
-               b.form_snapshot AS "formSnapshot"
-          FROM bookings b
-          LEFT JOIN services s ON s.id = b.service_id
-          LEFT JOIN pricing_packages pp ON pp.id = b.package_id
-          LEFT JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
-         WHERE b.id = ${bookingId}::uuid
-           AND b.status = 'searching'
-           AND b.cleaner_id IS NULL
-         LIMIT 1
-      `;
-      this.log.log(`broadcastIncomingJob DB query result rows=${rows.length} bookingId=${bookingId}`);
-      if (!rows[0]) return;
-      job = rows[0];
-    }
-
-    // Estimasi cleaner_payout dari cache — tidak perlu hit DB setiap broadcast
-    if (!job.cleanerPayout || Number(job.cleanerPayout) <= 0) {
-      const tiers = await this.getCommissionTiers();
-      const total = Number(job.totalAmount ?? 0);
-      const tier = tiers.find((t) => total >= Number(t.range_min ?? 0) && (t.range_max == null || total <= Number(t.range_max)));
-      const pct = Number(tier?.cleaner_share_no_tools ?? 40);
-      job.cleanerPayout = Math.round(total * pct / 100);
-    }
-
-    const { totalAmount: _hidden, ...jobForCleaner } = job;
-
-    // ── 1. SOCKET: emit langsung, tidak tunggu apa-apa ──────────────────────
-    this.server.to(ROOM_AVAILABLE).emit('incoming-job', jobForCleaner);
-    const onlineCount = this.server.sockets.adapter.rooms.get(ROOM_AVAILABLE)?.size ?? 0;
-    this.log.log(`broadcast incoming-job ${bookingId} -> socket=${onlineCount}`);
-
-    // ── 2. FCM: fire-and-forget, tidak block socket ─────────────────────────
-    void this.sendCleanerFcmBatch(bookingId, job).catch(() => {});
   }
 
   private async sendCleanerFcmBatch(
