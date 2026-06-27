@@ -324,8 +324,9 @@ export class AdminBookingsController {
       ipAddress: req.ip ?? null,
     });
 
-    // Notif kedua belah pihak
+    // WebSocket real-time update + FCM push ke kedua belah pihak
     if (parties?.customer_id) {
+      this.jobs.emitBookingStatus(parties.customer_id, { bookingId: id, status: 'canceled' });
       void this.push.send({
         userId: parties.customer_id, channel: 'booking',
         title: 'Pesanan dibatalkan admin',
@@ -334,6 +335,7 @@ export class AdminBookingsController {
       }).catch(() => {});
     }
     if (parties?.cleaner_id) {
+      this.jobs.emitBookingStatus(parties.cleaner_id, { bookingId: id, status: 'canceled' });
       void this.push.send({
         userId: parties.cleaner_id, channel: 'booking',
         title: 'Job dibatalkan admin',
@@ -389,20 +391,24 @@ export class AdminBookingsController {
     // customer yg di-refer. Logic + idempotency di ReferralPayoutService.
     await this.referralPayout.payoutForCompletedBooking(id);
 
-    // Push notif (fire-and-forget)
+    // WebSocket real-time update + FCM push
     if (booking?.customer_id) {
+      this.jobs.emitBookingStatus(booking.customer_id, { bookingId: id, status: 'completed' });
       void this.push.send({
         userId: booking.customer_id, channel: 'booking',
         title: 'Pesanan selesai', body: 'Yuk beri rating untuk cleaner kamu!',
         data: { type: 'booking_completed', bookingId: id },
       }).catch(() => {});
     }
-    if (booking?.cleaner_id && (booking.cleaner_payout ?? 0) > 0) {
-      void this.push.send({
-        userId: booking.cleaner_id, channel: 'wallet',
-        title: 'Saldo bertambah', body: `Pendapatan Rp ${Number(booking.cleaner_payout).toLocaleString('id-ID')} masuk wallet kamu.`,
-        data: { type: 'wallet_credit', bookingId: id },
-      }).catch(() => {});
+    if (booking?.cleaner_id) {
+      this.jobs.emitBookingStatus(booking.cleaner_id, { bookingId: id, status: 'completed' });
+      if ((booking.cleaner_payout ?? 0) > 0) {
+        void this.push.send({
+          userId: booking.cleaner_id, channel: 'wallet',
+          title: 'Saldo bertambah', body: `Pendapatan Rp ${Number(booking.cleaner_payout).toLocaleString('id-ID')} masuk wallet kamu.`,
+          data: { type: 'wallet_credit', bookingId: id },
+        }).catch(() => {});
+      }
     }
 
     await this.audit.log({
@@ -471,6 +477,7 @@ export class AdminBookingsController {
     ]);
 
     if (booking.customer_id) {
+      this.jobs.emitBookingStatus(booking.customer_id, { bookingId: id, status: nextStatus });
       void this.push.send({
         userId: booking.customer_id, channel: 'booking',
         title: 'Pembayaran dikonfirmasi',
