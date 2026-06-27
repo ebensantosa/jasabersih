@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BellRing, MapPin, Search, Users } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
 import { Animated, Easing, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_MESSAGES: { min: number; text: string }[] = [
   { min: 0, text: 'Mencari cleaner terdekat dari lokasi kamu.' },
@@ -98,11 +98,8 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             : [1, 0.45, 0.35, 1],
     });
 
-  // In full-screen mode (footerCta present), apply safe area insets manually
-  // so the button is never hidden behind the system navigation bar.
-  // In embedded mode (inside a ScrollView), no insets needed.
   const topPad = footerCta ? insets.top + 16 : 16;
-  const botPad = footerCta ? Math.max(insets.bottom + 80, 160) : 0;
+  const botPad = footerCta ? 16 : 0;
 
   return (
     <LinearGradient
@@ -220,9 +217,9 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
                 : `Sisa ${minLeft}:${String(secLeft).padStart(2, '0')} sebelum CS mengambil alih`}
             </Text>
 
-            {/* Footer CTA - inline (bukan absolute overlay) supaya layout di atasnya kompensasi space */}
+            {/* Footer CTA - SafeAreaView edges bottom agar tidak tertutup nav bar di semua device */}
             {footerCta && (
-              <View style={{ marginTop: 18 }}>
+              <SafeAreaView edges={['bottom']} style={{ marginTop: 18 }}>
                 <Pressable
                   onPress={footerCta.onPress}
                   style={{
@@ -243,7 +240,7 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
                     {footerCta.helper}
                   </Text>
                 )}
-              </View>
+              </SafeAreaView>
             )}
           </View>
         </View>
