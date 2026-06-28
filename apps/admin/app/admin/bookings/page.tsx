@@ -723,6 +723,55 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             </div>
           </div>
 
+          {/* Detail Layanan */}
+          {(() => {
+            const b = data.booking as any;
+            const snap = b?.form_snapshot ?? {};
+            const mode = b?.pricing_mode;
+            const serviceName = b?.service_name ?? snap?.categoryName ?? snap?.packageName ?? null;
+            const baseAmount = Number(b?.base_amount ?? b?.total_amount ?? 0);
+            const totalAmount = Number(b?.total_amount ?? 0);
+            const travelFee = Math.max(totalAmount - baseAmount, 0);
+            const rows: { label: string; value: string }[] = [];
+            if (mode) rows.push({ label: 'Mode', value: mode === 'package' ? 'Paket Tetap' : mode === 'hourly' ? 'Per Jam' : 'Konsultasi WA' });
+            if (serviceName) rows.push({ label: 'Layanan', value: serviceName });
+            if (snap?.bedrooms != null) rows.push({ label: 'Kamar Tidur', value: `${snap.bedrooms} kamar` });
+            if (snap?.bathrooms != null) rows.push({ label: 'Kamar Mandi', value: `${snap.bathrooms} kamar` });
+            if (snap?.areaM2) rows.push({ label: 'Luas', value: `${snap.areaM2} m²` });
+            if (snap?.dirtLevel) rows.push({ label: 'Tingkat Kotor', value: `${snap.dirtLevel}/5` });
+            if (snap?.hours || b?.hours_booked) rows.push({ label: 'Durasi', value: `${snap?.hours ?? b?.hours_booked} jam` });
+            if (b?.customer_notes) rows.push({ label: 'Catatan', value: b.customer_notes });
+            return (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 text-sm font-bold text-slate-800">Detail Layanan</div>
+                <div className="space-y-1">
+                  {rows.map((r) => (
+                    <div key={r.label} className="flex gap-2 text-xs">
+                      <span className="w-28 shrink-0 text-slate-500">{r.label}</span>
+                      <span className="text-slate-800">{r.value}</span>
+                    </div>
+                  ))}
+                  <div className="mt-2 border-t border-slate-200 pt-2 space-y-1">
+                    <div className="flex gap-2 text-xs">
+                      <span className="w-28 shrink-0 text-slate-500">Harga dasar</span>
+                      <span className="text-slate-800">Rp {baseAmount.toLocaleString('id-ID')}</span>
+                    </div>
+                    {travelFee > 0 && (
+                      <div className="flex gap-2 text-xs">
+                        <span className="w-28 shrink-0 text-slate-500">Biaya perjalanan</span>
+                        <span className="text-slate-800">+ Rp {travelFee.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2 text-xs font-semibold">
+                      <span className="w-28 shrink-0 text-slate-700">Total customer</span>
+                      <span className="text-slate-900">Rp {totalAmount.toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {(() => {
             const total = Number((data.booking as any)?.total_amount ?? 0);
             const payout = Number((data.booking as any)?.cleaner_payout ?? 0);
