@@ -1139,19 +1139,20 @@ export class CleanerJobsController {
     const total = Number(b.total_amount);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`
+      // Rowcount=0 berarti booking sudah di-cancel (concurrent request / retry) → skip wallet insert.
+      const updateCount = await tx.$executeRaw`
         UPDATE bookings
            SET status = 'canceled',
                canceled_at = NOW(),
                no_show_at = NOW(),
                cancellation_fee = ${total}::bigint,
                cancellation_reason = 'no_show'
-         WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid
+         WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid AND status != 'canceled'
       `;
 
       // Cleaner dapat full payout sebagai kompensasi waktu (kalau ada paid_at, deduct platform fee).
-      if (b.paid_at && total > 0) {
-        // Pakai cleaner_payout kalau sudah ke-hitung, fallback ke 60% kalau gak ada.
+      // Guard: hanya insert kalau UPDATE di atas berhasil (idempotency tanpa dedup table).
+      if ((updateCount === 1n || updateCount === 1) && b.paid_at && total > 0) {
         const payoutRow = await tx.$queryRaw<{ cleaner_payout: number | null }[]>`
           SELECT cleaner_payout FROM bookings WHERE id = ${id}::uuid LIMIT 1
         `;

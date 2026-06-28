@@ -973,7 +973,7 @@ export class BookingsController {
       if (refundAmount > 0) {
         await this.prisma.$executeRaw`
           INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-          VALUES (${user.id}::uuid, 'refund', ${refundAmount}::bigint, 'booking_cancel', ${id}::uuid,
+          VALUES (${user.id}::uuid, 'refund_credit', ${refundAmount}::bigint, 'booking_cancel', ${id}::uuid,
                   'CLEARED', NOW(), ${`Refund pembatalan (${hoursToSchedule >= freeWindowH ? '100%' : `${100 - latePct}%`})`})
         `;
       }

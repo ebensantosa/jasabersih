@@ -87,40 +87,48 @@ export class RatingsController {
        WHERE user_id = ${b.cleaner_id}::uuid
     `;
 
-    // Tip → credit cleaner ledger if > 0.
-    // Dedup via tip_dedup table (shared dengan /bookings/:id/tip path) agar tidak double-credit
-    // kalau customer submit tip via dua jalur (payment tip + rating tip).
+    // Tip → debit customer wallet + credit cleaner ledger.
+    // Dedup via tip_dedup (shared dengan /bookings/:id/tip) agar tidak double-credit.
     if (body.tipAmount > 0) {
-      await this.prisma.$transaction(async (tx) => {
-        // Coba insert ke tip_dedup; ON CONFLICT berarti tip sudah pernah dikreditkan.
-        await tx.$executeRaw`
-          INSERT INTO tip_dedup (customer_id, booking_id)
-          VALUES (${user.id}::uuid, ${body.bookingId}::uuid)
-          ON CONFLICT DO NOTHING
-        `;
-        const tipDedup = await tx.$queryRaw<{ count: number }[]>`
-          SELECT COUNT(*)::int AS count FROM tip_dedup
-           WHERE customer_id = ${user.id}::uuid AND booking_id = ${body.bookingId}::uuid
-        `;
-        // Kalau count = 0 berarti INSERT tidak insert (conflict) → tip sudah ada, skip.
-        // Kalau count = 1 berarti baru kita yang insert → lanjut credit wallet.
-        if (Number(tipDedup[0]?.count ?? 0) > 0) {
-          // Verifikasi ini INSERT baru kita (bukan existing sebelum transaksi ini).
-          // Pakai advisory: cukup cek apakah ada ledger tip untuk booking ini sudah CLEARED.
-          const alreadyCredited = await tx.$queryRaw<{ c: number }[]>`
-            SELECT COUNT(*)::int AS c FROM wallet_ledger_entries
-             WHERE reference_type = 'tip' AND reference_id = ${body.bookingId}::uuid
-               AND account_type = 'earnings'
+      // Cek saldo customer dulu sebelum transaksi.
+      const balRows = await this.prisma.$queryRaw<{ bal: number }[]>`
+        SELECT (COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup','earnings') AND status='CLEARED' THEN amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0))::bigint AS bal
+          FROM wallet_ledger_entries WHERE user_id = ${user.id}::uuid
+      `;
+      const balance = Number(balRows[0]?.bal ?? 0);
+      if (balance < body.tipAmount) {
+        throw new BadRequestException({
+          code: 'INSUFFICIENT_BALANCE',
+          message: `Saldo wallet Rp ${balance.toLocaleString('id-ID')} tidak cukup untuk tip Rp ${body.tipAmount.toLocaleString('id-ID')}. Top-up wallet dulu.`,
+        });
+      }
+
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          // tip_dedup: ON CONFLICT pada tabel non-partitioned ini bekerja dengan benar.
+          await tx.$executeRaw`
+            INSERT INTO tip_dedup (customer_id, booking_id, amount)
+            VALUES (${user.id}::uuid, ${body.bookingId}::uuid, ${body.tipAmount}::bigint)
           `;
-          if (Number(alreadyCredited[0]?.c ?? 0) === 0) {
-            await tx.$executeRaw`
-              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-              VALUES (${b.cleaner_id}::uuid, 'earnings', ${body.tipAmount}::bigint, 'tip', ${body.bookingId}::uuid,
-                      'CLEARED', NOW(), 'Tip dari customer')
-            `;
-          }
-        }
-      });
+          // Debit customer.
+          await tx.$executeRaw`
+            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+            VALUES (${user.id}::uuid, 'credit_use', ${body.tipAmount}::bigint, 'tip', ${body.bookingId}::uuid,
+                    'CLEARED', NOW(), ${`Tip cleaner (booking ${body.bookingId.slice(0, 8)})`})
+          `;
+          // Credit cleaner.
+          await tx.$executeRaw`
+            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+            VALUES (${b.cleaner_id}::uuid, 'earnings', ${body.tipAmount}::bigint, 'tip', ${body.bookingId}::uuid,
+                    'CLEARED', NOW(), 'Tip dari customer')
+          `;
+        });
+      } catch (e: any) {
+        // Unique violation di tip_dedup = tip sudah pernah diberikan via jalur lain.
+        if (e?.code === 'P2002' || e?.message?.includes('tip_dedup')) return { ok: true };
+        throw e;
+      }
     }
 
     // Notify cleaner
