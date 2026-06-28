@@ -58,7 +58,7 @@ export class ReferralPayoutService {
         VALUES (${bookingId}::uuid)
         ON CONFLICT DO NOTHING
       `;
-      if (dedupCount === 0n || dedupCount === 0) return;
+      if (dedupCount === 0) return;
 
       const commission = Math.round(totalAmount * pct / 100);
       if (commission <= 0) return;

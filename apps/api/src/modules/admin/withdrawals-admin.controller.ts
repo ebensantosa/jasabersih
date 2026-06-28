@@ -100,7 +100,7 @@ export class AdminWithdrawalsController {
        WHERE id = ${id}::uuid
          AND review_status = 'pending'
     `;
-    if (approveCount === 0n || approveCount === 0) {
+    if (approveCount === 0) {
       throw new BadRequestException('Withdrawal sudah diproses (bukan pending). Tidak bisa di-approve.');
     }
     // Mark ledger debit CLEARED (saldo benar-benar berkurang)
@@ -260,7 +260,7 @@ export class AdminWithdrawalsController {
        WHERE id = ${id}::uuid
          AND review_status = 'pending'
     `;
-    if (rejectCount === 0n || rejectCount === 0) {
+    if (rejectCount === 0) {
       throw new BadRequestException('Withdrawal sudah diproses (bukan pending). Tidak bisa ditolak.');
     }
     // Mark original debit CANCELLED (status transition allowed by trigger)

@@ -415,7 +415,7 @@ export class AdminBookingsController {
         VALUES (${id}::uuid, ${booking.cleaner_id}::uuid)
         ON CONFLICT DO NOTHING
       `;
-      earningAlreadyCredited = dedupCount === 0n || dedupCount === 0;
+      earningAlreadyCredited = dedupCount === 0;
     }
 
     await this.prisma.$transaction([

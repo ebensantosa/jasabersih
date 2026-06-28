@@ -43,7 +43,7 @@ export class AutoCompleteService {
             VALUES (${b.id}::uuid, ${b.cleaner_id}::uuid)
             ON CONFLICT DO NOTHING
           `;
-          hourlyEarningAlreadyCredited = dedupCount === 0n || dedupCount === 0;
+          hourlyEarningAlreadyCredited = dedupCount === 0;
         }
         await this.prisma.$transaction([
           this.prisma.$executeRaw`
@@ -141,7 +141,7 @@ export class AutoCompleteService {
             VALUES (${b.id}::uuid, ${b.cleaner_id}::uuid)
             ON CONFLICT DO NOTHING
           `;
-          staleEarningAlreadyCredited = dedupCount === 0n || dedupCount === 0;
+          staleEarningAlreadyCredited = dedupCount === 0;
         }
         await this.prisma.$transaction([
           this.prisma.$executeRaw`

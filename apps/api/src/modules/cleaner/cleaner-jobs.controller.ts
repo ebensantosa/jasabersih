@@ -693,7 +693,7 @@ export class CleanerJobsController {
           VALUES (${id}::uuid, ${user.id}::uuid)
           ON CONFLICT DO NOTHING
         `;
-        if (leadDedupCount !== 0n && leadDedupCount !== 0) {
+        if (leadDedupCount !== 0) {
           await this.prisma.$executeRaw`
             INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
             VALUES (${user.id}::uuid, 'earnings', ${perWorker}::bigint, 'booking', ${id}::uuid,
@@ -711,7 +711,7 @@ export class CleanerJobsController {
             VALUES (${id}::uuid, ${h.cleaner_id}::uuid)
             ON CONFLICT DO NOTHING
           `;
-          if (helperDedupCount !== 0n && helperDedupCount !== 0) {
+          if (helperDedupCount !== 0) {
             await this.prisma.$executeRaw`
               INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
               VALUES (${h.cleaner_id}::uuid, 'earnings', ${perWorker}::bigint, 'booking_helper', ${id}::uuid,
@@ -1152,7 +1152,7 @@ export class CleanerJobsController {
 
       // Cleaner dapat full payout sebagai kompensasi waktu (kalau ada paid_at, deduct platform fee).
       // Guard: hanya insert kalau UPDATE di atas berhasil (idempotency tanpa dedup table).
-      if ((updateCount === 1n || updateCount === 1) && b.paid_at && total > 0) {
+      if ((updateCount === 1) && b.paid_at && total > 0) {
         const payoutRow = await tx.$queryRaw<{ cleaner_payout: number | null }[]>`
           SELECT cleaner_payout FROM bookings WHERE id = ${id}::uuid LIMIT 1
         `;
