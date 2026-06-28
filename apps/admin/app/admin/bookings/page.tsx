@@ -758,7 +758,7 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
                     </div>
                     {travelFee > 0 && (
                       <div className="flex gap-2 text-xs">
-                        <span className="w-28 shrink-0 text-slate-500">Biaya perjalanan</span>
+                        <span className="w-28 shrink-0 text-slate-500">Biaya tambahan</span>
                         <span className="text-slate-800">+ Rp {travelFee.toLocaleString('id-ID')}</span>
                       </div>
                     )}
