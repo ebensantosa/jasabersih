@@ -88,26 +88,27 @@ export class AdminWithdrawalsController {
     if (userRows[0]?.status === 'banned') {
       throw new BadRequestException('User sudah di-ban, withdrawal tidak bisa diproses');
     }
-    await this.prisma.$transaction([
-      this.prisma.$executeRaw`
-        UPDATE withdrawals
-           SET review_status = 'approved',
-               status = 'paid',
-               reviewed_by = ${admin.id}::uuid,
-               reviewed_at = NOW(),
-               completed_at = NOW(),
-               bank_transfer_ref = ${body.bankTransferRef},
-               review_note = ${body.note ?? null}
-         WHERE id = ${id}::uuid
-           AND review_status = 'pending'
-      `,
-      // Mark ledger debit CLEARED (saldo benar-benar berkurang)
-      this.prisma.$executeRaw`
-        UPDATE wallet_ledger_entries
-           SET status = 'CLEARED', cleared_at = NOW()
-         WHERE reference_type = 'withdrawal' AND reference_id = ${id}::uuid AND status = 'PENDING'
-      `,
-    ]);
+    const approveCount = await this.prisma.$executeRaw`
+      UPDATE withdrawals
+         SET review_status = 'approved',
+             status = 'paid',
+             reviewed_by = ${admin.id}::uuid,
+             reviewed_at = NOW(),
+             completed_at = NOW(),
+             bank_transfer_ref = ${body.bankTransferRef},
+             review_note = ${body.note ?? null}
+       WHERE id = ${id}::uuid
+         AND review_status = 'pending'
+    `;
+    if (approveCount === 0n || approveCount === 0) {
+      throw new BadRequestException('Withdrawal sudah diproses (bukan pending). Tidak bisa di-approve.');
+    }
+    // Mark ledger debit CLEARED (saldo benar-benar berkurang)
+    await this.prisma.$executeRaw`
+      UPDATE wallet_ledger_entries
+         SET status = 'CLEARED', cleared_at = NOW()
+       WHERE reference_type = 'withdrawal' AND reference_id = ${id}::uuid AND status = 'PENDING'
+    `;
     await this.audit.log({
       adminId: admin.id,
       action: 'withdrawal.approve',
@@ -248,24 +249,26 @@ export class AdminWithdrawalsController {
     }
     // Refund: reverse the PENDING ledger debit dgn entry positif baru
     // (ledger immutable — bikin entry reversal, bukan delete/update)
-    await this.prisma.$transaction([
-      this.prisma.$executeRaw`
-        UPDATE withdrawals
-           SET review_status = 'rejected',
-               status = 'rejected',
-               reviewed_by = ${admin.id}::uuid,
-               reviewed_at = NOW(),
-               review_note = ${body.reason},
-               failure_reason = ${body.reason}
-         WHERE id = ${id}::uuid
-      `,
-      // Mark original debit CANCELLED (status transition allowed by trigger)
-      this.prisma.$executeRaw`
-        UPDATE wallet_ledger_entries
-           SET status = 'CANCELLED', cleared_at = NOW()
-         WHERE reference_type = 'withdrawal' AND reference_id = ${id}::uuid AND status = 'PENDING'
-      `,
-    ]);
+    const rejectCount = await this.prisma.$executeRaw`
+      UPDATE withdrawals
+         SET review_status = 'rejected',
+             status = 'rejected',
+             reviewed_by = ${admin.id}::uuid,
+             reviewed_at = NOW(),
+             review_note = ${body.reason},
+             failure_reason = ${body.reason}
+       WHERE id = ${id}::uuid
+         AND review_status = 'pending'
+    `;
+    if (rejectCount === 0n || rejectCount === 0) {
+      throw new BadRequestException('Withdrawal sudah diproses (bukan pending). Tidak bisa ditolak.');
+    }
+    // Mark original debit CANCELLED (status transition allowed by trigger)
+    await this.prisma.$executeRaw`
+      UPDATE wallet_ledger_entries
+         SET status = 'CANCELLED', cleared_at = NOW()
+       WHERE reference_type = 'withdrawal' AND reference_id = ${id}::uuid AND status = 'PENDING'
+    `;
     await this.audit.log({
       adminId: admin.id,
       action: 'withdrawal.reject',

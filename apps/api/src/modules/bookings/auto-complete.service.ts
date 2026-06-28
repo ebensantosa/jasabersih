@@ -36,6 +36,15 @@ export class AutoCompleteService {
 
     for (const b of expired) {
       try {
+        let hourlyEarningAlreadyCredited = true;
+        if (b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0) {
+          const dedupCount = await this.prisma.$executeRaw`
+            INSERT INTO booking_earning_dedup (booking_id, user_id)
+            VALUES (${b.id}::uuid, ${b.cleaner_id}::uuid)
+            ON CONFLICT DO NOTHING
+          `;
+          hourlyEarningAlreadyCredited = dedupCount === 0n || dedupCount === 0;
+        }
         await this.prisma.$transaction([
           this.prisma.$executeRaw`
             UPDATE bookings
@@ -43,11 +52,10 @@ export class AutoCompleteService {
                    admin_notes = COALESCE(admin_notes, '') || E'\n[auto] hourly timer expired'
              WHERE id = ${b.id}::uuid AND status = 'in_progress'
           `,
-          ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 ? [
+          ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 && !hourlyEarningAlreadyCredited ? [
             this.prisma.$executeRaw`
               INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
               VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'PENDING', NULL, 'Earning auto-complete hourly — escrow 24 jam')
-              ON CONFLICT DO NOTHING
             `,
           ] : []),
         ]);
@@ -126,6 +134,15 @@ export class AutoCompleteService {
           }
         }
 
+        let staleEarningAlreadyCredited = true;
+        if (b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0) {
+          const dedupCount = await this.prisma.$executeRaw`
+            INSERT INTO booking_earning_dedup (booking_id, user_id)
+            VALUES (${b.id}::uuid, ${b.cleaner_id}::uuid)
+            ON CONFLICT DO NOTHING
+          `;
+          staleEarningAlreadyCredited = dedupCount === 0n || dedupCount === 0;
+        }
         await this.prisma.$transaction([
           this.prisma.$executeRaw`
             UPDATE bookings
@@ -134,11 +151,10 @@ export class AutoCompleteService {
                    admin_notes = COALESCE(admin_notes, '') || E'\n[auto] in_progress > ${STALE_HOURS}h, force-complete'
              WHERE id = ${b.id}::uuid AND status = 'in_progress'
           `,
-          ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 ? [
+          ...(b.cleaner_id && Number(b.cleaner_payout ?? 0) > 0 && !staleEarningAlreadyCredited ? [
             this.prisma.$executeRaw`
               INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
               VALUES (${b.cleaner_id}::uuid, 'earnings', ${b.cleaner_payout}::bigint, 'booking', ${b.id}::uuid, 'PENDING', NULL, 'Earning auto-complete — escrow 24 jam')
-              ON CONFLICT DO NOTHING
             `,
           ] : []),
         ]);

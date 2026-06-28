@@ -687,24 +687,37 @@ export class CleanerJobsController {
         const perWorker = Math.floor(Number(booking.cleaner_payout) / totalWorkers);
 
         // Lead (caller).
-        await this.prisma.$executeRaw`
-          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-          VALUES (${user.id}::uuid, 'earnings', ${perWorker}::bigint, 'booking', ${id}::uuid,
-                  'PENDING', NULL, ${`Earning job (lead, 1/${totalWorkers}) — escrow 24 jam`})
+        // Lead — dedup guard replaces ON CONFLICT DO NOTHING (no-op on partitioned table)
+        const leadDedupCount = await this.prisma.$executeRaw`
+          INSERT INTO booking_earning_dedup (booking_id, user_id)
+          VALUES (${id}::uuid, ${user.id}::uuid)
           ON CONFLICT DO NOTHING
         `;
+        if (leadDedupCount !== 0n && leadDedupCount !== 0) {
+          await this.prisma.$executeRaw`
+            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+            VALUES (${user.id}::uuid, 'earnings', ${perWorker}::bigint, 'booking', ${id}::uuid,
+                    'PENDING', NULL, ${`Earning job (lead, 1/${totalWorkers}) — escrow 24 jam`})
+          `;
+        }
         await this.prisma.$executeRaw`
           UPDATE cleaner_profiles SET total_jobs_done = total_jobs_done + 1 WHERE user_id = ${user.id}::uuid
         `;
 
         // Helpers.
         for (const h of helpers) {
-          await this.prisma.$executeRaw`
-            INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-            VALUES (${h.cleaner_id}::uuid, 'earnings', ${perWorker}::bigint, 'booking_helper', ${id}::uuid,
-                    'PENDING', NULL, ${`Earning job (helper, 1/${totalWorkers}) — escrow 24 jam`})
+          const helperDedupCount = await this.prisma.$executeRaw`
+            INSERT INTO booking_earning_dedup (booking_id, user_id)
+            VALUES (${id}::uuid, ${h.cleaner_id}::uuid)
             ON CONFLICT DO NOTHING
           `;
+          if (helperDedupCount !== 0n && helperDedupCount !== 0) {
+            await this.prisma.$executeRaw`
+              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+              VALUES (${h.cleaner_id}::uuid, 'earnings', ${perWorker}::bigint, 'booking_helper', ${id}::uuid,
+                      'PENDING', NULL, ${`Earning job (helper, 1/${totalWorkers}) — escrow 24 jam`})
+            `;
+          }
           await this.prisma.$executeRaw`
             UPDATE cleaner_profiles SET total_jobs_done = total_jobs_done + 1 WHERE user_id = ${h.cleaner_id}::uuid
           `;

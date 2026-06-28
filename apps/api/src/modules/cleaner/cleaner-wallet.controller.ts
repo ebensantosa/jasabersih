@@ -269,7 +269,9 @@ export class CleanerWalletController {
     }
 
     // KYC + saldo (di dalam tx supaya consistent)
-    const txResult = await this.prisma.$transaction(async (tx) => {
+    let txResult: { id: string; transferAmount: number; flipFee: number };
+    try {
+      txResult = await this.prisma.$transaction(async (tx) => {
       const profile = await tx.$queryRaw<{ kyc_status: string | null }[]>`SELECT kyc_status FROM cleaner_profiles WHERE user_id = ${user.id}::uuid LIMIT 1`;
       if (profile[0]?.kyc_status !== 'approved') {
         throw new ForbiddenException('KYC belum disetujui. Selesaikan verifikasi dulu.');
@@ -374,7 +376,13 @@ export class CleanerWalletController {
         )
       `;
       return { id, transferAmount, flipFee };
-    });
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002' || (e?.message && e.message.includes('uniq_one_pending_withdrawal_per_user'))) {
+        throw new BadRequestException('Permintaan tarik dana duplikat. Kamu sudah punya penarikan yang sedang diproses.');
+      }
+      throw e;
+    }
     const wid = txResult.id;
     const transferAmount = txResult.transferAmount;
     const flipFee = txResult.flipFee;

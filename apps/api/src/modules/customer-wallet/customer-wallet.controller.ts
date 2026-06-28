@@ -217,7 +217,9 @@ export class CustomerWalletController {
       }
     }
 
-    const txResult = await this.prisma.$transaction(async (tx) => {
+    let txResult: { id: string; bankCode: string; accountNumber: string; accountHolderName: string; flipFee: number; transferAmount: number; idempotencyKey: string };
+    try {
+      txResult = await this.prisma.$transaction(async (tx) => {
       const bal = await tx.$queryRaw<{ credit_in: number | null; credit_out: number | null }[]>`
         SELECT
           COALESCE(SUM(CASE WHEN account_type IN ('refund_credit', 'topup', 'earnings') AND status = 'CLEARED' THEN amount ELSE 0 END), 0) AS credit_in,
@@ -297,7 +299,13 @@ export class CustomerWalletController {
         transferAmount,
         idempotencyKey: idempKey,
       };
-    });
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002' || (e?.message && e.message.includes('uniq_one_pending_withdrawal_per_user'))) {
+        throw new BadRequestException('Permintaan tarik dana duplikat. Penarikan sebelumnya masih diproses.');
+      }
+      throw e;
+    }
 
     try {
       const result = await this.flip.createDisbursement({

@@ -50,14 +50,15 @@ export class ReferralPayoutService {
       const minOrder = Number(cfgRows.find((c) => c.key === 'referral.min_order_amount')?.value ?? 0);
       if (totalAmount < minOrder) return;
 
-      // Idempotency: skip kalau udh pernah commission utk booking ini.
-      const exists = await this.prisma.$queryRaw<{ c: number }[]>`
-        SELECT COUNT(*)::int AS c FROM wallet_ledger_entries
-         WHERE user_id = ${ref.referrer_id}::uuid
-           AND reference_type = 'referral'
-           AND reference_id = ${bookingId}::uuid
+      // Race-safe idempotency: INSERT into dedup table first; if row already exists
+      // (concurrent call won the race), rowcount=0 → skip. Avoids SELECT-then-INSERT
+      // TOCTOU race on partitioned wallet_ledger_entries.
+      const dedupCount = await this.prisma.$executeRaw`
+        INSERT INTO referral_payout_dedup (booking_id)
+        VALUES (${bookingId}::uuid)
+        ON CONFLICT DO NOTHING
       `;
-      if (Number(exists[0]?.c ?? 0) > 0) return;
+      if (dedupCount === 0n || dedupCount === 0) return;
 
       const commission = Math.round(totalAmount * pct / 100);
       if (commission <= 0) return;

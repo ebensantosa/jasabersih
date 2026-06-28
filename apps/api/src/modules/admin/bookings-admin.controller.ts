@@ -386,13 +386,37 @@ export class AdminBookingsController {
       throw new BadRequestException('Alasan wajib.');
     }
     // Get booking info untuk auto-credit cleaner
-    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string | null; cleaner_payout: number | null; total_amount: number; status: string }[]>`
-      SELECT cleaner_id, customer_id, cleaner_payout, total_amount, status FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    const bookings = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string | null; cleaner_payout: number | null; total_amount: number; base_amount: number | null; status: string }[]>`
+      SELECT cleaner_id, customer_id, cleaner_payout, total_amount, base_amount, status FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
     if (bookings[0]?.status === 'completed') {
       throw new BadRequestException('Booking sudah selesai');
     }
     const booking = bookings[0];
+
+    // Bug E fix: if cleaner exists but payout is null/0, compute fallback using base_amount * 0.6
+    if (booking?.cleaner_id && (!booking.cleaner_payout || Number(booking.cleaner_payout) <= 0)) {
+      const base = Number(booking.base_amount ?? booking.total_amount ?? 0);
+      if (base > 0) {
+        const fallbackPayout = Math.round(base * 0.6);
+        await this.prisma.$executeRaw`
+          UPDATE bookings SET cleaner_payout = ${fallbackPayout}::bigint WHERE id = ${id}::uuid
+        `;
+        booking.cleaner_payout = fallbackPayout;
+      }
+    }
+
+    // Dedup guard: wallet_ledger_entries is partitioned so ON CONFLICT DO NOTHING
+    // is a no-op. Use booking_earning_dedup table instead.
+    let earningAlreadyCredited = true;
+    if (booking?.cleaner_id && (booking.cleaner_payout ?? 0) > 0) {
+      const dedupCount = await this.prisma.$executeRaw`
+        INSERT INTO booking_earning_dedup (booking_id, user_id)
+        VALUES (${id}::uuid, ${booking.cleaner_id}::uuid)
+        ON CONFLICT DO NOTHING
+      `;
+      earningAlreadyCredited = dedupCount === 0n || dedupCount === 0;
+    }
 
     await this.prisma.$transaction([
       this.prisma.$executeRaw`
@@ -402,7 +426,7 @@ export class AdminBookingsController {
          WHERE id = ${id}::uuid
       `,
       // Auto-credit cleaner ledger (cleaner_payout amount; CLEARED langsung)
-      ...(booking?.cleaner_id && (booking.cleaner_payout ?? 0) > 0 ? [
+      ...(booking?.cleaner_id && (booking.cleaner_payout ?? 0) > 0 && !earningAlreadyCredited ? [
         this.prisma.$executeRaw`
           INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
           VALUES (
@@ -410,7 +434,6 @@ export class AdminBookingsController {
             'booking', ${id}::uuid, 'CLEARED', NOW(),
             'Pembayaran job completed'
           )
-          ON CONFLICT DO NOTHING
         `,
       ] : []),
     ]);
