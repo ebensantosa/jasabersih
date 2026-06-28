@@ -775,69 +775,81 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
           {(() => {
             const total = Number((data.booking as any)?.total_amount ?? 0);
             const payout = Number((data.booking as any)?.cleaner_payout ?? 0);
-            if (total <= 0) return null;
+            const tip = Number((data as any).tipAmount ?? 0);
             const platform = Math.max(total - payout, 0);
             const pct = total > 0 ? (payout / total) * 100 : 0;
+            const approvedChargesTotal = (data.charges ?? [])
+              .filter((c: any) => c.status === 'approved')
+              .reduce((s: number, c: any) => s + Number(c.amount), 0);
+            if (total <= 0 && payout <= 0 && tip <= 0) return null;
             return (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <div className="mb-1.5 text-sm font-bold text-emerald-900">Pembagian Pendapatan</div>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-3">
+                <div className="text-sm font-bold text-emerald-900">Pendapatan Akhir Cleaner</div>
+
+                {/* Total customer */}
+                <div className="text-xs text-slate-600">
+                  Total dibayar customer: <span className="font-semibold">Rp {total.toLocaleString('id-ID')}</span>
+                  {approvedChargesTotal > 0 && (
+                    <span className="text-slate-500"> (termasuk biaya tambahan Rp {approvedChargesTotal.toLocaleString('id-ID')})</span>
+                  )}
+                </div>
+
+                {/* Commission split */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Cleaner terima</div>
+                  <div className="rounded-lg bg-white border border-emerald-200 p-2">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Cleaner ({pct.toFixed(0)}%)</div>
                     <div className="text-base font-bold text-emerald-700">Rp {payout.toLocaleString('id-ID')}</div>
-                    <div className="text-[10px] text-slate-500">{pct.toFixed(1)}% dari total</div>
+                    <div className="text-[10px] text-slate-400">dari job + biaya tambahan</div>
                   </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Platform fee</div>
-                    <div className="text-base font-bold text-slate-700">Rp {platform.toLocaleString('id-ID')}</div>
-                    <div className="text-[10px] text-slate-500">{(100 - pct).toFixed(1)}% dari total</div>
+                  <div className="rounded-lg bg-white border border-slate-200 p-2">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Platform ({(100 - pct).toFixed(0)}%)</div>
+                    <div className="text-base font-bold text-slate-600">Rp {platform.toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-slate-400">dari job + biaya tambahan</div>
                   </div>
                 </div>
+
+                {/* Upcharge detail */}
+                {(data.charges ?? []).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Rincian biaya tambahan cleaner</div>
+                    <table className="w-full text-xs">
+                      <tbody className="divide-y divide-emerald-100">
+                        {data.charges.map((c: any) => (
+                          <tr key={c.id}>
+                            <td className="py-1 pr-2 text-slate-700">{c.reason}</td>
+                            <td className="py-1 pr-2 font-medium whitespace-nowrap">Rp {Number(c.amount).toLocaleString('id-ID')}</td>
+                            <td className="py-1">
+                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${c.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : c.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {c.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Tip */}
+                {tip > 0 && (
+                  <div className="flex items-center justify-between rounded-lg bg-white border border-emerald-200 p-2 text-xs">
+                    <span className="text-slate-600">Tip dari customer <span className="font-medium text-emerald-700">(100% ke cleaner)</span></span>
+                    <span className="font-bold text-emerald-700">+ Rp {tip.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+
+                {/* Total bersih */}
+                <div className="flex items-center justify-between border-t border-emerald-300 pt-2">
+                  <span className="text-sm font-bold text-emerald-900">Total Bersih Cleaner</span>
+                  <span className="text-base font-extrabold text-emerald-700">Rp {(payout + tip).toLocaleString('id-ID')}</span>
+                </div>
+
                 {payout === 0 && (
-                  <div className="mt-1.5 text-[10px] text-amber-700">⚠ Cleaner payout belum di-set (kemungkinan booking belum match cleaner).</div>
+                  <div className="text-[10px] text-amber-700">Cleaner payout belum di-set (booking belum match cleaner).</div>
                 )}
               </div>
             );
           })()}
-
-          {/* Additional Charges & Tips */}
-          {((data.charges?.length ?? 0) > 0 || (data as any).tipAmount > 0) && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
-              <div className="text-sm font-bold text-amber-900">Biaya Tambahan & Tip</div>
-              {data.charges?.length > 0 && (
-                <table className="w-full text-xs">
-                  <thead className="text-left text-[10px] uppercase text-slate-500">
-                    <tr><th className="pb-1 pr-2">Alasan</th><th className="pb-1 pr-2">Nominal</th><th className="pb-1">Status</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-amber-100">
-                    {data.charges.map((c: any) => (
-                      <tr key={c.id}>
-                        <td className="py-1 pr-2">{c.reason}</td>
-                        <td className="py-1 pr-2">Rp {Number(c.amount).toLocaleString('id-ID')}</td>
-                        <td className="py-1">
-                          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${c.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : c.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
-                            {c.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              {(data as any).tipAmount > 0 && (
-                <div className="flex items-center gap-2 text-xs border-t border-amber-200 pt-2">
-                  <span className="text-amber-800 font-semibold">Tip dari customer:</span>
-                  <span className="font-bold text-emerald-700">Rp {Number((data as any).tipAmount).toLocaleString('id-ID')}</span>
-                </div>
-              )}
-              {data.charges?.filter((c: any) => c.status === 'approved').length > 0 && (
-                <div className="flex items-center gap-2 text-xs border-t border-amber-200 pt-2 font-semibold text-amber-900">
-                  <span>Total biaya tambahan (approved):</span>
-                  <span>Rp {data.charges.filter((c: any) => c.status === 'approved').reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString('id-ID')}</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {(() => {
             const conditionUrls: string[] = Array.isArray((data.booking as any)?.form_snapshot?.conditionPhotos)
