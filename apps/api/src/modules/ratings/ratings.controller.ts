@@ -87,13 +87,40 @@ export class RatingsController {
        WHERE user_id = ${b.cleaner_id}::uuid
     `;
 
-    // Tip → credit cleaner ledger if > 0
+    // Tip → credit cleaner ledger if > 0.
+    // Dedup via tip_dedup table (shared dengan /bookings/:id/tip path) agar tidak double-credit
+    // kalau customer submit tip via dua jalur (payment tip + rating tip).
     if (body.tipAmount > 0) {
-      await this.prisma.$executeRaw`
-        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-        VALUES (${b.cleaner_id}::uuid, 'earnings', ${body.tipAmount}::bigint, 'tip', ${body.bookingId}::uuid,
-                'CLEARED', NOW(), 'Tip dari customer')
-      `;
+      await this.prisma.$transaction(async (tx) => {
+        // Coba insert ke tip_dedup; ON CONFLICT berarti tip sudah pernah dikreditkan.
+        await tx.$executeRaw`
+          INSERT INTO tip_dedup (customer_id, booking_id)
+          VALUES (${user.id}::uuid, ${body.bookingId}::uuid)
+          ON CONFLICT DO NOTHING
+        `;
+        const tipDedup = await tx.$queryRaw<{ count: number }[]>`
+          SELECT COUNT(*)::int AS count FROM tip_dedup
+           WHERE customer_id = ${user.id}::uuid AND booking_id = ${body.bookingId}::uuid
+        `;
+        // Kalau count = 0 berarti INSERT tidak insert (conflict) → tip sudah ada, skip.
+        // Kalau count = 1 berarti baru kita yang insert → lanjut credit wallet.
+        if (Number(tipDedup[0]?.count ?? 0) > 0) {
+          // Verifikasi ini INSERT baru kita (bukan existing sebelum transaksi ini).
+          // Pakai advisory: cukup cek apakah ada ledger tip untuk booking ini sudah CLEARED.
+          const alreadyCredited = await tx.$queryRaw<{ c: number }[]>`
+            SELECT COUNT(*)::int AS c FROM wallet_ledger_entries
+             WHERE reference_type = 'tip' AND reference_id = ${body.bookingId}::uuid
+               AND account_type = 'earnings'
+          `;
+          if (Number(alreadyCredited[0]?.c ?? 0) === 0) {
+            await tx.$executeRaw`
+              INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+              VALUES (${b.cleaner_id}::uuid, 'earnings', ${body.tipAmount}::bigint, 'tip', ${body.bookingId}::uuid,
+                      'CLEARED', NOW(), 'Tip dari customer')
+            `;
+          }
+        }
+      });
     }
 
     // Notify cleaner

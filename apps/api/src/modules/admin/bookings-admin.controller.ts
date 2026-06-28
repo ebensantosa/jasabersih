@@ -287,6 +287,19 @@ export class AdminBookingsController {
     if (!bk[0]!.customer_id) throw new BadRequestException('Booking tidak ada customer');
     if (body.amount > Number(bk[0]!.total_amount)) throw new BadRequestException('Refund tidak boleh > total booking');
 
+    // Cegah total refund melebihi nilai pesanan (guard terhadap multiple refund calls).
+    const existingRefunds = await this.prisma.$queryRaw<{ total: number }[]>`
+      SELECT COALESCE(SUM(amount), 0)::bigint AS total
+        FROM wallet_ledger_entries
+       WHERE reference_type = 'booking' AND reference_id = ${id}::uuid
+         AND account_type = 'refund_credit'
+    `;
+    const alreadyRefunded = Number(existingRefunds[0]?.total ?? 0);
+    const bookingTotal = Number(bk[0]?.total_amount ?? 0);
+    if (alreadyRefunded + body.amount > bookingTotal) {
+      throw new BadRequestException(`Total refund (Rp ${(alreadyRefunded + body.amount).toLocaleString('id-ID')}) melebihi nilai pesanan (Rp ${bookingTotal.toLocaleString('id-ID')}).`);
+    }
+
     await this.prisma.$executeRaw`
       INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
       VALUES (${bk[0]!.customer_id}::uuid, 'refund_credit', ${body.amount}, 'booking', ${id}::uuid, 'CLEARED', NOW(), ${body.reason})

@@ -127,6 +127,14 @@ export class AdminDisputesController {
       throw new BadRequestException('payoutAmount wajib untuk refund/debit.');
     }
 
+    // Idempotency guard: cegah double-refund kalau admin klik resolve dua kali.
+    const disputeCheck = await this.prisma.$queryRaw<{ status: string }[]>`
+      SELECT status FROM disputes WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (!disputeCheck[0] || disputeCheck[0].status === 'resolved') {
+      throw new BadRequestException('Dispute sudah resolved.');
+    }
+
     // Get dispute info to know subject
     const drow = await this.prisma.$queryRaw<{ subject_user_id: string | null; booking_id: string | null }[]>`
       SELECT subject_user_id, booking_id FROM disputes WHERE id = ${id}::uuid LIMIT 1

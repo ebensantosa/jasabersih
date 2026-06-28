@@ -871,7 +871,10 @@ export class PaymentsController {
       const platformFee = amount - cleanerShare;
       await tx.$executeRaw`UPDATE booking_upcharges SET status = 'approved', decided_at = NOW(), decided_by_user_id = ${userId}::uuid WHERE id = ${upchargeId}::uuid`;
       await tx.$executeRaw`UPDATE bookings SET total_amount = total_amount + ${amount}, cleaner_payout = COALESCE(cleaner_payout,0) + ${cleanerShare}, platform_fee = COALESCE(platform_fee,0) + ${platformFee} WHERE id = ${bookingId}::uuid`;
-      await tx.$executeRaw`INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description) VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${bookingId}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${amount.toLocaleString('id-ID')}`})`;
+      // Cleaner share sudah masuk ke bookings.cleaner_payout.
+      // Wallet credit cleaner dikreditkan saat booking complete — JANGAN insert di sini
+      // karena forceComplete/auto-complete juga akan insert cleaner_payout (yang sudah
+      // include share ini), sehingga double-credit.
     });
   }
 
