@@ -67,6 +67,7 @@ function JobsScreen() {
 
   const [available, setAvailable] = useState<AvailableJob[]>([]);
   const [active, setActive] = useState<ActiveJob[]>([]);
+  const [todayEarnings, setTodayEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(false);
   const cleanerAreas = useCleanerStore((s) => s.serviceAreas);
@@ -103,12 +104,14 @@ function JobsScreen() {
   async function load() {
     setLoading(true);
     try {
-      const [a, ac] = await Promise.all([
+      const [a, ac, te] = await Promise.all([
         api.get('/cleaner/jobs/available'),
         api.get('/cleaner/jobs/active'),
+        api.get('/cleaner/wallet/today').catch(() => ({ data: { today: 0 } })),
       ]);
       setAvailable(((a.data?.data ?? []) as any[]).map((j: any) => ({ ...j, cleanerPayout: j.cleanerPayout ? Number(j.cleanerPayout) : null })));
       setActive(((ac.data?.data ?? []) as any[]).map((j: any) => ({ ...j })));
+      setTodayEarnings(Number((te.data?.data ?? te.data)?.today ?? 0));
     } catch {
       // silent
     } finally { setLoading(false); }
@@ -290,6 +293,21 @@ function JobsScreen() {
             <View className={`h-6 w-11 rounded-full p-0.5 ${online ? 'bg-success' : 'bg-ink-300'}`}>
               <View className={`h-5 w-5 rounded-full bg-white ${online ? 'self-end' : 'self-start'}`} />
             </View>
+          </Pressable>
+
+          {/* Today's earnings banner */}
+          <Pressable
+            onPress={() => router.push('/cleaner/wallet')}
+            className="mt-3 flex-row items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5"
+          >
+            <View className="h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+              <Wallet color="#047857" size={16} strokeWidth={2.2} />
+            </View>
+            <View className="flex-1">
+              <Text className="font-medium text-[10px] uppercase tracking-wider text-emerald-700">Pendapatan hari ini</Text>
+              <Text className="font-extrabold text-sm text-emerald-900">{formatRupiah(todayEarnings)}</Text>
+            </View>
+            <ChevronRight color="#047857" size={16} strokeWidth={2.4} />
           </Pressable>
 
         </View>

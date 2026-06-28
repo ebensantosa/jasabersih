@@ -8,12 +8,14 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ChevronRight,
   Clock,
   MapPin,
   MessageCircle,
   Pause,
   Play,
   Sparkles,
+  X,
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -162,6 +164,10 @@ function BookingDetail() {
   const [cancelModal, setCancelModal] = useState<{ title: string; body: string; confirmText: string; onConfirm: () => void } | null>(null);
   const [showDispute, setShowDispute] = useState(false);
   const [showRating, setShowRating] = useState(false);
+  const [showProblemSheet, setShowProblemSheet] = useState(false);
+  const [showRecleanForm, setShowRecleanForm] = useState(false);
+  const [recleanReason, setRecleanReason] = useState('');
+  const [recleanSubmitting, setRecleanSubmitting] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [bookingRating, setBookingRating] = useState<BookingRating>(null);
   const [advancing, setAdvancing] = useState(false);
@@ -279,6 +285,23 @@ function BookingDetail() {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal reject');
     }
   }
+  async function submitReclean() {
+    if (recleanReason.trim().length < 10) { toast.error('Alasan min 10 karakter.'); return; }
+    setRecleanSubmitting(true);
+    try {
+      await api.post(`/bookings/${id}/request-reclean`, { reason: recleanReason.trim() });
+      toast.success('Permintaan re-clean terkirim. Cleaner akan dikonfirmasi ulang.');
+      setShowRecleanForm(false);
+      setShowProblemSheet(false);
+      setRecleanReason('');
+      void fetchOne(id!);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal kirim permintaan');
+    } finally {
+      setRecleanSubmitting(false);
+    }
+  }
+
   const t = useT();
 
   function confirmStartWork() {
@@ -337,10 +360,19 @@ function BookingDetail() {
     }
     previousStatusRef.current = next;
   }, [booking?.status, isCleaner, router]);
-  // Dispute hanya bisa dilaporkan saat booking masih aktif (belum selesai)
+  const within24h = !!booking?.completedAt && Date.now() - booking.completedAt < 24 * 3600_000;
+  // Dispute bisa dilaporkan saat aktif DAN saat baru selesai dalam 24 jam (sebelum customer rate)
   const canDispute = booking
     && !id?.startsWith('bk_')
-    && ['matched', 'on_the_way', 'in_progress'].includes(booking.status);
+    && (
+      ['matched', 'on_the_way', 'in_progress'].includes(booking.status)
+      || (booking.status === 'completed' && !isCleaner && !hasRated && within24h)
+    );
+  const canReclean = !isCleaner
+    && booking?.status === 'completed'
+    && !hasRated
+    && within24h
+    && (booking?.recleanCount ?? 0) === 0;
   const cleanerCanFinish = booking?.status === 'in_progress' && photoSummary.afterCount > 0;
 
   const csWaNumber = useConfig('contact.whatsapp' as any, '6285124363374' as any) as unknown as string;
@@ -530,7 +562,7 @@ function BookingDetail() {
   const canReschedule = booking
     && rescheduleCount < 1
     && hoursToSchedule >= 48
-    && !['canceled', 'completed', 'in_progress', 'started'].includes(booking.status);
+    && !['canceled', 'completed', 'in_progress', 'started', 'on_the_way', 'subscription_parent'].includes(booking.status);
   const cleanerRatingValue =
     typeof bookingRating?.rating === 'number' && Number.isFinite(bookingRating.rating)
       ? bookingRating.rating
@@ -690,10 +722,10 @@ function BookingDetail() {
             <View className="mx-4 mt-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4">
               <View className="flex-row items-center gap-2">
                 <Text className="text-base">✓</Text>
-                <Text className="font-bold text-sm text-emerald-900">Pesanan Selesai</Text>
+                <Text className="font-bold text-sm text-emerald-900">Pekerjaan Selesai — Gimana Hasilnya?</Text>
               </View>
               <Text className="font-medium mt-1 text-[11px] leading-4 text-emerald-800">
-                Cleaner sudah selesai. Kasih rating supaya saldo cleaner cair (auto-release 24 jam kalau gak rating).
+                Kalau puas, kasih rating biar saldo cleaner cair. Kalau ada masalah, tap "Ada Masalah" — tim kami siap bantu.
               </Text>
             </View>
           )}
@@ -1237,8 +1269,8 @@ function BookingDetail() {
               onPress={() => setShowUpchargeModal(true)}
               className="mx-4 mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 py-3"
             >
-              <Text className="text-base">💰</Text>
-              <Text className="font-semibold text-sm text-amber-900">Minta Charge Tambahan</Text>
+              <Text className="text-base">➕</Text>
+              <Text className="font-semibold text-sm text-amber-900">Tambah Layanan</Text>
             </Pressable>
           )}
 
@@ -1455,13 +1487,24 @@ function BookingDetail() {
                     )}
                   </>
                 ) : (
-                  <Pressable
-                    onPress={() => setShowRating(true)}
-                    className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-3.5"
-                  >
-                    <CheckCircle2 color="white" size={16} strokeWidth={2.4} />
-                    <Text className="font-bold text-sm text-white">{t('booking.rate')}</Text>
-                  </Pressable>
+                  <View className="flex-row gap-2">
+                    {(canDispute || canReclean) && (
+                      <Pressable
+                        onPress={() => setShowProblemSheet(true)}
+                        className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl border border-red-200 bg-red-50 py-3.5"
+                      >
+                        <AlertTriangle color="#B91C1C" size={15} strokeWidth={2.2} />
+                        <Text className="font-semibold text-sm text-red-700">Ada Masalah</Text>
+                      </Pressable>
+                    )}
+                    <Pressable
+                      onPress={() => setShowRating(true)}
+                      className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-3.5"
+                    >
+                      <CheckCircle2 color="white" size={15} strokeWidth={2.4} />
+                      <Text className="font-bold text-sm text-white">Beri Rating</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
             </SafeAreaView>
@@ -1669,6 +1712,102 @@ function BookingDetail() {
           onSubmitted={() => { setShowRating(false); setHasRated(true); }}
         />
       )}
+
+      {/* Problem sheet: pilihan re-clean vs dispute */}
+      <Modal visible={showProblemSheet} transparent animationType="slide" onRequestClose={() => setShowProblemSheet(false)}>
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="rounded-t-3xl bg-white p-5">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="font-bold text-base text-ink-900">Ada Masalah?</Text>
+              <Pressable onPress={() => setShowProblemSheet(false)} className="h-8 w-8 items-center justify-center rounded-full bg-ink-100">
+                <X color="#0F172A" size={16} />
+              </Pressable>
+            </View>
+
+            {canReclean && (
+              <Pressable
+                onPress={() => { setShowProblemSheet(false); setShowRecleanForm(true); }}
+                className="mb-3 rounded-2xl border border-brand-200 bg-brand-50 p-4"
+              >
+                <View className="flex-row items-center gap-3">
+                  <View className="h-10 w-10 items-center justify-center rounded-xl bg-brand-100">
+                    <Text className="text-xl">🔄</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-bold text-sm text-brand-900">Minta Pembersihan Ulang</Text>
+                    <Text className="font-medium mt-0.5 text-[11px] text-brand-700">
+                      Cleaner kembali ke lokasi untuk benerin. 1× per booking, dalam 24 jam.
+                    </Text>
+                  </View>
+                  <ChevronRight color="#1D4ED8" size={16} />
+                </View>
+              </Pressable>
+            )}
+
+            {canDispute && (
+              <Pressable
+                onPress={() => { setShowProblemSheet(false); setShowDispute(true); }}
+                className="rounded-2xl border border-red-200 bg-red-50 p-4"
+              >
+                <View className="flex-row items-center gap-3">
+                  <View className="h-10 w-10 items-center justify-center rounded-xl bg-red-100">
+                    <AlertTriangle color="#B91C1C" size={20} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-bold text-sm text-red-900">Laporkan Masalah ke Admin</Text>
+                    <Text className="font-medium mt-0.5 text-[11px] text-red-700">
+                      Untuk masalah serius: kualitas buruk, kehilangan barang, dll. Tim review dalam 24 jam.
+                    </Text>
+                  </View>
+                  <ChevronRight color="#B91C1C" size={16} />
+                </View>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Re-clean form */}
+      <Modal visible={showRecleanForm} transparent animationType="slide" onRequestClose={() => setShowRecleanForm(false)}>
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="rounded-t-3xl bg-white p-5">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="font-bold text-base text-ink-900">Minta Pembersihan Ulang</Text>
+              <Pressable onPress={() => setShowRecleanForm(false)} className="h-8 w-8 items-center justify-center rounded-full bg-ink-100">
+                <X color="#0F172A" size={16} />
+              </Pressable>
+            </View>
+            <Text className="font-medium mb-4 text-[11px] text-ink-500">
+              Ceritakan bagian mana yang belum bersih. Cleaner akan dikonfirmasi untuk kembali ke lokasi.
+            </Text>
+            <TextInput
+              value={recleanReason}
+              onChangeText={setRecleanReason}
+              placeholder="Mis. lantai dapur masih ada noda lemak, kamar mandi belum bersih sempurna..."
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+              className="rounded-xl border border-ink-200 bg-ink-50 p-3 text-sm text-ink-900"
+              style={{ textAlignVertical: 'top', minHeight: 100 }}
+            />
+            <Text className="font-medium mt-1 mb-4 text-[10px] text-ink-400">{recleanReason.length}/500 · min 10 karakter</Text>
+            <View className="flex-row gap-2">
+              <Pressable onPress={() => setShowRecleanForm(false)} className="flex-1 items-center rounded-xl border border-ink-200 py-3">
+                <Text className="font-semibold text-sm text-ink-700">Batal</Text>
+              </Pressable>
+              <Pressable
+                onPress={submitReclean}
+                disabled={recleanSubmitting || recleanReason.trim().length < 10}
+                className={`flex-1 items-center rounded-xl py-3 ${recleanSubmitting || recleanReason.trim().length < 10 ? 'bg-brand-300' : 'bg-brand-600'}`}
+              >
+                {recleanSubmitting
+                  ? <ActivityIndicator color="white" size="small" />
+                  : <Text className="font-bold text-sm text-white">Kirim Permintaan</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }

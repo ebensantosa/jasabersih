@@ -132,8 +132,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (body.content.length > 2000) return { ok: false, error: 'message too long (max 2000)' };
 
     // Verify participant + get recipient
-    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null }[]>`
-      SELECT customer_id, cleaner_id FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null; status: string }[]>`
+      SELECT customer_id, cleaner_id, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
     `;
     const b = rows[0];
     if (!b) return { ok: false, error: 'booking not found' };
@@ -141,6 +141,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { ok: false, error: 'not a participant' };
     }
     const recipientId = client.data.userId === b.customer_id ? b.cleaner_id : b.customer_id;
+
+    // Lock chat for completed/canceled bookings unless there's an active dispute
+    if (b.status === 'completed' || b.status === 'canceled') {
+      const disputes = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM disputes
+         WHERE booking_id = ${body.bookingId}::uuid
+           AND status NOT IN ('resolved', 'closed')
+         LIMIT 1
+      `;
+      if (disputes.length === 0) {
+        return { ok: false, blocked: true, blockReason: 'chat_closed', userMessage: 'Chat sudah ditutup — pesanan selesai.' };
+      }
+    }
 
     // Rate limit: max N pesan/menit per user per booking (admin-configurable).
     const limits = await this.abuse.get();

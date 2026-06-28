@@ -110,20 +110,37 @@ export class AdminBookingsController {
     const lng = body.lng ?? 110.3695;
     const lat = body.lat ?? -7.7956;
 
+    // Kalau cleaner langsung di-assign, hitung cleaner_payout sekarang pakai commission_tiers
+    let assignedCleanerPayout: number | null = null;
+    if (body.cleanerId) {
+      const base = body.baseAmount ?? body.totalAmount;
+      const cleanerProfile = await this.prisma.$queryRaw<{ brings_tools: boolean | null }[]>`
+        SELECT brings_tools FROM cleaner_profiles WHERE user_id = ${body.cleanerId}::uuid LIMIT 1
+      `;
+      const bringsTools = !!cleanerProfile[0]?.brings_tools;
+      const commTiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+        SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
+          FROM commission_tiers ORDER BY range_min ASC NULLS FIRST
+      `;
+      const tier = commTiers.find((t) => base >= Number(t.range_min ?? 0) && (t.range_max == null || base <= Number(t.range_max)));
+      const sharePct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+      assignedCleanerPayout = Math.round(base * sharePct / 100);
+    }
+
     const row = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
       `INSERT INTO bookings (
          customer_id, cleaner_id, service_id, pricing_mode, package_id,
          status, form_snapshot, scheduled_at, address_line, location,
          customer_notes, admin_notes,
-         base_amount, total_amount, paid_at, matched_at
+         base_amount, total_amount, cleaner_payout, paid_at, matched_at
        )
        VALUES (
          $1::uuid, $2::uuid, $3::uuid, $4, $5::uuid,
          $6, $7::jsonb, $8::timestamptz, $9,
          ST_SetSRID(ST_MakePoint($10, $11), 4326)::geography,
-         $12, $13, $14, $15,
-         CASE WHEN $16 THEN NOW() ELSE NULL END,
-         CASE WHEN $17::uuid IS NOT NULL THEN NOW() ELSE NULL END
+         $12, $13, $14, $15, $16::bigint,
+         CASE WHEN $17 THEN NOW() ELSE NULL END,
+         CASE WHEN $18::uuid IS NOT NULL THEN NOW() ELSE NULL END
        ) RETURNING id`,
       customerId,
       body.cleanerId ?? null,
@@ -139,6 +156,7 @@ export class AdminBookingsController {
       `[admin manual] ${body.adminNote ?? 'created by admin'}${body.cityName ? ` | kota: ${body.cityName}` : ''}`,
       body.baseAmount ?? body.totalAmount,
       body.totalAmount,
+      assignedCleanerPayout,
       isPaid,
       body.cleanerId ?? null,
     );

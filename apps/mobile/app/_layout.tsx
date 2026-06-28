@@ -18,7 +18,7 @@ import { api } from '../src/lib/api';
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 
 // Tahan native splash sampai fonts + auth siap — di-hide manual via SplashScreen.hideAsync()
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -234,12 +234,79 @@ export default function RootLayout() {
     function handleNotifData(data: Record<string, unknown> | undefined) {
       const type = data?.type as string | undefined;
       const bookingId = data?.bookingId as string | undefined;
-      const mode = useModeStore.getState().mode;
+      const ctaLink = data?.ctaLink as string | undefined;
+      const isCleaner = useModeStore.getState().mode === 'freelancer';
+
       if (type) Track.notificationTapped(type);
-      if (type === 'chat' && bookingId) router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
-      else if ((type === 'booking_completed' || type === 'wallet_credit') && bookingId) router.navigate({ pathname: '/booking/[id]', params: { id: bookingId } });
-      else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.navigate(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
+      if (!type) return;
+
+      // Chat → langsung ke chat booking
+      if (type === 'chat' && bookingId) {
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+        return;
+      }
+
+      // Semua notif yang butuh buka detail booking
+      const BOOKING_DETAIL_TYPES = new Set([
+        'booking_matched', 'booking_searching', 'booking_created_by_admin',
+        'booking_canceled', 'booking_canceled_admin', 'booking_completed',
+        'booking_status_change', 'booking_no_show', 'search_timeout',
+        'payment_confirmed', 'payment_paid', 'payment_completed', 'payment_underpaid',
+        'hourly_timer_expired', 'auto_completed', 'overtime_paid',
+        'upcharge_requested', 'extension_requested', 'extension_accepted', 'extension_declined',
+        'helper_invited', 'helper_accepted', 'helper_declined',
+        'reclean_requested', 'reclean_accepted', 'reclean_rejected',
+        'rating_reminder', 'cleaner_reminder', 'customer_reminder',
+        'job_assigned', 'wallet_credit',
+      ]);
+      if (BOOKING_DETAIL_TYPES.has(type) && bookingId) {
+        router.navigate({ pathname: '/booking/[id]', params: { id: bookingId } });
+        return;
+      }
+
+      // Job baru masuk (cleaner) → jobs tab
+      if (type === 'incoming_job' || type === 'incoming_job_v2') {
+        router.navigate('/(tabs)/');
+        return;
+      }
+
+      // Wallet & withdrawal
+      const WALLET_TYPES = new Set([
+        'withdrawal_approved', 'withdrawal_rejected', 'withdrawal_completed',
+        'withdrawal_failed', 'withdrawal_pending_maintenance',
+        'rating_received', 'earnings_cleared',
+      ]);
+      if (WALLET_TYPES.has(type)) {
+        router.navigate(isCleaner ? '/cleaner/wallet' : '/account/wallet');
+        return;
+      }
+
+      // KYC
+      if (type === 'kyc_approved' || type === 'kyc_rejected') {
+        router.navigate('/cleaner/kyc');
+        return;
+      }
+
+      // Dispute resolved → notif list (dispute screen belum ada, tapi info ada di notif)
+      if (type === 'dispute_resolved' || type === 'fraud_report_approved') {
+        router.navigate('/notifications');
+        return;
+      }
+
+      // Broadcast dengan CTA link → buka link atau notif list
+      if (type === 'broadcast') {
+        if (ctaLink) {
+          Linking.openURL(ctaLink).catch(() => router.navigate('/notifications'));
+        } else {
+          router.navigate('/notifications');
+        }
+        return;
+      }
+
+      // Fallback: buka notif list
+      router.navigate('/notifications');
     }
+
     // Cold-start: app was killed, user tapped notification
     Notifications.getLastNotificationResponseAsync().then((res) => {
       if (res) handleNotifData(res.notification.request.content.data as Record<string, unknown> | undefined);

@@ -1,6 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -37,7 +37,7 @@ function CleanerCalendar() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchJobs = useCallback(() => {
     let mounted = true;
     setLoading(true);
     (async () => {
@@ -54,6 +54,11 @@ function CleanerCalendar() {
     })();
     return () => { mounted = false; };
   }, [monthDate]);
+
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  // Re-fetch setiap kali screen difokuskan — supaya status job terbaru langsung muncul
+  useFocusEffect(useCallback(() => { fetchJobs(); }, [fetchJobs]));
 
   const jobsByDate = useMemo(() => {
     const map = new Map<string, Job[]>();

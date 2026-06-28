@@ -890,31 +890,36 @@ export class CleanerJobsController {
     return this.computeCleanerShare(Number(rows[0].total_amount), user.id, amount);
   }
 
-  // Cleaner submit upcharge request
+  // Cleaner submit upcharge request — amount wajib dari addon list (server-authoritative)
   @Post(':id/upcharge')
   async submitUpcharge(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { amount: number; reason: string; photoUrl?: string },
+    @Body() body: { addonIds: string[]; note?: string; photoUrl?: string },
   ) {
-    const amount = Math.floor(Number(body?.amount ?? 0));
-    if (!amount || amount <= 0) throw new BadRequestException('Nominal harus > 0');
-    if (!body?.reason || body.reason.trim().length < 10) {
-      throw new BadRequestException('Alasan min 10 karakter');
+    if (!Array.isArray(body?.addonIds) || body.addonIds.length === 0) {
+      throw new BadRequestException('Pilih minimal 1 layanan tambahan.');
     }
-    const rows = await this.prisma.$queryRaw<{ id: string; status: string; customer_id: string; total_amount: number; base_amount: number }[]>`
-      SELECT id, status, customer_id, total_amount, base_amount
+    // Fetch harga addon dari DB — cleaner tidak bisa manipulasi nominal
+    const addonRows = await this.prisma.$queryRaw<{ id: string; name: string; price: number }[]>`
+      SELECT id, name, price FROM add_ons
+       WHERE id = ANY(${body.addonIds}::uuid[]) AND is_active = TRUE
+    `;
+    if (addonRows.length === 0) throw new BadRequestException('Addon tidak ditemukan atau tidak aktif.');
+    const amount = addonRows.reduce((s, a) => s + Number(a.price), 0);
+    const addonNames = addonRows.map((a) => a.name).join(', ');
+    const reason = body.note?.trim()
+      ? `${addonNames} — ${body.note.trim()}`
+      : addonNames;
+
+    const rows = await this.prisma.$queryRaw<{ id: string; status: string; customer_id: string }[]>`
+      SELECT id, status, customer_id
         FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
     `;
     const b = rows[0];
     if (!b) throw new ForbiddenException('Bukan job kamu.');
-    if (!['on_the_way', 'in_progress'].includes(b.status)) {
-      throw new BadRequestException('Hanya bisa minta charge tambahan saat OTW/sedang dikerjakan.');
-    }
-    // Max 50% dari base
-    const maxAllowed = Math.floor(Number(b.base_amount) * 0.5);
-    if (amount > maxAllowed) {
-      throw new BadRequestException(`Nominal melebihi batas maksimum (Rp ${maxAllowed.toLocaleString('id-ID')}). Konsultasi admin via chat jika perlu lebih.`);
+    if (!['on_the_way', 'in_progress', 'matched'].includes(b.status)) {
+      throw new BadRequestException('Hanya bisa minta layanan tambahan saat job aktif.');
     }
     // Anti-spam: 1× pending sekaligus per booking
     const pending = await this.prisma.$queryRaw<{ c: number }[]>`
@@ -922,11 +927,11 @@ export class CleanerJobsController {
        WHERE booking_id = ${id}::uuid AND status = 'pending'
     `;
     if (Number(pending[0]?.c ?? 0) > 0) {
-      throw new BadRequestException('Sudah ada permintaan charge yang menunggu approval customer.');
+      throw new BadRequestException('Masih ada permintaan layanan tambahan yang belum dijawab customer.');
     }
     const created = await this.prisma.$queryRaw<{ id: string }[]>`
       INSERT INTO booking_upcharges (booking_id, cleaner_id, amount, reason, photo_url, status)
-      VALUES (${id}::uuid, ${user.id}::uuid, ${amount}, ${body.reason.trim()}, ${body.photoUrl ?? null}, 'pending')
+      VALUES (${id}::uuid, ${user.id}::uuid, ${amount}::bigint, ${reason}, ${body.photoUrl ?? null}, 'pending')
       RETURNING id
     `;
     // Real-time + push notif ke customer
@@ -934,11 +939,11 @@ export class CleanerJobsController {
     void this.push.send({
       userId: b.customer_id,
       channel: 'booking',
-      title: 'Cleaner minta charge tambahan',
-      body: `Cleaner minta +Rp ${amount.toLocaleString('id-ID')}. Tap untuk lihat alasan & setujui/tolak.`,
+      title: 'Cleaner minta tambah layanan',
+      body: `${addonNames} (+Rp ${amount.toLocaleString('id-ID')}). Setujui atau tolak di detail booking.`,
       data: { type: 'upcharge_requested', bookingId: id, upchargeId: created[0]?.id, amount },
     }).catch(() => {});
-    return { id: created[0]?.id, amount, status: 'pending' };
+    return { id: created[0]?.id, amount, addonNames, status: 'pending' };
   }
 
   // GET upcharges per booking (cleaner side)

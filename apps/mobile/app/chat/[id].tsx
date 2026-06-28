@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { formatRupiah } from '../../src/data/catalog';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Send, ShieldAlert, Star, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Lock, Send, ShieldAlert, Star, X } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -430,66 +430,88 @@ function Chat() {
           </View>
         )}
 
-        {/* Quick replies */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-12">
-          <View className="flex-row gap-2 px-4 py-2">
-            {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => {
-              const isFlashing = pendingQuick === q;
-              return (
-                <Pressable
-                  key={q}
-                  onPress={() => handleSend(q, { fromQuick: q })}
-                  disabled={pendingQuick !== null}
-                  className={`rounded-full border px-3 py-1.5 ${
-                    isFlashing
-                      ? 'border-brand-600 bg-brand-600'
-                      : 'border-brand-200 bg-white'
-                  }`}
-                  style={isFlashing ? { transform: [{ scale: 0.95 }] } : undefined}
-                >
-                  <Text className={`font-medium text-xs ${isFlashing ? 'text-white' : 'text-brand-700'}`}>{q}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
+        {/* Quick replies — hidden when chat is locked */}
+        {!(['completed', 'canceled'].includes(booking?.status ?? '')) && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-12">
+            <View className="flex-row gap-2 px-4 py-2">
+              {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => {
+                const isFlashing = pendingQuick === q;
+                return (
+                  <Pressable
+                    key={q}
+                    onPress={() => handleSend(q, { fromQuick: q })}
+                    disabled={pendingQuick !== null}
+                    className={`rounded-full border px-3 py-1.5 ${
+                      isFlashing
+                        ? 'border-brand-600 bg-brand-600'
+                        : 'border-brand-200 bg-white'
+                    }`}
+                    style={isFlashing ? { transform: [{ scale: 0.95 }] } : undefined}
+                  >
+                    <Text className={`font-medium text-xs ${isFlashing ? 'text-white' : 'text-brand-700'}`}>{q}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        )}
 
-        {/* Composer */}
-        <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
-          <View className="flex-row items-center gap-2 px-3 py-2">
+        {/* Composer or locked banner */}
+        {['completed', 'canceled'].includes(booking?.status ?? '') ? (
+          <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
             <Pressable
-              onPress={() => setPhotoSheetOpen(true)}
-              disabled={uploadingPhoto || status !== 'connected'}
-              className="h-11 w-11 items-center justify-center rounded-full bg-ink-100 disabled:opacity-50"
+              onPress={() => router.push({ pathname: '/booking/[id]', params: { id: id! } })}
+              className="flex-row items-center gap-3 px-4 py-3"
             >
-              {uploadingPhoto
-                ? <ActivityIndicator size="small" color="#1D4ED8" />
-                : <Camera color="#1D4ED8" size={20} strokeWidth={2.2} />}
+              <View className="h-9 w-9 items-center justify-center rounded-full bg-ink-100">
+                <Lock color="#64748B" size={18} strokeWidth={2.2} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-semibold text-sm text-ink-700">Chat ditutup</Text>
+                <Text className="font-sans text-xs text-ink-500">
+                  {booking?.status === 'canceled' ? 'Pesanan dibatalkan.' : 'Pesanan selesai.'}{!isCleaner ? ' Ada masalah? Tap untuk lapor.' : ''}
+                </Text>
+              </View>
+              {!isCleaner && <ChevronRight color="#94A3B8" size={16} strokeWidth={2.4} />}
             </Pressable>
-            <TextInput
-              value={text}
-              onChangeText={onChangeText}
-              onBlur={() => setTyping(false)}
-              placeholder="Tulis pesan…"
-              placeholderTextColor="#94A3B8"
-              multiline
-              className="font-sans flex-1 rounded-2xl border border-ink-200 bg-ink-50 px-4 py-2.5 text-sm text-ink-900"
-              style={{ maxHeight: 100 }}
-            />
-            <Pressable
-              onPress={() => handleSend(text)}
-              disabled={!text.trim() || status !== 'connected' || sending}
-              className="h-11 w-11 items-center justify-center rounded-full bg-brand-600 disabled:opacity-50"
-            >
-              {sending
-                ? <ActivityIndicator size="small" color="white" />
-                : <Send color="white" size={18} strokeWidth={2.4} />}
-            </Pressable>
-          </View>
-          <Text className="font-sans px-4 pb-1 text-center text-[10px] text-ink-400">
-            Pesan dimoderasi otomatis · Pelanggaran berulang = akun di-suspend
-          </Text>
-        </SafeAreaView>
+          </SafeAreaView>
+        ) : (
+          <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
+            <View className="flex-row items-center gap-2 px-3 py-2">
+              <Pressable
+                onPress={() => setPhotoSheetOpen(true)}
+                disabled={uploadingPhoto || status !== 'connected'}
+                className="h-11 w-11 items-center justify-center rounded-full bg-ink-100 disabled:opacity-50"
+              >
+                {uploadingPhoto
+                  ? <ActivityIndicator size="small" color="#1D4ED8" />
+                  : <Camera color="#1D4ED8" size={20} strokeWidth={2.2} />}
+              </Pressable>
+              <TextInput
+                value={text}
+                onChangeText={onChangeText}
+                onBlur={() => setTyping(false)}
+                placeholder="Tulis pesan…"
+                placeholderTextColor="#94A3B8"
+                multiline
+                className="font-sans flex-1 rounded-2xl border border-ink-200 bg-ink-50 px-4 py-2.5 text-sm text-ink-900"
+                style={{ maxHeight: 100 }}
+              />
+              <Pressable
+                onPress={() => handleSend(text)}
+                disabled={!text.trim() || status !== 'connected' || sending}
+                className="h-11 w-11 items-center justify-center rounded-full bg-brand-600 disabled:opacity-50"
+              >
+                {sending
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <Send color="white" size={18} strokeWidth={2.4} />}
+              </Pressable>
+            </View>
+            <Text className="font-sans px-4 pb-1 text-center text-[10px] text-ink-400">
+              Pesan dimoderasi otomatis · Pelanggaran berulang = akun di-suspend
+            </Text>
+          </SafeAreaView>
+        )}
       </KeyboardAvoidingView>
 
       {photoSheetOpen && (

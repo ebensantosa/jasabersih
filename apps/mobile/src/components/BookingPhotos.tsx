@@ -100,7 +100,7 @@ export function BookingPhotos({
         storagePath: key,
         ...(type === 'damage' ? { description: damageReason.trim() } : {}),
       });
-      toast.success(`Foto ${type === 'before' ? 'sebelum' : type === 'after' ? 'sesudah' : 'kerusakan'} ter-upload (${formatBytes(compressed.size)})`);
+      toast.success(`Foto ${type === 'before' ? 'sebelum' : type === 'after' ? 'sesudah' : 'kerusakan sebelumnya'} ter-upload (${formatBytes(compressed.size)})`);
       if (type === 'damage') setDamageReason('');
       void load();
     } catch (e: any) {
@@ -171,7 +171,7 @@ export function BookingPhotos({
             <View className="mt-1 flex-row items-center gap-2">
               <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
               <Text className="flex-1 text-[11px] leading-4 text-emerald-800">
-                Kondisi awal dan hasil kerja sudah lengkap. Kamu bisa lanjut selesaikan job atau tambah catatan kerusakan kalau memang diperlukan.
+                Kondisi awal dan hasil kerja sudah lengkap. Kalau ada barang yang sudah rusak sebelum kamu mulai kerja, dokumentasikan di tombol "Rusak Sebelumnya".
               </Text>
             </View>
           )}
@@ -217,7 +217,7 @@ export function BookingPhotos({
       )}
       {damagePhotos.length > 0 && (
         <PhotoRow
-          label="Kerusakan"
+          label="Rusak Sebelumnya"
           photos={damagePhotos}
           onPress={setPreview}
           canDelete={canManagePhotos}
@@ -251,7 +251,7 @@ export function BookingPhotos({
         <View className="mt-3 flex-row flex-wrap gap-2 border-t border-ink-100 pt-3">
           <UploadBtn label="Kondisi Awal" loading={uploading === 'before'} onPress={() => pickAndUpload('before')} variant={needBefore ? 'primary' : undefined} locked={beforeLocked} />
           <UploadBtn label="Hasil Kerja" loading={uploading === 'after'} onPress={() => pickAndUpload('after')} variant={needAfter ? 'primary' : undefined} locked={afterLocked} />
-          <UploadBtn label="Kerusakan" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" locked={damageLocked} />
+          <UploadBtn label="Rusak Sebelumnya" loading={uploading === 'damage'} onPress={() => pickAndUpload('damage')} variant="warning" locked={damageLocked} />
         </View>
       )}
     </View>
@@ -339,7 +339,7 @@ function PhotoPreviewModal({ url, onClose }: { url: string; onClose: () => void 
   );
 }
 
-// Modal input deskripsi kerusakan. Wajib min 10 char sebelum bisa pick foto.
+// Modal: cleaner dokumentasikan kerusakan yg sudah ada SEBELUM mulai kerja. Wajib min 10 char.
 function DamageReasonModal({ value, onChange, onCancel, onConfirm }: {
   value: string; onChange: (v: string) => void; onCancel: () => void; onConfirm: () => void;
 }) {
@@ -347,16 +347,16 @@ function DamageReasonModal({ value, onChange, onCancel, onConfirm }: {
     <Modal transparent statusBarTranslucent visible animationType="fade" onRequestClose={onCancel}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
         <View className="w-full rounded-2xl bg-white p-5">
-          <Text className="font-bold text-base text-ink-900">Deskripsi Kerusakan</Text>
+          <Text className="font-bold text-base text-ink-900">Kerusakan Sebelum Cleaning</Text>
           <Text className="font-sans mt-1 text-[12px] text-ink-600">
-            Jelaskan apa yang rusak / hilang & kondisinya. Foto saja gak cukup untuk admin review sengketa.
+            Dokumentasikan barang yang <Text className="font-semibold">sudah rusak sebelum kamu mulai kerja</Text> — ini melindungi kamu dari klaim palsu customer. Foto saja tidak cukup, tulis deskripsinya.
           </Text>
           <TextInput
             value={value}
             onChangeText={onChange}
             multiline
             textAlignVertical="top"
-            placeholder="Contoh: vas keramik di meja ruang tamu terjatuh saat angkat karpet, bagian leher pecah. Tidak ada barang lain yang rusak."
+            placeholder="Contoh: cermin di kamar mandi kiri sudah retak di sudut kanan atas sebelum saya mulai. Kaki kursi makan depan sudah patah sejak saya datang."
             placeholderTextColor="#94A3B8"
             className="font-sans mt-3 rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-900"
             style={{ minHeight: 110 }}

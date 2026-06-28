@@ -184,7 +184,31 @@ export class AdminDisputesController {
       if (customerId) {
         await this.prisma.$executeRaw`
           INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-          VALUES (${customerId}::uuid, 'refund_credit', ${body.payoutAmount}, 'dispute', ${id}::uuid, 'CLEARED', NOW(), ${'Refund dispute: ' + body.resolution.slice(0, 200)})
+          VALUES (${customerId}::uuid, 'refund_credit', ${body.payoutAmount}::bigint, 'dispute', ${id}::uuid, 'CLEARED', NOW(), ${'Refund dispute: ' + body.resolution.slice(0, 200)})
+        `;
+      }
+    }
+
+    // Debit cleaner + kompensasi ke customer saat action = debit_cleaner
+    if (body.action === 'debit_cleaner' && body.payoutAmount && body.payoutAmount > 0) {
+      const r = await this.prisma.$queryRaw<{ raised_by: string | null }[]>`
+        SELECT raised_by FROM disputes WHERE id = ${id}::uuid LIMIT 1
+      `;
+      const customerId = r[0]?.raised_by;
+      // Potong saldo cleaner (admin_debit dikurangi dari balance di formula wallet)
+      if (dispute.subject_user_id) {
+        await this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${dispute.subject_user_id}::uuid, 'admin_debit', ${body.payoutAmount}::bigint, 'dispute', ${id}::uuid,
+                  'CLEARED', NOW(), ${'Potongan sengketa: ' + body.resolution.slice(0, 200)})
+        `;
+      }
+      // Kompensasi langsung ke customer (uang dari potongan cleaner)
+      if (customerId) {
+        await this.prisma.$executeRaw`
+          INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+          VALUES (${customerId}::uuid, 'refund_credit', ${body.payoutAmount}::bigint, 'dispute', ${id}::uuid,
+                  'CLEARED', NOW(), ${'Kompensasi sengketa: ' + body.resolution.slice(0, 200)})
         `;
       }
     }

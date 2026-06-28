@@ -16,13 +16,13 @@ Notifications.setNotificationHandler({
 });
 
 let registered = false;
+let lastRegisteredMode: string | null = null;
 let currentToken: string | null = null;
 
 // Reset state - dipanggil saat logout supaya next login bisa register ulang
-// (kalau gak di-reset, flag `registered` global stay true → next user gak
-// kepesan ke backend → terus dapat notif user lama).
 export function resetPushRegistration() {
   registered = false;
+  lastRegisteredMode = null;
 }
 
 export function getCurrentPushToken(): string | null {
@@ -49,7 +49,8 @@ export async function unregisterPushAsync(overrideAccessToken?: string): Promise
 // Call after user is authenticated. Idempotent.
 export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Promise<string | null> {
   console.log(`[Push] registerForPushAsync called mode=${mode} registered=${registered}`);
-  if (registered && !mode) return currentToken; // skip kalau sudah registered dan bukan mode-switch
+  // Skip jika sudah registered dengan mode yang sama
+  if (registered && lastRegisteredMode === (mode ?? null)) return currentToken;
 
   void api.post('/notifications/debug-push', { step: 'start', mode, registered }).catch(() => {});
 
@@ -122,6 +123,7 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
       mode,
     });
     registered = true;
+    lastRegisteredMode = mode ?? null;
     currentToken = token;
     console.log(`[Push] registered ok token=${token} mode=${mode}`);
   } catch (e: any) {

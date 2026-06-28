@@ -133,6 +133,22 @@ export class CleanerWalletController {
     };
   }
 
+  // GET /cleaner/wallet/today — pendapatan hari ini (earnings + tips CLEARED)
+  @Get('wallet/today')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async todayEarnings(@CurrentUser() user: AuthenticatedUser) {
+    const rows = await this.prisma.$queryRaw<{ today: number }[]>`
+      SELECT COALESCE(SUM(amount), 0)::bigint AS today
+        FROM wallet_ledger_entries
+       WHERE user_id = ${user.id}::uuid
+         AND account_type = 'earnings'
+         AND status = 'CLEARED'
+         AND cleared_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Jakarta') AT TIME ZONE 'Asia/Jakarta'
+    `;
+    return { today: Number(rows[0]?.today ?? 0) };
+  }
+
   @Get('wallet/ledger')
   async ledger(@CurrentUser() user: AuthenticatedUser, @Query('limit') limitStr?: string, @Query('offset') offsetStr?: string) {
     const limit = Math.min(Number(limitStr ?? 50), 200);

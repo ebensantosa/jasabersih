@@ -1,11 +1,13 @@
 import { Image } from 'expo-image';
-import { Camera, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { Camera, CheckSquare, Square, X } from 'lucide-react-native';
+import { useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
 import { compressImage } from '../lib/imageCompress';
 import { uploadWithSignedUrl } from '../lib/signedUpload';
+import { useAppContent } from '../stores/appContent';
+import { formatRupiah } from '../data/catalog';
 import { toast } from '../stores/ui';
 
 export function UpchargeFormModal({
@@ -17,26 +19,25 @@ export function UpchargeFormModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
-  const [amountStr, setAmountStr] = useState('');
-  const [preview, setPreview] = useState<{ cleanerShare: number; platformFee: number; pct: number } | null>(null);
-  const [reason, setReason] = useState('');
-
-  // Debounced preview commission saat user ketik nominal
-  useEffect(() => {
-    const amt = parseInt(amountStr.replace(/[^\d]/g, ''), 10);
-    if (!amt || amt <= 0) { setPreview(null); return; }
-    const t = setTimeout(async () => {
-      try {
-        const r = await api.post(`/cleaner/jobs/${bookingId}/upcharge-preview`, { amount: amt });
-        setPreview((r.data?.data ?? r.data) as any);
-      } catch {}
-    }, 400);
-    return () => clearTimeout(t);
-  }, [amountStr, bookingId]);
+  const addons = useAppContent((s) => s.content.addons);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [note, setNote] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const total = addons
+    .filter((a) => selected.has(a.id))
+    .reduce((s, a) => s + Number(a.price), 0);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   async function pickAndUpload() {
     try {
@@ -45,11 +46,7 @@ export function UpchargeFormModal({
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) { toast.warning('Izin galeri ditolak'); return; }
       }
-      const r = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 1,
-        allowsEditing: false,
-      });
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1, allowsEditing: false });
       if (r.canceled || !r.assets?.[0]) return;
       setUploading(true);
       const c = await compressImage(r.assets[0].uri);
@@ -72,13 +69,15 @@ export function UpchargeFormModal({
   }
 
   async function submit() {
-    const amount = parseInt(amountStr.replace(/[^\d]/g, ''), 10);
-    if (!amount || amount <= 0) { toast.error('Nominal harus > 0'); return; }
-    if (reason.trim().length < 10) { toast.error('Alasan min 10 karakter'); return; }
+    if (selected.size === 0) { toast.error('Pilih minimal 1 layanan tambahan.'); return; }
     setSubmitting(true);
     try {
-      await api.post(`/cleaner/jobs/${bookingId}/upcharge`, { amount, reason: reason.trim(), photoUrl });
-      toast.success('Permintaan terkirim - tunggu approval customer');
+      await api.post(`/cleaner/jobs/${bookingId}/upcharge`, {
+        addonIds: Array.from(selected),
+        note: note.trim() || undefined,
+        photoUrl,
+      });
+      toast.success('Permintaan terkirim — tunggu konfirmasi customer');
       onSubmitted();
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal submit');
@@ -92,45 +91,64 @@ export function UpchargeFormModal({
       <View className="flex-1 justify-end bg-black/50">
         <View className="rounded-t-3xl bg-white p-5" style={{ maxHeight: '90%' }}>
           <View className="flex-row items-center justify-between">
-            <Text className="font-bold text-base text-ink-900">Minta Charge Tambahan</Text>
+            <Text className="font-bold text-base text-ink-900">Tambah Layanan</Text>
             <Pressable onPress={onClose}><X color="#94A3B8" size={20} /></Pressable>
           </View>
           <Text className="font-medium mt-1 text-[11px] text-ink-500">
-            Kondisi lebih kotor dari yang dipilih customer. Customer akan dapat notif untuk approve/reject.
+            Pilih layanan tambahan yang diminta customer. Harga sudah flat — customer cukup setujui atau tolak.
           </Text>
 
           <ScrollView className="mt-4" showsVerticalScrollIndicator={false}>
-            <Text className="font-semibold text-xs text-ink-700">Nominal Tambahan (Rp)</Text>
-            <TextInput
-              value={amountStr}
-              onChangeText={(v) => setAmountStr(v.replace(/[^\d]/g, ''))}
-              placeholder="mis. 50000"
-              keyboardType="numeric"
-              maxLength={12}
-              className="mt-1 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900"
-            />
-
-            {preview && (
-              <View className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <Text className="font-semibold text-[10px] uppercase tracking-wider text-emerald-700">Yang Kamu Terima</Text>
-                <Text className="font-extrabold mt-1 text-lg text-emerald-800">Rp {Number(preview.cleanerShare).toLocaleString('id-ID')}</Text>
-                <Text className="font-medium mt-1 text-[10px] text-emerald-700">Akan masuk ke saldo setelah disetujui customer.</Text>
+            {addons.length === 0 ? (
+              <View className="items-center py-6">
+                <Text className="font-medium text-[12px] text-ink-400">Belum ada layanan tambahan tersedia.</Text>
+              </View>
+            ) : (
+              <View className="gap-2">
+                {addons.map((addon) => {
+                  const isOn = selected.has(addon.id);
+                  return (
+                    <Pressable
+                      key={addon.id}
+                      onPress={() => toggle(addon.id)}
+                      className={`flex-row items-center gap-3 rounded-xl border p-3 ${isOn ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}
+                    >
+                      {isOn
+                        ? <CheckSquare color="#1D4ED8" size={20} strokeWidth={2.2} />
+                        : <Square color="#94A3B8" size={20} strokeWidth={2} />}
+                      <View className="flex-1">
+                        <Text className={`font-semibold text-[13px] ${isOn ? 'text-brand-900' : 'text-ink-900'}`}>{addon.name}</Text>
+                        {addon.description ? (
+                          <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>{addon.description}</Text>
+                        ) : null}
+                      </View>
+                      <Text className={`font-bold text-sm ${isOn ? 'text-brand-700' : 'text-ink-700'}`}>{formatRupiah(Number(addon.price))}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             )}
 
-            <Text className="font-semibold mt-3 text-xs text-ink-700">Alasan (min 10 karakter)</Text>
+            {selected.size > 0 && (
+              <View className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex-row items-center justify-between">
+                <Text className="font-semibold text-[11px] text-emerald-700">{selected.size} layanan dipilih</Text>
+                <Text className="font-extrabold text-base text-emerald-900">+{formatRupiah(total)}</Text>
+              </View>
+            )}
+
+            <Text className="font-semibold mt-4 text-xs text-ink-700">Catatan untuk customer (opsional)</Text>
             <TextInput
-              value={reason}
-              onChangeText={setReason}
-              placeholder="Mis. tingkat kotor jauh lebih parah, banyak noda lemak di dapur..."
+              value={note}
+              onChangeText={setNote}
+              placeholder="Mis. kamar mandi sudah oke, tambahin dapur juga ya..."
               multiline
-              numberOfLines={3}
-              maxLength={500}
+              numberOfLines={2}
+              maxLength={300}
               className="mt-1 rounded-xl border border-ink-200 bg-white p-3 text-sm text-ink-900"
-              style={{ textAlignVertical: 'top', minHeight: 80 }}
+              style={{ textAlignVertical: 'top', minHeight: 64 }}
             />
 
-            <Text className="font-semibold mt-3 text-xs text-ink-700">Foto Bukti (opsional, rekomendasi)</Text>
+            <Text className="font-semibold mt-3 text-xs text-ink-700">Foto kondisi (opsional)</Text>
             <View className="mt-1 flex-row items-center gap-2">
               {photoUri ? (
                 <View className="relative">
@@ -157,10 +175,14 @@ export function UpchargeFormModal({
 
           <Pressable
             onPress={submit}
-            disabled={submitting}
-            className={`mt-4 items-center rounded-2xl py-3.5 ${submitting ? 'bg-brand-400' : 'bg-brand-600'}`}
+            disabled={submitting || selected.size === 0}
+            className={`mt-4 items-center rounded-2xl py-3.5 ${submitting || selected.size === 0 ? 'bg-brand-300' : 'bg-brand-600'}`}
           >
-            {submitting ? <ActivityIndicator color="white" /> : <Text className="font-bold text-sm text-white">Kirim Permintaan</Text>}
+            {submitting
+              ? <ActivityIndicator color="white" />
+              : <Text className="font-bold text-sm text-white">
+                  {selected.size === 0 ? 'Pilih Layanan Dulu' : `Kirim Permintaan · +${formatRupiah(total)}`}
+                </Text>}
           </Pressable>
         </View>
       </View>

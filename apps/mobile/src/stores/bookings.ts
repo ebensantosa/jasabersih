@@ -188,6 +188,8 @@ export type Booking = {
   isManual?: boolean;
   lat?: number;
   lng?: number;
+  // Reclean
+  recleanCount?: number;
   // Cleaner (assigned later)
   cleanerId?: string;
   cleanerName?: string;
@@ -434,6 +436,7 @@ export const useBookingsStore = create<State>((set, get) => ({
         pauseStartedAt: (s.pause_started_at ?? s.pauseStartedAt) ? (Number.isFinite(Date.parse(s.pause_started_at ?? s.pauseStartedAt)) ? Date.parse(s.pause_started_at ?? s.pauseStartedAt) : undefined) : undefined,
         pausedTotalSec: (s.paused_total_sec ?? s.pausedTotalSec) != null ? Number(s.paused_total_sec ?? s.pausedTotalSec) : 0,
         completedAt: (s.completed_at ?? s.completedAt) ? (Number.isFinite(Date.parse(s.completed_at ?? s.completedAt)) ? Date.parse(s.completed_at ?? s.completedAt) : undefined) : undefined,
+        recleanCount: (s.recleanCount ?? s.reclean_count) != null ? Number(s.recleanCount ?? s.reclean_count) : 0,
         hours: (s.hoursBooked ?? s.hours_booked) != null ? Number(s.hoursBooked ?? s.hours_booked) : undefined,
         hourlyTierId: s.hourlyTierId ?? undefined,
         hourlyTierName: s.hourlyTierName ?? snapshot.hourlyTierName ?? undefined,

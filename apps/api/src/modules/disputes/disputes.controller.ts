@@ -10,7 +10,12 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { StorageService } from '../storage/storage.service';
 
-const ALLOWED_TYPES = ['quality', 'no_show', 'theft', 'payment', 'harassment', 'other'] as const;
+const ALLOWED_TYPES = [
+  // customer
+  'quality', 'no_show', 'theft', 'payment', 'harassment', 'other',
+  // cleaner
+  'customer_absent', 'address_issue', 'access_denied', 'scope_mismatch', 'unsafe_items',
+] as const;
 
 const CreateDisputeSchema = z.object({
   bookingId: z.string().uuid(),
@@ -68,8 +73,19 @@ export class DisputesController {
     if (b.customer_id !== user.id && b.cleaner_id !== user.id) {
       throw new BadRequestException('Kamu bukan participant booking ini.');
     }
-    if (!['matched', 'on_the_way', 'in_progress'].includes(b.status)) {
-      throw new BadRequestException('Dispute hanya bisa diajukan saat booking masih aktif.');
+    const ALLOWED_STATUSES = ['matched', 'on_the_way', 'in_progress', 'completed'];
+    if (!ALLOWED_STATUSES.includes(b.status)) {
+      throw new BadRequestException('Dispute hanya bisa diajukan saat booking masih aktif atau baru selesai.');
+    }
+    // Completed bookings: only within 24h
+    if (b.status === 'completed') {
+      const completedAt = await this.prisma.$queryRaw<{ completed_at: Date | null }[]>`
+        SELECT completed_at FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+      `;
+      const ts = completedAt[0]?.completed_at;
+      if (!ts || Date.now() - new Date(ts).getTime() > 24 * 3600_000) {
+        throw new BadRequestException('Batas waktu laporan sudah lewat (24 jam setelah selesai).');
+      }
     }
 
     // Subject = the OTHER party

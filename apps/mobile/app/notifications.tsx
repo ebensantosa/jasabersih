@@ -20,7 +20,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNotifications, type NotificationItem } from '../src/stores/notifications';
@@ -40,14 +40,13 @@ function NotificationsScreen() {
   }, []);
 
   async function onTap(n: NotificationItem) {
-    void markAllRead(); // pastikan badge hilang meski user langsung tap dan keluar
+    void markAllRead();
     const data = n.data as Record<string, unknown> | null;
     const type = data?.type as string | undefined;
     const bookingId = data?.bookingId as string | undefined;
+    const ctaLink = data?.ctaLink as string | undefined;
+    const isCleaner = mode === 'freelancer';
 
-    // Force-sync booking store before navigating so screen reflects current
-    // server status (e.g., notif 'payment_timeout_cancel' → booking is now
-    // 'canceled' on server; without sync, mobile would show stale state).
     if (bookingId) {
       try {
         const { useBookingsStore } = await import('../src/stores/bookings');
@@ -55,10 +54,56 @@ function NotificationsScreen() {
       } catch {/* silent */}
     }
 
-    if (type === 'chat' && bookingId) router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
-    else if (bookingId) router.navigate({ pathname: '/booking/[id]', params: { id: bookingId } });
-    else if (type === 'kyc_approved' || type === 'kyc_rejected') router.push('/cleaner/kyc');
-    else if (type === 'withdrawal_approved' || type === 'withdrawal_rejected') router.push(mode === 'freelancer' ? '/cleaner/wallet' : '/account/wallet');
+    if (!type) return;
+
+    if (type === 'chat' && bookingId) {
+      router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+      return;
+    }
+
+    const BOOKING_DETAIL_TYPES = new Set([
+      'booking_matched', 'booking_searching', 'booking_created_by_admin',
+      'booking_canceled', 'booking_canceled_admin', 'booking_completed',
+      'booking_status_change', 'booking_no_show', 'search_timeout',
+      'payment_confirmed', 'payment_paid', 'payment_completed', 'payment_underpaid',
+      'hourly_timer_expired', 'auto_completed', 'overtime_paid',
+      'upcharge_requested', 'extension_requested', 'extension_accepted', 'extension_declined',
+      'helper_invited', 'helper_accepted', 'helper_declined',
+      'reclean_requested', 'reclean_accepted', 'reclean_rejected',
+      'rating_reminder', 'cleaner_reminder', 'customer_reminder',
+      'job_assigned', 'wallet_credit',
+    ]);
+    if (BOOKING_DETAIL_TYPES.has(type) && bookingId) {
+      router.navigate({ pathname: '/booking/[id]', params: { id: bookingId } });
+      return;
+    }
+
+    if (type === 'incoming_job' || type === 'incoming_job_v2') {
+      router.navigate('/(tabs)/');
+      return;
+    }
+
+    const WALLET_TYPES = new Set([
+      'withdrawal_approved', 'withdrawal_rejected', 'withdrawal_completed',
+      'withdrawal_failed', 'withdrawal_pending_maintenance',
+      'rating_received', 'earnings_cleared',
+    ]);
+    if (WALLET_TYPES.has(type)) {
+      router.navigate(isCleaner ? '/cleaner/wallet' : '/account/wallet');
+      return;
+    }
+
+    if (type === 'kyc_approved' || type === 'kyc_rejected') {
+      router.navigate('/cleaner/kyc');
+      return;
+    }
+
+    if (type === 'broadcast' && ctaLink) {
+      Linking.openURL(ctaLink).catch(() => {});
+      return;
+    }
+
+    // dispute_resolved, fraud_report_approved, broadcast tanpa link → tetap di halaman ini
   }
 
   return (
