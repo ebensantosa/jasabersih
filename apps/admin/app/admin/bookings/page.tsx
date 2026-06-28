@@ -751,6 +751,45 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             );
           })()}
 
+          {/* Additional Charges & Tips */}
+          {((data.charges?.length ?? 0) > 0 || (data as any).tipAmount > 0) && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <div className="text-sm font-bold text-amber-900">Biaya Tambahan & Tip</div>
+              {data.charges?.length > 0 && (
+                <table className="w-full text-xs">
+                  <thead className="text-left text-[10px] uppercase text-slate-500">
+                    <tr><th className="pb-1 pr-2">Alasan</th><th className="pb-1 pr-2">Nominal</th><th className="pb-1">Status</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100">
+                    {data.charges.map((c: any) => (
+                      <tr key={c.id}>
+                        <td className="py-1 pr-2">{c.reason}</td>
+                        <td className="py-1 pr-2">Rp {Number(c.amount).toLocaleString('id-ID')}</td>
+                        <td className="py-1">
+                          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${c.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : c.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {c.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {(data as any).tipAmount > 0 && (
+                <div className="flex items-center gap-2 text-xs border-t border-amber-200 pt-2">
+                  <span className="text-amber-800 font-semibold">Tip dari customer:</span>
+                  <span className="font-bold text-emerald-700">Rp {Number((data as any).tipAmount).toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              {data.charges?.filter((c: any) => c.status === 'approved').length > 0 && (
+                <div className="flex items-center gap-2 text-xs border-t border-amber-200 pt-2 font-semibold text-amber-900">
+                  <span>Total biaya tambahan (approved):</span>
+                  <span>Rp {data.charges.filter((c: any) => c.status === 'approved').reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString('id-ID')}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {(() => {
             const conditionUrls: string[] = Array.isArray((data.booking as any)?.form_snapshot?.conditionPhotos)
               ? (data.booking as any).form_snapshot.conditionPhotos

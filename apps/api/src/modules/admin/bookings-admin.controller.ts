@@ -260,7 +260,13 @@ export class AdminBookingsController {
         FROM payments WHERE booking_id = ${id}::uuid ORDER BY id DESC LIMIT 5
     `;
 
-    return { booking, photos: photosWithUrl, charges, payments };
+    const tipRows = await this.prisma.$queryRaw<{ tipAmount: number }[]>`
+      SELECT COALESCE(tip_amount, 0)::bigint AS "tipAmount"
+        FROM ratings WHERE booking_id = ${id}::uuid LIMIT 1
+    `;
+    const tipAmount = Number(tipRows[0]?.tipAmount ?? 0);
+
+    return { booking, photos: photosWithUrl, charges, payments, tipAmount };
   }
 
   // Issue refund as non-cashable credit to customer's wallet.
