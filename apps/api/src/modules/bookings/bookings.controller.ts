@@ -881,11 +881,10 @@ export class BookingsController {
                platform_fee = COALESCE(platform_fee, 0) + ${platformFee}
          WHERE id = ${id}::uuid
       `;
-      // Insert earning cleaner (share saja, PENDING — escrow 24h)
-      await tx.$executeRaw`
-        INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, description)
-        VALUES (${u.cleaner_id}::uuid, 'earnings', ${cleanerShare}, 'booking', ${id}::uuid, 'PENDING', ${`Upcharge approved — share ${pct}% dari Rp ${upchargeAmount.toLocaleString('id-ID')}`})
-      `;
+      // Cleaner share sudah masuk ke bookings.cleaner_payout (line atas).
+      // Wallet credit cleaner dikreditkan saat booking complete — JANGAN insert di sini
+      // karena forceComplete/auto-complete juga akan insert cleaner_payout (yang sudah
+      // include share ini), sehingga double-credit.
       return { ok: true, cleanerShare, platformFee, pct, walletDeducted: upchargeAmount, walletRemaining: walletBalance - upchargeAmount, _cleanerId: u.cleaner_id };
     });
     this.jobs.emitBookingReload(result._cleanerId, id);
