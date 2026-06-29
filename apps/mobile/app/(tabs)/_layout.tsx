@@ -40,6 +40,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        sceneStyle: { paddingBottom: (Platform.OS === 'web' ? 64 : 72) + insets.bottom },
         tabBarStyle: {
           height: (Platform.OS === 'web' ? 64 : 72) + insets.bottom,
           paddingTop: 8,
