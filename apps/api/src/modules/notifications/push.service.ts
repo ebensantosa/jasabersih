@@ -87,7 +87,7 @@ export class PushService {
 
     // Auto-append short ID ke title biar customer/cleaner bisa bedain notif per-order.
     // Skip kalau title udah include "#xxxx" (sudah di-format di caller).
-    let finalTitle = payload.title;
+    let finalTitle = payload.title ?? '';
     const shortId = bookingId ? String(bookingId).slice(0, 8) : null;
     if (shortId && !finalTitle.includes('#')) {
       finalTitle = `${finalTitle} · #${shortId}`;
