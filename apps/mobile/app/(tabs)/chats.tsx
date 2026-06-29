@@ -2,10 +2,10 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useContext, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 
 import { AuthGate } from '../../src/components/AuthGate';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
@@ -27,7 +27,7 @@ type ChatRow = {
 };
 
 function ChatsScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 80;
   const router = useRouter();
   // Pakai selector string (bukan object) supaya ref stable - mencegah
   // fetchChats useCallback ke-recreate tiap zustand update.

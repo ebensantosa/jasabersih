@@ -1,11 +1,11 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertCircle, BadgeCheck, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, FileText, MapPin, Power, RefreshCw, Settings, Wallet } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 
 import { api } from '../../src/lib/api';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
@@ -59,7 +59,7 @@ export default function Jobs() {
 }
 
 function JobsScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 80;
   const router = useRouter();
   const setMode = useModeStore((s) => s.setMode);
 

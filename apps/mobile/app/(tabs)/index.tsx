@@ -16,10 +16,10 @@ import {
   Tag,
   Wallet,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useContext } from 'react';
 import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -36,7 +36,7 @@ import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
 
 export default function Home() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 80;
   const router = useRouter();
   const mode = useModeStore((s) => s.mode);
   const allBookings = useBookingsStore((s) => s.list);
