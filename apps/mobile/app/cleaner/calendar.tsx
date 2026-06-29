@@ -8,6 +8,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { formatRupiah } from '../../src/data/catalog';
 import { withAuth } from '../../src/components/AuthGate';
 import { safeBack } from '../../src/lib/safeBack';
+import { STATUS_LABEL, STATUS_COLOR } from '../../src/stores/bookings';
 
 type Job = {
   id: string;
@@ -205,8 +206,10 @@ function CleanerCalendar() {
                     </View>
                     <Text className="font-semibold mt-1 text-[12px] text-ink-800">{j.serviceName}</Text>
                     <Text className="font-sans mt-0.5 text-[11px] text-ink-500" numberOfLines={1}>{j.customerName ?? '—'} · {j.addressLine ?? '—'}</Text>
-                    <View className="mt-1.5 self-start rounded-full bg-ink-100 px-2 py-0.5">
-                      <Text className="font-bold text-[9px] uppercase tracking-wider text-ink-600">{j.status}</Text>
+                    <View className="mt-1.5 self-start rounded-full px-2 py-0.5" style={{ backgroundColor: (STATUS_COLOR as any)[j.status]?.bg ?? '#F1F5F9' }}>
+                      <Text className="font-bold text-[9px]" style={{ color: (STATUS_COLOR as any)[j.status]?.fg ?? '#475569' }}>
+                        {(STATUS_LABEL as any)[j.status] ?? j.status}
+                      </Text>
                     </View>
                   </Pressable>
                 ))}
