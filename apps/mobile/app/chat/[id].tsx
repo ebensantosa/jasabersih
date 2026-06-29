@@ -108,6 +108,13 @@ function Chat() {
   const scrollRef = useRef<ScrollView>(null);
   const ringtoneRef = useRef<Audio.Sound | null>(null);
 
+  // Auto-dismiss incoming banner setelah 65 detik (pemanggil timeout 60s + buffer)
+  useEffect(() => {
+    if (!showIncomingBanner) return;
+    const t = setTimeout(() => setShowIncomingBanner(false), 65_000);
+    return () => clearTimeout(t);
+  }, [showIncomingBanner]);
+
   // Putar ringtone saat incoming call banner muncul, stop saat banner hilang
   useEffect(() => {
     if (!showIncomingBanner) {
