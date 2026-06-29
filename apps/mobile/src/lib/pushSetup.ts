@@ -73,7 +73,7 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
     await Notifications.setNotificationChannelAsync('incoming_call', {
       name: 'Panggilan Masuk',
       importance: Notifications.AndroidImportance.MAX,
-      sound: 'order_incoming',
+      sound: 'call_incoming',
       vibrationPattern: [0, 500, 200, 500, 200, 500],
       enableVibrate: true,
       showBadge: false,

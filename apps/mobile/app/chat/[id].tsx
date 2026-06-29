@@ -128,7 +128,7 @@ function Chat() {
       try {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
         const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sounds/order_incoming.wav'),
+          require('../../assets/sounds/call_incoming.wav'),
           { shouldPlay: true, isLooping: true, volume: 1.0 },
         );
         if (cancelled) { void sound.unloadAsync(); return; }
