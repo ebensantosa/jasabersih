@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { withAuth } from '../../src/components/AuthGate';
 import { ADDONS, SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
-import { useAppContentStore } from '../../src/stores/appContent';
+import { useAppContent } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { toast } from '../../src/stores/ui';
 import { type SavedAddress } from '../../src/stores/addresses';
@@ -34,7 +34,7 @@ type AddonItem = { code: string; name: string; qty: number; price: number; durat
 function BookingCart() {
   const router = useRouter();
   const createBooking = useBookingsStore((s) => s.create);
-  const apiServices = useAppContentStore((s) => s.services ?? []);
+  const apiServices = useAppContent((s) => s.services ?? []);
   const [serviceItems, setServiceItems] = useState<Record<string, number>>({});
   const [addonItems, setAddonItems] = useState<Record<string, number>>({});
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
