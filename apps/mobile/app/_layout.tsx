@@ -240,6 +240,12 @@ export default function RootLayout() {
       if (type) Track.notificationTapped(type);
       if (!type) return;
 
+      // Incoming call → buka chat, CallOverlay muncul di sana
+      if (type === 'incoming_call' && bookingId) {
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+        return;
+      }
+
       // Chat → langsung ke chat booking
       if (type === 'chat' && bookingId) {
         router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });

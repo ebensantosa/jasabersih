@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { formatRupiah } from '../../src/data/catalog';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Lock, Send, ShieldAlert, Star, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Lock, Phone, Send, ShieldAlert, Star, X } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatSocket } from '../../src/hooks/useChatSocket';
+import { CallOverlay } from '../../src/components/CallOverlay';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { useAuthStore } from '../../src/stores/auth';
@@ -96,6 +97,10 @@ function Chat() {
   // Track quick-reply yg lagi dikirim, supaya chip kasih feedback visual + ga bisa di-tap ulang
   const [pendingQuick, setPendingQuick] = useState<string | null>(null);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
+  const [callToken, setCallToken] = useState<string | null>(null);
+  const [callUrl, setCallUrl] = useState<string>('');
+  const [callingLabel, setCallingLabel] = useState('');
+  const [callLoading, setCallLoading] = useState(false);
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -200,6 +205,32 @@ function Chat() {
   function onChangeText(v: string) {
     setText(v);
     setTyping(v.length > 0);
+  }
+
+  async function startCall() {
+    if (callLoading) return;
+    setCallLoading(true);
+    try {
+      const { api } = await import('../../src/lib/api');
+      const r = await api.post('/call/start', { bookingId: id });
+      const d = r.data?.data ?? r.data;
+      const peerName = isCleaner
+        ? ((booking as any)?.customerName ?? 'Pelanggan')
+        : (booking?.cleanerName ?? 'Cleaner');
+      setCallingLabel(peerName);
+      setCallUrl(d.url);
+      setCallToken(d.token);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal memulai panggilan');
+    } finally {
+      setCallLoading(false);
+    }
+  }
+
+  async function joinCall(incomingToken: string, incomingUrl: string, peerName: string) {
+    setCallingLabel(peerName);
+    setCallUrl(incomingUrl);
+    setCallToken(incomingToken);
   }
 
   async function pickAndSendPhoto(source: 'camera' | 'gallery') {
@@ -363,6 +394,18 @@ function Chat() {
                 </>
               );
             })()}
+          {/* Tombol telepon — hanya saat booking aktif */}
+          {['matched', 'on_the_way', 'in_progress'].includes(booking?.status ?? '') && (
+            <Pressable
+              onPress={startCall}
+              disabled={callLoading}
+              className="h-10 w-10 items-center justify-center rounded-full bg-emerald-50"
+            >
+              {callLoading
+                ? <ActivityIndicator size="small" color="#047857" />
+                : <Phone color="#047857" size={18} strokeWidth={2.2} />}
+            </Pressable>
+          )}
           </View>
         </SafeAreaView>
 
@@ -572,6 +615,15 @@ function Chat() {
           />
           <Text className="font-medium mt-3 text-xs text-white/70">Tap di mana saja untuk tutup</Text>
         </Pressable>
+      )}
+
+      {callToken && (
+        <CallOverlay
+          token={callToken}
+          serverUrl={callUrl}
+          callerLabel={callingLabel}
+          onEnd={() => setCallToken(null)}
+        />
       )}
     </>
   );

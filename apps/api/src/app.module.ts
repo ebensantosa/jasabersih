@@ -25,6 +25,7 @@ import { ReferralModule } from './modules/referral/referral.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { EmailModule } from './modules/email/email.module';
 import { FraudReportModule } from './modules/fraud/fraud-report.module';
+import { CallModule } from './modules/call/call.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { FraudReportModule } from './modules/fraud/fraud-report.module';
     JobsModule,
     EmailModule,
     FraudReportModule,
+    CallModule,
   ],
   controllers: [HealthController],
 })
