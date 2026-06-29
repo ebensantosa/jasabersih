@@ -5,7 +5,7 @@ import {
   useParticipants,
   useRoomContext,
 } from '@livekit/react-native';
-import { Mic, MicOff, Phone, Volume2, VolumeX } from 'lucide-react-native';
+import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -107,7 +107,7 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: () => void
           onPress={hangUp}
           style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center' }}
         >
-          <Phone color="white" size={28} strokeWidth={2.2} style={{ transform: [{ rotate: '135deg' }] }} />
+          <PhoneOff color="white" size={28} strokeWidth={2.2} />
         </Pressable>
 
         <Pressable
