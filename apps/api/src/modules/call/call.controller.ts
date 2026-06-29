@@ -12,6 +12,10 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL ?? '';
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? '';
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? '';
 
+if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+  console.warn('[CallModule] LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET not set — voice call disabled');
+}
+
 @ApiTags('call')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -29,6 +33,9 @@ export class CallController {
     @Body() body: { bookingId: string },
   ) {
     if (!body?.bookingId) throw new BadRequestException('bookingId required');
+    if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+      throw new BadRequestException('Fitur telepon belum dikonfigurasi. Hubungi admin.');
+    }
 
     const rows = await this.prisma.$queryRaw<{
       customer_id: string | null;

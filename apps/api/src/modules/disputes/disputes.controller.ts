@@ -64,9 +64,9 @@ export class DisputesController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateDisputeSchema)) body: CreateDisputeDto,
   ) {
-    // Verify booking participant + status masih aktif
-    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null; status: string }[]>`
-      SELECT customer_id, cleaner_id, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    // Verify booking participant + status — single query includes completed_at to avoid 2nd round-trip
+    const rows = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_id: string | null; status: string; completed_at: Date | null }[]>`
+      SELECT customer_id, cleaner_id, status, completed_at FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
     `;
     const b = rows[0];
     if (!b) throw new NotFoundException('Booking tidak ditemukan.');
@@ -79,11 +79,7 @@ export class DisputesController {
     }
     // Completed bookings: only within 24h
     if (b.status === 'completed') {
-      const completedAt = await this.prisma.$queryRaw<{ completed_at: Date | null }[]>`
-        SELECT completed_at FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
-      `;
-      const ts = completedAt[0]?.completed_at;
-      if (!ts || Date.now() - new Date(ts).getTime() > 24 * 3600_000) {
+      if (!b.completed_at || Date.now() - new Date(b.completed_at).getTime() > 24 * 3600_000) {
         throw new BadRequestException('Batas waktu laporan sudah lewat (24 jam setelah selesai).');
       }
     }
@@ -119,6 +115,7 @@ export class DisputesController {
         ${slaDueAt}::timestamptz
       ) RETURNING id
     `;
-    return { id: inserted[0]?.id, status: 'open' };
+    if (!inserted[0]?.id) throw new BadRequestException('Gagal membuat laporan. Coba lagi.');
+    return { id: inserted[0].id, status: 'open' };
   }
 }

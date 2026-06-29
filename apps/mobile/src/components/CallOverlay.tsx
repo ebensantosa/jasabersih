@@ -19,8 +19,8 @@ type Props = {
 
 export function CallOverlay({ token, serverUrl, callerLabel, onEnd }: Props) {
   useEffect(() => {
-    AudioSession.startAudioSession();
-    return () => { AudioSession.stopAudioSession(); };
+    AudioSession.startAudioSession().catch(() => {});
+    return () => { AudioSession.stopAudioSession().catch(() => {}); };
   }, []);
 
   return (

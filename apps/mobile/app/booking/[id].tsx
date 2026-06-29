@@ -846,7 +846,7 @@ function BookingDetail() {
               <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 4 }}>Perpanjang Waktu Kerja</Text>
               <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Pilih durasi tambahan. Kamu akan diarahkan ke halaman pembayaran.</Text>
               {([0.5, 1, 2, 3] as const).map((dur) => {
-                const price = Math.round((booking.hourlyPricePerHour ?? 0) * dur);
+                const price = Math.round((booking?.hourlyPricePerHour ?? 0) * dur);
                 return (
                   <Pressable
                     key={dur}

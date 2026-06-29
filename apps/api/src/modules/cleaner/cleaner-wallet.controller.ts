@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Logger, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 
@@ -223,7 +224,8 @@ export class CleanerWalletController {
     `;
   }
 
-  // POST /v1/cleaner/withdrawal — request penarikan
+  // POST /v1/cleaner/withdrawal — request penarikan (max 3x/menit anti-spam)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   // Behavior:
   // - Kalau `bankAccountId` provided & amount <= autoApproveThreshold → auto-disburse via Flip
   // - Kalau gak ada bank_account_id atau amount > threshold → masuk antrian admin manual approve (legacy)

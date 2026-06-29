@@ -101,7 +101,7 @@ function Chat() {
   const [callUrl, setCallUrl] = useState<string>('');
   const [callingLabel, setCallingLabel] = useState('');
   const [callLoading, setCallLoading] = useState(false);
-  const [showIncomingBanner, setShowIncomingBanner] = useState(incomingCall === '1');
+  const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1');
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
