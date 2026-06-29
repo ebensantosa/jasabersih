@@ -68,7 +68,7 @@ export class CallController {
         userId: recipientId,
         title: `📞 ${callerLabel} mengajak kamu telepon`,
         body: 'Tap untuk angkat panggilan',
-        channel: 'booking',
+        channel: 'incoming_call',
         data: {
           type: 'incoming_call',
           bookingId: body.bookingId,

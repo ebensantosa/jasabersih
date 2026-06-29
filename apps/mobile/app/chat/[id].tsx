@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Audio } from 'expo-av';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { CallOverlay } from '../../src/components/CallOverlay';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
@@ -105,6 +106,35 @@ function Chat() {
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const ringtoneRef = useRef<Audio.Sound | null>(null);
+
+  // Putar ringtone saat incoming call banner muncul, stop saat banner hilang
+  useEffect(() => {
+    if (!showIncomingBanner) {
+      ringtoneRef.current?.stopAsync().catch(() => {});
+      ringtoneRef.current?.unloadAsync().catch(() => {});
+      ringtoneRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/order_incoming.wav'),
+          { shouldPlay: true, isLooping: true, volume: 1.0 },
+        );
+        if (cancelled) { void sound.unloadAsync(); return; }
+        ringtoneRef.current = sound;
+      } catch { /* non-fatal — tetap bisa jawab tanpa suara */ }
+    })();
+    return () => {
+      cancelled = true;
+      ringtoneRef.current?.stopAsync().catch(() => {});
+      ringtoneRef.current?.unloadAsync().catch(() => {});
+      ringtoneRef.current = null;
+    };
+  }, [showIncomingBanner]);
 
   // Fetch cleaner rating + presence untuk header (kalau cleaner sudah di-assign)
   useEffect(() => {
