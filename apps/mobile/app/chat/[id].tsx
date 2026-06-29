@@ -446,8 +446,12 @@ function Chat() {
                 </>
               );
             })()}
-          {/* Tombol telepon — hanya saat booking aktif */}
-          {['matched', 'on_the_way', 'in_progress'].includes(booking?.status ?? '') && (
+          {/* Tombol telepon — hanya saat booking aktif dan bukan admin chat */}
+          {['matched', 'on_the_way', 'in_progress'].includes(booking?.status ?? '') &&
+           !messages.some((m) => m.isAdmin) &&
+           booking?.isManual !== true &&
+           (booking as any)?.formSnapshot?.createdByAdmin !== true &&
+           (booking as any)?.formSnapshot?.createdByAdmin !== 'true' && (
             <Pressable
               onPress={startCall}
               disabled={callLoading}
