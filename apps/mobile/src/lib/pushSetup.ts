@@ -61,7 +61,7 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
     });
-    for (const ch of ['booking', 'chat', 'wallet', 'system']) {
+    for (const ch of ['booking', 'wallet', 'system']) {
       await Notifications.setNotificationChannelAsync(ch, {
         name: ch,
         importance: Notifications.AndroidImportance.HIGH,
@@ -69,6 +69,12 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
         vibrationPattern: [0, 250, 150, 250],
       });
     }
+    await Notifications.setNotificationChannelAsync('chat', {
+      name: 'Pesan Chat',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'chat_message',
+      vibrationPattern: [0, 250, 150, 250],
+    });
     // Channel khusus incoming call — notif suara keras, paling prioritas
     await Notifications.setNotificationChannelAsync('incoming_call', {
       name: 'Panggilan Masuk',

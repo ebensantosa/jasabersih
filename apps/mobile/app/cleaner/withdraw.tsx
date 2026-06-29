@@ -242,7 +242,7 @@ function Withdraw() {
               'payment.maintenance_notice'. Cleaner aware kalau transfer
               mungkin tertunda karena bank maintenance. */}
           <View className="mb-3">
-            <MaintenanceBanner />
+            <MaintenanceBanner context="withdrawal" />
           </View>
 
           {/* Verified accounts (preferred) */}

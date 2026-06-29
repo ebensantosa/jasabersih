@@ -28,7 +28,11 @@ const basePlugins = [
       // icon harus 96x96 monochrome (white on transparent) - pakai adaptive foreground.
       icon: './assets/adaptive-icon.png',
       color: '#1D4ED8',
-      sounds: ['./assets/sounds/order_incoming.wav', './assets/sounds/call_incoming.wav'],
+      sounds: [
+        './assets/sounds/order_incoming.wav',
+        './assets/sounds/call_incoming.wav',
+        './assets/sounds/chat_message.wav',
+      ],
     },
   ],
 ];
@@ -36,6 +40,7 @@ const basePlugins = [
 const firebasePlugins = [
   '@react-native-firebase/app',
   '@react-native-firebase/crashlytics',
+  '@react-native-firebase/messaging',
   ['expo-build-properties', { ios: { useFrameworks: 'static' } }],
 ];
 
@@ -65,6 +70,13 @@ module.exports = {
       package: 'com.jasabersih.app',
       versionCode: 21,
       edgeToEdgeEnabled: false,
+      permissions: [
+        'USE_FULL_SCREEN_INTENT',
+        'FOREGROUND_SERVICE',
+        'WAKE_LOCK',
+        'VIBRATE',
+        'RECEIVE_BOOT_COMPLETED',
+      ],
       icon: './assets/icon.png',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',

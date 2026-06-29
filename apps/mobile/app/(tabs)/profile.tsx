@@ -95,7 +95,9 @@ function ProfileScreen() {
                 />
               ) : (
                 <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
-                  <User color="#1D4ED8" size={26} strokeWidth={2} />
+                  <Text style={{ color: '#1D4ED8', fontSize: 24, fontWeight: '700' }}>
+                    {(profile?.name?.[0] ?? profile?.phone?.[0] ?? '?').toUpperCase()}
+                  </Text>
                 </View>
               )}
               <View className="flex-1">

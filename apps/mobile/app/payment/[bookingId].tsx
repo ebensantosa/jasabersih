@@ -41,8 +41,6 @@ const VA_METHODS: { code: string; name: string; logo: any }[] = [
   { code: 'bsi', name: 'BSI Virtual Account', logo: require('../../assets/payment-logos/bsi-logo.png') },
   { code: 'danamon', name: 'Danamon Virtual Account', logo: require('../../assets/payment-logos/logo-danamon.png') },
   { code: 'seabank', name: 'SeaBank Virtual Account', logo: require('../../assets/payment-logos/sea-bank.png') },
-  { code: 'btn', name: 'BTN Virtual Account', logo: require('../../assets/payment-logos/BTN.png') },
-  { code: 'mega', name: 'Bank Mega Virtual Account', logo: require('../../assets/payment-logos/logo-mega.png') },
 ] as const;
 
 const EWALLET_METHODS: { code: string; name: string; logo: any }[] = [

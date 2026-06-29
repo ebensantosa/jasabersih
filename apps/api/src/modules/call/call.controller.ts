@@ -62,17 +62,16 @@ export class CallController {
     // Token untuk pemanggil
     const token = await generateToken(body.bookingId, user.id);
 
-    // Kirim push notif ke pihak lain
+    // Kirim data-only push ke pihak lain — notifee background handler yg buat full-screen notification
     if (recipientId) {
       await this.push.send({
         userId: recipientId,
-        title: `📞 ${callerLabel} mengajak kamu telepon`,
-        body: 'Tap untuk angkat panggilan',
+        // Tanpa title/body → data-only push → tidak ada system notification → notifee yg handle
         channel: 'incoming_call',
         data: {
           type: 'incoming_call',
           bookingId: body.bookingId,
-          callerName: user.id,
+          callerName: callerLabel,
           livekitUrl: LIVEKIT_URL,
         },
       });

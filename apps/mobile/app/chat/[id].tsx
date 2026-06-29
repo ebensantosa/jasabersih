@@ -247,7 +247,7 @@ function Chat() {
   }
 
   async function startCall() {
-    if (callLoading) return;
+    if (callLoading || callToken) return; // already in a call
     setCallLoading(true);
     try {
       const { api } = await import('../../src/lib/api');
@@ -268,6 +268,7 @@ function Chat() {
 
   async function answerCall() {
     setShowIncomingBanner(false);
+    setCallToken(null); // clear any existing call first
     setCallLoading(true);
     try {
       const { api } = await import('../../src/lib/api');
@@ -498,8 +499,8 @@ function Chat() {
             key 'safety.chat_banner' (fallback ke default kalau gak ke-set). */}
         {!isCleaner && <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />}
 
-        {/* Incoming call banner */}
-        {showIncomingBanner && (
+        {/* Incoming call banner — hidden kalau sudah dalam call aktif */}
+        {showIncomingBanner && !callToken && (
           <View className="flex-row items-center gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-3">
             <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-600">
               <Phone color="white" size={18} strokeWidth={2.2} />
@@ -709,7 +710,12 @@ function Chat() {
           token={callToken}
           serverUrl={callUrl}
           callerLabel={callingLabel}
-          onEnd={() => setCallToken(null)}
+          onEnd={(reason) => {
+            setCallToken(null);
+            if (reason === 'error') {
+              import('../../src/stores/ui').then(({ toast }) => toast.error('Gagal menyambungkan panggilan. Coba lagi.'));
+            }
+          }}
         />
       )}
     </>

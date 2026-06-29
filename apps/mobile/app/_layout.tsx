@@ -1,5 +1,18 @@
 import '../global.css';
 import 'react-native-gesture-handler';
+import messaging from '@react-native-firebase/messaging';
+import { showIncomingCallNotification, cancelCallNotification, subscribeNotifeeCallEvents } from '../src/lib/callNotification';
+import notifee from '@notifee/react-native';
+
+// Background + killed state: Firebase message handler harus di module level
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  const type = remoteMessage.data?.type as string | undefined;
+  const bookingId = remoteMessage.data?.bookingId as string | undefined;
+  const callerName = remoteMessage.data?.callerName as string | undefined;
+  if (type === 'incoming_call' && bookingId) {
+    await showIncomingCallNotification({ bookingId, callerName: callerName ?? 'Penelepon' });
+  }
+});
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -228,6 +241,27 @@ export default function RootLayout() {
       setAuthReady(true);
     })();
   }, [accessToken, refreshAuth, fetchUser, syncAddresses, syncBookings, syncWallet]);
+
+  // Notifee: handle Angkat/Tolak dari full-screen incoming call notification
+  useEffect(() => {
+    // Cold start: app dibuka dari tombol "Angkat" di notifee saat app killed
+    notifee.getInitialNotification().then((initial) => {
+      if (!initial) return;
+      const data = initial.notification?.data as Record<string, unknown> | undefined;
+      const bookingId = data?.bookingId as string | undefined;
+      if (data?.type === 'incoming_call' && bookingId && initial.pressAction?.id !== 'decline') {
+        void cancelCallNotification();
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } });
+      }
+    }).catch(() => {});
+
+    // Foreground: Angkat/Tolak saat app terbuka
+    const unsub = subscribeNotifeeCallEvents(
+      (bookingId) => router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } }),
+      () => { /* tolak — tidak perlu navigasi */ },
+    );
+    return () => unsub();
+  }, []);
 
   // Notification tap → deep link
   useEffect(() => {

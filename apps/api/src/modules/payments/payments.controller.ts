@@ -54,8 +54,7 @@ const CHECKOUT_METHODS: CheckoutMethodDef[] = [
   { code: 'BSIVA', name: 'BSI Virtual Account', group: 'virtual_account', senderBank: 'bsi', senderBankType: 'virtual_account' },
   { code: 'DANAMONVA', name: 'Danamon Virtual Account', group: 'virtual_account', senderBank: 'danamon', senderBankType: 'virtual_account' },
   { code: 'SEABANKVA', name: 'SeaBank Virtual Account', group: 'virtual_account', senderBank: 'seabank', senderBankType: 'virtual_account' },
-  { code: 'BTNVA', name: 'BTN Virtual Account', group: 'virtual_account', senderBank: 'btn', senderBankType: 'virtual_account' },
-  { code: 'MEGAVA', name: 'Bank Mega Virtual Account', group: 'virtual_account', senderBank: 'mega', senderBankType: 'virtual_account' },
+  // BTN dan Bank Mega tidak didukung Flip — dihapus dari list
   { code: 'GOPAY', name: 'GoPay', group: 'ewallet', senderBank: 'gopay', senderBankType: 'wallet_account' },
   { code: 'OVO', name: 'OVO', group: 'ewallet', senderBank: 'ovo', senderBankType: 'wallet_account' },
   { code: 'DANA', name: 'DANA', group: 'ewallet', senderBank: 'dana', senderBankType: 'wallet_account' },

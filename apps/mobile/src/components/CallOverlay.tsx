@@ -2,9 +2,10 @@ import {
   AudioSession,
   LiveKitRoom,
   useLocalParticipant,
-  useParticipants,
+  useRemoteParticipants,
   useRoomContext,
 } from '@livekit/react-native';
+import { Audio } from 'expo-av';
 import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
@@ -16,7 +17,7 @@ type Props = {
   token: string;
   serverUrl: string;
   callerLabel: string;
-  onEnd: (reason?: 'timeout' | 'hangup') => void;
+  onEnd: (reason?: 'timeout' | 'hangup' | 'error') => void;
 };
 
 export function CallOverlay({ token, serverUrl, callerLabel, onEnd }: Props) {
@@ -28,7 +29,14 @@ export function CallOverlay({ token, serverUrl, callerLabel, onEnd }: Props) {
   return (
     <Modal visible transparent animationType="slide" onRequestClose={() => onEnd('hangup')}>
       <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-        <LiveKitRoom serverUrl={serverUrl} token={token} connect audio video={false}>
+        <LiveKitRoom
+          serverUrl={serverUrl}
+          token={token}
+          connect={true}
+          audio={true}
+          video={false}
+          onError={() => onEnd('error')}
+        >
           <CallUI callerLabel={callerLabel} onEnd={onEnd} />
         </LiveKitRoom>
       </View>
@@ -36,17 +44,46 @@ export function CallOverlay({ token, serverUrl, callerLabel, onEnd }: Props) {
   );
 }
 
-function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 'timeout' | 'hangup') => void }) {
+function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 'timeout' | 'hangup' | 'error') => void }) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
-  const participants = useParticipants();
+  const remoteParticipants = useRemoteParticipants();
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(true);
   const [elapsed, setElapsed] = useState(0);
   const [countdown, setCountdown] = useState(CALL_TIMEOUT_SEC);
   const [timedOut, setTimedOut] = useState(false);
 
-  const otherConnected = participants.filter((p) => !p.isLocal).length > 0;
+  const otherConnected = remoteParticipants.length > 0;
+  const ringbackRef = useRef<Audio.Sound | null>(null);
+
+  // Ringback tone untuk pemanggil — loop selama menunggu jawaban
+  useEffect(() => {
+    if (otherConnected || timedOut) {
+      ringbackRef.current?.stopAsync().catch(() => {});
+      ringbackRef.current?.unloadAsync().catch(() => {});
+      ringbackRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../../assets/sounds/call_ringback.wav'),
+          { shouldPlay: true, isLooping: true, volume: 0.8 },
+        );
+        if (cancelled) { void sound.unloadAsync(); return; }
+        ringbackRef.current = sound;
+      } catch { /* non-fatal */ }
+    })();
+    return () => {
+      cancelled = true;
+      ringbackRef.current?.stopAsync().catch(() => {});
+      ringbackRef.current?.unloadAsync().catch(() => {});
+      ringbackRef.current = null;
+    };
+  }, [otherConnected, timedOut]);
 
   // Timer durasi call — mulai saat pihak lain connect
   useEffect(() => {

@@ -5,11 +5,10 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 export type PushPayload = {
   userId: string;
-  title: string;
-  body: string;
+  title?: string;  // optional: kalau kosong → data-only push (tidak muncul di tray, dihandle notifee)
+  body?: string;
   data?: Record<string, unknown>;
-  channel?: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job' | 'incoming_job_v2';
-  // Kalau diisi, hanya kirim ke device yang mode-nya cocok (cegah notif cleaner masuk ke device customer dan sebaliknya)
+  channel?: 'booking' | 'chat' | 'wallet' | 'system' | 'incoming_job' | 'incoming_job_v2' | 'incoming_call';
   targetMode?: 'customer' | 'freelancer';
 };
 
@@ -103,15 +102,16 @@ export class PushService {
 
     if (validTokens.length === 0) return { sent: 0, failed: 0 };
 
+    const isDataOnly = !payload.title && !payload.body;
     const sound = (payload.channel === 'incoming_job' || payload.channel === 'incoming_job_v2') ? 'order_incoming.wav' : 'default';
     const messages = validTokens.map((to) => ({
       to,
-      title: finalTitle,
-      body: payload.body,
+      // Data-only push: tidak ada title/body → Android tidak auto-show notif, diserahkan ke notifee background handler
+      ...(isDataOnly ? {} : { title: finalTitle, body: payload.body, sound, channelId: payload.channel ?? 'default' }),
       data: payload.data ?? {},
-      sound,
-      channelId: payload.channel ?? 'default',
       priority: 'high' as const,
+      // content_available supaya iOS + Android wake up background handler
+      _contentAvailable: true,
     }));
 
     let sent = 0;

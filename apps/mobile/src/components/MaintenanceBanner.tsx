@@ -13,6 +13,10 @@ type BankHealth = {
   message: string;
 };
 
+// Kode bank/e-wallet yang relevan untuk disbursement (penarikan cleaner).
+// Alfamart, Indomaret, kartu kredit, dll hanya relevan untuk payment collection.
+const DISBURSEMENT_CODES = new Set(['bca', 'mandiri', 'bni', 'bri', 'gopay', 'ovo', 'dana', 'shopeepay', 'linkaja']);
+
 /**
  * Banner peringatan gangguan bank/payment.
  *
@@ -23,8 +27,12 @@ type BankHealth = {
  *
  * Banner tampil kalau salah satu sumber ada gangguan. Notice manual
  * di-prioritize (admin tau lebih detail), live data jadi fallback.
+ *
+ * context='withdrawal': filter hanya bank/e-wallet relevan untuk disbursement
+ * (sembunyikan Alfamart, Indomaret, Kartu Kredit yang tidak ada kaitannya
+ * dengan penarikan saldo cleaner).
  */
-export function MaintenanceBanner() {
+export function MaintenanceBanner({ context }: { context?: 'withdrawal' } = {}) {
   const manualNotice = useConfig('payment.maintenance_notice', '');
   const [issues, setIssues] = useState<BankHealth[]>([]);
 
@@ -32,7 +40,10 @@ export function MaintenanceBanner() {
     try {
       const r = await api.get('/payments/bank-health');
       const list: BankHealth[] = r.data?.data ?? r.data ?? [];
-      setIssues(list.filter((b) => b.status !== 'normal'));
+      const relevant = context === 'withdrawal'
+        ? list.filter((b) => DISBURSEMENT_CODES.has(b.code.toLowerCase()))
+        : list;
+      setIssues(relevant.filter((b) => b.status !== 'normal'));
     } catch { /* silent */ }
   }, []);
 
@@ -57,7 +68,9 @@ export function MaintenanceBanner() {
         <View className="flex-1">
           <Text className="font-bold text-[12px] text-emerald-900">Semua bank operasional</Text>
           <Text className="font-medium mt-0.5 text-[11px] leading-4 text-emerald-800">
-            Tidak ada gangguan terdeteksi. Transfer ke semua bank & e-wallet berjalan normal.
+            {context === 'withdrawal'
+              ? 'Tidak ada gangguan. Transfer penarikan ke bank & e-wallet berjalan normal.'
+              : 'Tidak ada gangguan terdeteksi. Transfer ke semua bank & e-wallet berjalan normal.'}
           </Text>
         </View>
       </View>
@@ -74,7 +87,9 @@ export function MaintenanceBanner() {
         <AlertTriangle color="#B45309" size={14} strokeWidth={2.4} />
       </View>
       <View className="flex-1">
-        <Text className="font-bold text-[12px] text-amber-900">Gangguan Bank / Pembayaran</Text>
+        <Text className="font-bold text-[12px] text-amber-900">
+            {context === 'withdrawal' ? 'Gangguan Bank / Transfer' : 'Gangguan Bank / Pembayaran'}
+          </Text>
         {hasManual && (
           <Text className="font-medium mt-0.5 text-[11px] leading-4 text-amber-800">{manualNotice}</Text>
         )}
