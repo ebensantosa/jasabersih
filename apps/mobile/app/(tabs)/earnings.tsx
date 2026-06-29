@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { AuthGate } from '../../src/components/AuthGate';
@@ -36,6 +37,7 @@ export default function EarningsRoute() {
 }
 
 function EarningsScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const cleanerName = useCleanerStore((s) => s.name);
   // Pakai effectiveBalance (server-authoritative dgn fallback) supaya konsisten
@@ -104,7 +106,7 @@ function EarningsScreen() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: tabBarHeight }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#1D4ED8" />}
       >

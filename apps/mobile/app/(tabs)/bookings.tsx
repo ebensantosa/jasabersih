@@ -5,6 +5,7 @@ import { CalendarCheck, ChevronRight, LogIn } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
@@ -13,6 +14,7 @@ import { STATUS_COLOR, STATUS_LABEL, useBookingsStore } from '../../src/stores/b
 import { useModeStore } from '../../src/stores/mode';
 
 export default function Bookings() {
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
@@ -131,7 +133,7 @@ export default function Bookings() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ padding: 16, gap: 10 }}
+          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: tabBarHeight }}
           refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void syncFromApi(true)} />}
         >
           {visibleList.map((b) => {

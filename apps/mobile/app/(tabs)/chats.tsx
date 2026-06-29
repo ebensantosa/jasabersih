@@ -5,6 +5,7 @@ import { MessageCircle, ShieldCheck } from 'lucide-react-native';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { AuthGate } from '../../src/components/AuthGate';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
@@ -26,6 +27,7 @@ type ChatRow = {
 };
 
 function ChatsScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   // Pakai selector string (bukan object) supaya ref stable - mencegah
   // fetchChats useCallback ke-recreate tiap zustand update.
@@ -103,7 +105,7 @@ function ChatsScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight }}
         style={{ backgroundColor: '#EFF4FB', marginTop: -20 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchChats} tintColor="#1D4ED8" />}
       >

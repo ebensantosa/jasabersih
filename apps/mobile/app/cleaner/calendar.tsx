@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { withAuth } from '../../src/components/AuthGate';
@@ -26,6 +27,7 @@ const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 function CleanerCalendar() {
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const [monthDate, setMonthDate] = useState(() => {
     const d = new Date();
@@ -105,7 +107,7 @@ function CleanerCalendar() {
         </View>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }}>
         {/* Month navigator */}
         <View className="flex-row items-center justify-between rounded-2xl bg-white p-3" style={{ elevation: 2 }}>
           <Pressable

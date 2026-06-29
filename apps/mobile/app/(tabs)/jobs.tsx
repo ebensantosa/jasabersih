@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { api } from '../../src/lib/api';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
@@ -58,6 +59,7 @@ export default function Jobs() {
 }
 
 function JobsScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const setMode = useModeStore((s) => s.setMode);
 
@@ -314,7 +316,7 @@ function JobsScreen() {
       </SafeAreaView>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
       >
         {!online && active.length > 0 && (

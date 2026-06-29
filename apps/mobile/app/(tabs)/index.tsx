@@ -19,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { BannerCarousel } from '../../src/components/BannerCarousel';
 import { WaIcon } from '../../src/components/BrandIcon';
@@ -35,6 +36,7 @@ import { toast } from '../../src/stores/ui';
 import { useUserStore } from '../../src/stores/user';
 
 export default function Home() {
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const mode = useModeStore((s) => s.mode);
   const allBookings = useBookingsStore((s) => s.list);
@@ -182,7 +184,7 @@ export default function Home() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight }}
         style={{ backgroundColor: '#EFF4FB', marginTop: -20 }}
         showsVerticalScrollIndicator={false}
       >
