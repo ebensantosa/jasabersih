@@ -137,10 +137,21 @@ function ChatsScreen() {
           <View className="mb-3 mt-3 flex-row items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
             <ShieldCheck color="#B45309" size={16} strokeWidth={2.4} />
             <View className="flex-1">
-              <Text className="font-bold text-[12px] text-amber-900">Chat hanya di JasaBersih</Text>
-              <Text className="font-sans mt-0.5 text-[11px] leading-4 text-amber-900">
-                Jangan share nomor HP, WA, atau bayar di luar app. Transaksi via app dapat garansi pengerjaan.
-              </Text>
+              {isCleaner ? (
+                <>
+                  <Text className="font-bold text-[12px] text-amber-900">Tetap profesional & aman</Text>
+                  <Text className="font-sans mt-0.5 text-[11px] leading-4 text-amber-900">
+                    Jangan share nomor HP atau ajak transaksi di luar app. Melanggar ketentuan dapat berakibat penonaktifan akun.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text className="font-bold text-[12px] text-amber-900">Chat hanya di JasaBersih</Text>
+                  <Text className="font-sans mt-0.5 text-[11px] leading-4 text-amber-900">
+                    Jangan share nomor HP, WA, atau bayar di luar app. Transaksi via app dapat garansi pengerjaan.
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 
