@@ -20,6 +20,7 @@ export type AppConfig = Partial<{
   'feature.cancel_penalty_pct': number;
   'feature.min_withdrawal': number;
   'feature.max_addresses': number;
+  'feature.call_enabled': boolean;
   'hero.subtitle': string;
   'hero.cta_label': string;
   'safety.chat_banner': string;

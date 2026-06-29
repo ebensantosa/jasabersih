@@ -103,6 +103,7 @@ function Chat() {
   const [callingLabel, setCallingLabel] = useState('');
   const [callLoading, setCallLoading] = useState(false);
   const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1');
+  const callEnabled = useConfig('feature.call_enabled', true as any) !== false;
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -446,8 +447,8 @@ function Chat() {
                 </>
               );
             })()}
-          {/* Tombol telepon — hanya saat booking aktif dan bukan admin chat */}
-          {['matched', 'on_the_way', 'in_progress'].includes(booking?.status ?? '') &&
+          {/* Tombol telepon — hanya saat booking aktif, bukan admin chat, dan fitur aktif */}
+          {callEnabled && ['matched', 'on_the_way', 'in_progress'].includes(booking?.status ?? '') &&
            !messages.some((m) => m.isAdmin) &&
            booking?.isManual !== true &&
            (booking as any)?.formSnapshot?.createdByAdmin !== true &&
