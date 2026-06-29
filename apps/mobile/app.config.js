@@ -28,7 +28,7 @@ const basePlugins = [
       // icon harus 96x96 monochrome (white on transparent) - pakai adaptive foreground.
       icon: './assets/adaptive-icon.png',
       color: '#1D4ED8',
-      sounds: ['./assets/sounds/order_incoming.wav'],
+      sounds: ['./assets/sounds/order_incoming.wav', './assets/sounds/call_incoming.wav'],
     },
   ],
 ];
