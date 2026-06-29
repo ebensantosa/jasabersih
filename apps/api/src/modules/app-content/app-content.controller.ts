@@ -125,7 +125,9 @@ export class AppContentController {
                display_order AS "displayOrder",
                show_on_home AS "showOnHome",
                is_bundle AS "isBundle",
-               is_active AS "isActive"
+               is_active AS "isActive",
+               unit_price AS "unitPrice",
+               duration_min AS "durationMin"
           FROM services ORDER BY display_order ASC NULLS LAST, name ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`

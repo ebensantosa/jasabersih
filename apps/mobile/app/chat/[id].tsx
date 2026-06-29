@@ -6,6 +6,7 @@ import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as I
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +14,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  Vibration,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -108,6 +110,49 @@ function Chat() {
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const ringtoneRef = useRef<Audio.Sound | null>(null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Shake + pulse + vibrate saat incoming call banner muncul
+  useEffect(() => {
+    if (!showIncomingBanner) return;
+
+    // Getar berulang setiap 2 detik
+    const vibrateLoop = () => {
+      Vibration.vibrate([0, 400, 200, 400]);
+    };
+    vibrateLoop();
+    const vibrateInterval = setInterval(vibrateLoop, 2000);
+
+    // Shake kiri-kanan
+    const shake = () => Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+    ]);
+    shake();
+    const shakeInterval = setInterval(shake, 2000);
+
+    // Pulse scale icon telepon
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 400, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+
+    return () => {
+      clearInterval(vibrateInterval);
+      clearInterval(shakeInterval);
+      Vibration.cancel();
+      pulse.stop();
+      shakeAnim.setValue(0);
+      pulseAnim.setValue(1);
+    };
+  }, [showIncomingBanner]);
 
   // Auto-dismiss incoming banner setelah 65 detik (pemanggil timeout 60s + buffer)
   useEffect(() => {
@@ -501,10 +546,16 @@ function Chat() {
 
         {/* Incoming call banner — hidden kalau sudah dalam call aktif */}
         {showIncomingBanner && !callToken && (
-          <View className="flex-row items-center gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-3">
-            <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-600">
+          <Animated.View
+            style={{ transform: [{ translateX: shakeAnim }] }}
+            className="flex-row items-center gap-3 border-b border-emerald-300 bg-emerald-50 px-4 py-3"
+          >
+            <Animated.View
+              style={{ transform: [{ scale: pulseAnim }] }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-emerald-600"
+            >
               <Phone color="white" size={18} strokeWidth={2.2} />
-            </View>
+            </Animated.View>
             <View className="flex-1">
               <Text className="font-bold text-sm text-emerald-900">Panggilan masuk</Text>
               <Text className="font-sans text-xs text-emerald-700">
@@ -526,7 +577,7 @@ function Chat() {
                 ? <ActivityIndicator size="small" color="white" />
                 : <Text className="font-bold text-xs text-white">Angkat</Text>}
             </Pressable>
-          </View>
+          </Animated.View>
         )}
 
         <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ padding: 16, gap: 8 }} showsVerticalScrollIndicator={false}>

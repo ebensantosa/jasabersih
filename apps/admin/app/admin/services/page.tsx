@@ -142,6 +142,8 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     isBundle: service?.isBundle ?? false,
     isActive: service?.isActive ?? true,
     displayOrder: service?.displayOrder ?? 0,
+    unitPrice: service?.unitPrice ? Number(service.unitPrice) : 0,
+    durationMin: service?.durationMin ? Number(service.durationMin) : 60,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -172,8 +174,9 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     if (Object.keys(e).length) return;
     setBusy(true);
     try {
-      if (isEdit) await api.admin.updateService(service.id, form);
-      else await api.admin.createService(form);
+      const payload = { ...form, unitPrice: form.unitPrice > 0 ? form.unitPrice : undefined, durationMin: form.durationMin > 0 ? form.durationMin : undefined };
+      if (isEdit) await api.admin.updateService(service.id, payload);
+      else await api.admin.createService(payload);
       // Save package detail kalau edit mode
       if (isEdit) {
         await api.admin.updateServicePackage(service.id, {
@@ -262,7 +265,35 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
           />
         </section>
 
-        {/* === SECTION 4: Detail Pekerjaan (Paket Aktif) === */}
+        {/* === SECTION 4: Harga per Unit (Flat Pricing) === */}
+        <section className="space-y-3">
+          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Harga per Unit (Flat)
+          </div>
+          <div className="rounded border bg-blue-50 p-3 text-[11px] text-blue-900">
+            Harga ini dipakai di booking baru sistem <strong>flat per unit</strong>.<br/>
+            Customer pilih layanan ini + jumlah (qty), total = harga × qty.<br/>
+            <strong>Cleaner hanya melihat pendapatan mereka</strong>, bukan harga customer.
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Harga per Unit (Rp)"
+              type="number"
+              value={String(form.unitPrice)}
+              onChange={(v) => setForm({ ...form, unitPrice: Number(v) || 0 })}
+              helpText="Misal: 120000 untuk Kamar Tidur = Rp 120.000/kamar."
+            />
+            <Input
+              label="Durasi per Unit (menit)"
+              type="number"
+              value={String(form.durationMin)}
+              onChange={(v) => setForm({ ...form, durationMin: Number(v) || 60 })}
+              helpText="Estimasi waktu per unit (untuk hitung total durasi)."
+            />
+          </div>
+        </section>
+
+        {/* === SECTION 5: Detail Pekerjaan (Paket Aktif) === */}
         {isEdit && (
           <section className="space-y-3">
             <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">

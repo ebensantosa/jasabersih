@@ -109,6 +109,8 @@ model Service {
   iconUrl      String?  @map("icon_url") @db.VarChar(500)
   isActive     Boolean  @default(true) @map("is_active")
   displayOrder Int?     @map("display_order")
+  unitPrice    BigInt?  @map("unit_price")
+  durationMin  Int?     @map("duration_min")
 
   packages PricingPackage[]
 

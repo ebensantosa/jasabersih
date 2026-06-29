@@ -111,11 +111,6 @@ export function RealtimeJobModal() {
               <Text className="mt-2 font-extrabold text-3xl text-emerald-700">
                 Rp {payout.toLocaleString('id-ID')}
               </Text>
-              {total > 0 ? (
-                <Text className="mt-1 text-[11px] text-emerald-800">
-                  Nilai pesanan pelanggan Rp {total.toLocaleString('id-ID')}
-                </Text>
-              ) : null}
             </View>
 
             {/* Layanan */}
