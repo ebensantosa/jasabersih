@@ -1,9 +1,8 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { withAuth } from '../../src/components/AuthGate';
@@ -28,7 +27,8 @@ const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 function CleanerCalendar() {
-  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 80;
+  const { bottom } = useSafeAreaInsets();
+  const tabBarHeight = (Platform.OS === 'web' ? 64 : 72) + bottom;
   const router = useRouter();
   const [monthDate, setMonthDate] = useState(() => {
     const d = new Date();

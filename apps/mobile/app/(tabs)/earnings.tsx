@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ArrowDownToLine,
   Award,
@@ -11,9 +11,8 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react-native';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { AuthGate } from '../../src/components/AuthGate';
@@ -37,7 +36,8 @@ export default function EarningsRoute() {
 }
 
 function EarningsScreen() {
-  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 80;
+  const { bottom } = useSafeAreaInsets();
+  const tabBarHeight = (Platform.OS === 'web' ? 64 : 72) + bottom;
   const router = useRouter();
   const cleanerName = useCleanerStore((s) => s.name);
   // Pakai effectiveBalance (server-authoritative dgn fallback) supaya konsisten

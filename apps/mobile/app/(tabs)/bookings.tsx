@@ -2,10 +2,9 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { CalendarCheck, ChevronRight, LogIn } from 'lucide-react-native';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../../src/data/catalog';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
@@ -14,7 +13,8 @@ import { STATUS_COLOR, STATUS_LABEL, useBookingsStore } from '../../src/stores/b
 import { useModeStore } from '../../src/stores/mode';
 
 export default function Bookings() {
-  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 80;
+  const { bottom } = useSafeAreaInsets();
+  const tabBarHeight = (Platform.OS === 'web' ? 64 : 72) + bottom;
   const router = useRouter();
   const tokens = useAuthStore((s) => s.tokens);
   const mode = useModeStore((s) => s.mode);
