@@ -1,14 +1,27 @@
-import notifee, {
-  AndroidImportance,
-  AndroidVisibility,
-  AndroidLaunchActivityFlag,
-  EventType,
-} from '@notifee/react-native';
+// Guard notifee - native module requires matching APK build.
+// Gracefully no-ops if native module is absent (e.g. older APK without Notifee).
+let notifee: any = null;
+let AndroidImportance: any = { HIGH: 4 };
+let AndroidVisibility: any = { PUBLIC: 1 };
+let AndroidLaunchActivityFlag: any = { SINGLE_TOP: 536870912 };
+let EventType: any = { ACTION_PRESS: 2, PRESS: 1, DISMISSED: 0 };
+
+try {
+  const mod = require('@notifee/react-native');
+  notifee = mod.default;
+  AndroidImportance = mod.AndroidImportance;
+  AndroidVisibility = mod.AndroidVisibility;
+  AndroidLaunchActivityFlag = mod.AndroidLaunchActivityFlag;
+  EventType = mod.EventType;
+} catch {
+  // Notifee native module not in this APK build - call notifications disabled
+}
 
 const CALL_CHANNEL_ID = 'incoming_call_notifee';
 export const CALL_NOTIFICATION_ID = 'incoming_call_active';
 
 export async function setupCallChannel() {
+  if (!notifee) return;
   await notifee.createChannel({
     id: CALL_CHANNEL_ID,
     name: 'Panggilan Masuk',
@@ -26,6 +39,7 @@ export async function showIncomingCallNotification({
   bookingId: string;
   callerName: string;
 }) {
+  if (!notifee) return;
   await setupCallChannel();
   await notifee.displayNotification({
     id: CALL_NOTIFICATION_ID,
@@ -67,6 +81,7 @@ export async function showIncomingCallNotification({
 }
 
 export async function cancelCallNotification() {
+  if (!notifee) return;
   await notifee.cancelNotification(CALL_NOTIFICATION_ID);
 }
 
@@ -75,8 +90,9 @@ export async function cancelCallNotification() {
 export function subscribeNotifeeCallEvents(
   onAnswer: (bookingId: string) => void,
   onDecline: () => void,
-) {
-  return notifee.onForegroundEvent(({ type, detail }) => {
+): () => void {
+  if (!notifee) return () => {};
+  return notifee.onForegroundEvent(({ type, detail }: any) => {
     if (
       type === EventType.ACTION_PRESS ||
       type === EventType.PRESS

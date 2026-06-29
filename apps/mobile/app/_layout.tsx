@@ -2,7 +2,8 @@ import '../global.css';
 import 'react-native-gesture-handler';
 import messaging from '@react-native-firebase/messaging';
 import { showIncomingCallNotification, cancelCallNotification, subscribeNotifeeCallEvents } from '../src/lib/callNotification';
-import notifee from '@notifee/react-native';
+let notifee: any = null;
+try { notifee = require('@notifee/react-native').default; } catch { /* native module not in APK */ }
 
 // Background + killed state: Firebase message handler harus di module level
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
@@ -245,7 +246,7 @@ export default function RootLayout() {
   // Notifee: handle Angkat/Tolak dari full-screen incoming call notification
   useEffect(() => {
     // Cold start: app dibuka dari tombol "Angkat" di notifee saat app killed
-    notifee.getInitialNotification().then((initial) => {
+    notifee?.getInitialNotification().then((initial: any) => {
       if (!initial) return;
       const data = initial.notification?.data as Record<string, unknown> | undefined;
       const bookingId = data?.bookingId as string | undefined;
