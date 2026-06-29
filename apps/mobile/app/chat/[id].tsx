@@ -65,7 +65,7 @@ const QUICK_REPLIES_CUSTOMER = [
 
 function Chat() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, incomingCall } = useLocalSearchParams<{ id: string; incomingCall?: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
   const fetchOne = useBookingsStore((s) => s.fetchOne);
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
@@ -101,6 +101,7 @@ function Chat() {
   const [callUrl, setCallUrl] = useState<string>('');
   const [callingLabel, setCallingLabel] = useState('');
   const [callLoading, setCallLoading] = useState(false);
+  const [showIncomingBanner, setShowIncomingBanner] = useState(incomingCall === '1');
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -227,10 +228,24 @@ function Chat() {
     }
   }
 
-  async function joinCall(incomingToken: string, incomingUrl: string, peerName: string) {
-    setCallingLabel(peerName);
-    setCallUrl(incomingUrl);
-    setCallToken(incomingToken);
+  async function answerCall() {
+    setShowIncomingBanner(false);
+    setCallLoading(true);
+    try {
+      const { api } = await import('../../src/lib/api');
+      const r = await api.post('/call/join', { bookingId: id });
+      const d = r.data?.data ?? r.data;
+      const peerName = isCleaner
+        ? ((booking as any)?.customerName ?? 'Pelanggan')
+        : (booking?.cleanerName ?? 'Cleaner');
+      setCallingLabel(peerName);
+      setCallUrl(d.url);
+      setCallToken(d.token);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? 'Gagal angkat panggilan');
+    } finally {
+      setCallLoading(false);
+    }
   }
 
   async function pickAndSendPhoto(source: 'camera' | 'gallery') {
@@ -440,6 +455,36 @@ function Chat() {
         {/* Safety banner + Report button. Teks bisa diubah admin via app_config
             key 'safety.chat_banner' (fallback ke default kalau gak ke-set). */}
         {!isCleaner && <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />}
+
+        {/* Incoming call banner */}
+        {showIncomingBanner && (
+          <View className="flex-row items-center gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-3">
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-600">
+              <Phone color="white" size={18} strokeWidth={2.2} />
+            </View>
+            <View className="flex-1">
+              <Text className="font-bold text-sm text-emerald-900">Panggilan masuk</Text>
+              <Text className="font-sans text-xs text-emerald-700">
+                {isCleaner ? ((booking as any)?.customerName ?? 'Pelanggan') : (booking?.cleanerName ?? 'Cleaner')} mengajak kamu telepon
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setShowIncomingBanner(false)}
+              className="h-9 w-16 items-center justify-center rounded-lg border border-ink-200 bg-white"
+            >
+              <Text className="font-semibold text-xs text-ink-600">Tolak</Text>
+            </Pressable>
+            <Pressable
+              onPress={answerCall}
+              disabled={callLoading}
+              className="h-9 w-16 items-center justify-center rounded-lg bg-emerald-600"
+            >
+              {callLoading
+                ? <ActivityIndicator size="small" color="white" />
+                : <Text className="font-bold text-xs text-white">Angkat</Text>}
+            </Pressable>
+          </View>
+        )}
 
         <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ padding: 16, gap: 8 }} showsVerticalScrollIndicator={false}>
           {status === 'connecting' ? (

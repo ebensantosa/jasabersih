@@ -240,9 +240,9 @@ export default function RootLayout() {
       if (type) Track.notificationTapped(type);
       if (!type) return;
 
-      // Incoming call → buka chat, CallOverlay muncul di sana
+      // Incoming call → buka chat dengan banner "Angkat / Tolak"
       if (type === 'incoming_call' && bookingId) {
-        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } });
         return;
       }
 
