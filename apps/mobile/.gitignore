@@ -14,3 +14,7 @@ ios/
 *firebase-adminsdk*.json
 *-firebase-adminsdk-*.json
 google-services-account*.json
+
+# Local credentials (never commit)
+credentials.json
+credentials/
