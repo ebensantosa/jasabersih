@@ -980,10 +980,10 @@ export class CleanerJobsController {
       userId: b.customer_id,
       channel: 'booking',
       title: 'Cleaner minta tambah layanan',
-      body: `${addonNames} (+Rp ${amount.toLocaleString('id-ID')}). Setujui atau tolak di detail booking.`,
+      body: `${nameList} (+Rp ${amount.toLocaleString('id-ID')}). Setujui atau tolak di detail booking.`,
       data: { type: 'upcharge_requested', bookingId: id, upchargeId: created[0]?.id, amount },
     }).catch(() => {});
-    return { id: created[0]?.id, amount, addonNames, status: 'pending' };
+    return { id: created[0]?.id, amount, nameList, status: 'pending' };
   }
 
   // GET upcharges per booking (cleaner side)
