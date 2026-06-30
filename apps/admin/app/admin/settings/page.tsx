@@ -862,8 +862,7 @@ function FeaturesTab() {
                   <Badge variant={enabled ? 'green' : 'slate'}>{enabled ? 'Aktif' : 'Nonaktif'}</Badge>
                   <Switch
                     checked={enabled}
-                    onChange={() => toggle(flag, enabled)}
-                    disabled={saving === flag.key}
+                    onChange={() => { if (!saving) void toggle(flag, enabled); }}
                   />
                 </div>
               </div>
