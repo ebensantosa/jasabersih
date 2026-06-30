@@ -81,15 +81,18 @@ function Chat() {
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
-  // Mark-read tiap kali ada pesan baru ditujukan ke saya yg belum dibaca.
-  // Skip kalau call overlay aktif — user buka chat via notif call, bukan untuk baca pesan.
+  // Mark-read setelah 2 detik di chat — skip kalau call overlay aktif atau
+  // chat ditutup sebelum 2 detik (clearTimeout di cleanup).
   useEffect(() => {
     if (!id || showIncomingBanner || callToken) return;
     const hasUnreadForMe = messages.some((m) => m.recipientId === myUserId && !m.readAt);
     if (!hasUnreadForMe) return;
-    import('../../src/lib/api').then(({ api }) => {
-      api.post(`/chat/booking/${id}/read`).catch(() => {});
-    });
+    const t = setTimeout(() => {
+      import('../../src/lib/api').then(({ api }) => {
+        api.post(`/chat/booking/${id}/read`).catch(() => {});
+      });
+    }, 2000);
+    return () => clearTimeout(t);
   }, [id, messages, myUserId, showIncomingBanner, callToken]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
