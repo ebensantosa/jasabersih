@@ -16,6 +16,7 @@ const CALL_TIMEOUT_SEC = 25;
 type EndInfo = {
   durationSec: number;
   answered: boolean;
+  errorMsg?: string;
 };
 
 type Props = {
@@ -38,11 +39,11 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
   }, []);
 
   function handleError(err?: any) {
-    // If the call was already answered, treat this as a disconnect (hangup), not an error
+    const errMsg = err?.message ?? (err != null ? String(err) : undefined);
     if (answeredRef.current) {
-      onEnd('hangup', { durationSec: 0, answered: true });
+      onEnd('hangup', { durationSec: 0, answered: true, errorMsg: errMsg });
     } else {
-      onEnd('error', { durationSec: 0, answered: false });
+      onEnd('error', { durationSec: 0, answered: false, errorMsg: errMsg });
     }
   }
 
@@ -202,6 +203,16 @@ function CallUI({
   useEffect(() => {
     if (otherConnected) answeredRef.current = true;
   }, [otherConnected, answeredRef]);
+
+  // Auto-end: lawan bicara disconnect setelah call dijawab → hangup otomatis
+  useEffect(() => {
+    if (!answeredRef.current || otherConnected || timedOut) return;
+    const t = setTimeout(async () => {
+      await room.disconnect().catch(() => {});
+      onEnd('hangup', { durationSec: elapsedRef.current, answered: true });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [otherConnected, timedOut]);
 
   const maxLabel = maxDurationSec > 0
     ? `Batas ${Math.floor(maxDurationSec / 60)} menit`
