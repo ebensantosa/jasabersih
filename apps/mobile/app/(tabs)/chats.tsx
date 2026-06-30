@@ -212,11 +212,9 @@ function ChatsScreen() {
                         </Text>
                       )}
                     </View>
-                    {c.packageName && (
-                      <Text className="font-medium text-[10px] text-brand-600" numberOfLines={1}>
-                        {c.packageName}
-                      </Text>
-                    )}
+                    <Text className="font-medium text-[10px] text-brand-600" numberOfLines={1}>
+                      {[c.packageName, `#${c.bookingId.slice(0, 8)}`].filter(Boolean).join(' · ')}
+                    </Text>
                     <View className="mt-0.5 flex-row items-center gap-1.5">
                       <Text className="flex-1 font-sans text-[12px] text-ink-500" numberOfLines={1}>
                         {c.lastMessage ?? 'Mulai percakapan...'}

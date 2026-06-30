@@ -1,10 +1,7 @@
 name: Deploy to VPS
 
 on:
-  push:
-    branches: [main]
-  # Manual trigger from the Actions tab — useful for redeploying without
-  # making a no-op commit.
+  # Manual trigger only — deploy dilakukan manual via deploy.sh di VPS
   workflow_dispatch:
 
 # Prevent two deploys racing each other. The second push waits for the first.
