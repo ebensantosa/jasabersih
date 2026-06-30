@@ -275,24 +275,21 @@ export function SettingsView() {
         return;
       }
       const result = await Updates.checkForUpdateAsync();
-      if (result.isAvailable) {
-        toast.info('Update ditemukan, mengunduh...');
-        await Updates.fetchUpdateAsync();
-        // reloadAsync bisa throw di beberapa kondisi Expo — handle terpisah
-        try {
-          await Updates.reloadAsync();
-        } catch {
-          toast.info('Update siap! Tutup dan buka ulang app untuk menerapkan.');
-        }
-      } else {
+      if (!result.isAvailable) {
         toast.info('Aplikasi sudah versi terbaru');
+        return;
       }
+      toast.info('Update ditemukan, mengunduh...');
+      await Updates.fetchUpdateAsync();
+      // Update sudah ke-download — coba reload otomatis, kalau gagal minta restart manual
+      Updates.reloadAsync().catch(() => {});
+      toast.info('Update siap! Tutup dan buka ulang app untuk menerapkan.');
     } catch (e: any) {
       const msg: string = e?.message ?? '';
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
         toast.error('Cek koneksi internet lalu coba lagi');
       } else {
-        toast.info('Tutup dan buka ulang app untuk dapat update terbaru');
+        toast.info('Update diunduh. Tutup dan buka ulang app untuk menerapkan.');
       }
     } finally {
       setChecking(false);
