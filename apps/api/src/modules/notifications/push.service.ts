@@ -124,8 +124,47 @@ export class PushService {
         body: JSON.stringify(messages),
       });
       const rawText = await res.text().catch(() => '');
-      let json: { data?: any[] } = {};
+      let json: { data?: any[]; errors?: any[] } = {};
       try { json = JSON.parse(rawText); } catch { /* ignore */ }
+
+      // PUSH_TOO_MANY_EXPERIENCE_IDS: tokens dari beberapa Expo project dicampur.
+      // Solusi: retry tiap group experience secara terpisah.
+      const tooManyExp = json.errors?.find((e: any) => e?.code === 'PUSH_TOO_MANY_EXPERIENCE_IDS');
+      if (tooManyExp) {
+        const groups: Record<string, string[]> = tooManyExp.details ?? {};
+        this.log.warn(`PUSH_TOO_MANY_EXPERIENCE_IDS — retrying ${Object.keys(groups).length} groups separately`);
+        for (const [exp, groupTokens] of Object.entries(groups)) {
+          const groupMessages = messages.filter((m) => groupTokens.includes(m.to));
+          if (groupMessages.length === 0) continue;
+          try {
+            const r2 = await fetch(EXPO_PUSH_URL, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', accept: 'application/json' },
+              body: JSON.stringify(groupMessages),
+            });
+            const j2 = await r2.json().catch(() => ({})) as { data?: any[] };
+            const res2 = Array.isArray(j2.data) ? j2.data : [];
+            const ok = res2.filter((r: any) => r?.status === 'ok').length;
+            sent += ok; failed += groupMessages.length - ok;
+            this.log.log(`retry group ${exp}: sent=${ok}/${groupMessages.length}`);
+            // Cleanup expired tokens dalam group ini
+            const expired = res2
+              .map((r: any, i: number) => ({ r, token: groupMessages[i]?.to }))
+              .filter(({ r }) => r?.details?.error === 'DeviceNotRegistered' || r?.details?.error === 'InvalidCredentials')
+              .map(({ token }) => token).filter(Boolean) as string[];
+            if (expired.length > 0) {
+              void Promise.all(expired.map((t) =>
+                this.prisma.$executeRaw`DELETE FROM user_devices WHERE fcm_token = ${t}`.catch(() => {}),
+              ));
+            }
+          } catch (e2: any) {
+            this.log.error(`retry group ${exp} failed: ${e2?.message}`);
+            failed += groupMessages.length;
+          }
+        }
+        return { sent, failed };
+      }
+
       const results = Array.isArray(json.data) ? json.data : [];
       if (!Array.isArray(json.data) || results.length === 0) {
         this.log.warn(`expo push unexpected response: status=${res.status} body=${rawText.slice(0, 500)}`);

@@ -55,6 +55,27 @@ export class CallController {
       throw new BadRequestException('Telepon hanya bisa dilakukan saat booking sedang berjalan.');
     }
 
+    // Auto-cleanup session yang abandoned (crash / close paksa) lebih dari 5 menit
+    await this.prisma.$executeRaw`
+      UPDATE call_sessions
+         SET ended_at = NOW(), end_reason = 'abandoned'
+       WHERE (initiator_id = ${user.id}::uuid OR recipient_id = ${user.id}::uuid)
+         AND ended_at IS NULL
+         AND started_at < NOW() - INTERVAL '5 minutes'
+    `;
+
+    // Cegah duplikat call session aktif untuk user ini
+    const activeSession = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM call_sessions
+       WHERE (initiator_id = ${user.id}::uuid OR recipient_id = ${user.id}::uuid)
+         AND ended_at IS NULL
+         AND started_at > NOW() - INTERVAL '10 minutes'
+       LIMIT 1
+    `;
+    if (activeSession.length > 0) {
+      throw new BadRequestException('Kamu sedang dalam panggilan lain. Akhiri dulu sebelum memulai panggilan baru.');
+    }
+
     const isCleaner = b.cleaner_id === user.id;
     const recipientId = isCleaner ? b.customer_id : b.cleaner_id;
     const callerRow = await this.prisma.$queryRaw<{ name: string | null }[]>`
@@ -73,11 +94,14 @@ export class CallController {
     `;
     const sessionId = sessionRows[0]?.id ?? null;
 
-    // Kirim data-only push ke pihak lain — notifee background handler yg buat full-screen notification
+    // Push dengan title+body supaya Android tampilkan notifikasi + mainkan ringtone call_incoming
+    // tanpa bergantung pada Firebase background handler (lebih reliable di semua device).
     if (recipientId) {
       await this.push.send({
         userId: recipientId,
         channel: 'incoming_call',
+        title: `📞 ${callerLabel} menelepon`,
+        body: 'Tap untuk menerima panggilan',
         data: {
           type: 'incoming_call',
           bookingId: body.bookingId,
