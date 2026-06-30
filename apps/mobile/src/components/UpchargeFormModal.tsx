@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Camera, Minus, Plus, X } from 'lucide-react-native';
+import { Camera, Check, Minus, Plus, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
@@ -10,7 +10,15 @@ import { useApiAddons, useApiServices, useAppContent } from '../stores/appConten
 import { formatRupiah } from '../data/catalog';
 import { toast } from '../stores/ui';
 
-type Item = { id: string; name: string; price: number; isPackage?: boolean };
+type Item = { id: string; name: string; price: number; code?: string | null; isPackage?: boolean };
+
+// Addons yang sifatnya on/off (bukan quantity) — ditampilkan sebagai checkbox
+const CHECKBOX_ADDON_CODES = new Set([
+  'cuci_piring', 'cuci_alat_masak',
+  'kulkas', 'kompor', 'microwave_oven', 'hood_exhaust', 'dispenser',
+  'bathtub_general', 'bathtub_deep',
+  'sampah', 'decluttering',
+]);
 
 const EXCLUDED_SERVICE_CODES = new Set([
   'kamar_km_dalam', 'ruko', 'kantor', 'apartemen', 'full_house',
@@ -21,6 +29,30 @@ const EXCLUDED_SERVICE_CODES = new Set([
 function isSpecialUnit(desc: string | null | undefined) {
   const d = (desc ?? '').toLowerCase();
   return d.includes('per m²') || d.includes('/m²') || d.includes('per panel') || d.includes('per lubang') || d.includes('per daun');
+}
+
+function CheckboxRow({ item, checked, onToggle }: { item: Item; checked: boolean; onToggle: () => void }) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      className={`flex-row items-center gap-3 rounded-xl border p-3 ${checked ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}
+    >
+      <View style={{
+        width: 24, height: 24, borderRadius: 6, borderWidth: 2,
+        borderColor: checked ? '#1D4ED8' : '#CBD5E1',
+        backgroundColor: checked ? '#1D4ED8' : 'white',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        {checked && <Check color="white" size={14} strokeWidth={2.8} />}
+      </View>
+      <View className="flex-1">
+        <Text className={`font-semibold text-[13px] ${checked ? 'text-brand-900' : 'text-ink-900'}`}>{item.name}</Text>
+        <Text className={`font-medium mt-0.5 text-[11px] ${checked ? 'text-brand-600' : 'text-ink-500'}`}>
+          {formatRupiah(item.price)}{item.isPackage ? ' · Layanan utama' : ''}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 function QtyRow({ item, qty, onChange }: { item: Item; qty: number; onChange: (n: number) => void }) {
@@ -75,7 +107,7 @@ export function UpchargeFormModal({
     () =>
       apiAddons
         .filter((a) => !isSpecialUnit(a.description))
-        .map((a) => ({ id: a.id, name: a.name, price: Number(a.price) })),
+        .map((a) => ({ id: a.id, code: a.code, name: a.name, price: Number(a.price) })),
     [apiAddons],
   );
 
@@ -205,9 +237,18 @@ export function UpchargeFormModal({
               <>
                 <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Tambahan</Text>
                 <View className="gap-2">
-                  {addons.map((item) => (
-                    <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} />
-                  ))}
+                  {addons.map((item) =>
+                    CHECKBOX_ADDON_CODES.has(item.code ?? '') ? (
+                      <CheckboxRow
+                        key={item.id}
+                        item={item}
+                        checked={(qtys[item.id] ?? 0) > 0}
+                        onToggle={() => setQty(item.id, (qtys[item.id] ?? 0) > 0 ? 0 : 1)}
+                      />
+                    ) : (
+                      <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} />
+                    )
+                  )}
                 </View>
               </>
             )}
