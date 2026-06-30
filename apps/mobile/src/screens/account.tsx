@@ -285,11 +285,11 @@ export function SettingsView() {
       Updates.reloadAsync().catch(() => {});
       toast.info('Update siap! Tutup dan buka ulang app untuk menerapkan.');
     } catch (e: any) {
-      const msg: string = e?.message ?? '';
+      const msg: string = e?.message ?? String(e ?? 'unknown');
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
         toast.error('Cek koneksi internet lalu coba lagi');
       } else {
-        toast.info('Update diunduh. Tutup dan buka ulang app untuk menerapkan.');
+        toast.error(`OTA error: ${msg.slice(0, 120)}`);
       }
     } finally {
       setChecking(false);
