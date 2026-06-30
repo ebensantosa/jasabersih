@@ -10,15 +10,7 @@ import { useApiAddons, useApiServices, useAppContent } from '../stores/appConten
 import { formatRupiah } from '../data/catalog';
 import { toast } from '../stores/ui';
 
-type Item = { id: string; name: string; price: number; code?: string | null; isPackage?: boolean };
-
-// Addons yang sifatnya on/off (bukan quantity) — ditampilkan sebagai checkbox
-const CHECKBOX_ADDON_CODES = new Set([
-  'cuci_piring', 'cuci_alat_masak',
-  'kulkas', 'kompor', 'microwave_oven', 'hood_exhaust', 'dispenser',
-  'bathtub_general', 'bathtub_deep',
-  'sampah', 'decluttering',
-]);
+type Item = { id: string; name: string; price: number; code?: string | null; inputType?: 'qty' | 'checkbox'; isPackage?: boolean };
 
 const EXCLUDED_SERVICE_CODES = new Set([
   'kamar_km_dalam', 'ruko', 'kantor', 'apartemen', 'full_house',
@@ -107,7 +99,7 @@ export function UpchargeFormModal({
     () =>
       apiAddons
         .filter((a) => !isSpecialUnit(a.description))
-        .map((a) => ({ id: a.id, code: a.code, name: a.name, price: Number(a.price) })),
+        .map((a) => ({ id: a.id, code: a.code, name: a.name, price: Number(a.price), inputType: a.inputType ?? 'qty' })),
     [apiAddons],
   );
 
@@ -238,7 +230,7 @@ export function UpchargeFormModal({
                 <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Tambahan</Text>
                 <View className="gap-2">
                   {addons.map((item) =>
-                    CHECKBOX_ADDON_CODES.has(item.code ?? '') ? (
+                    item.inputType === 'checkbox' ? (
                       <CheckboxRow
                         key={item.id}
                         item={item}

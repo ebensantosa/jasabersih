@@ -312,7 +312,8 @@ export class AdminCmsController {
   @Roles('super_admin', 'ops', 'finance')
   async listAddons() {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT id, code, name, price, duration_min AS "durationMin", description, is_active AS "isActive"
+      SELECT id, code, name, price, duration_min AS "durationMin", description, is_active AS "isActive",
+             COALESCE(input_type, 'qty') AS "inputType"
         FROM add_ons ORDER BY price ASC
     `;
   }
@@ -320,14 +321,15 @@ export class AdminCmsController {
   @Post('addons')
   @Roles('super_admin', 'ops')
   async createAddon(
-    @Body() body: { code?: string; name: string; price: number; durationMin: number; description?: string },
+    @Body() body: { code?: string; name: string; price: number; durationMin: number; description?: string; inputType?: 'qty' | 'checkbox' },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
     if (!body?.name || !body?.price || !body?.durationMin) throw new BadRequestException('name, price, durationMin wajib.');
+    const inputType = body.inputType === 'checkbox' ? 'checkbox' : 'qty';
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
-      INSERT INTO add_ons (code, name, price, duration_min, description, is_active)
-      VALUES (${body.code ?? null}, ${body.name}, ${body.price}::bigint, ${body.durationMin}::int, ${body.description ?? null}, TRUE)
+      INSERT INTO add_ons (code, name, price, duration_min, description, is_active, input_type)
+      VALUES (${body.code ?? null}, ${body.name}, ${body.price}::bigint, ${body.durationMin}::int, ${body.description ?? null}, TRUE, ${inputType})
       RETURNING id
     `;
     const id = rows[0]?.id;
@@ -337,12 +339,13 @@ export class AdminCmsController {
 
   @Patch('addons/:id')
   @Roles('super_admin', 'ops')
-  async updateAddon(@Param('id') id: string, @Body() body: { name?: string; price?: number; durationMin?: number; description?: string; isActive?: boolean }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+  async updateAddon(@Param('id') id: string, @Body() body: { name?: string; price?: number; durationMin?: number; description?: string; isActive?: boolean; inputType?: 'qty' | 'checkbox' }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
     if (body.name !== undefined) await this.prisma.$executeRaw`UPDATE add_ons SET name = ${body.name} WHERE id = ${id}::uuid`;
     if (body.price !== undefined) await this.prisma.$executeRaw`UPDATE add_ons SET price = ${body.price}::bigint WHERE id = ${id}::uuid`;
     if (body.durationMin !== undefined) await this.prisma.$executeRaw`UPDATE add_ons SET duration_min = ${body.durationMin}::int WHERE id = ${id}::uuid`;
     if (body.description !== undefined) await this.prisma.$executeRaw`UPDATE add_ons SET description = ${body.description} WHERE id = ${id}::uuid`;
     if (body.isActive !== undefined) await this.prisma.$executeRaw`UPDATE add_ons SET is_active = ${body.isActive} WHERE id = ${id}::uuid`;
+    if (body.inputType !== undefined) await this.prisma.$executeRaw`UPDATE add_ons SET input_type = ${body.inputType === 'checkbox' ? 'checkbox' : 'qty'} WHERE id = ${id}::uuid`;
     await this.audit.log({ adminId: admin.id, action: 'addon.update', resourceType: 'add_on', resourceId: id, changes: body, ipAddress: req.ip ?? null });
     return { ok: true };
   }

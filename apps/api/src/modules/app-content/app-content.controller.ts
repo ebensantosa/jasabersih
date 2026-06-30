@@ -133,7 +133,8 @@ export class AppContentController {
           FROM services ORDER BY display_order ASC NULLS LAST, name ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
-        SELECT id, code, name, price, duration_min AS "durationMin", description
+        SELECT id, code, name, price, duration_min AS "durationMin", description,
+               COALESCE(input_type, 'qty') AS "inputType"
           FROM add_ons WHERE is_active = TRUE ORDER BY price ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`

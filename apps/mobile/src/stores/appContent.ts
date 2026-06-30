@@ -30,7 +30,7 @@ export type AppConfig = Partial<{
 
 export type Banner = { id: string; title: string; subtitle: string | null; imageUrl: string; linkUrl: string | null; placement: string; sortOrder: number };
 export type ServiceItem = { id: string; code: string; name: string; description: string | null; iconUrl: string | null; displayOrder: number | null; showOnHome?: boolean };
-export type Addon = { id: string; code: string | null; name: string; price: number; durationMin: number; description: string | null };
+export type Addon = { id: string; code: string | null; name: string; price: number; durationMin: number; description: string | null; inputType?: 'qty' | 'checkbox' };
 export type HourlyTier = { id: string; code: string | null; name: string | null; description?: string | null; pricePerHour: number; minHours: number; maxHours?: number; cleanerSharePct: number };
 export type SubscriptionTier = { id: string; code: 'basic' | 'standard' | 'premium' | 'ultimate'; label: string; tagline: string | null; multiplier: number; scope: string[]; displayOrder: number };
 export type PackageItem = { id: string; serviceId: string; name: string; price: number; durationMin: number; scope: any };
