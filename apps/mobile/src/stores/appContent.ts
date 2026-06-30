@@ -21,6 +21,7 @@ export type AppConfig = Partial<{
   'feature.min_withdrawal': number;
   'feature.max_addresses': number;
   'feature.call_enabled': boolean;
+  'call.max_duration_minutes': number;
   'hero.subtitle': string;
   'hero.cta_label': string;
   'safety.chat_banner': string;

@@ -399,6 +399,10 @@ export function createClient(opts: ClientOptions) {
         request<any[]>('GET', '/admin/chat/inbox'),
       chatResolve: (bookingId: string, resolve: boolean) =>
         request<{ ok: boolean }>('POST', `/admin/chat/booking/${bookingId}/${resolve ? 'resolve' : 'unresolve'}`),
+
+      // Call monitoring
+      callSessions: () =>
+        request<{ active: any[]; recent: any[] }>('GET', '/admin/call/sessions'),
     },
 
     // Catalog (public — no auth needed)

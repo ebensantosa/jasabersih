@@ -41,14 +41,25 @@ const firebasePlugins = [
   '@react-native-firebase/app',
   '@react-native-firebase/crashlytics',
   '@react-native-firebase/messaging',
-  ['expo-build-properties', { ios: { useFrameworks: 'static' } }],
+  [
+    'expo-build-properties',
+    {
+      ios: { useFrameworks: 'static' },
+      android: {
+        kotlinVersion: '1.9.24',
+        compileSdkVersion: 35,
+        targetSdkVersion: 35,
+        minSdkVersion: 24,
+      },
+    },
+  ],
 ];
 
 module.exports = {
   expo: {
     name: 'JasaBersih',
     slug: 'jasabersih-app',
-    version: '1.4.0',
+    version: '1.5.0',
     scheme: 'jasabersih',
     orientation: 'default',
     userInterfaceStyle: 'light',
@@ -62,13 +73,13 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.jasabersih.app',
-      buildNumber: '21',
+      buildNumber: '22',
       icon: './assets/icon.png',
       googleServicesFile: './GoogleService-Info.plist',
     },
     android: {
       package: 'com.jasabersih.app',
-      versionCode: 21,
+      versionCode: 22,
       edgeToEdgeEnabled: false,
       permissions: [
         'USE_FULL_SCREEN_INTENT',

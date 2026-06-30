@@ -13,21 +13,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CALL_TIMEOUT_SEC = 60;
 
+type EndInfo = {
+  durationSec: number;
+  answered: boolean;
+};
+
 type Props = {
   token: string;
   serverUrl: string;
   callerLabel: string;
-  onEnd: (reason?: 'timeout' | 'hangup' | 'error') => void;
+  maxDurationSec?: number;
+  onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
 };
 
-export function CallOverlay({ token, serverUrl, callerLabel, onEnd }: Props) {
+export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, onEnd }: Props) {
   useEffect(() => {
     AudioSession.startAudioSession().catch(() => {});
     return () => { AudioSession.stopAudioSession().catch(() => {}); };
   }, []);
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={() => onEnd('hangup')}>
+    <Modal visible transparent animationType="slide" onRequestClose={() => onEnd('hangup', { durationSec: 0, answered: false })}>
       <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
         <LiveKitRoom
           serverUrl={serverUrl}
@@ -35,16 +41,24 @@ export function CallOverlay({ token, serverUrl, callerLabel, onEnd }: Props) {
           connect={true}
           audio={true}
           video={false}
-          onError={() => onEnd('error')}
+          onError={() => onEnd('error', { durationSec: 0, answered: false })}
         >
-          <CallUI callerLabel={callerLabel} onEnd={onEnd} />
+          <CallUI callerLabel={callerLabel} maxDurationSec={maxDurationSec} onEnd={onEnd} />
         </LiveKitRoom>
       </View>
     </Modal>
   );
 }
 
-function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 'timeout' | 'hangup' | 'error') => void }) {
+function CallUI({
+  callerLabel,
+  maxDurationSec,
+  onEnd,
+}: {
+  callerLabel: string;
+  maxDurationSec: number;
+  onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
+}) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
@@ -53,8 +67,14 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 
   const [elapsed, setElapsed] = useState(0);
   const [countdown, setCountdown] = useState(CALL_TIMEOUT_SEC);
   const [timedOut, setTimedOut] = useState(false);
+  const [showDurationWarning, setShowDurationWarning] = useState(false);
+  // Keep refs so timeout callbacks always see latest values
+  const elapsedRef = useRef(0);
+  const answeredRef = useRef(false);
 
   const otherConnected = remoteParticipants.length > 0;
+  if (otherConnected) answeredRef.current = true;
+
   const ringbackRef = useRef<Audio.Sound | null>(null);
 
   // Ringback tone untuk pemanggil — loop selama menunggu jawaban
@@ -88,9 +108,37 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 
   // Timer durasi call — mulai saat pihak lain connect
   useEffect(() => {
     if (!otherConnected) return;
-    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    const t = setInterval(() => {
+      setElapsed((s) => {
+        const next = s + 1;
+        elapsedRef.current = next;
+        return next;
+      });
+    }, 1000);
     return () => clearInterval(t);
   }, [otherConnected]);
+
+  // Batas maksimum durasi call (dari config admin)
+  useEffect(() => {
+    if (!otherConnected || maxDurationSec <= 0) return;
+    // Tampilkan warning 60 detik sebelum batas
+    if (maxDurationSec > 60) {
+      const warnAt = (maxDurationSec - 60) * 1000;
+      const warnTimer = setTimeout(() => setShowDurationWarning(true), warnAt);
+      const endTimer = setTimeout(async () => {
+        setShowDurationWarning(false);
+        await room.disconnect().catch(() => {});
+        onEnd('max_duration', { durationSec: elapsedRef.current, answered: true });
+      }, maxDurationSec * 1000);
+      return () => { clearTimeout(warnTimer); clearTimeout(endTimer); };
+    } else {
+      const endTimer = setTimeout(async () => {
+        await room.disconnect().catch(() => {});
+        onEnd('max_duration', { durationSec: elapsedRef.current, answered: true });
+      }, maxDurationSec * 1000);
+      return () => clearTimeout(endTimer);
+    }
+  }, [otherConnected, maxDurationSec]);
 
   // Timeout 60 detik — kalau tidak ada yang angkat, auto-hangup
   useEffect(() => {
@@ -98,7 +146,7 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 
     if (countdown <= 0) {
       setTimedOut(true);
       room.disconnect().catch(() => {});
-      setTimeout(() => onEnd('timeout'), 1500);
+      setTimeout(() => onEnd('timeout', { durationSec: 0, answered: false }), 1500);
       return;
     }
     const t = setInterval(() => setCountdown((s) => s - 1), 1000);
@@ -123,8 +171,12 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 
 
   async function hangUp() {
     await room.disconnect().catch(() => {});
-    onEnd('hangup');
+    onEnd('hangup', { durationSec: elapsedRef.current, answered: answeredRef.current });
   }
+
+  const maxLabel = maxDurationSec > 0
+    ? `Batas ${Math.floor(maxDurationSec / 60)} menit`
+    : null;
 
   return (
     <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 48 }}>
@@ -140,7 +192,12 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 
         {timedOut ? (
           <Text style={{ color: '#EF4444', fontSize: 14 }}>Tidak ada jawaban</Text>
         ) : otherConnected ? (
-          <Text style={{ color: '#94A3B8', fontSize: 14 }}>{formatTime(elapsed)}</Text>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={{ color: '#94A3B8', fontSize: 14 }}>{formatTime(elapsed)}</Text>
+            {maxLabel && (
+              <Text style={{ color: '#475569', fontSize: 11 }}>{maxLabel}</Text>
+            )}
+          </View>
         ) : (
           <View style={{ alignItems: 'center', gap: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -149,6 +206,15 @@ function CallUI({ callerLabel, onEnd }: { callerLabel: string; onEnd: (reason?: 
             </View>
             <Text style={{ color: '#475569', fontSize: 12 }}>
               Otomatis batalkan dalam {countdown}d
+            </Text>
+          </View>
+        )}
+
+        {/* Warning 1 menit sebelum batas */}
+        {showDurationWarning && (
+          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginTop: 4 }}>
+            <Text style={{ color: '#92400E', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+              ⏰ Panggilan akan berakhir dalam 1 menit
             </Text>
           </View>
         )}

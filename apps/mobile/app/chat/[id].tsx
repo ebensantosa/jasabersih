@@ -103,9 +103,11 @@ function Chat() {
   const [callToken, setCallToken] = useState<string | null>(null);
   const [callUrl, setCallUrl] = useState<string>('');
   const [callingLabel, setCallingLabel] = useState('');
+  const [callSessionId, setCallSessionId] = useState<string | null>(null);
   const [callLoading, setCallLoading] = useState(false);
   const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1');
   const callEnabled = useConfig('feature.call_enabled', true as any) !== false;
+  const maxDurationSec = (useConfig('call.max_duration_minutes', 30) as number) * 60;
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
   const [peerPresence, setPeerPresence] = useState<{ isOnline: boolean; lastSeenAt: string | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -303,6 +305,7 @@ function Chat() {
         : (booking?.cleanerName ?? 'Cleaner');
       setCallingLabel(peerName);
       setCallUrl(d.url);
+      setCallSessionId(d.sessionId ?? null);
       setCallToken(d.token);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal memulai panggilan');
@@ -324,6 +327,7 @@ function Chat() {
         : (booking?.cleanerName ?? 'Cleaner');
       setCallingLabel(peerName);
       setCallUrl(d.url);
+      setCallSessionId(d.sessionId ?? null);
       setCallToken(d.token);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal angkat panggilan');
@@ -761,10 +765,25 @@ function Chat() {
           token={callToken}
           serverUrl={callUrl}
           callerLabel={callingLabel}
-          onEnd={(reason) => {
+          maxDurationSec={maxDurationSec}
+          onEnd={(reason, info) => {
+            const sessionId = callSessionId;
             setCallToken(null);
+            setCallSessionId(null);
             if (reason === 'error') {
               import('../../src/stores/ui').then(({ toast }) => toast.error('Gagal menyambungkan panggilan. Coba lagi.'));
+            }
+            // Lapor ke server → simpan histori + insert chat message
+            if (id) {
+              import('../../src/lib/api').then(({ api }) => {
+                api.post('/call/end', {
+                  bookingId: id,
+                  sessionId,
+                  durationSec: info?.durationSec ?? 0,
+                  answered: info?.answered ?? false,
+                  endReason: reason ?? 'hangup',
+                }).catch(() => {});
+              });
             }
           }}
         />
@@ -796,9 +815,47 @@ function Bubble({
   const looksLikeImageUrl = /\.(jpg|jpeg|png|gif|webp|avif)(\?[^#]*)?$/i.test(attachmentUrl ?? text);
   const isImage = (messageType === 'image' || looksLikeImageUrl) && (attachmentUrl || text);
   const imageUrl = attachmentUrl ?? text;
+  const isCallMessage = messageType === 'call_missed' || messageType === 'call_ended';
   const bubbleBg = isMe ? 'bg-brand-600' : isAdmin ? 'bg-amber-50' : 'bg-white';
   const textColor = isMe ? 'text-white' : 'text-ink-800';
   const borderStyle = isMe ? {} : isAdmin ? { borderWidth: 1, borderColor: '#FDE68A' } : { borderWidth: 1, borderColor: '#E2E8F0' };
+
+  // Call history pill — centered, not left/right aligned
+  if (isCallMessage) {
+    return (
+      <View style={{ alignSelf: 'center', alignItems: 'center', gap: 2 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: messageType === 'call_missed' ? '#FEF2F2' : '#F0FDF4',
+            borderWidth: 1,
+            borderColor: messageType === 'call_missed' ? '#FECACA' : '#BBF7D0',
+            borderRadius: 999,
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+          }}
+        >
+          <Phone
+            size={12}
+            strokeWidth={2.4}
+            color={messageType === 'call_missed' ? '#DC2626' : '#16A34A'}
+          />
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '600',
+              color: messageType === 'call_missed' ? '#DC2626' : '#16A34A',
+            }}
+          >
+            {text}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 10, color: '#94A3B8' }}>{t}</Text>
+      </View>
+    );
+  }
 
   return (
     <View className={isMe ? 'items-end' : 'items-start'}>

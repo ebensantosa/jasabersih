@@ -17,6 +17,7 @@ import { AdminController } from './admin.controller';
 import { AdminAnalyticsController } from './analytics.controller';
 import { AdminBroadcastController } from './push-broadcast.controller';
 import { AdminReferralsController } from './referrals-admin.controller';
+import { AdminCallController } from './calls-admin.controller';
 import { AdminAppCmsController } from './app-cms.controller';
 import { AdminBookingsController } from './bookings-admin.controller';
 import { AdminInboxController } from './admin-inbox.controller';
@@ -49,6 +50,7 @@ import { SystemConfigController } from './system-config.controller';
     AdminAnalyticsController,
     AdminBroadcastController,
     AdminReferralsController,
+    AdminCallController,
   ],
   providers: [AdminAuditService, AdminJwtGuard, AdminRbacGuard, FraudDetectionService, RetentionService, ScheduledBroadcastService],
 })

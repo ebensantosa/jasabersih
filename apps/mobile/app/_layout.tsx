@@ -1,19 +1,25 @@
 import '../global.css';
 import 'react-native-gesture-handler';
-import messaging from '@react-native-firebase/messaging';
 import { showIncomingCallNotification, cancelCallNotification, subscribeNotifeeCallEvents } from '../src/lib/callNotification';
+
 let notifee: any = null;
 try { notifee = require('@notifee/react-native').default; } catch { /* native module not in APK */ }
 
+let messaging: any = null;
+try { messaging = require('@react-native-firebase/messaging').default; } catch { /* native module not in APK */ }
+
 // Background + killed state: Firebase message handler harus di module level
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  const type = remoteMessage.data?.type as string | undefined;
-  const bookingId = remoteMessage.data?.bookingId as string | undefined;
-  const callerName = remoteMessage.data?.callerName as string | undefined;
-  if (type === 'incoming_call' && bookingId) {
-    await showIncomingCallNotification({ bookingId, callerName: callerName ?? 'Penelepon' });
-  }
-});
+// Guard: messaging null kalau APK lama belum include Firebase native module
+if (messaging) {
+  messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
+    const type = remoteMessage.data?.type as string | undefined;
+    const bookingId = remoteMessage.data?.bookingId as string | undefined;
+    const callerName = remoteMessage.data?.callerName as string | undefined;
+    if (type === 'incoming_call' && bookingId) {
+      await showIncomingCallNotification({ bookingId, callerName: callerName ?? 'Penelepon' });
+    }
+  });
+}
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -155,7 +161,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Canary: confirm OTA bundle loaded + API reachable. Check /var/log/jasabersih/api-out-0.log for "[trace]"
-    void api.post('/health/trace', { step: 'boot', ota: '2026-06-28-v1' }).catch(() => {});
+    void api.post('/health/trace', { step: 'boot', ota: '2026-06-30-v1.5.0' }).catch(() => {});
     void hydrateStorageCache([
       'app.mode',
       'app.onboarded',

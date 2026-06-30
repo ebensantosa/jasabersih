@@ -39,6 +39,8 @@ const PUBLIC_CONFIG_EXACT_ALLOWLIST = new Set([
   'pricing.per_meter_minimum',
   'booking.modes.per_room.enabled',
   'booking.modes.per_hour.enabled',
+  'feature.call_enabled',
+  'call.max_duration_minutes',
 ]);
 
 const PUBLIC_CONFIG_PREFIX_ALLOWLIST = [
