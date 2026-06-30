@@ -182,7 +182,7 @@ module.exports = {
     ],
     experiments: { typedRoutes: false },
     updates: {
-      url: 'https://u.expo.dev/4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a',
+      url: 'https://u.expo.dev/36fd2043-fa7f-46ce-bd28-796368c33f64',
       enabled: true,
       checkAutomatically: 'ON_LOAD',
       fallbackToCacheTimeout: 0,
