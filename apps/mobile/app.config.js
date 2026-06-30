@@ -11,6 +11,43 @@ const IS_NATIVE_BUILD =
 const SHOULD_USE_FIREBASE =
   IS_NATIVE_BUILD && process.env.EXPO_NO_FIREBASE !== '1';
 
+// Fix Notifee + Firebase packaging conflicts in AGP 8.x:
+// - Notifee uses compileSdkVersion = 34 (assignment style, deprecated in AGP 8)
+// - Both Notifee and Firebase Messaging may include duplicate native libs
+// This plugin patches android/app/build.gradle to add pickFirst rules.
+const withNotifeePackagingFix = (config) => {
+  // Only import config-plugins in native build context to avoid breaking web
+  try {
+    const { withAppBuildGradle } = require('@expo/config-plugins');
+    return withAppBuildGradle(config, (cfg) => {
+      const content = cfg.modResults.contents;
+      const marker = '// notifee-packaging-fix';
+      if (!content.includes(marker)) {
+        cfg.modResults.contents = content.replace(
+          /android \{/,
+          `android {
+    ${marker}
+    packagingOptions {
+        pickFirst '**/libcrypto.so'
+        pickFirst '**/libssl.so'
+        pickFirst '**/libjsc.so'
+        pickFirst '**/libfbjni.so'
+        pickFirst '**/libc++_shared.so'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+    }`
+        );
+      }
+      return cfg;
+    });
+  } catch {
+    return config;
+  }
+};
+
 const basePlugins = [
   'expo-router',
   'expo-secure-store',
@@ -47,8 +84,8 @@ const firebasePlugins = [
       ios: { useFrameworks: 'static' },
       android: {
         kotlinVersion: '1.9.24',
-        compileSdkVersion: 35,
-        targetSdkVersion: 35,
+        compileSdkVersion: 34,
+        targetSdkVersion: 34,
         minSdkVersion: 24,
       },
     },
@@ -96,7 +133,9 @@ module.exports = {
       googleServicesFile: './google-services.json',
     },
     plugins: [
-      ...(SHOULD_USE_FIREBASE ? [...basePlugins, ...firebasePlugins] : basePlugins),
+      ...(SHOULD_USE_FIREBASE
+        ? [...basePlugins, ...firebasePlugins, withNotifeePackagingFix]
+        : basePlugins),
       [
         'expo-splash-screen',
         {

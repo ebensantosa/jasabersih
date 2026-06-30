@@ -23,6 +23,9 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EAS_SKIP_AUTO_FINGERPRINT": "1"
       }
     },
     "production": {
