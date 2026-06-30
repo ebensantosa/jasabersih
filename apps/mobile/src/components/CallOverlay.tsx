@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const CALL_TIMEOUT_SEC = 60;
+const CALL_TIMEOUT_SEC = 25;
 
 type EndInfo = {
   durationSec: number;
@@ -222,7 +222,7 @@ function CallUI({
               <Text style={{ color: '#94A3B8', fontSize: 14 }}>Memanggil…</Text>
             </View>
             <Text style={{ color: '#475569', fontSize: 12 }}>
-              Otomatis batalkan dalam {countdown}d
+              Otomatis batalkan dalam {countdown}s
             </Text>
           </View>
         )}

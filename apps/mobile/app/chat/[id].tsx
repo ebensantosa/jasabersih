@@ -82,16 +82,15 @@ function Chat() {
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
   // Mark-read tiap kali ada pesan baru ditujukan ke saya yg belum dibaca.
-  // Sebelumnya cuma jalan saat mount -> pesan masuk SAAT chat udh kebuka gak
-  // ke-mark read di server, jadi pengirim liat centang abu terus.
+  // Skip kalau call overlay aktif — user buka chat via notif call, bukan untuk baca pesan.
   useEffect(() => {
-    if (!id) return;
+    if (!id || showIncomingBanner || callToken) return;
     const hasUnreadForMe = messages.some((m) => m.recipientId === myUserId && !m.readAt);
     if (!hasUnreadForMe) return;
     import('../../src/lib/api').then(({ api }) => {
       api.post(`/chat/booking/${id}/read`).catch(() => {});
     });
-  }, [id, messages, myUserId]);
+  }, [id, messages, myUserId, showIncomingBanner, callToken]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
