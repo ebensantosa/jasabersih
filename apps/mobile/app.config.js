@@ -159,6 +159,10 @@ module.exports = {
         'WAKE_LOCK',
         'VIBRATE',
         'RECEIVE_BOOT_COMPLETED',
+        'RECORD_AUDIO',
+        'MODIFY_AUDIO_SETTINGS',
+        'BLUETOOTH',
+        'BLUETOOTH_CONNECT',
       ],
       icon: './assets/icon.png',
       adaptiveIcon: {
@@ -192,8 +196,8 @@ module.exports = {
       apiBaseUrl: 'https://api.jasabersih.com/v1',
       privacyUrl: 'https://jasabersih.com/ketentuan-layanan/',
       termsUrl: 'https://jasabersih.com/syarat-dan-ketentuan/',
-      eas: { projectId: '36fd2043-fa7f-46ce-bd28-796368c33f64' },
+      eas: { projectId: '4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a' },
     },
-    owner: 'cleaningservice',
+    owner: 'ebensantosa',
   },
 };
