@@ -605,7 +605,7 @@ function Chat() {
                   : <Phone color="#047857" size={18} strokeWidth={2.2} />}
               </Pressable>
             ))
-          )}
+          }
           </View>
         </SafeAreaView>
 
