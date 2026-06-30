@@ -9,6 +9,7 @@ import {
   Animated,
   ActivityIndicator,
   KeyboardAvoidingView,
+  PermissionsAndroid,
   Platform,
   Pressable,
   ScrollView,
@@ -92,7 +93,9 @@ function Chat() {
   const [callLoading, setCallLoading] = useState(false);
   const startActiveCall = useCallStore(s => s.start);
   const activeCall = useCallStore(s => s.active?.bookingId === id ? s.active : null);
-  const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1');
+  const anyActiveCall = useCallStore(s => s.active);
+  // Jangan tampilkan incoming banner kalau sedang ada call aktif di booking lain
+  const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1' && !useCallStore.getState().active);
 
   // Mark-read setelah 2 detik di chat — skip kalau call overlay aktif atau
   // chat ditutup sebelum 2 detik (clearTimeout di cleanup).
@@ -115,6 +118,35 @@ function Chat() {
   const ringtoneRef = useRef<Audio.Sound | null>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const callPulseAnim = useRef(new Animated.Value(1)).current;
+  const maximize = useCallStore(s => s.maximize);
+
+  // Timer untuk "Sedang memanggil · MM:SS" di header saat call aktif
+  const [callElapsed, setCallElapsed] = useState(0);
+  useEffect(() => {
+    if (!activeCall) { setCallElapsed(0); return; }
+    const t = setInterval(() => setCallElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [!!activeCall]);
+
+  // Pulse animasi untuk tombol call saat sedang dalam panggilan
+  useEffect(() => {
+    if (!activeCall) { callPulseAnim.setValue(1); return; }
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(callPulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+        Animated.timing(callPulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [!!activeCall]);
+
+  function fmtCallTime(secs: number) {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
 
   // Shake + pulse + vibrate saat incoming call banner muncul
   useEffect(() => {
@@ -295,9 +327,25 @@ function Chat() {
   }
 
   async function startCall() {
-    if (callLoading || activeCall) return; // already in a call
+    if (callLoading || anyActiveCall) {
+      if (anyActiveCall && anyActiveCall.bookingId !== id) {
+        toast.warning('Kamu sedang dalam panggilan lain. Akhiri dulu sebelum memulai panggilan baru.');
+      }
+      return;
+    }
     setCallLoading(true);
     try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
+          title: 'Izin Mikrofon',
+          message: 'JasaBersih butuh akses mikrofon untuk fitur panggilan suara.',
+          buttonPositive: 'Izinkan',
+        });
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          toast.warning('Izin mikrofon diperlukan untuk melakukan panggilan.');
+          return;
+        }
+      }
       const { api } = await import('../../src/lib/api');
       const r = await api.post('/call/start', { bookingId: id });
       const d = r.data?.data ?? r.data;
@@ -321,9 +369,24 @@ function Chat() {
   }
 
   async function answerCall() {
+    if (anyActiveCall && anyActiveCall.bookingId !== id) {
+      toast.warning('Akhiri panggilan yang sedang berjalan dulu sebelum menjawab panggilan baru.');
+      return;
+    }
     setShowIncomingBanner(false);
     setCallLoading(true);
     try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
+          title: 'Izin Mikrofon',
+          message: 'JasaBersih butuh akses mikrofon untuk fitur panggilan suara.',
+          buttonPositive: 'Izinkan',
+        });
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          toast.warning('Izin mikrofon diperlukan untuk menerima panggilan.');
+          return;
+        }
+      }
       const { api } = await import('../../src/lib/api');
       const r = await api.post('/call/join', { bookingId: id });
       const d = r.data?.data ?? r.data;
@@ -485,12 +548,13 @@ function Chat() {
                   <Pressable
                     className="flex-1"
                     onPress={() => {
+                      if (activeCall) { maximize(); return; }
                       if (cleanerId) router.push({ pathname: '/cleaner/public/[id]', params: { id: cleanerId } });
                     }}
                   >
                     <View className="flex-row items-center gap-1.5">
                       <Text className="font-semibold text-sm text-ink-900">{booking?.cleanerName ?? 'Menunggu cleaner…'}</Text>
-                      {cleanerStats && (
+                      {!activeCall && cleanerStats && (
                         <View className="flex-row items-center gap-0.5">
                           <Star color="#FACC15" fill="#FACC15" size={10} strokeWidth={1} />
                           <Text className="font-bold text-[10px] text-ink-700">{cleanerStats.ratingAvg.toFixed(1)}</Text>
@@ -498,11 +562,17 @@ function Chat() {
                         </View>
                       )}
                     </View>
-                    <Text className={`font-medium text-[11px] ${peerPresence?.isOnline ? 'text-success' : 'text-ink-500'}`}>
-                      {status === 'connecting' ? 'Menyambung…' :
-                       status === 'error' ? 'Koneksi error' :
-                       presenceLabel()}
-                    </Text>
+                    {activeCall ? (
+                      <Text className="font-semibold text-[11px] text-success">
+                        {'● Sedang memanggil · ' + fmtCallTime(callElapsed)}
+                      </Text>
+                    ) : (
+                      <Text className={`font-medium text-[11px] ${peerPresence?.isOnline ? 'text-success' : 'text-ink-500'}`}>
+                        {status === 'connecting' ? 'Menyambung…' :
+                         status === 'error' ? 'Koneksi error' :
+                         presenceLabel()}
+                      </Text>
+                    )}
                   </Pressable>
                 </>
               );
@@ -513,15 +583,28 @@ function Chat() {
            booking?.isManual !== true &&
            (booking as any)?.formSnapshot?.createdByAdmin !== true &&
            (booking as any)?.formSnapshot?.createdByAdmin !== 'true' && (
-            <Pressable
-              onPress={startCall}
-              disabled={callLoading}
-              className="h-10 w-10 items-center justify-center rounded-full bg-emerald-50"
-            >
-              {callLoading
-                ? <ActivityIndicator size="small" color="#047857" />
-                : <Phone color="#047857" size={18} strokeWidth={2.2} />}
-            </Pressable>
+            {activeCall ? (
+              <Pressable
+                onPress={() => { maximize(); }}
+                className="h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: '#16A34A' }}
+              >
+                <Animated.View style={{ transform: [{ scale: callPulseAnim }] }}>
+                  <Phone color="white" size={18} strokeWidth={2.2} />
+                </Animated.View>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={startCall}
+                disabled={callLoading || (!!anyActiveCall && anyActiveCall.bookingId !== id)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-emerald-50"
+                style={{ opacity: (!!anyActiveCall && anyActiveCall.bookingId !== id) ? 0.35 : 1 }}
+              >
+                {callLoading
+                  ? <ActivityIndicator size="small" color="#047857" />
+                  : <Phone color="#047857" size={18} strokeWidth={2.2} />}
+              </Pressable>
+            )}
           )}
           </View>
         </SafeAreaView>
