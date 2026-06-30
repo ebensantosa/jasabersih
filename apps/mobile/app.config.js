@@ -15,6 +15,34 @@ const SHOULD_USE_FIREBASE =
 // - Notifee uses compileSdkVersion = 34 (assignment style, deprecated in AGP 8)
 // - Both Notifee and Firebase Messaging may include duplicate native libs
 // This plugin patches android/app/build.gradle to add pickFirst rules.
+// Fix manifest merger conflict: expo-notifications sets default_notification_color,
+// react-native-firebase/messaging also sets it → need tools:replace to let app win.
+const withFirebaseMessagingManifestFix = (config) => {
+  try {
+    const { withAndroidManifest } = require('@expo/config-plugins');
+    return withAndroidManifest(config, (cfg) => {
+      const manifest = cfg.modResults.manifest;
+      if (!manifest.$['xmlns:tools']) {
+        manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+      }
+      const application = manifest.application?.[0];
+      if (!application) return cfg;
+      const metaData = application['meta-data'] || [];
+      for (const item of metaData) {
+        if (
+          item.$?.['android:name'] ===
+          'com.google.firebase.messaging.default_notification_color'
+        ) {
+          item.$['tools:replace'] = 'android:resource';
+        }
+      }
+      return cfg;
+    });
+  } catch {
+    return config;
+  }
+};
+
 const withNotifeePackagingFix = (config) => {
   // Only import config-plugins in native build context to avoid breaking web
   try {
@@ -134,7 +162,7 @@ module.exports = {
     },
     plugins: [
       ...(SHOULD_USE_FIREBASE
-        ? [...basePlugins, ...firebasePlugins, withNotifeePackagingFix]
+        ? [...basePlugins, ...firebasePlugins, withNotifeePackagingFix, withFirebaseMessagingManifestFix]
         : basePlugins),
       [
         'expo-splash-screen',
