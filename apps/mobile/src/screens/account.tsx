@@ -278,8 +278,12 @@ export function SettingsView() {
       if (result.isAvailable) {
         toast.info('Update ditemukan, mengunduh...');
         await Updates.fetchUpdateAsync();
-        toast.info('Update selesai, memuat ulang...');
-        await Updates.reloadAsync();
+        // reloadAsync bisa throw di beberapa kondisi Expo — handle terpisah
+        try {
+          await Updates.reloadAsync();
+        } catch {
+          toast.info('Update siap! Tutup dan buka ulang app untuk menerapkan.');
+        }
       } else {
         toast.info('Aplikasi sudah versi terbaru');
       }
@@ -288,7 +292,6 @@ export function SettingsView() {
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
         toast.error('Cek koneksi internet lalu coba lagi');
       } else {
-        // OTA tetap apply otomatis saat restart — cukup minta user restart
         toast.info('Tutup dan buka ulang app untuk dapat update terbaru');
       }
     } finally {
