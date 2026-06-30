@@ -7,7 +7,7 @@ import {
 } from '@livekit/react-native';
 import { Audio } from 'expo-av';
 import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,10 +27,22 @@ type Props = {
 };
 
 export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, onEnd }: Props) {
+  // Track if the other side has connected — mid-call disconnects are not fatal errors
+  const answeredRef = useRef(false);
+
   useEffect(() => {
     AudioSession.startAudioSession().catch(() => {});
     return () => { AudioSession.stopAudioSession().catch(() => {}); };
   }, []);
+
+  function handleError(err?: any) {
+    // If the call was already answered, treat this as a disconnect (hangup), not an error
+    if (answeredRef.current) {
+      onEnd('hangup', { durationSec: 0, answered: true });
+    } else {
+      onEnd('error', { durationSec: 0, answered: false });
+    }
+  }
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={() => onEnd('hangup', { durationSec: 0, answered: false })}>
@@ -41,9 +53,9 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
           connect={true}
           audio={true}
           video={false}
-          onError={() => onEnd('error', { durationSec: 0, answered: false })}
+          onError={handleError}
         >
-          <CallUI callerLabel={callerLabel} maxDurationSec={maxDurationSec} onEnd={onEnd} />
+          <CallUI callerLabel={callerLabel} maxDurationSec={maxDurationSec} onEnd={onEnd} answeredRef={answeredRef} />
         </LiveKitRoom>
       </View>
     </Modal>
@@ -54,10 +66,12 @@ function CallUI({
   callerLabel,
   maxDurationSec,
   onEnd,
+  answeredRef,
 }: {
   callerLabel: string;
   maxDurationSec: number;
   onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
+  answeredRef: React.MutableRefObject<boolean>;
 }) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
@@ -68,9 +82,7 @@ function CallUI({
   const [countdown, setCountdown] = useState(CALL_TIMEOUT_SEC);
   const [timedOut, setTimedOut] = useState(false);
   const [showDurationWarning, setShowDurationWarning] = useState(false);
-  // Keep refs so timeout callbacks always see latest values
   const elapsedRef = useRef(0);
-  const answeredRef = useRef(false);
 
   const otherConnected = remoteParticipants.length > 0;
   if (otherConnected) answeredRef.current = true;
@@ -173,6 +185,11 @@ function CallUI({
     await room.disconnect().catch(() => {});
     onEnd('hangup', { durationSec: elapsedRef.current, answered: answeredRef.current });
   }
+
+  // Sync answeredRef to parent so onError handler has accurate state
+  useEffect(() => {
+    if (otherConnected) answeredRef.current = true;
+  }, [otherConnected, answeredRef]);
 
   const maxLabel = maxDurationSec > 0
     ? `Batas ${Math.floor(maxDurationSec / 60)} menit`

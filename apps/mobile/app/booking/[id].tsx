@@ -269,11 +269,17 @@ function BookingDetail() {
   async function approveUpcharge(upchargeId: string) {
     try {
       await api.post(`/bookings/${id}/upcharges/${upchargeId}/approve`);
-      toast.success('Charge tambahan disetujui');
+      toast.success('Tagihan tambahan dibayar via saldo');
       void loadUpcharges();
       void fetchOne(id!);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal approve');
+      const msg: string = e?.response?.data?.error?.message ?? '';
+      if (msg.toLowerCase().includes('saldo wallet') || msg.toLowerCase().includes('tidak cukup')) {
+        // Wallet insufficient — go to payment screen
+        router.push({ pathname: '/payment/[bookingId]', params: { bookingId: id!, extra: `upcharge:${upchargeId}` } });
+      } else {
+        toast.error(msg || 'Gagal bayar tagihan tambahan');
+      }
     }
   }
   async function rejectUpcharge(upchargeId: string) {
@@ -1247,10 +1253,10 @@ function BookingDetail() {
                     {isPending && !isCleaner && (
                       <View className="mt-2 flex-row gap-2">
                         <Pressable
-                          onPress={() => router.push({ pathname: '/payment/[bookingId]', params: { bookingId: booking.id, extra: `upcharge:${u.id}` } })}
+                          onPress={() => approveUpcharge(u.id)}
                           className="flex-1 items-center rounded-lg bg-emerald-600 py-2"
                         >
-                          <Text className="font-bold text-xs text-white">Bayar</Text>
+                          <Text className="font-bold text-xs text-white">Setujui & Bayar</Text>
                         </Pressable>
                         <Pressable onPress={() => rejectUpcharge(u.id)} className="flex-1 items-center rounded-lg border border-red-300 bg-white py-2">
                           <Text className="font-bold text-xs text-red-700">Tolak</Text>

@@ -888,6 +888,13 @@ export class BookingsController {
       return { ok: true, cleanerShare, platformFee, pct, walletDeducted: upchargeAmount, walletRemaining: walletBalance - upchargeAmount, _cleanerId: u.cleaner_id };
     });
     this.jobs.emitBookingReload(result._cleanerId, id);
+    void this.push.send({
+      userId: result._cleanerId,
+      channel: 'booking',
+      title: 'Tagihan tambahan disetujui',
+      body: `Customer menyetujui tagihan tambahan dan membayar via saldo.`,
+      data: { type: 'upcharge_approved', bookingId: id, upchargeId },
+    }).catch(() => {});
     const { _cleanerId: _c, ...rest } = result;
     return rest;
   }
@@ -912,6 +919,13 @@ export class BookingsController {
        WHERE id = ${upchargeId}::uuid
     `;
     this.jobs.emitBookingReload(rows[0].cleaner_id, id);
+    void this.push.send({
+      userId: rows[0].cleaner_id,
+      channel: 'booking',
+      title: 'Tagihan tambahan ditolak',
+      body: `Customer menolak tagihan tambahan. Lanjutkan pekerjaan sesuai pesanan awal.`,
+      data: { type: 'upcharge_rejected', bookingId: id, upchargeId },
+    }).catch(() => {});
     return { ok: true };
   }
 

@@ -1,14 +1,27 @@
 import { Image } from 'expo-image';
 import { Camera, CheckSquare, Square, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
 import { compressImage } from '../lib/imageCompress';
 import { uploadWithSignedUrl } from '../lib/signedUpload';
-import { useAppContent } from '../stores/appContent';
+import { useApiAddons, useApiServices, useAppContent } from '../stores/appContent';
 import { formatRupiah } from '../data/catalog';
 import { toast } from '../stores/ui';
+
+type Item = { id: string; name: string; price: number; isPackage?: boolean };
+
+const EXCLUDED_SERVICE_CODES = new Set([
+  'kamar_km_dalam', 'ruko', 'kantor', 'apartemen', 'full_house',
+  'paket_bundle', 'subscription', 'general_cleaning', 'deep_cleaning',
+  'kos', 'konsultasi', 'pasca_renovasi',
+]);
+
+function isSpecialUnit(desc: string | null | undefined) {
+  const d = (desc ?? '').toLowerCase();
+  return d.includes('per m²') || d.includes('/m²') || d.includes('per panel') || d.includes('per lubang') || d.includes('per daun');
+}
 
 export function UpchargeFormModal({
   bookingId,
@@ -19,17 +32,57 @@ export function UpchargeFormModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
-  const addons = useAppContent((s) => s.content.addons);
+  const apiAddons = useApiAddons();
+  const apiServices = useApiServices();
+  const allPackages = useAppContent((s) => s.content.packages);
+
+  const addons = useMemo<Item[]>(
+    () =>
+      apiAddons
+        .filter((a) => !isSpecialUnit(a.description))
+        .map((a) => ({ id: a.id, name: a.name, price: Number(a.price) })),
+    [apiAddons],
+  );
+
+  const services = useMemo<Item[]>(
+    () =>
+      apiServices
+        .filter((s: any) => !EXCLUDED_SERVICE_CODES.has(String(s.code ?? '')))
+        .flatMap((s: any) => {
+          const pkg = allPackages.find((p: any) => p.serviceId === s.id);
+          if (!pkg || Number(pkg.price ?? 0) === 0) return [];
+          if (pkg?.scope && typeof pkg.scope === 'object' && (pkg.scope as any).perMeter) return [];
+          return [{ id: pkg.id, name: s.name, price: Number(pkg.price), isPackage: true }];
+        }),
+    [apiServices, allPackages],
+  );
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cleanerShare, setCleanerShare] = useState<{ share: number; pct: number } | null>(null);
 
-  const total = addons
+  const allItems = useMemo(() => [...services, ...addons], [services, addons]);
+
+  const total = allItems
     .filter((a) => selected.has(a.id))
-    .reduce((s, a) => s + Number(a.price), 0);
+    .reduce((s, a) => s + a.price, 0);
+
+  // Fetch cleaner's commission split from server when total changes
+  useEffect(() => {
+    if (total === 0) { setCleanerShare(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const r = await api.post(`/cleaner/jobs/${bookingId}/upcharge-preview`, { amount: total });
+        const d = r.data?.data ?? r.data;
+        setCleanerShare({ share: Number(d.cleanerShare ?? 0), pct: Number(d.pct ?? 40) });
+      } catch { setCleanerShare(null); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [total, bookingId]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -71,9 +124,12 @@ export function UpchargeFormModal({
   async function submit() {
     if (selected.size === 0) { toast.error('Pilih minimal 1 layanan tambahan.'); return; }
     setSubmitting(true);
+    const addonIds = allItems.filter((a) => selected.has(a.id) && !a.isPackage).map((a) => a.id);
+    const packageIds = allItems.filter((a) => selected.has(a.id) && a.isPackage).map((a) => a.id);
     try {
       await api.post(`/cleaner/jobs/${bookingId}/upcharge`, {
-        addonIds: Array.from(selected),
+        addonIds: addonIds.length > 0 ? addonIds : undefined,
+        packageIds: packageIds.length > 0 ? packageIds : undefined,
         note: note.trim() || undefined,
         photoUrl,
       });
@@ -86,6 +142,28 @@ export function UpchargeFormModal({
     }
   }
 
+  function renderItem(item: Item) {
+    const isOn = selected.has(item.id);
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggle(item.id)}
+        className={`flex-row items-center gap-3 rounded-xl border p-3 ${isOn ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}
+      >
+        {isOn
+          ? <CheckSquare color="#1D4ED8" size={20} strokeWidth={2.2} />
+          : <Square color="#94A3B8" size={20} strokeWidth={2} />}
+        <View className="flex-1">
+          <Text className={`font-semibold text-[13px] ${isOn ? 'text-brand-900' : 'text-ink-900'}`}>{item.name}</Text>
+          {item.isPackage && (
+            <Text className="font-medium mt-0.5 text-[10px] text-ink-500">Layanan utama</Text>
+          )}
+        </View>
+        <Text className={`font-bold text-sm ${isOn ? 'text-brand-700' : 'text-ink-700'}`}>{formatRupiah(item.price)}</Text>
+      </Pressable>
+    );
+  }
+
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/50">
@@ -95,44 +173,48 @@ export function UpchargeFormModal({
             <Pressable onPress={onClose}><X color="#94A3B8" size={20} /></Pressable>
           </View>
           <Text className="font-medium mt-1 text-[11px] text-ink-500">
-            Pilih layanan tambahan yang diminta customer. Harga sudah flat — customer cukup setujui atau tolak.
+            Pilih layanan yang diminta customer. Customer akan setujui atau tolak sebelum kamu lanjut.
           </Text>
 
           <ScrollView className="mt-4" showsVerticalScrollIndicator={false}>
-            {addons.length === 0 ? (
+            {services.length > 0 && (
+              <>
+                <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Utama</Text>
+                <View className="gap-2 mb-4">
+                  {services.map(renderItem)}
+                </View>
+              </>
+            )}
+
+            {addons.length > 0 && (
+              <>
+                <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Tambahan</Text>
+                <View className="gap-2">
+                  {addons.map(renderItem)}
+                </View>
+              </>
+            )}
+
+            {services.length === 0 && addons.length === 0 && (
               <View className="items-center py-6">
-                <Text className="font-medium text-[12px] text-ink-400">Belum ada layanan tambahan tersedia.</Text>
-              </View>
-            ) : (
-              <View className="gap-2">
-                {addons.map((addon) => {
-                  const isOn = selected.has(addon.id);
-                  return (
-                    <Pressable
-                      key={addon.id}
-                      onPress={() => toggle(addon.id)}
-                      className={`flex-row items-center gap-3 rounded-xl border p-3 ${isOn ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}
-                    >
-                      {isOn
-                        ? <CheckSquare color="#1D4ED8" size={20} strokeWidth={2.2} />
-                        : <Square color="#94A3B8" size={20} strokeWidth={2} />}
-                      <View className="flex-1">
-                        <Text className={`font-semibold text-[13px] ${isOn ? 'text-brand-900' : 'text-ink-900'}`}>{addon.name}</Text>
-                        {addon.description ? (
-                          <Text className="font-medium mt-0.5 text-[10px] text-ink-500" numberOfLines={1}>{addon.description}</Text>
-                        ) : null}
-                      </View>
-                      <Text className={`font-bold text-sm ${isOn ? 'text-brand-700' : 'text-ink-700'}`}>{formatRupiah(Number(addon.price))}</Text>
-                    </Pressable>
-                  );
-                })}
+                <Text className="font-medium text-[12px] text-ink-400">Belum ada layanan tersedia.</Text>
               </View>
             )}
 
             {selected.size > 0 && (
-              <View className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex-row items-center justify-between">
-                <Text className="font-semibold text-[11px] text-emerald-700">{selected.size} layanan dipilih</Text>
-                <Text className="font-extrabold text-base text-emerald-900">+{formatRupiah(total)}</Text>
+              <View className="mt-4 rounded-xl bg-ink-50 border border-ink-200 p-3 gap-1">
+                <View className="flex-row items-center justify-between">
+                  <Text className="font-semibold text-[11px] text-ink-600">Total yang dibayar customer</Text>
+                  <Text className="font-extrabold text-base text-ink-900">+{formatRupiah(total)}</Text>
+                </View>
+                {cleanerShare != null ? (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-medium text-[11px] text-emerald-700">Kamu terima ({cleanerShare.pct}%)</Text>
+                    <Text className="font-bold text-sm text-emerald-700">+{formatRupiah(cleanerShare.share)}</Text>
+                  </View>
+                ) : total > 0 ? (
+                  <ActivityIndicator size="small" color="#059669" style={{ alignSelf: 'flex-start', marginTop: 2 }} />
+                ) : null}
               </View>
             )}
 

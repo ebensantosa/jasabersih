@@ -890,24 +890,37 @@ export class CleanerJobsController {
     return this.computeCleanerShare(Number(rows[0].total_amount), user.id, amount);
   }
 
-  // Cleaner submit upcharge request — amount wajib dari addon list (server-authoritative)
+  // Cleaner submit upcharge request — amount wajib dari addon/package list (server-authoritative)
   @Post(':id/upcharge')
   async submitUpcharge(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { addonIds: string[]; note?: string; photoUrl?: string },
+    @Body() body: { addonIds?: string[]; packageIds?: string[]; note?: string; photoUrl?: string },
   ) {
-    if (!Array.isArray(body?.addonIds) || body.addonIds.length === 0) {
+    const hasAddons = Array.isArray(body?.addonIds) && body.addonIds.length > 0;
+    const hasPackages = Array.isArray(body?.packageIds) && body.packageIds.length > 0;
+    if (!hasAddons && !hasPackages) {
       throw new BadRequestException('Pilih minimal 1 layanan tambahan.');
     }
-    // Fetch harga addon dari DB — cleaner tidak bisa manipulasi nominal
-    const addonRows = await this.prisma.$queryRaw<{ id: string; name: string; price: number }[]>`
-      SELECT id, name, price FROM add_ons
-       WHERE id = ANY(${body.addonIds}::uuid[]) AND is_active = TRUE
-    `;
-    if (addonRows.length === 0) throw new BadRequestException('Addon tidak ditemukan atau tidak aktif.');
-    const amount = addonRows.reduce((s, a) => s + Number(a.price), 0);
-    const addonNames = addonRows.map((a) => a.name).join(', ');
+    // Fetch harga dari DB — cleaner tidak bisa manipulasi nominal
+    const addonRows = hasAddons
+      ? await this.prisma.$queryRaw<{ id: string; name: string; price: number }[]>`
+          SELECT id, name, price FROM add_ons
+           WHERE id = ANY(${body.addonIds}::uuid[]) AND is_active = TRUE
+        `
+      : [];
+    const packageRows = hasPackages
+      ? await this.prisma.$queryRaw<{ id: string; name: string; price: number }[]>`
+          SELECT pp.id, s.name, pp.price
+            FROM pricing_packages pp
+            JOIN services s ON s.id = pp.service_id
+           WHERE pp.id = ANY(${body.packageIds}::uuid[]) AND pp.is_active = TRUE
+        `
+      : [];
+    const allItems = [...addonRows, ...packageRows];
+    if (allItems.length === 0) throw new BadRequestException('Layanan tidak ditemukan atau tidak aktif.');
+    const amount = allItems.reduce((s, a) => s + Number(a.price), 0);
+    const addonNames = allItems.map((a) => a.name).join(', ');
     const reason = body.note?.trim()
       ? `${addonNames} — ${body.note.trim()}`
       : addonNames;

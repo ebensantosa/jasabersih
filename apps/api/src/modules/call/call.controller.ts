@@ -57,7 +57,10 @@ export class CallController {
 
     const isCleaner = b.cleaner_id === user.id;
     const recipientId = isCleaner ? b.customer_id : b.cleaner_id;
-    const callerLabel = isCleaner ? 'Cleaner' : 'Customer';
+    const callerRow = await this.prisma.$queryRaw<{ name: string | null }[]>`
+      SELECT name FROM users WHERE id = ${user.id}::uuid LIMIT 1
+    `;
+    const callerLabel = callerRow[0]?.name ?? (isCleaner ? 'Cleaner' : 'Pelanggan');
 
     // Token untuk pemanggil
     const token = await generateToken(body.bookingId, user.id);
