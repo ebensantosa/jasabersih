@@ -11,7 +11,6 @@ import { ScheduleModal } from '../../src/components/ScheduleModal';
 import { formatRupiah } from '../../src/data/catalog';
 import { compressImage } from '../../src/lib/imageCompress';
 import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
-import { safeBack } from '../../src/lib/safeBack';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { useApiAddons, useApiServices, useAppContent } from '../../src/stores/appContent';
 import { useAddressesStore } from '../../src/stores/addresses';
@@ -607,7 +606,7 @@ function CustomBooking() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
         <View className="flex-row items-center gap-3 border-b border-ink-200 bg-white px-4 py-3">
-          <Pressable onPress={() => safeBack('/(tabs)')} className="-ml-2 h-10 w-10 items-center justify-center">
+          <Pressable onPress={() => router.replace('/(tabs)' as never)} className="-ml-2 h-10 w-10 items-center justify-center">
             <ArrowLeft size={22} color="#0F172A" />
           </Pressable>
           <View className="flex-1">

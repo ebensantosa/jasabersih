@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, MessageCircle, Minus, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -99,22 +99,14 @@ function NewBooking() {
 
   const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
 
-  // Full House / Paket Bundle pakai flow cart (customer pilih per-ruangan + add-ons).
-  // Konsultasi langsung ke WA admin (gak ada flow booking standar).
-  // Skala Besar tetap masuk booking flow biar customer bisa pilih "Per Ruangan".
-  const shouldRedirect = categoryCode === 'full_house' || categoryCode === 'paket_bundle' || categoryCode === 'konsultasi';
   useEffect(() => {
-    if (categoryCode === 'full_house' || categoryCode === 'paket_bundle') {
-      router.replace('/booking/custom');
-    } else if (categoryCode === 'konsultasi') {
-      router.replace('/services/konsultasi');
-    } else if (categoryCode) {
+    if (categoryCode && categoryCode !== 'full_house' && categoryCode !== 'paket_bundle' && categoryCode !== 'konsultasi') {
       // begin_checkout: user buka halaman booking = sinyal intent kuat untuk Google Ads
       void import('../../src/lib/analytics').then(({ Track }) => {
         Track.bookingStarted(categoryCode);
       });
     }
-  }, [categoryCode, router]);
+  }, [categoryCode]);
 
   // Pricing configs admin-controlled (fallback ke hardcoded catalog.ts).
   const POST_RENO_LEVELS = usePostRenoLevels();
@@ -904,15 +896,6 @@ function NewBooking() {
           <Text className="font-semibold text-brand-600">Kembali</Text>
         </Pressable>
       </View>
-    );
-  }
-
-  if (shouldRedirect) {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 items-center justify-center bg-ink-50" />
-      </>
     );
   }
 
@@ -2532,4 +2515,15 @@ function WebSchedulePicker({ value, onChange }: { value: Date; onChange: (d: Dat
   );
 }
 
-export default withAuth(NewBooking, 'customer');
+function NewBookingGate() {
+  const { category: categoryCode } = useLocalSearchParams<{ category: string }>();
+  if (categoryCode === 'full_house' || categoryCode === 'paket_bundle') {
+    return <Redirect href="/booking/custom" />;
+  }
+  if (categoryCode === 'konsultasi') {
+    return <Redirect href="/services/konsultasi" />;
+  }
+  return <NewBooking />;
+}
+
+export default withAuth(NewBookingGate, 'customer');
