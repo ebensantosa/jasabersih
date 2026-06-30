@@ -583,7 +583,7 @@ function Chat() {
            booking?.isManual !== true &&
            (booking as any)?.formSnapshot?.createdByAdmin !== true &&
            (booking as any)?.formSnapshot?.createdByAdmin !== 'true' && (
-            {activeCall ? (
+            activeCall ? (
               <Pressable
                 onPress={() => { maximize(); }}
                 className="h-10 w-10 items-center justify-center rounded-full"
@@ -604,7 +604,7 @@ function Chat() {
                   ? <ActivityIndicator size="small" color="#047857" />
                   : <Phone color="#047857" size={18} strokeWidth={2.2} />}
               </Pressable>
-            )}
+            ))
           )}
           </View>
         </SafeAreaView>
