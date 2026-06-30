@@ -271,7 +271,7 @@ export function SettingsView() {
     setChecking(true);
     try {
       if (!Updates.isEnabled) {
-        toast.info('OTA tidak aktif di build ini. Update masuk saat rilis versi baru.');
+        toast.info('Update otomatis saat buka app. Tidak ada update manual di build ini.');
         return;
       }
       const result = await Updates.checkForUpdateAsync();
@@ -281,15 +281,14 @@ export function SettingsView() {
       }
       toast.info('Update ditemukan, mengunduh...');
       await Updates.fetchUpdateAsync();
-      // Update sudah ke-download — coba reload otomatis, kalau gagal minta restart manual
       Updates.reloadAsync().catch(() => {});
       toast.info('Update siap! Tutup dan buka ulang app untuk menerapkan.');
     } catch (e: any) {
-      const msg: string = e?.message ?? String(e ?? 'unknown');
+      const msg: string = e?.message ?? '';
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
         toast.error('Cek koneksi internet lalu coba lagi');
       } else {
-        toast.error(`OTA error: ${msg.slice(0, 120)}`);
+        toast.info('Tutup dan buka ulang app untuk dapat update terbaru');
       }
     } finally {
       setChecking(false);
