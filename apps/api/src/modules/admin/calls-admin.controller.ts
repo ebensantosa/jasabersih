@@ -23,7 +23,7 @@ export class AdminCallController {
     await this.prisma.$executeRaw`
       DELETE FROM call_sessions
        WHERE ended_at IS NOT NULL
-         AND started_at < NOW() - INTERVAL '90 days'
+         AND started_at < NOW() - INTERVAL '7 days'
     `;
 
     const active = await this.prisma.$queryRaw<any[]>`
