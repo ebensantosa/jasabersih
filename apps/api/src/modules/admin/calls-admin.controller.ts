@@ -13,6 +13,14 @@ export class AdminCallController {
   // GET /admin/call/sessions — active calls + recent 50 calls
   @Get('sessions')
   async sessions() {
+    // Auto-cleanup sessions abandoned lebih dari 10 menit
+    await this.prisma.$executeRaw`
+      UPDATE call_sessions
+         SET ended_at = NOW(), end_reason = 'abandoned'
+       WHERE ended_at IS NULL
+         AND started_at < NOW() - INTERVAL '10 minutes'
+    `;
+
     const active = await this.prisma.$queryRaw<any[]>`
       SELECT cs.id, cs.booking_id AS "bookingId",
              cs.started_at AS "startedAt", cs.answered_at AS "answeredAt",
