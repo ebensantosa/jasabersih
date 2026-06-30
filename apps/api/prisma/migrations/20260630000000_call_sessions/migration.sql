@@ -1,7 +1,7 @@
 -- Call sessions: track every voice call attempt between customer & cleaner
 CREATE TABLE call_sessions (
   id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  booking_id    UUID         NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  booking_id    UUID         NOT NULL,
   initiator_id  UUID         NOT NULL REFERENCES users(id),
   recipient_id  UUID         REFERENCES users(id),
   started_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
