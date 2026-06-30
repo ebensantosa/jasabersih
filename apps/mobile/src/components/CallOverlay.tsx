@@ -6,9 +6,9 @@ import {
   useRoomContext,
 } from '@livekit/react-native';
 import { Audio } from 'expo-av';
-import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronDown, Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CALL_TIMEOUT_SEC = 25;
@@ -23,10 +23,12 @@ type Props = {
   serverUrl: string;
   callerLabel: string;
   maxDurationSec?: number;
+  minimized: boolean;
+  onMinimize: () => void;
   onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
 };
 
-export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, onEnd }: Props) {
+export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, minimized, onMinimize, onEnd }: Props) {
   // Track if the other side has connected — mid-call disconnects are not fatal errors
   const answeredRef = useRef(false);
 
@@ -45,20 +47,28 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={() => onEnd('hangup', { durationSec: 0, answered: false })}>
-      <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-        <LiveKitRoom
-          serverUrl={serverUrl}
-          token={token}
-          connect={true}
-          audio={true}
-          video={false}
-          onError={handleError}
-        >
-          <CallUI callerLabel={callerLabel} maxDurationSec={maxDurationSec} onEnd={onEnd} answeredRef={answeredRef} />
-        </LiveKitRoom>
-      </View>
-    </Modal>
+    <View style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 999, backgroundColor: '#0F172A',
+      display: minimized ? 'none' : 'flex',
+    }}>
+      <LiveKitRoom
+        serverUrl={serverUrl}
+        token={token}
+        connect={true}
+        audio={true}
+        video={false}
+        onError={handleError}
+      >
+        <CallUI
+          callerLabel={callerLabel}
+          maxDurationSec={maxDurationSec}
+          onEnd={onEnd}
+          answeredRef={answeredRef}
+          onMinimize={onMinimize}
+        />
+      </LiveKitRoom>
+    </View>
   );
 }
 
@@ -67,11 +77,13 @@ function CallUI({
   maxDurationSec,
   onEnd,
   answeredRef,
+  onMinimize,
 }: {
   callerLabel: string;
   maxDurationSec: number;
   onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
   answeredRef: React.MutableRefObject<boolean>;
+  onMinimize: () => void;
 }) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
@@ -197,6 +209,14 @@ function CallUI({
 
   return (
     <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 48 }}>
+      {/* Minimize button — top-left */}
+      <Pressable
+        onPress={onMinimize}
+        style={{ position: 'absolute', top: 16, left: 16, padding: 8, zIndex: 10 }}
+      >
+        <ChevronDown color="white" size={28} strokeWidth={2.2} />
+      </Pressable>
+
       {/* Avatar + nama */}
       <View style={{ alignItems: 'center', gap: 12 }}>
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#1D4ED8', alignItems: 'center', justifyContent: 'center' }}>

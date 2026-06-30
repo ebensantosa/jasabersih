@@ -21,8 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Audio } from 'expo-av';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
-import { CallOverlay } from '../../src/components/CallOverlay';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
+import { useCallStore } from '../../src/stores/call';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
@@ -81,19 +81,6 @@ function Chat() {
 
   const { messages, status, otherTyping, send, setTyping } = useChatSocket(id);
 
-  // Mark-read setelah 2 detik di chat — skip kalau call overlay aktif atau
-  // chat ditutup sebelum 2 detik (clearTimeout di cleanup).
-  useEffect(() => {
-    if (!id || showIncomingBanner || callToken) return;
-    const hasUnreadForMe = messages.some((m) => m.recipientId === myUserId && !m.readAt);
-    if (!hasUnreadForMe) return;
-    const t = setTimeout(() => {
-      import('../../src/lib/api').then(({ api }) => {
-        api.post(`/chat/booking/${id}/read`).catch(() => {});
-      });
-    }, 2000);
-    return () => clearTimeout(t);
-  }, [id, messages, myUserId, showIncomingBanner, callToken]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -102,12 +89,24 @@ function Chat() {
   // Track quick-reply yg lagi dikirim, supaya chip kasih feedback visual + ga bisa di-tap ulang
   const [pendingQuick, setPendingQuick] = useState<string | null>(null);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
-  const [callToken, setCallToken] = useState<string | null>(null);
-  const [callUrl, setCallUrl] = useState<string>('');
-  const [callingLabel, setCallingLabel] = useState('');
-  const [callSessionId, setCallSessionId] = useState<string | null>(null);
   const [callLoading, setCallLoading] = useState(false);
+  const startActiveCall = useCallStore(s => s.start);
+  const activeCall = useCallStore(s => s.active?.bookingId === id ? s.active : null);
   const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1');
+
+  // Mark-read setelah 2 detik di chat — skip kalau call overlay aktif atau
+  // chat ditutup sebelum 2 detik (clearTimeout di cleanup).
+  useEffect(() => {
+    if (!id || showIncomingBanner || activeCall) return;
+    const hasUnreadForMe = messages.some((m) => m.recipientId === myUserId && !m.readAt);
+    if (!hasUnreadForMe) return;
+    const t = setTimeout(() => {
+      import('../../src/lib/api').then(({ api }) => {
+        api.post(`/chat/booking/${id}/read`).catch(() => {});
+      });
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [id, messages, myUserId, showIncomingBanner, activeCall]);
   const callEnabled = useConfig('feature.call_enabled', true as any) !== false;
   const maxDurationSec = (useConfig('call.max_duration_minutes', 30) as number) * 60;
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
@@ -296,7 +295,7 @@ function Chat() {
   }
 
   async function startCall() {
-    if (callLoading || callToken) return; // already in a call
+    if (callLoading || activeCall) return; // already in a call
     setCallLoading(true);
     try {
       const { api } = await import('../../src/lib/api');
@@ -305,10 +304,14 @@ function Chat() {
       const peerName = isCleaner
         ? ((booking as any)?.customerName ?? 'Pelanggan')
         : (booking?.cleanerName ?? 'Cleaner');
-      setCallingLabel(peerName);
-      setCallUrl(d.url);
-      setCallSessionId(d.sessionId ?? null);
-      setCallToken(d.token);
+      startActiveCall({
+        bookingId: id!,
+        token: d.token,
+        serverUrl: d.url,
+        callerLabel: peerName,
+        maxDurationSec,
+        sessionId: d.sessionId ?? null,
+      });
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal memulai panggilan');
     } finally {
@@ -318,7 +321,6 @@ function Chat() {
 
   async function answerCall() {
     setShowIncomingBanner(false);
-    setCallToken(null); // clear any existing call first
     setCallLoading(true);
     try {
       const { api } = await import('../../src/lib/api');
@@ -327,10 +329,14 @@ function Chat() {
       const peerName = isCleaner
         ? ((booking as any)?.customerName ?? 'Pelanggan')
         : (booking?.cleanerName ?? 'Cleaner');
-      setCallingLabel(peerName);
-      setCallUrl(d.url);
-      setCallSessionId(d.sessionId ?? null);
-      setCallToken(d.token);
+      startActiveCall({
+        bookingId: id!,
+        token: d.token,
+        serverUrl: d.url,
+        callerLabel: peerName,
+        maxDurationSec,
+        sessionId: d.sessionId ?? null,
+      });
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Gagal angkat panggilan');
     } finally {
@@ -551,7 +557,7 @@ function Chat() {
         {!isCleaner && <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />}
 
         {/* Incoming call banner — hidden kalau sudah dalam call aktif */}
-        {showIncomingBanner && !callToken && (
+        {showIncomingBanner && !activeCall && (
           <Animated.View
             style={{ transform: [{ translateX: shakeAnim }] }}
             className="flex-row items-center gap-3 border-b border-emerald-300 bg-emerald-50 px-4 py-3"
@@ -762,34 +768,6 @@ function Chat() {
         </Pressable>
       )}
 
-      {callToken && (
-        <CallOverlay
-          token={callToken}
-          serverUrl={callUrl}
-          callerLabel={callingLabel}
-          maxDurationSec={maxDurationSec}
-          onEnd={(reason, info) => {
-            const sessionId = callSessionId;
-            setCallToken(null);
-            setCallSessionId(null);
-            if (reason === 'error') {
-              import('../../src/stores/ui').then(({ toast }) => toast.error('Gagal menyambungkan panggilan. Coba lagi.'));
-            }
-            // Lapor ke server → simpan histori + insert chat message
-            if (id) {
-              import('../../src/lib/api').then(({ api }) => {
-                api.post('/call/end', {
-                  bookingId: id,
-                  sessionId,
-                  durationSec: info?.durationSec ?? 0,
-                  answered: info?.answered ?? false,
-                  endReason: reason ?? 'hangup',
-                }).catch(() => {});
-              });
-            }
-          }}
-        />
-      )}
     </>
   );
 }

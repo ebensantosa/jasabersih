@@ -67,6 +67,9 @@ import { useCleaningModeStore } from '../src/stores/cleaningMode';
 import { useUserStore } from '../src/stores/user';
 import { useLocationStore } from '../src/stores/location';
 import { useModeStore } from '../src/stores/mode';
+import { useCallStore } from '../src/stores/call';
+import { CallOverlay } from '../src/components/CallOverlay';
+import { CallBanner } from '../src/components/CallBanner';
 
 function BookingRealtimeMount() {
   useBookingRealtime();
@@ -91,6 +94,11 @@ export default function RootLayout() {
   const hydrateUser = useUserStore((s) => s.hydrate);
   const fetchUser = useUserStore((s) => s.fetch);
   const profile = useUserStore((s) => s.profile);
+
+  const callActive = useCallStore(s => s.active);
+  const callMinimized = useCallStore(s => s.minimized);
+  const callMinimize = useCallStore(s => s.minimize);
+  const callEnd = useCallStore(s => s.end);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -444,6 +452,29 @@ export default function RootLayout() {
         <CleanerLockOverlay />
         <SplashOverlay visible={!authReady} />
         <BookingRealtimeMount />
+        {callActive && (
+          <CallOverlay
+            token={callActive.token}
+            serverUrl={callActive.serverUrl}
+            callerLabel={callActive.callerLabel}
+            maxDurationSec={callActive.maxDurationSec}
+            minimized={callMinimized}
+            onMinimize={callMinimize}
+            onEnd={async (reason, info) => {
+              const sessionId = callActive.sessionId;
+              const bookingId = callActive.bookingId;
+              callEnd();
+              if (sessionId && bookingId) {
+                void api.post(`/chat/booking/${bookingId}/call-end`, {
+                  sessionId, reason: reason ?? 'hangup',
+                  durationSec: info?.durationSec ?? 0,
+                  answered: info?.answered ?? false,
+                }).catch(() => {});
+              }
+            }}
+          />
+        )}
+        <CallBanner />
           </QueryProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
