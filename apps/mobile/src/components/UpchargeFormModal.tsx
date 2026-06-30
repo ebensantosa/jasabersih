@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Camera, CheckSquare, Square, X } from 'lucide-react-native';
+import { Camera, Minus, Plus, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
@@ -21,6 +21,41 @@ const EXCLUDED_SERVICE_CODES = new Set([
 function isSpecialUnit(desc: string | null | undefined) {
   const d = (desc ?? '').toLowerCase();
   return d.includes('per m²') || d.includes('/m²') || d.includes('per panel') || d.includes('per lubang') || d.includes('per daun');
+}
+
+function QtyRow({ item, qty, onChange }: { item: Item; qty: number; onChange: (n: number) => void }) {
+  const active = qty > 0;
+  return (
+    <View className={`flex-row items-center gap-3 rounded-xl border p-3 ${active ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}>
+      <View className="flex-1">
+        <Text className={`font-semibold text-[13px] ${active ? 'text-brand-900' : 'text-ink-900'}`}>{item.name}</Text>
+        <Text className={`font-medium mt-0.5 text-[11px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>
+          {formatRupiah(item.price)} / item{item.isPackage ? ' · Layanan utama' : ''}
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-2">
+        <Pressable
+          onPress={() => onChange(Math.max(0, qty - 1))}
+          disabled={qty === 0}
+          style={{
+            width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+            backgroundColor: qty === 0 ? '#F1F5F9' : '#EFF6FF',
+          }}
+        >
+          <Minus color={qty === 0 ? '#94A3B8' : '#1D4ED8'} size={14} strokeWidth={2.4} />
+        </Pressable>
+        <Text style={{ width: 24, textAlign: 'center', fontWeight: '700', fontSize: 14, color: active ? '#1D4ED8' : '#64748B' }}>
+          {qty}
+        </Text>
+        <Pressable
+          onPress={() => onChange(qty + 1)}
+          style={{ width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF' }}
+        >
+          <Plus color="#1D4ED8" size={14} strokeWidth={2.4} />
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 export function UpchargeFormModal({
@@ -57,7 +92,8 @@ export function UpchargeFormModal({
     [apiServices, allPackages],
   );
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // qty per item id — 0 means not selected
+  const [qtys, setQtys] = useState<Record<string, number>>({});
   const [note, setNote] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -67,9 +103,12 @@ export function UpchargeFormModal({
 
   const allItems = useMemo(() => [...services, ...addons], [services, addons]);
 
-  const total = allItems
-    .filter((a) => selected.has(a.id))
-    .reduce((s, a) => s + a.price, 0);
+  const total = allItems.reduce((s, a) => s + (qtys[a.id] ?? 0) * a.price, 0);
+  const totalQty = Object.values(qtys).reduce((s, q) => s + q, 0);
+
+  function setQty(id: string, n: number) {
+    setQtys((prev) => ({ ...prev, [id]: Math.max(0, n) }));
+  }
 
   // Fetch cleaner's commission split from server when total changes
   useEffect(() => {
@@ -83,14 +122,6 @@ export function UpchargeFormModal({
     }, 400);
     return () => clearTimeout(t);
   }, [total, bookingId]);
-
-  function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }
 
   async function pickAndUpload() {
     try {
@@ -122,14 +153,18 @@ export function UpchargeFormModal({
   }
 
   async function submit() {
-    if (selected.size === 0) { toast.error('Pilih minimal 1 layanan tambahan.'); return; }
+    if (totalQty === 0) { toast.error('Pilih minimal 1 layanan.'); return; }
     setSubmitting(true);
-    const addonIds = allItems.filter((a) => selected.has(a.id) && !a.isPackage).map((a) => a.id);
-    const packageIds = allItems.filter((a) => selected.has(a.id) && a.isPackage).map((a) => a.id);
+    const addonQtys = addons
+      .filter((a) => (qtys[a.id] ?? 0) > 0)
+      .map((a) => ({ id: a.id, qty: qtys[a.id]! }));
+    const packageQtys = services
+      .filter((s) => (qtys[s.id] ?? 0) > 0)
+      .map((s) => ({ id: s.id, qty: qtys[s.id]! }));
     try {
       await api.post(`/cleaner/jobs/${bookingId}/upcharge`, {
-        addonIds: addonIds.length > 0 ? addonIds : undefined,
-        packageIds: packageIds.length > 0 ? packageIds : undefined,
+        addonQtys: addonQtys.length > 0 ? addonQtys : undefined,
+        packageQtys: packageQtys.length > 0 ? packageQtys : undefined,
         note: note.trim() || undefined,
         photoUrl,
       });
@@ -142,28 +177,6 @@ export function UpchargeFormModal({
     }
   }
 
-  function renderItem(item: Item) {
-    const isOn = selected.has(item.id);
-    return (
-      <Pressable
-        key={item.id}
-        onPress={() => toggle(item.id)}
-        className={`flex-row items-center gap-3 rounded-xl border p-3 ${isOn ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}
-      >
-        {isOn
-          ? <CheckSquare color="#1D4ED8" size={20} strokeWidth={2.2} />
-          : <Square color="#94A3B8" size={20} strokeWidth={2} />}
-        <View className="flex-1">
-          <Text className={`font-semibold text-[13px] ${isOn ? 'text-brand-900' : 'text-ink-900'}`}>{item.name}</Text>
-          {item.isPackage && (
-            <Text className="font-medium mt-0.5 text-[10px] text-ink-500">Layanan utama</Text>
-          )}
-        </View>
-        <Text className={`font-bold text-sm ${isOn ? 'text-brand-700' : 'text-ink-700'}`}>{formatRupiah(item.price)}</Text>
-      </Pressable>
-    );
-  }
-
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/50">
@@ -173,7 +186,7 @@ export function UpchargeFormModal({
             <Pressable onPress={onClose}><X color="#94A3B8" size={20} /></Pressable>
           </View>
           <Text className="font-medium mt-1 text-[11px] text-ink-500">
-            Pilih layanan yang diminta customer. Customer akan setujui atau tolak sebelum kamu lanjut.
+            Pilih jumlah tiap layanan. Customer setujui atau tolak sebelum kamu lanjut.
           </Text>
 
           <ScrollView className="mt-4" showsVerticalScrollIndicator={false}>
@@ -181,7 +194,9 @@ export function UpchargeFormModal({
               <>
                 <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Utama</Text>
                 <View className="gap-2 mb-4">
-                  {services.map(renderItem)}
+                  {services.map((item) => (
+                    <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} />
+                  ))}
                 </View>
               </>
             )}
@@ -190,7 +205,9 @@ export function UpchargeFormModal({
               <>
                 <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Tambahan</Text>
                 <View className="gap-2">
-                  {addons.map(renderItem)}
+                  {addons.map((item) => (
+                    <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} />
+                  ))}
                 </View>
               </>
             )}
@@ -201,10 +218,10 @@ export function UpchargeFormModal({
               </View>
             )}
 
-            {selected.size > 0 && (
+            {total > 0 && (
               <View className="mt-4 rounded-xl bg-ink-50 border border-ink-200 p-3 gap-1">
                 <View className="flex-row items-center justify-between">
-                  <Text className="font-semibold text-[11px] text-ink-600">Total yang dibayar customer</Text>
+                  <Text className="font-semibold text-[11px] text-ink-600">Total dibayar customer</Text>
                   <Text className="font-extrabold text-base text-ink-900">+{formatRupiah(total)}</Text>
                 </View>
                 {cleanerShare != null ? (
@@ -212,9 +229,9 @@ export function UpchargeFormModal({
                     <Text className="font-medium text-[11px] text-emerald-700">Kamu terima ({cleanerShare.pct}%)</Text>
                     <Text className="font-bold text-sm text-emerald-700">+{formatRupiah(cleanerShare.share)}</Text>
                   </View>
-                ) : total > 0 ? (
+                ) : (
                   <ActivityIndicator size="small" color="#059669" style={{ alignSelf: 'flex-start', marginTop: 2 }} />
-                ) : null}
+                )}
               </View>
             )}
 
@@ -231,7 +248,7 @@ export function UpchargeFormModal({
             />
 
             <Text className="font-semibold mt-3 text-xs text-ink-700">Foto kondisi (opsional)</Text>
-            <View className="mt-1 flex-row items-center gap-2">
+            <View className="mt-1 flex-row items-center gap-2 mb-2">
               {photoUri ? (
                 <View className="relative">
                   <Image source={{ uri: photoUri }} style={{ width: 80, height: 80, borderRadius: 12 }} />
@@ -257,13 +274,13 @@ export function UpchargeFormModal({
 
           <Pressable
             onPress={submit}
-            disabled={submitting || selected.size === 0}
-            className={`mt-4 items-center rounded-2xl py-3.5 ${submitting || selected.size === 0 ? 'bg-brand-300' : 'bg-brand-600'}`}
+            disabled={submitting || totalQty === 0}
+            className={`mt-4 items-center rounded-2xl py-3.5 ${submitting || totalQty === 0 ? 'bg-brand-300' : 'bg-brand-600'}`}
           >
             {submitting
               ? <ActivityIndicator color="white" />
               : <Text className="font-bold text-sm text-white">
-                  {selected.size === 0 ? 'Pilih Layanan Dulu' : `Kirim Permintaan · +${formatRupiah(total)}`}
+                  {totalQty === 0 ? 'Pilih Layanan Dulu' : `Kirim Permintaan · +${formatRupiah(total)}`}
                 </Text>}
           </Pressable>
         </View>

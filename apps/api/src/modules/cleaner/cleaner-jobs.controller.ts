@@ -895,35 +895,62 @@ export class CleanerJobsController {
   async submitUpcharge(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { addonIds?: string[]; packageIds?: string[]; note?: string; photoUrl?: string },
+    @Body() body: {
+      addonQtys?: { id: string; qty: number }[];
+      packageQtys?: { id: string; qty: number }[];
+      note?: string;
+      photoUrl?: string;
+    },
   ) {
-    const hasAddons = Array.isArray(body?.addonIds) && body.addonIds.length > 0;
-    const hasPackages = Array.isArray(body?.packageIds) && body.packageIds.length > 0;
-    if (!hasAddons && !hasPackages) {
+    const addonQtys = (body?.addonQtys ?? []).filter((x) => x.qty > 0);
+    const packageQtys = (body?.packageQtys ?? []).filter((x) => x.qty > 0);
+    if (addonQtys.length === 0 && packageQtys.length === 0) {
       throw new BadRequestException('Pilih minimal 1 layanan tambahan.');
     }
+    // Validate qty limits per item
+    for (const x of [...addonQtys, ...packageQtys]) {
+      if (!Number.isInteger(x.qty) || x.qty < 1 || x.qty > 20) {
+        throw new BadRequestException('Jumlah per layanan harus antara 1–20.');
+      }
+    }
+
     // Fetch harga dari DB — cleaner tidak bisa manipulasi nominal
-    const addonRows = hasAddons
+    const addonIds = addonQtys.map((x) => x.id);
+    const packageIds = packageQtys.map((x) => x.id);
+
+    const addonRows = addonIds.length > 0
       ? await this.prisma.$queryRaw<{ id: string; name: string; price: number }[]>`
           SELECT id, name, price FROM add_ons
-           WHERE id = ANY(${body.addonIds}::uuid[]) AND is_active = TRUE
+           WHERE id = ANY(${addonIds}::uuid[]) AND is_active = TRUE
         `
       : [];
-    const packageRows = hasPackages
+    const packageRows = packageIds.length > 0
       ? await this.prisma.$queryRaw<{ id: string; name: string; price: number }[]>`
           SELECT pp.id, s.name, pp.price
             FROM pricing_packages pp
             JOIN services s ON s.id = pp.service_id
-           WHERE pp.id = ANY(${body.packageIds}::uuid[]) AND pp.is_active = TRUE
+           WHERE pp.id = ANY(${packageIds}::uuid[]) AND pp.is_active = TRUE
         `
       : [];
-    const allItems = [...addonRows, ...packageRows];
-    if (allItems.length === 0) throw new BadRequestException('Layanan tidak ditemukan atau tidak aktif.');
-    const amount = allItems.reduce((s, a) => s + Number(a.price), 0);
-    const addonNames = allItems.map((a) => a.name).join(', ');
-    const reason = body.note?.trim()
-      ? `${addonNames} — ${body.note.trim()}`
-      : addonNames;
+
+    if (addonRows.length !== addonIds.length || packageRows.length !== packageIds.length) {
+      throw new BadRequestException('Sebagian layanan tidak ditemukan atau tidak aktif.');
+    }
+
+    // Build price map and calculate total with quantities
+    const priceMap = new Map<string, { name: string; price: number }>();
+    for (const r of [...addonRows, ...packageRows]) priceMap.set(r.id, { name: r.name, price: Number(r.price) });
+
+    const lineItems = [...addonQtys, ...packageQtys].map((x) => ({
+      name: priceMap.get(x.id)!.name,
+      qty: x.qty,
+      unitPrice: priceMap.get(x.id)!.price,
+      subtotal: x.qty * priceMap.get(x.id)!.price,
+    }));
+
+    const amount = lineItems.reduce((s, l) => s + l.subtotal, 0);
+    const nameList = lineItems.map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(', ');
+    const reason = body.note?.trim() ? `${nameList} — ${body.note.trim()}` : nameList;
 
     const rows = await this.prisma.$queryRaw<{ id: string; status: string; customer_id: string }[]>`
       SELECT id, status, customer_id
