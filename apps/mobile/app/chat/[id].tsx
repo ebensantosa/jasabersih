@@ -313,7 +313,8 @@ function Chat() {
         sessionId: d.sessionId ?? null,
       });
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal memulai panggilan');
+      const msg = e?.response?.data?.message ?? e?.response?.data?.error?.message ?? e?.message ?? 'Gagal memulai panggilan';
+      toast.error(msg);
     } finally {
       setCallLoading(false);
     }
@@ -338,7 +339,8 @@ function Chat() {
         sessionId: d.sessionId ?? null,
       });
     } catch (e: any) {
-      toast.error(e?.response?.data?.error?.message ?? 'Gagal angkat panggilan');
+      const msg = e?.response?.data?.message ?? e?.response?.data?.error?.message ?? e?.message ?? 'Gagal angkat panggilan';
+      toast.error(msg);
     } finally {
       setCallLoading(false);
     }

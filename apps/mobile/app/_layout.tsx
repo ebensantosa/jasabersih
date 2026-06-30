@@ -36,6 +36,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { api } from '../src/lib/api';
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
+import { toast } from '../src/stores/ui';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, Text, View } from 'react-native';
@@ -469,6 +470,9 @@ export default function RootLayout() {
               const sessionId = callActive.sessionId;
               const bookingId = callActive.bookingId;
               callEnd();
+              if (reason === 'error') {
+                toast.error('Gagal terhubung ke panggilan. Cek koneksi atau coba lagi.');
+              }
               if (sessionId && bookingId) {
                 void api.post(`/chat/booking/${bookingId}/call-end`, {
                   sessionId, reason: reason ?? 'hangup',
