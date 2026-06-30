@@ -122,8 +122,13 @@ export class PushService {
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(messages),
       });
-      const json = (await res.json().catch(() => ({}))) as { data?: any[] };
+      const rawText = await res.text().catch(() => '');
+      let json: { data?: any[] } = {};
+      try { json = JSON.parse(rawText); } catch { /* ignore */ }
       const results = Array.isArray(json.data) ? json.data : [];
+      if (!Array.isArray(json.data) || results.length === 0) {
+        this.log.warn(`expo push unexpected response: status=${res.status} body=${rawText.slice(0, 500)}`);
+      }
       for (let i = 0; i < messages.length; i++) {
         const r = results[i];
         if (r?.status === 'ok') sent++; else failed++;
