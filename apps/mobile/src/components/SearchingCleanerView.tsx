@@ -13,6 +13,36 @@ const STATUS_MESSAGES: { min: number; text: string }[] = [
   { min: 12, text: 'Hampir batas waktu. Jika belum cocok, customer service akan membantu manual.' },
 ];
 
+const TAB_BAR_HEIGHT = 49;
+
+function FooterCta({ footerCta }: { footerCta: { label: string; onPress: () => void; helper?: string } }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ marginTop: 18, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }}>
+      <Pressable
+        onPress={footerCta.onPress}
+        style={{
+          backgroundColor: 'rgba(255,255,255,0.18)',
+          borderRadius: 16,
+          paddingVertical: 14,
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.35)',
+        }}
+      >
+        <Text style={{ color: 'white', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
+          {footerCta.label}
+        </Text>
+      </Pressable>
+      {footerCta.helper && (
+        <Text style={{ marginTop: 6, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
+          {footerCta.helper}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 type Props = {
   elapsedSec: number;
   timeoutSec?: number;
@@ -217,30 +247,9 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
                 : `Sisa ${minLeft}:${String(secLeft).padStart(2, '0')} sebelum CS mengambil alih`}
             </Text>
 
-            {/* Footer CTA - SafeAreaView edges bottom agar tidak tertutup nav bar di semua device */}
+            {/* Footer CTA - pakai insets.bottom + tab bar height supaya tidak nabrak bottom nav */}
             {footerCta && (
-              <SafeAreaView edges={['bottom']} style={{ marginTop: 18 }}>
-                <Pressable
-                  onPress={footerCta.onPress}
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.18)',
-                    borderRadius: 16,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.35)',
-                  }}
-                >
-                  <Text style={{ color: 'white', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
-                    {footerCta.label}
-                  </Text>
-                </Pressable>
-                {footerCta.helper && (
-                  <Text style={{ marginTop: 6, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
-                    {footerCta.helper}
-                  </Text>
-                )}
-              </SafeAreaView>
+              <FooterCta footerCta={footerCta} />
             )}
           </View>
         </View>
