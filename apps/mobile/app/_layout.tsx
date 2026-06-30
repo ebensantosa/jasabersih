@@ -1,5 +1,7 @@
 import '../global.css';
 import 'react-native-gesture-handler';
+import { registerGlobals } from '@livekit/react-native';
+registerGlobals();
 import { showIncomingCallNotification, cancelCallNotification, subscribeNotifeeCallEvents } from '../src/lib/callNotification';
 
 let notifee: any = null;
@@ -71,6 +73,7 @@ import { useModeStore } from '../src/stores/mode';
 import { useCallStore } from '../src/stores/call';
 import { CallOverlay } from '../src/components/CallOverlay';
 import { CallBanner } from '../src/components/CallBanner';
+import { IncomingCallOverlay } from '../src/components/IncomingCallOverlay';
 
 function BookingRealtimeMount() {
   useBookingRealtime();
@@ -100,6 +103,8 @@ export default function RootLayout() {
   const callMinimized = useCallStore(s => s.minimized);
   const callMinimize = useCallStore(s => s.minimize);
   const callEnd = useCallStore(s => s.end);
+
+  const [incomingCallNotif, setIncomingCallNotif] = useState<{ bookingId: string; callerName: string } | null>(null);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -262,6 +267,17 @@ export default function RootLayout() {
       setAuthReady(true);
     })();
   }, [accessToken, refreshAuth, fetchUser, syncAddresses, syncBookings, syncWallet]);
+
+  // Foreground: tampilkan in-app overlay saat app terbuka dan ada incoming call push
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener((notif) => {
+      const data = notif.request.content.data as any;
+      if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {
+        setIncomingCallNotif({ bookingId: data.bookingId, callerName: data.callerName ?? 'Penelepon' });
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Notifee: handle Angkat/Tolak dari full-screen incoming call notification
   useEffect(() => {
@@ -471,11 +487,14 @@ export default function RootLayout() {
               const bookingId = callActive.bookingId;
               callEnd();
               if (reason === 'error') {
-                toast.error('Gagal terhubung ke panggilan. Cek koneksi atau coba lagi.');
+                const detail = info?.errorMsg ? `\n${info.errorMsg}` : '';
+                toast.error(`Gagal terhubung ke panggilan.${detail || ' Cek koneksi atau coba lagi.'}`);
               }
-              if (sessionId && bookingId) {
-                void api.post(`/chat/booking/${bookingId}/call-end`, {
-                  sessionId, reason: reason ?? 'hangup',
+              if (bookingId) {
+                void api.post('/call/end', {
+                  bookingId,
+                  sessionId: sessionId ?? undefined,
+                  endReason: reason ?? 'hangup',
                   durationSec: info?.durationSec ?? 0,
                   answered: info?.answered ?? false,
                 }).catch(() => {});
@@ -484,6 +503,17 @@ export default function RootLayout() {
           />
         )}
         <CallBanner />
+        {incomingCallNotif && !callActive && (
+          <IncomingCallOverlay
+            callerName={incomingCallNotif.callerName}
+            onAnswer={() => {
+              const { bookingId } = incomingCallNotif;
+              setIncomingCallNotif(null);
+              router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } });
+            }}
+            onDecline={() => setIncomingCallNotif(null)}
+          />
+        )}
           </QueryProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
