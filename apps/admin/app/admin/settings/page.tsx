@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, GripVertical, Home as HomeIcon, Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical, Home as HomeIcon, Plus, Shield, Banknote, Briefcase, Ban, Activity, Pencil, Trash2, ToggleLeft } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Modal, Input, Textarea, Select, Button, Switch, Badge, useConfirm, useToast } from '../../../components/ui';
 
-type Tab = 'admins' | 'commission' | 'services' | 'blacklist' | 'audit';
+type Tab = 'admins' | 'commission' | 'services' | 'blacklist' | 'audit' | 'features';
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'admins', label: 'Admin Users', icon: Shield },
   { key: 'commission', label: 'Komisi Cleaner', icon: Banknote },
   { key: 'services', label: 'Layanan', icon: Briefcase },
   { key: 'blacklist', label: 'Blacklist', icon: Ban },
   { key: 'audit', label: 'Audit Log', icon: Activity },
+  { key: 'features', label: 'Fitur App', icon: ToggleLeft },
 ];
 
 export default function SettingsPage(): React.ReactElement | null  {
@@ -40,6 +41,7 @@ export default function SettingsPage(): React.ReactElement | null  {
         {tab === 'services' && <ServicesTab />}
         {tab === 'blacklist' && <BlacklistTab />}
         {tab === 'audit' && <AuditTab />}
+        {tab === 'features' && <FeaturesTab />}
       </div>
     </div>
   );
@@ -782,6 +784,91 @@ function AuditTab() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ FITUR APP ============
+type FeatureFlag = {
+  key: string;
+  label: string;
+  description: string;
+  category: string;
+};
+
+const FEATURE_FLAGS: FeatureFlag[] = [
+  {
+    key: 'feature.call_enabled',
+    label: 'Fitur Telepon (Call)',
+    description: 'Tampilkan tombol telepon di chat antara customer dan cleaner. Matikan untuk maintenance atau jika ada gangguan LiveKit.',
+    category: 'feature',
+  },
+];
+
+function FeaturesTab() {
+  const toast = useToast();
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const rows: { key: string; value: any }[] = await api.admin.appConfig();
+      const map: Record<string, any> = {};
+      for (const r of rows) map[r.key] = r.value;
+      setConfig(map);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal load config');
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function toggle(flag: FeatureFlag, current: boolean) {
+    setSaving(flag.key);
+    try {
+      await api.admin.setAppConfig(flag.key, { value: !current, description: flag.description, category: flag.category });
+      setConfig((prev) => ({ ...prev, [flag.key]: !current }));
+      toast.success(`${flag.label} ${!current ? 'diaktifkan' : 'dinonaktifkan'}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal simpan');
+    }
+    setSaving(null);
+  }
+
+  return (
+    <div>
+      <h2 className="mb-1 text-base font-semibold">Fitur App</h2>
+      <p className="mb-4 text-sm text-slate-500">Toggle fitur yang dapat dimatikan/dihidupkan tanpa deploy ulang.</p>
+
+      {loading ? (
+        <div className="py-10 text-center text-sm text-slate-500">Memuat…</div>
+      ) : (
+        <div className="divide-y rounded-md border bg-white">
+          {FEATURE_FLAGS.map((flag) => {
+            const enabled = config[flag.key] !== false && config[flag.key] !== 'false';
+            return (
+              <div key={flag.key} className="flex items-center justify-between gap-4 px-4 py-4">
+                <div>
+                  <div className="font-medium text-sm text-slate-900">{flag.label}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{flag.description}</div>
+                  <div className="mt-1 font-mono text-[10px] text-slate-400">{flag.key}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant={enabled ? 'green' : 'slate'}>{enabled ? 'Aktif' : 'Nonaktif'}</Badge>
+                  <Switch
+                    checked={enabled}
+                    onChange={() => toggle(flag, enabled)}
+                    disabled={saving === flag.key}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
