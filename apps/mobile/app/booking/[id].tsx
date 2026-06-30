@@ -158,8 +158,7 @@ function BookingDetail() {
     } catch { return null; }
   })();
   const cleanerId = (booking as any)?.cleanerId ?? (booking as any)?.cleaner_id ?? null;
-  // isCleaner: mode freelancer OR user ini adalah cleaner yang di-assign ke booking ini
-  const isCleaner = mode === 'freelancer' || (!!myUserId && !!cleanerId && myUserId === cleanerId);
+  const isCleaner = mode === 'freelancer';
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ title: string; body: string; confirmText: string; onConfirm: () => void } | null>(null);
   const [showDispute, setShowDispute] = useState(false);

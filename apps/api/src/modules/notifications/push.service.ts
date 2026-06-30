@@ -71,7 +71,8 @@ export class PushService {
     const withdrawalId = (payload.data as any)?.withdrawalId;
     const refId = bookingId ?? withdrawalId;
     const notifType = (payload.data as any)?.type ?? payload.channel ?? 'system';
-    if (refId) {
+    // incoming_call tidak di-dedup — setiap panggilan adalah event baru
+    if (refId && notifType !== 'incoming_call') {
       const refKey = bookingId ? 'bookingId' : 'withdrawalId';
       const dup = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM notifications

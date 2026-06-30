@@ -250,6 +250,11 @@ export default function RootLayout() {
       // Satu-satunya alasan logout yang valid: 401/403 dari refreshAuth (sudah ditangani di atas).
       // Kalau profile null, lanjut dengan cached profile atau tanpa profile (push tetap bisa register).
       setUserId(String((profile as any)?.id ?? (profile as any)?.userId ?? ''));
+      // Guard: kalau mode tersimpan 'freelancer' tapi user bukan freelancer, reset ke customer.
+      // Ini mencegah customer lihat layout cleaner karena stale persisted mode.
+      if (profile && useModeStore.getState().mode === 'freelancer' && !(profile as any)?.isFreelancer) {
+        useModeStore.getState().setMode('customer');
+      }
       await syncSessionData(profile);
       const currentMode = useModeStore.getState().mode;
       void registerForPushAsync(currentMode === 'freelancer' ? 'freelancer' : 'customer').catch(() => {});
