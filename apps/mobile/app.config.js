@@ -84,7 +84,7 @@ const firebasePlugins = [
       ios: { useFrameworks: 'static' },
       android: {
         kotlinVersion: '2.1.21',
-        compileSdkVersion: 34,
+        compileSdkVersion: 35,
         targetSdkVersion: 34,
         minSdkVersion: 24,
       },
