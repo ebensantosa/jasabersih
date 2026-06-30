@@ -17,27 +17,35 @@ const SHOULD_USE_FIREBASE =
 // This plugin patches android/app/build.gradle to add pickFirst rules.
 // Fix manifest merger conflict: expo-notifications sets default_notification_color,
 // react-native-firebase/messaging also sets it → need tools:replace to let app win.
+// Uses withDangerousMod (runs AFTER all other mods) to directly patch the generated XML.
 const withFirebaseMessagingManifestFix = (config) => {
   try {
-    const { withAndroidManifest } = require('@expo/config-plugins');
-    return withAndroidManifest(config, (cfg) => {
-      const manifest = cfg.modResults.manifest;
-      if (!manifest.$['xmlns:tools']) {
-        manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
-      }
-      const application = manifest.application?.[0];
-      if (!application) return cfg;
-      const metaData = application['meta-data'] || [];
-      for (const item of metaData) {
-        if (
-          item.$?.['android:name'] ===
-          'com.google.firebase.messaging.default_notification_color'
-        ) {
-          item.$['tools:replace'] = 'android:resource';
+    const { withDangerousMod } = require('@expo/config-plugins');
+    const fs = require('fs');
+    const path = require('path');
+    return withDangerousMod(config, [
+      'android',
+      (cfg) => {
+        const manifestPath = path.join(
+          cfg.modRequest.platformProjectRoot,
+          'app/src/main/AndroidManifest.xml'
+        );
+        if (!fs.existsSync(manifestPath)) return cfg;
+        let xml = fs.readFileSync(manifestPath, 'utf8');
+        if (!xml.includes('xmlns:tools')) {
+          xml = xml.replace(
+            /(<manifest\s)/,
+            '$1xmlns:tools="http://schemas.android.com/tools" '
+          );
         }
-      }
-      return cfg;
-    });
+        xml = xml.replace(
+          /(<meta-data[^>]*default_notification_color[^>]*?)(\s*\/>)/,
+          '$1 tools:replace="android:resource"$2'
+        );
+        fs.writeFileSync(manifestPath, xml, 'utf8');
+        return cfg;
+      },
+    ]);
   } catch {
     return config;
   }
