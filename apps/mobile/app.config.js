@@ -100,7 +100,6 @@ const basePlugins = [
       // Android 13+ POST_NOTIFICATIONS otomatis di-declare oleh plugin ini.
       // icon harus 96x96 monochrome (white on transparent) - pakai adaptive foreground.
       icon: './assets/adaptive-icon.png',
-      color: '#1D4ED8',
       sounds: [
         './assets/sounds/order_incoming.wav',
         './assets/sounds/call_incoming.wav',
@@ -193,8 +192,8 @@ module.exports = {
       apiBaseUrl: 'https://api.jasabersih.com/v1',
       privacyUrl: 'https://jasabersih.com/ketentuan-layanan/',
       termsUrl: 'https://jasabersih.com/syarat-dan-ketentuan/',
-      eas: { projectId: '4ceb9dcf-a9bb-4125-b71e-3d3020c3ca4a' },
+      eas: { projectId: '36fd2043-fa7f-46ce-bd28-796368c33f64' },
     },
-    owner: 'ebensantosa',
+    owner: 'cleaningservice',
   },
 };
