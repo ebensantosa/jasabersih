@@ -168,6 +168,7 @@ function NewBooking() {
         durationMin: Number(a.durationMin),
         unit: local?.unit,
         icon: local?.icon ?? LOCAL_ADDONS[0]!.icon,
+        inputType: (a.inputType ?? 'checkbox') as 'qty' | 'checkbox',
       };
     });
   }, [apiAddons]);
@@ -408,7 +409,12 @@ function NewBooking() {
   const [hasPet, setHasPet] = useState(false);
   const [petNote, setPetNote] = useState('');
   const [notes, setNotes] = useState('');
-  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
+  const [addonQtys, setAddonQtys] = useState<Map<string, number>>(new Map());
+  const selectedAddons = addonQtys; // alias untuk kompatibilitas — pakai .get(code) > 0 sebagai "selected"
+  function getAddonQty(code: string) { return addonQtys.get(code) ?? 0; }
+  function setAddonQty(code: string, qty: number) {
+    setAddonQtys(prev => { const next = new Map(prev); if (qty <= 0) next.delete(code); else next.set(code, qty); return next; });
+  }
 
   const savedLocation = useLocationStore((s) => s.current);
   const addressList = useAddressesStore((s) => s.list);
@@ -595,12 +601,12 @@ function NewBooking() {
   const petSurcharge = hasPet ? 15000 : 0;
 
   const addonTotal = useMemo(
-    () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + a.price, 0),
-    [ADDONS, selectedAddons],
+    () => ADDONS.reduce((s, a) => s + (getAddonQty(a.code) * a.price), 0),
+    [ADDONS, addonQtys],
   );
   const addonDurationMin = useMemo(
-    () => ADDONS.filter((a) => selectedAddons.has(a.code)).reduce((s, a) => s + Number(a.durationMin ?? 0), 0),
-    [ADDONS, selectedAddons],
+    () => ADDONS.reduce((s, a) => s + (getAddonQty(a.code) * Number(a.durationMin ?? 0)), 0),
+    [ADDONS, addonQtys],
   );
   const packageDurationMin = useMemo(() => {
     const rawDuration = Math.max(0, Number(pkg?.durationMin ?? 0));
@@ -746,10 +752,11 @@ function NewBooking() {
       lat: coords?.lat ?? undefined,
       lng: coords?.lng ?? undefined,
       scheduledAt: scheduleIso,
-      addOns: ADDONS.filter((a) => selectedAddons.has(a.code)).map((a) => ({
+      addOns: ADDONS.filter((a) => getAddonQty(a.code) > 0).map((a) => ({
         code: a.code,
         name: a.name,
         price: a.price,
+        qty: getAddonQty(a.code),
       })),
       basePrice,
       dirtSurcharge,
@@ -1950,15 +1957,15 @@ function NewBooking() {
                 )}
                 <View className="gap-2">
                   {ADDONS.map((a) => {
-                    const active = selectedAddons.has(a.code);
-                    const lineTotal = isSubscription && subscriptionVisits > 0 ? a.price * subscriptionVisits : a.price;
+                    const qty = getAddonQty(a.code);
+                    const active = qty > 0;
+                    const unitPrice = a.price;
+                    const lineTotal = isSubscription && subscriptionVisits > 0 ? unitPrice * subscriptionVisits : unitPrice;
+                    const isQty = a.inputType === 'qty';
                     return (
-                      <Pressable
+                      <View
                         key={a.code}
-                        onPress={() => setSelectedAddons(toggleSet(selectedAddons, a.code))}
-                        className={`flex-row items-center gap-3 rounded-xl border p-3 ${
-                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
-                        }`}
+                        className={`flex-row items-center gap-3 rounded-xl border p-3 ${active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'}`}
                       >
                         <View className="h-9 w-9 items-center justify-center rounded-lg bg-brand-50">
                           <a.icon color="#1D4ED8" size={18} strokeWidth={2.2} />
@@ -1966,23 +1973,39 @@ function NewBooking() {
                         <View className="flex-1">
                           <Text className="font-semibold text-sm text-ink-900">{a.name}</Text>
                           <Text className="font-medium text-[11px] text-brand-600">
-                            +{formatRupiah(a.price)}
-                            {a.unit ? (
-                              <Text className="font-sans text-[10px] text-ink-500"> {a.unit}</Text>
-                            ) : null}
+                            +{formatRupiah(active && isQty ? unitPrice * qty : unitPrice)}
+                            {a.unit ? <Text className="font-sans text-[10px] text-ink-500"> {a.unit}</Text> : null}
                             {isSubscription && subscriptionVisits > 0 && (
-                              <Text className="font-bold text-[10px] text-ink-500"> x {subscriptionVisits} = {formatRupiah(lineTotal)}</Text>
+                              <Text className="font-bold text-[10px] text-ink-500"> x {subscriptionVisits} = {formatRupiah(lineTotal * (isQty ? qty || 1 : 1))}</Text>
                             )}
                           </Text>
                         </View>
-                        <View
-                          className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
-                            active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'
-                          }`}
-                        >
-                          {active && <Check color="white" size={14} strokeWidth={3} />}
-                        </View>
-                      </Pressable>
+                        {isQty ? (
+                          <View className="flex-row items-center gap-2">
+                            <Pressable
+                              onPress={() => setAddonQty(a.code, qty - 1)}
+                              disabled={qty === 0}
+                              style={{ width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: qty === 0 ? '#F1F5F9' : '#EFF6FF' }}
+                            >
+                              <Minus color={qty === 0 ? '#94A3B8' : '#1D4ED8'} size={13} strokeWidth={2.4} />
+                            </Pressable>
+                            <Text style={{ width: 20, textAlign: 'center', fontWeight: '700', fontSize: 14, color: active ? '#1D4ED8' : '#64748B' }}>{qty}</Text>
+                            <Pressable
+                              onPress={() => setAddonQty(a.code, qty + 1)}
+                              style={{ width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF' }}
+                            >
+                              <Plus color="#1D4ED8" size={13} strokeWidth={2.4} />
+                            </Pressable>
+                          </View>
+                        ) : (
+                          <Pressable
+                            onPress={() => setAddonQty(a.code, active ? 0 : 1)}
+                            className={`h-6 w-6 items-center justify-center rounded-full border-2 ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300'}`}
+                          >
+                            {active && <Check color="white" size={14} strokeWidth={3} />}
+                          </Pressable>
+                        )}
+                      </View>
                     );
                   })}
                 </View>
@@ -2159,8 +2182,8 @@ function NewBooking() {
                   {petSurcharge > 0 && (
                     <Row label="Ada hewan peliharaan" value={`+${formatRupiah(petSurcharge)}`} />
                   )}
-                  {ADDONS.filter((a) => selectedAddons.has(a.code)).map((a) => (
-                    <Row key={a.code} label={a.name} value={`+${formatRupiah(a.price)}`} />
+                  {ADDONS.filter((a) => getAddonQty(a.code) > 0).map((a) => (
+                    <Row key={a.code} label={getAddonQty(a.code) > 1 ? `${a.name} ×${getAddonQty(a.code)}` : a.name} value={`+${formatRupiah(a.price * getAddonQty(a.code))}`} />
                   ))}
                 </View>
 

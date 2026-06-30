@@ -114,6 +114,7 @@ export type AddOnItem = {
   unit?: string;
   icon: LucideIcon;
   group: AddOnGroup;
+  inputType?: 'qty' | 'checkbox';
 };
 
 export const ADDONS: AddOnItem[] = [
