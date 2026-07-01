@@ -17,7 +17,7 @@ try {
   // Notifee native module not in this APK build - call notifications disabled
 }
 
-const CALL_CHANNEL_ID = 'incoming_call_notifee';
+const CALL_CHANNEL_ID = 'incoming_call_notifee_v2';
 export const CALL_NOTIFICATION_ID = 'incoming_call_active';
 
 export async function setupCallChannel() {

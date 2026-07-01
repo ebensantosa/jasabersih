@@ -12,6 +12,20 @@ export type PushPayload = {
   targetMode?: 'customer' | 'freelancer';
 };
 
+function resolvePushAudio(channel?: PushPayload['channel']): { sound: string; channelId: string } {
+  switch (channel) {
+    case 'chat':
+      return { sound: 'chat_message.wav', channelId: 'chat_v2' };
+    case 'incoming_call':
+      return { sound: 'call_incoming.wav', channelId: 'incoming_call_v2' };
+    case 'incoming_job':
+    case 'incoming_job_v2':
+      return { sound: 'order_incoming.wav', channelId: 'incoming_job_v2' };
+    default:
+      return { sound: 'default', channelId: channel ?? 'default' };
+  }
+}
+
 export type PushBatchItem = {
   userId: string;
   title: string;
@@ -104,11 +118,11 @@ export class PushService {
     if (validTokens.length === 0) return { sent: 0, failed: 0 };
 
     const isDataOnly = !payload.title && !payload.body;
-    const sound = (payload.channel === 'incoming_job' || payload.channel === 'incoming_job_v2') ? 'order_incoming.wav' : 'default';
+    const { sound, channelId } = resolvePushAudio(payload.channel);
     const messages = validTokens.map((to) => ({
       to,
       // Data-only push: tidak ada title/body → Android tidak auto-show notif, diserahkan ke notifee background handler
-      ...(isDataOnly ? {} : { title: finalTitle, body: payload.body, sound, channelId: payload.channel ?? 'default' }),
+      ...(isDataOnly ? {} : { title: finalTitle, body: payload.body, sound, channelId }),
       data: payload.data ?? {},
       priority: 'high' as const,
       // content_available supaya iOS + Android wake up background handler
@@ -263,14 +277,14 @@ export class PushService {
     // ── 4. Satu Expo HTTP call per 100 token ───────────────────────────────
     const messages = validTokens.map((r) => {
       const item = itemMap.get(r.user_id) ?? eligible[0]!;
-      const sound = (item.channel === 'incoming_job' || item.channel === 'incoming_job_v2') ? 'order_incoming.wav' : 'default';
+      const { sound, channelId } = resolvePushAudio(item.channel);
       return {
         to: r.fcm_token,
         title: item.title,
         body: item.body,
         data: item.data,
         sound,
-        channelId: item.channel,
+        channelId,
         priority: 'high' as const,
       };
     });

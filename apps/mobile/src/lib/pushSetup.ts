@@ -69,14 +69,14 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
         vibrationPattern: [0, 250, 150, 250],
       });
     }
-    await Notifications.setNotificationChannelAsync('chat', {
+    await Notifications.setNotificationChannelAsync('chat_v2', {
       name: 'Pesan Chat',
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'chat_message',
       vibrationPattern: [0, 250, 150, 250],
     });
     // Channel khusus incoming call — notif suara keras, paling prioritas
-    await Notifications.setNotificationChannelAsync('incoming_call', {
+    await Notifications.setNotificationChannelAsync('incoming_call_v2', {
       name: 'Panggilan Masuk',
       importance: Notifications.AndroidImportance.MAX,
       sound: 'call_incoming',

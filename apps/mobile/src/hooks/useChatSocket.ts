@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../lib/api';
 import { getChatSocket, type ChatMessage, type SendResult } from '../lib/chatSocket';
+import { playOneShotSound, prepareAudiblePlayback } from '../lib/sound';
+import { useUserStore } from '../stores/user';
 
 type Status = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -47,6 +49,12 @@ export function useChatSocket(bookingId: string | undefined) {
     function onMessage(msg: ChatMessage & { isAdmin?: boolean }) {
       if (msg.bookingId !== bookingId) return;
       const mapped: ChatMessage = { ...msg, isAdmin: !!msg.isAdmin };
+      const myUserId = useUserStore.getState().profile?.id ?? null;
+      if (mapped.senderId && mapped.senderId !== myUserId) {
+        void prepareAudiblePlayback()
+          .then(() => playOneShotSound(require('../../assets/sounds/chat_message.wav'), 0.75))
+          .catch(() => {});
+      }
       setMessages((prev) => prev.some((m) => m.id === mapped.id) ? prev : [...prev, mapped]);
     }
     function onTyping(payload: { userId: string; typing: boolean }) {

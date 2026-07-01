@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
+import { prepareAudiblePlayback } from '../../src/lib/sound';
 import { useCallStore } from '../../src/stores/call';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { useAuthStore } from '../../src/stores/auth';
@@ -185,7 +186,7 @@ function Chat() {
     let cancelled = false;
     (async () => {
       try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        await prepareAudiblePlayback();
         const { sound } = await Audio.Sound.createAsync(
           require('../../assets/sounds/call_incoming.wav'),
           { shouldPlay: true, isLooping: true, volume: 1.0 },

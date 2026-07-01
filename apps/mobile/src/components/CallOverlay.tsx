@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, PermissionsAndroid, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { prepareAudiblePlayback } from '../lib/sound';
 import { toast } from '../stores/ui';
 
 const CALL_TIMEOUT_SEC = 25;
@@ -119,7 +120,7 @@ function CallUI({
     let cancelled = false;
     (async () => {
       try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        await prepareAudiblePlayback();
         const { sound } = await Audio.Sound.createAsync(
           require('../../../assets/sounds/call_ringback.wav'),
           { shouldPlay: true, isLooping: true, volume: 0.8 },

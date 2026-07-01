@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { prepareAudiblePlayback } from '../lib/sound';
+
 const RING_TIMEOUT_SEC = 25;
 
 type Props = {
@@ -22,7 +24,7 @@ export function IncomingCallOverlay({ callerName, onAnswer, onDecline }: Props) 
     let cancelled = false;
     (async () => {
       try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        await prepareAudiblePlayback();
         const { sound } = await Audio.Sound.createAsync(
           require('../../../assets/sounds/call_incoming.wav'),
           { shouldPlay: true, isLooping: true, volume: 1.0 },
