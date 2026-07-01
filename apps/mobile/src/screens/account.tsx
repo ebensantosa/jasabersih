@@ -16,7 +16,7 @@ import {
   Smartphone,
   Wallet,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -265,33 +265,78 @@ export function Help() {
 export function SettingsView() {
   const router = useRouter();
   const [checking, setChecking] = useState(false);
+  const [applyingUpdate, setApplyingUpdate] = useState(false);
+  const reloadFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (reloadFallbackTimer.current) clearTimeout(reloadFallbackTimer.current);
+    };
+  }, []);
+
+  async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(message)), ms);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
 
   async function checkUpdate() {
-    if (checking) return;
+    if (checking || applyingUpdate) return;
     setChecking(true);
+    let startedReload = false;
     try {
       if (!Updates.isEnabled) {
         toast.info('Update otomatis saat buka app. Tidak ada update manual di build ini.');
         return;
       }
-      const result = await Updates.checkForUpdateAsync();
+      const result = await withTimeout(
+        Updates.checkForUpdateAsync(),
+        12000,
+        'Pemeriksaan update terlalu lama. Coba lagi sebentar.',
+      );
       if (!result.isAvailable) {
         toast.info('Aplikasi sudah versi terbaru');
         return;
       }
       toast.info('Update ditemukan, mengunduh...');
-      await Updates.fetchUpdateAsync();
-      Updates.reloadAsync().catch(() => {});
-      toast.info('Update siap! Tutup dan buka ulang app untuk menerapkan.');
+      await withTimeout(
+        Updates.fetchUpdateAsync(),
+        30000,
+        'Unduhan update terlalu lama. Coba lagi dengan koneksi yang lebih stabil.',
+      );
+
+      setChecking(false);
+      setApplyingUpdate(true);
+      startedReload = true;
+
+      reloadFallbackTimer.current = setTimeout(() => {
+        setApplyingUpdate(false);
+        toast.info('Update sudah diunduh. Jika layar belum memuat ulang, tutup lalu buka ulang aplikasi.');
+      }, 8000);
+
+      await Updates.reloadAsync();
     } catch (e: any) {
+      if (reloadFallbackTimer.current) {
+        clearTimeout(reloadFallbackTimer.current);
+        reloadFallbackTimer.current = null;
+      }
+      setApplyingUpdate(false);
       const msg: string = e?.message ?? '';
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
         toast.error('Cek koneksi internet lalu coba lagi');
       } else {
-        toast.info('Tutup dan buka ulang app untuk dapat update terbaru');
+        toast.error(msg || 'Gagal menerapkan update. Tutup lalu buka ulang app.');
       }
     } finally {
-      setChecking(false);
+      if (!startedReload) setChecking(false);
     }
   }
 
@@ -313,6 +358,20 @@ export function SettingsView() {
           last
         />
       </View>
+
+      {applyingUpdate && (
+        <View className="mt-3 rounded-2xl border border-brand-200 bg-brand-50 p-4">
+          <View className="flex-row items-center gap-3">
+            <ActivityIndicator size="small" color="#1D4ED8" />
+            <View className="flex-1">
+              <Text className="font-bold text-sm text-brand-900">Menerapkan update</Text>
+              <Text className="font-sans mt-0.5 text-xs text-brand-800">
+                Aplikasi sedang memuat ulang ke versi terbaru. Jika lebih dari beberapa detik, tutup lalu buka ulang aplikasi.
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
     </>
   );
 }
