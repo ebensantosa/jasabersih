@@ -17,7 +17,7 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatRupiah } from '../data/catalog';
@@ -266,6 +266,7 @@ export function SettingsView() {
   const router = useRouter();
   const [checking, setChecking] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
+  const [downloadedUpdate, setDownloadedUpdate] = useState(false);
   const reloadFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -286,6 +287,36 @@ export function SettingsView() {
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
+
+  function clearReloadFallback() {
+    if (reloadFallbackTimer.current) {
+      clearTimeout(reloadFallbackTimer.current);
+      reloadFallbackTimer.current = null;
+    }
+  }
+
+  async function applyDownloadedUpdate() {
+    clearReloadFallback();
+    setApplyingUpdate(true);
+    setDownloadedUpdate(true);
+
+    // Beri kesempatan UI commit dulu sebelum native reload dijalankan.
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve());
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    reloadFallbackTimer.current = setTimeout(() => {
+      setApplyingUpdate(false);
+      toast.info('Update sudah siap. Jika aplikasi belum berpindah otomatis, tekan "Terapkan Sekarang" atau buka ulang aplikasi.');
+    }, 10000);
+
+    await withTimeout(
+      Updates.reloadAsync(),
+      12000,
+      'Reload update belum berjalan. Coba tekan "Terapkan Sekarang".',
+    );
   }
 
   async function checkUpdate() {
@@ -314,20 +345,10 @@ export function SettingsView() {
       );
 
       setChecking(false);
-      setApplyingUpdate(true);
       startedReload = true;
-
-      reloadFallbackTimer.current = setTimeout(() => {
-        setApplyingUpdate(false);
-        toast.info('Update sudah diunduh. Jika layar belum memuat ulang, tutup lalu buka ulang aplikasi.');
-      }, 8000);
-
-      await Updates.reloadAsync();
+      await applyDownloadedUpdate();
     } catch (e: any) {
-      if (reloadFallbackTimer.current) {
-        clearTimeout(reloadFallbackTimer.current);
-        reloadFallbackTimer.current = null;
-      }
+      clearReloadFallback();
       setApplyingUpdate(false);
       const msg: string = e?.message ?? '';
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect')) {
@@ -370,6 +391,21 @@ export function SettingsView() {
               </Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {downloadedUpdate && !applyingUpdate && (
+        <View className="mt-3 rounded-2xl border border-success/20 bg-success/5 p-4">
+          <Text className="font-bold text-sm text-success">Update sudah diunduh</Text>
+          <Text className="font-sans mt-1 text-xs leading-5 text-ink-700">
+            Versi terbaru sudah siap dipakai. Jika aplikasi tadi belum memuat ulang otomatis, tekan tombol di bawah ini.
+          </Text>
+          <Pressable
+            onPress={() => { void applyDownloadedUpdate(); }}
+            className="mt-3 items-center rounded-2xl bg-brand-600 px-4 py-3"
+          >
+            <Text className="font-bold text-sm text-white">Terapkan Sekarang</Text>
+          </Pressable>
         </View>
       )}
     </>
