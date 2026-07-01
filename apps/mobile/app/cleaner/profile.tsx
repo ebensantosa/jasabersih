@@ -206,7 +206,7 @@ function CleanerProfileScreen() {
                           strokeWidth={1}
                         />
                       ))}
-                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName?.trim() || 'Pelanggan'}</Text>
+                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName?.trim() || 'Pengguna'}</Text>
                       <Text className="font-sans ml-1 text-[10px] text-ink-400">
                         · {new Date(rv.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                       </Text>

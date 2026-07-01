@@ -134,7 +134,7 @@ function CallUI({
       try {
         await prepareAudiblePlayback();
         const { sound } = await Audio.Sound.createAsync(
-          require('../../../assets/sounds/call_ringback.wav'),
+          require('../../assets/sounds/call_ringback.wav'),
           { shouldPlay: true, isLooping: true, volume: 1.0, progressUpdateIntervalMillis: 250 },
         );
         if (cancelled) { void sound.unloadAsync(); return; }

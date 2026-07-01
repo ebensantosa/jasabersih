@@ -12,19 +12,11 @@ type Addon = {
   name: string;
   price: number;
   durationMin: number;
+  displayOrder: number;
   description: string | null;
   isActive: boolean;
   inputType: 'qty' | 'checkbox';
 };
-
-const GROUPS = [
-  'Lantai & Kasur',
-  'Dapur',
-  'Kamar Mandi',
-  'Ruangan',
-  'Perabot',
-  'Lainnya',
-];
 
 function rupiah(n: number) {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
@@ -53,7 +45,9 @@ export default function AddonsPage(): React.ReactElement | null {
     try {
       await api.admin.updateAddon(a.id, { isActive: !a.isActive });
       void load();
-    } catch (e: any) { toast.error(e?.message); }
+    } catch (e: any) {
+      toast.error(e?.message);
+    }
   }
 
   async function del(a: Addon) {
@@ -67,11 +61,13 @@ export default function AddonsPage(): React.ReactElement | null {
       await api.admin.deleteAddon(a.id);
       toast.success('Add-on dihapus');
       void load();
-    } catch (e: any) { toast.error(e?.message); }
+    } catch (e: any) {
+      toast.error(e?.message);
+    }
   }
 
-  const active = list.filter((a) => a.isActive);
-  const inactive = list.filter((a) => !a.isActive);
+  const activeCount = list.filter((a) => a.isActive).length;
+  const inactiveCount = list.length - activeCount;
 
   return (
     <div>
@@ -80,11 +76,13 @@ export default function AddonsPage(): React.ReactElement | null {
           <h1 className="text-2xl font-bold text-slate-900">Add-On Layanan</h1>
           <p className="text-sm text-slate-500">Kelola daftar add-on yang bisa dipilih customer saat booking.</p>
         </div>
-        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Tambah Add-On</Button>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>
+          Tambah Add-On
+        </Button>
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-sm text-slate-500">Memuat…</div>
+        <div className="py-16 text-center text-sm text-slate-500">Memuat...</div>
       ) : list.length === 0 ? (
         <div className="mt-6 rounded-md border border-dashed p-14 text-center text-sm text-slate-500">
           <Package size={32} className="mx-auto mb-2 text-slate-400" />
@@ -96,6 +94,7 @@ export default function AddonsPage(): React.ReactElement | null {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-600">
                 <tr>
+                  <th className="px-3 py-2 text-center">Urut</th>
                   <th className="px-3 py-2 text-left">Code</th>
                   <th className="px-3 py-2 text-left">Nama</th>
                   <th className="px-3 py-2 text-right">Harga</th>
@@ -106,9 +105,10 @@ export default function AddonsPage(): React.ReactElement | null {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {[...active, ...inactive].map((a) => (
+                {list.map((a) => (
                   <tr key={a.id} className={a.isActive ? '' : 'opacity-50'}>
-                    <td className="px-3 py-2 font-mono text-xs text-slate-500">{a.code ?? '—'}</td>
+                    <td className="px-3 py-2 text-center font-mono text-xs text-slate-500">{a.displayOrder ?? 0}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-slate-500">{a.code ?? '-'}</td>
                     <td className="px-3 py-2">
                       <div className="font-semibold">{a.name}</div>
                       {a.description && <div className="text-xs text-slate-500">{a.description}</div>}
@@ -116,7 +116,9 @@ export default function AddonsPage(): React.ReactElement | null {
                     <td className="px-3 py-2 text-right font-semibold text-brand-700">{rupiah(Number(a.price))}</td>
                     <td className="px-3 py-2 text-right text-xs text-slate-500">{a.durationMin} mnt</td>
                     <td className="px-3 py-2 text-center">
-                      <Badge variant={a.inputType === 'checkbox' ? 'blue' : 'slate'}>{a.inputType === 'checkbox' ? 'centang' : 'qty'}</Badge>
+                      <Badge variant={a.inputType === 'checkbox' ? 'blue' : 'slate'}>
+                        {a.inputType === 'checkbox' ? 'centang' : 'qty'}
+                      </Badge>
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button onClick={() => toggleActive(a)}>
@@ -125,8 +127,12 @@ export default function AddonsPage(): React.ReactElement | null {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(a)}>Edit</Button>
-                        <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => del(a)}>Hapus</Button>
+                        <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(a)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => del(a)}>
+                          Hapus
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -134,7 +140,9 @@ export default function AddonsPage(): React.ReactElement | null {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-slate-400">{active.length} aktif · {inactive.length} nonaktif · {list.length} total</p>
+          <p className="mt-2 text-xs text-slate-400">
+            {activeCount} aktif · {inactiveCount} nonaktif · {list.length} total
+          </p>
         </>
       )}
 
@@ -142,20 +150,32 @@ export default function AddonsPage(): React.ReactElement | null {
         <AddonFormModal
           addon={editing.id ? (editing as Addon) : null}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); void load(); }}
+          onSaved={() => {
+            setEditing(null);
+            void load();
+          }}
         />
       )}
     </div>
   );
 }
 
-function AddonFormModal({ addon, onClose, onSaved }: { addon: Addon | null; onClose: () => void; onSaved: () => void }) {
+function AddonFormModal({
+  addon,
+  onClose,
+  onSaved,
+}: {
+  addon: Addon | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const toast = useToast();
   const [code, setCode] = useState(addon?.code ?? '');
   const [name, setName] = useState(addon?.name ?? '');
   const [description, setDescription] = useState(addon?.description ?? '');
   const [price, setPrice] = useState<number>(Number(addon?.price ?? 0));
   const [durationMin, setDurationMin] = useState<number>(Number(addon?.durationMin ?? 30));
+  const [displayOrder, setDisplayOrder] = useState<number>(Number(addon?.displayOrder ?? 0));
   const [isActive, setIsActive] = useState<boolean>(addon?.isActive ?? true);
   const [inputType, setInputType] = useState<'qty' | 'checkbox'>(addon?.inputType ?? 'qty');
   const [busy, setBusy] = useState(false);
@@ -177,6 +197,7 @@ function AddonFormModal({ addon, onClose, onSaved }: { addon: Addon | null; onCl
         description: description.trim() || null,
         price: Number(price),
         durationMin: Number(durationMin),
+        displayOrder: Number(displayOrder) || 0,
         isActive,
         inputType,
       };
@@ -205,7 +226,13 @@ function AddonFormModal({ addon, onClose, onSaved }: { addon: Addon | null; onCl
           />
           <Input label="Nama" value={name} onChange={setName} placeholder="Vacuum + Pel Lantai" />
         </div>
-        <Textarea label="Deskripsi (opsional)" value={description ?? ''} onChange={setDescription} rows={2} placeholder="Keterangan singkat untuk customer" />
+        <Textarea
+          label="Deskripsi (opsional)"
+          value={description ?? ''}
+          onChange={setDescription}
+          rows={2}
+          placeholder="Keterangan singkat untuk customer"
+        />
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Harga (Rp)"
@@ -222,6 +249,13 @@ function AddonFormModal({ addon, onClose, onSaved }: { addon: Addon | null; onCl
             hint="Estimasi waktu pengerjaan"
           />
         </div>
+        <Input
+          label="Urutan Tampil"
+          type="number"
+          value={String(displayOrder)}
+          onChange={(v) => setDisplayOrder(Number(v))}
+          hint="Angka kecil tampil lebih dulu"
+        />
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-700">Tipe Input di App</label>
           <div className="flex gap-2">
@@ -230,18 +264,20 @@ function AddonFormModal({ addon, onClose, onSaved }: { addon: Addon | null; onCl
               onClick={() => setInputType('qty')}
               className={`flex-1 rounded border px-3 py-2 text-sm font-medium transition ${inputType === 'qty' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
             >
-              ＋／－ Quantity
+              +/- Quantity
             </button>
             <button
               type="button"
               onClick={() => setInputType('checkbox')}
               className={`flex-1 rounded border px-3 py-2 text-sm font-medium transition ${inputType === 'checkbox' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
             >
-              ✓ Centang (on/off)
+              Centang
             </button>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            {inputType === 'checkbox' ? 'Cocok untuk item yang biasanya cukup 1 unit (kulkas, kompor, dll).' : 'Cocok untuk item yang bisa dipilih lebih dari 1 (kasur, sofa, dll).'}
+            {inputType === 'checkbox'
+              ? 'Cocok untuk item yang biasanya cukup 1 unit (kulkas, kompor, dll).'
+              : 'Cocok untuk item yang bisa dipilih lebih dari 1 (kasur, sofa, dll).'}
           </p>
         </div>
         <div className="flex items-center justify-between rounded border p-2">
@@ -250,7 +286,7 @@ function AddonFormModal({ addon, onClose, onSaved }: { addon: Addon | null; onCl
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose}>Batal</Button>
-          <Button variant="primary" onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
+          <Button variant="primary" onClick={save} disabled={busy}>{busy ? 'Menyimpan...' : 'Simpan'}</Button>
         </div>
       </div>
     </Modal>

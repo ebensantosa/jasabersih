@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
 import { prepareAudiblePlayback } from '../../src/lib/sound';
@@ -406,6 +407,17 @@ function Chat() {
       clearInterval(t);
     };
   }, [showIncomingBanner, id, activeCall]);
+
+  useEffect(() => {
+    if (!id) return;
+    const sub = Notifications.addNotificationReceivedListener((notif) => {
+      const data = notif.request.content.data as any;
+      if (data?.type === 'incoming_call_cancelled' && data?.bookingId === id) {
+        setShowIncomingBanner(false);
+      }
+    });
+    return () => sub.remove();
+  }, [id]);
 
   async function pickAndSendPhoto(source: 'camera' | 'gallery') {
     if (uploadingPhoto) return;

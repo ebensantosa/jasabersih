@@ -42,6 +42,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { api } from '../src/lib/api';
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
+import { playOneShotSound, prepareAudiblePlayback } from '../src/lib/sound';
 import { toast } from '../src/stores/ui';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -103,6 +104,7 @@ export default function RootLayout() {
   const hydrateUser = useUserStore((s) => s.hydrate);
   const fetchUser = useUserStore((s) => s.fetch);
   const profile = useUserStore((s) => s.profile);
+  const signalChatUnread = useBookingsStore((s) => s.signalChatUnread);
 
   const callActive = useCallStore(s => s.active);
   const callMinimized = useCallStore(s => s.minimized);
@@ -278,8 +280,20 @@ export default function RootLayout() {
     const sub = Notifications.addNotificationReceivedListener((notif) => {
       const data = notif.request.content.data as any;
       if (data?.type === 'incoming_call_cancelled') {
+        const active = useCallStore.getState().active;
+        if (active?.bookingId && data?.bookingId && active.bookingId === data.bookingId) {
+          useCallStore.getState().end();
+          toast.info('Panggilan dibatalkan.');
+        }
         setIncomingCallNotif(null);
         void cancelCallNotification().catch(() => {});
+        return;
+      }
+      if (data?.type === 'chat') {
+        signalChatUnread();
+        void prepareAudiblePlayback()
+          .then(() => playOneShotSound(require('../assets/sounds/chat_message.wav'), 0.75))
+          .catch(() => {});
         return;
       }
       if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {
@@ -287,7 +301,7 @@ export default function RootLayout() {
       }
     });
     return () => sub.remove();
-  }, []);
+  }, [signalChatUnread]);
 
   const syncIncomingCall = useCallback(async () => {
     if (!useAuthStore.getState().tokens || useCallStore.getState().active) {
@@ -353,7 +367,12 @@ export default function RootLayout() {
     // Foreground: Angkat/Tolak saat app terbuka
     const unsub = subscribeNotifeeCallEvents(
       (bookingId) => { void openIncomingCallScreen(bookingId, true); },
-      () => { /* tolak — tidak perlu navigasi */ },
+      (bookingId) => {
+        setIncomingCallNotif(null);
+        if (bookingId) {
+          void api.post('/call/decline', { bookingId }).catch(() => {});
+        }
+      },
     );
     return () => unsub();
   }, [openIncomingCallScreen]);

@@ -54,8 +54,8 @@ export class CleanerPublicController {
                NULLIF(BTRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), ''),
                CASE
                  WHEN NULLIF(BTRIM(COALESCE(u.phone, '')), '') IS NOT NULL
-                   THEN CONCAT('Pelanggan ', RIGHT(u.phone, 4))
-                 ELSE 'Pelanggan'
+                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g'), 6))
+                 ELSE 'Pengguna'
                END
              ) AS "raterName"
         FROM ratings r LEFT JOIN users u ON u.id = r.rater_id

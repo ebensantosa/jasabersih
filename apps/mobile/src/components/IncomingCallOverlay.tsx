@@ -26,7 +26,7 @@ export function IncomingCallOverlay({ callerName, onAnswer, onDecline }: Props) 
       try {
         await prepareAudiblePlayback();
         const { sound } = await Audio.Sound.createAsync(
-          require('../../../assets/sounds/call_incoming.wav'),
+          require('../../assets/sounds/call_incoming.wav'),
           { shouldPlay: true, isLooping: true, volume: 1.0 },
         );
         if (cancelled) { void sound.unloadAsync(); return; }

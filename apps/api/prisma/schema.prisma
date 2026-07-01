@@ -144,13 +144,15 @@ model PricingHourlyTier {
 }
 
 model AddOn {
-  id          String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code        String? @unique @db.VarChar(50)
-  name        String  @db.VarChar(100)
-  price       BigInt
-  durationMin Int     @map("duration_min")
-  description String?
-  isActive    Boolean @default(true) @map("is_active")
+  id           String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code         String? @unique @db.VarChar(50)
+  name         String  @db.VarChar(100)
+  price        BigInt
+  durationMin  Int     @map("duration_min")
+  description  String?
+  isActive     Boolean @default(true) @map("is_active")
+  inputType    String  @default("qty") @map("input_type") @db.VarChar(10)
+  displayOrder Int     @default(0) @map("display_order")
 
   @@map("add_ons")
 }
