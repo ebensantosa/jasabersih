@@ -316,6 +316,26 @@ export default function RootLayout() {
   }, [incomingCallNotif]);
   useVisiblePoll(syncIncomingCall, 2000, authReady && !!profile);
 
+  const openIncomingCallScreen = useCallback(async (bookingId: string, autoJoin = false) => {
+    try {
+      const r = await api.get('/call/session-status', { params: { bookingId } });
+      const d = r.data?.data ?? r.data;
+      if (!d?.exists || d?.ended) {
+        setIncomingCallNotif(null);
+        void cancelCallNotification().catch(() => {});
+        toast.info('Panggilan sudah berakhir.');
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+        return;
+      }
+      router.navigate({
+        pathname: '/chat/[id]',
+        params: autoJoin ? { id: bookingId, incomingCall: '1', autoAnswer: '1' } : { id: bookingId, incomingCall: '1' },
+      });
+    } catch {
+      router.navigate({ pathname: '/chat/[id]', params: { id: bookingId } });
+    }
+  }, []);
+
   // Notifee: handle Angkat/Tolak dari full-screen incoming call notification
   useEffect(() => {
     // Cold start: app dibuka dari tombol "Angkat" di notifee saat app killed
@@ -323,19 +343,20 @@ export default function RootLayout() {
       if (!initial) return;
       const data = initial.notification?.data as Record<string, unknown> | undefined;
       const bookingId = data?.bookingId as string | undefined;
-      if (data?.type === 'incoming_call' && bookingId && initial.pressAction?.id !== 'decline') {
+      const actionId = initial.pressAction?.id as string | undefined;
+      if (data?.type === 'incoming_call' && bookingId) {
         void cancelCallNotification();
-        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } });
+        void openIncomingCallScreen(bookingId, actionId === 'answer');
       }
     }).catch(() => {});
 
     // Foreground: Angkat/Tolak saat app terbuka
     const unsub = subscribeNotifeeCallEvents(
-      (bookingId) => router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } }),
+      (bookingId) => { void openIncomingCallScreen(bookingId, true); },
       () => { /* tolak — tidak perlu navigasi */ },
     );
     return () => unsub();
-  }, []);
+  }, [openIncomingCallScreen]);
 
   // Notification tap → deep link
   useEffect(() => {
@@ -355,7 +376,7 @@ export default function RootLayout() {
 
       // Incoming call → buka chat dengan banner "Angkat / Tolak"
       if (type === 'incoming_call' && bookingId) {
-        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } });
+        void openIncomingCallScreen(bookingId, false);
         return;
       }
 

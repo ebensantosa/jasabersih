@@ -16,10 +16,12 @@ export async function playOneShotSound(source: AVPlaybackSource, volume = 1): Pr
 }
 
 export async function prepareAudiblePlayback(): Promise<void> {
+  await Audio.setIsEnabledAsync(true).catch(() => {});
   await Audio.setAudioModeAsync({
     playsInSilentModeIOS: true,
     staysActiveInBackground: false,
     shouldDuckAndroid: false,
     playThroughEarpieceAndroid: false,
+    allowsRecordingIOS: false,
   });
 }

@@ -116,22 +116,26 @@ function CallUI({
   if (otherConnected) answeredRef.current = true;
 
   const ringbackRef = useRef<Audio.Sound | null>(null);
+  const ringbackStartedRef = useRef(false);
 
   // Ringback tone untuk pemanggil — loop selama menunggu jawaban
   useEffect(() => {
     if (otherConnected || timedOut) {
+      ringbackStartedRef.current = false;
       ringbackRef.current?.stopAsync().catch(() => {});
       ringbackRef.current?.unloadAsync().catch(() => {});
       ringbackRef.current = null;
       return;
     }
+    if (ringbackStartedRef.current) return;
+    ringbackStartedRef.current = true;
     let cancelled = false;
     (async () => {
       try {
         await prepareAudiblePlayback();
         const { sound } = await Audio.Sound.createAsync(
           require('../../../assets/sounds/call_ringback.wav'),
-          { shouldPlay: true, isLooping: true, volume: 0.8 },
+          { shouldPlay: true, isLooping: true, volume: 1.0, progressUpdateIntervalMillis: 250 },
         );
         if (cancelled) { void sound.unloadAsync(); return; }
         ringbackRef.current = sound;
@@ -139,6 +143,7 @@ function CallUI({
     })();
     return () => {
       cancelled = true;
+      ringbackStartedRef.current = false;
       ringbackRef.current?.stopAsync().catch(() => {});
       ringbackRef.current?.unloadAsync().catch(() => {});
       ringbackRef.current = null;

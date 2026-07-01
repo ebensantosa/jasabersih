@@ -52,7 +52,7 @@ export async function showIncomingCallNotification({
       ongoing: true,
       asForegroundService: false,
       fullScreenAction: {
-        id: 'answer',
+        id: 'open',
         launchActivity: 'default',
         launchActivityFlags: [AndroidLaunchActivityFlag.SINGLE_TOP],
       },
@@ -71,7 +71,7 @@ export async function showIncomingCallNotification({
         },
       ],
       pressAction: {
-        id: 'answer',
+        id: 'open',
         launchActivity: 'default',
         launchActivityFlags: [AndroidLaunchActivityFlag.SINGLE_TOP],
       },
@@ -102,7 +102,7 @@ export function subscribeNotifeeCallEvents(
       void cancelCallNotification();
       if (actionId === 'decline') {
         onDecline(bookingId);
-      } else if (bookingId) {
+      } else if (actionId === 'answer' && bookingId) {
         onAnswer(bookingId);
       }
     }

@@ -12,6 +12,7 @@ export function useChatSocket(bookingId: string | undefined) {
   const [status, setStatus] = useState<Status>('connecting');
   const [otherTyping, setOtherTyping] = useState(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playedMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Load history via REST first
   useEffect(() => {
@@ -21,11 +22,15 @@ export function useChatSocket(bookingId: string | undefined) {
       try {
         const res = await api.get(`/chat/booking/${bookingId}`, { params: { limit: 100 } });
         const items: any[] = (res.data?.data ?? []).reverse(); // backend returns desc
-        if (!cancelled) setMessages(items.map((m) => ({
-          id: m.id, bookingId, senderId: m.senderId, recipientId: m.recipientId,
-          messageType: m.messageType, content: m.content, attachmentUrl: m.attachmentUrl,
-          createdAt: m.createdAt, readAt: m.readAt ?? null, isAdmin: !!m.isAdmin,
-        })));
+        if (!cancelled) {
+          const mapped = items.map((m) => ({
+            id: m.id, bookingId, senderId: m.senderId, recipientId: m.recipientId,
+            messageType: m.messageType, content: m.content, attachmentUrl: m.attachmentUrl,
+            createdAt: m.createdAt, readAt: m.readAt ?? null, isAdmin: !!m.isAdmin,
+          }));
+          playedMessageIdsRef.current = new Set(mapped.map((m) => m.id));
+          setMessages(mapped);
+        }
       } catch {
         // silent - connection still works
       }
@@ -50,7 +55,9 @@ export function useChatSocket(bookingId: string | undefined) {
       if (msg.bookingId !== bookingId) return;
       const mapped: ChatMessage = { ...msg, isAdmin: !!msg.isAdmin };
       const myUserId = useUserStore.getState().profile?.id ?? null;
-      if (mapped.senderId && mapped.senderId !== myUserId) {
+      const isNewMessage = !playedMessageIdsRef.current.has(mapped.id);
+      if (isNewMessage) playedMessageIdsRef.current.add(mapped.id);
+      if (isNewMessage && mapped.senderId && mapped.senderId !== myUserId) {
         void prepareAudiblePlayback()
           .then(() => playOneShotSound(require('../../assets/sounds/chat_message.wav'), 0.75))
           .catch(() => {});
