@@ -49,7 +49,7 @@ export class CleanerPublicController {
 
     const reviews = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT r.rating, r.review, r.created_at AS "createdAt",
-             u.name AS "raterName"
+             COALESCE(NULLIF(BTRIM(u.name), ''), 'Customer') AS "raterName"
         FROM ratings r LEFT JOIN users u ON u.id = r.rater_id
        WHERE r.ratee_id = ${id}::uuid
        ORDER BY r.created_at DESC LIMIT 20

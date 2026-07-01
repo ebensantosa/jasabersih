@@ -157,7 +157,7 @@ export default function CleanerPublicProfile() {
                 {data.reviews.map((r, i) => (
                   <View key={i} className="border-t border-ink-100 pt-3 first:border-t-0 first:pt-0">
                     <View className="flex-row items-center justify-between">
-                      <Text className="font-semibold text-xs text-ink-900">{r.raterName ?? 'Pengguna'}</Text>
+                      <Text className="font-semibold text-xs text-ink-900">{r.raterName?.trim() || 'Customer'}</Text>
                       <View className="flex-row items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((n) => (
                           <Star key={n} color="#FACC15" fill={n <= r.rating ? '#FACC15' : 'transparent'} size={11} strokeWidth={1} />
