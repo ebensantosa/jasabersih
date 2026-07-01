@@ -101,7 +101,7 @@ function CleanerCalendar() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView edges={['top']} className="bg-white">
         <View className="flex-row items-center px-3 py-2">
-          <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
+          <Pressable onPress={() => safeBack('/(tabs)/calendar')} className="h-10 w-10 items-center justify-center">
             <ArrowLeft color="#0F172A" size={22} />
           </Pressable>
           <Text className="font-extrabold ml-1 flex-1 text-lg text-ink-900">Kalender Jadwal</Text>

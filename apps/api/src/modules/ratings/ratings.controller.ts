@@ -219,7 +219,15 @@ export class RatingsController {
   async forCleaner(@Param('userId') userId: string) {
     const rows = await this.prisma.$queryRaw<{ id: string; rating: number; review: string | null; createdAt: Date; raterName: string | null }[]>`
       SELECT r.id, r.rating, r.review, r.created_at AS "createdAt",
-             COALESCE(NULLIF(BTRIM(u.name), ''), 'Customer') AS "raterName"
+             COALESCE(
+               NULLIF(BTRIM(u.name), ''),
+               NULLIF(BTRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), ''),
+               CASE
+                 WHEN NULLIF(BTRIM(COALESCE(u.phone, '')), '') IS NOT NULL
+                   THEN CONCAT('Pelanggan ', RIGHT(u.phone, 4))
+                 ELSE 'Pelanggan'
+               END
+             ) AS "raterName"
         FROM ratings r
         LEFT JOIN users u ON u.id = r.rater_id
        WHERE r.ratee_id = ${userId}::uuid

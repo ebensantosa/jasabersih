@@ -8,8 +8,10 @@ import {
 import { Audio } from 'expo-av';
 import { ChevronDown, Mic, MicOff, PhoneOff, Volume2, VolumeX } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, PermissionsAndroid, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { toast } from '../stores/ui';
 
 const CALL_TIMEOUT_SEC = 25;
 
@@ -24,12 +26,13 @@ type Props = {
   serverUrl: string;
   callerLabel: string;
   maxDurationSec?: number;
+  startMuted?: boolean;
   minimized: boolean;
   onMinimize: () => void;
   onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
 };
 
-export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, minimized, onMinimize, onEnd }: Props) {
+export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, startMuted = false, minimized, onMinimize, onEnd }: Props) {
   // Track if the other side has connected — mid-call disconnects are not fatal errors
   const answeredRef = useRef(false);
 
@@ -57,13 +60,14 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
         serverUrl={serverUrl}
         token={token}
         connect={true}
-        audio={true}
+        audio={!startMuted}
         video={false}
         onError={handleError}
       >
         <CallUI
           callerLabel={callerLabel}
           maxDurationSec={maxDurationSec}
+          startMuted={startMuted}
           onEnd={onEnd}
           answeredRef={answeredRef}
           onMinimize={onMinimize}
@@ -76,12 +80,14 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
 function CallUI({
   callerLabel,
   maxDurationSec,
+  startMuted,
   onEnd,
   answeredRef,
   onMinimize,
 }: {
   callerLabel: string;
   maxDurationSec: number;
+  startMuted: boolean;
   onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
   answeredRef: React.MutableRefObject<boolean>;
   onMinimize: () => void;
@@ -89,7 +95,7 @@ function CallUI({
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(startMuted);
   const [speaker, setSpeaker] = useState(true);
   const [elapsed, setElapsed] = useState(0);
   const [countdown, setCountdown] = useState(CALL_TIMEOUT_SEC);
@@ -184,9 +190,34 @@ function CallUI({
     return `${m}:${sec}`;
   }
 
+  async function requestMicPermission() {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
+        title: 'Izin Mikrofon',
+        message: 'JasaBersih butuh akses mikrofon untuk panggilan suara.',
+        buttonPositive: 'Izinkan',
+      });
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+
+    const res = await Audio.requestPermissionsAsync();
+    return res.granted;
+  }
+
   async function toggleMute() {
-    await localParticipant.setMicrophoneEnabled(muted);
-    setMuted(!muted);
+    if (muted) {
+      const granted = await requestMicPermission().catch(() => false);
+      if (!granted) {
+        toast.warning('Mikrofon belum diizinkan. Kamu masih bisa dengar lawan bicara.');
+        return;
+      }
+      await localParticipant.setMicrophoneEnabled(true);
+      setMuted(false);
+      return;
+    }
+
+    await localParticipant.setMicrophoneEnabled(false);
+    setMuted(true);
   }
 
   async function toggleSpeaker() {
@@ -242,6 +273,11 @@ function CallUI({
         ) : otherConnected ? (
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text style={{ color: '#94A3B8', fontSize: 14 }}>{formatTime(elapsed)}</Text>
+            {muted && (
+              <Text style={{ color: '#CBD5E1', fontSize: 11, textAlign: 'center' }}>
+                Mikrofon kamu mati. Kamu tetap bisa dengar lawan bicara.
+              </Text>
+            )}
             {maxLabel && (
               <Text style={{ color: '#475569', fontSize: 11 }}>{maxLabel}</Text>
             )}

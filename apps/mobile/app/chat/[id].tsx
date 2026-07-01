@@ -46,30 +46,9 @@ function decodeJwtSub(token: string | undefined): string | null {
 import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
 
-// Quick replies dibedain by role - context cleaner vs customer beda
-const QUICK_REPLIES_CLEANER = [
-  '📍 Saya sudah di lokasi',
-  '🚗 OTW, 10 menit lagi',
-  '⏰ Maaf telat 5 menit',
-  '🚪 Tolong bukain pintu',
-  '🧴 Stok cairan habis, beli dulu boleh?',
-  '🏠 Boleh masuk lewat samping?',
-  '✓ Pekerjaan selesai',
-  '🙏 Terima kasih',
-];
-const QUICK_REPLIES_CUSTOMER = [
-  'Sudah sampai?',
-  'Pakai pintu samping',
-  'Kunci di kotak meteran',
-  'Hati-hati ada hewan',
-  'Tolong fokus area X dulu',
-  'Tolong telpon dulu',
-  'Terima kasih',
-];
-
 function Chat() {
   const router = useRouter();
-  const { id, incomingCall } = useLocalSearchParams<{ id: string; incomingCall?: string }>();
+  const { id, incomingCall, autoAnswer } = useLocalSearchParams<{ id: string; incomingCall?: string; autoAnswer?: string }>();
   const booking = useBookingsStore((s) => s.list.find((b) => b.id === id));
   const fetchOne = useBookingsStore((s) => s.fetchOne);
   const myUserId = useAuthStore((s) => decodeJwtSub(s.tokens?.accessToken)) ?? 'me';
@@ -87,15 +66,13 @@ function Chat() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
-  // Track quick-reply yg lagi dikirim, supaya chip kasih feedback visual + ga bisa di-tap ulang
-  const [pendingQuick, setPendingQuick] = useState<string | null>(null);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [callLoading, setCallLoading] = useState(false);
   const startActiveCall = useCallStore(s => s.start);
   const activeCall = useCallStore(s => s.active?.bookingId === id ? s.active : null);
   const anyActiveCall = useCallStore(s => s.active);
   // Jangan tampilkan incoming banner kalau sedang ada call aktif di booking lain
-  const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1' && !useCallStore.getState().active);
+  const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1' && autoAnswer !== '1' && !useCallStore.getState().active);
 
   // Mark-read setelah 2 detik di chat — skip kalau call overlay aktif atau
   // chat ditutup sebelum 2 detik (clearTimeout di cleanup).
@@ -119,6 +96,7 @@ function Chat() {
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const callPulseAnim = useRef(new Animated.Value(1)).current;
+  const autoAnswerTriedRef = useRef(false);
   const maximize = useCallStore(s => s.maximize);
 
   // Timer untuk "Sedang memanggil · MM:SS" di header saat call aktif
@@ -289,32 +267,19 @@ function Chat() {
     );
   }
 
-  async function handleSend(content: string, opts?: { fromQuick?: string }) {
+  async function handleSend(content: string) {
     if (!content.trim()) return;
-    if (sending) return; // anti double-tap composer
-    if (opts?.fromQuick && pendingQuick) return; // anti double-tap quick reply
+    if (sending) return;
 
-    // Quick reply: feedback flash 400ms aja (cukup utk tactile feedback +
-    // cegah double-tap), gak nunggu ack server. Pesan udah optimistic
-    // ke-render via socket broadcast - bikin UI snappy, ga keliatan ngebug.
-    if (opts?.fromQuick) {
-      const q = opts.fromQuick;
-      setPendingQuick(q);
-      setTimeout(() => {
-        setPendingQuick((cur) => (cur === q ? null : cur));
-      }, 400);
-    } else {
-      // Composer: clear text instan, spinner cuma 400ms juga.
-      setText('');
-      setSending(true);
-      setTimeout(() => setSending(false), 400);
-    }
+    setText('');
+    setSending(true);
+    setTimeout(() => setSending(false), 400);
 
     // Fire-and-forget. Error masuk toast, gak block UI.
     void send(content).then((res) => {
       if (!res.ok) {
         toast.error(res.error ?? 'Gagal kirim. Coba lagi.');
-        if (!opts?.fromQuick) setText(content); // restore composer
+        setText(content);
       } else if (res.blocked) {
         setBlockWarning(res.userMessage ?? 'Pesan ditolak - dilarang share kontak / link / tawaran di luar app.');
       }
@@ -326,6 +291,20 @@ function Chat() {
     setTyping(v.length > 0);
   }
 
+  async function requestMicPermission() {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
+        title: 'Izin Mikrofon',
+        message: 'JasaBersih butuh akses mikrofon untuk fitur panggilan suara.',
+        buttonPositive: 'Izinkan',
+      });
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+
+    const res = await Audio.requestPermissionsAsync();
+    return res.granted;
+  }
+
   async function startCall() {
     if (callLoading || anyActiveCall) {
       if (anyActiveCall && anyActiveCall.bookingId !== id) {
@@ -335,16 +314,9 @@ function Chat() {
     }
     setCallLoading(true);
     try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
-          title: 'Izin Mikrofon',
-          message: 'JasaBersih butuh akses mikrofon untuk fitur panggilan suara.',
-          buttonPositive: 'Izinkan',
-        });
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          toast.warning('Izin mikrofon diperlukan untuk melakukan panggilan.');
-          return;
-        }
+      const micGranted = await requestMicPermission().catch(() => false);
+      if (!micGranted) {
+        toast.warning('Mikrofon belum diizinkan. Panggilan tetap dibuka, tapi suara kamu dimulai dalam keadaan mati.');
       }
       const { api } = await import('../../src/lib/api');
       const r = await api.post('/call/start', { bookingId: id });
@@ -359,6 +331,7 @@ function Chat() {
         callerLabel: peerName,
         maxDurationSec,
         sessionId: d.sessionId ?? null,
+        startMuted: !micGranted,
       });
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? e?.response?.data?.error?.message ?? e?.message ?? 'Gagal memulai panggilan';
@@ -376,16 +349,9 @@ function Chat() {
     setShowIncomingBanner(false);
     setCallLoading(true);
     try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
-          title: 'Izin Mikrofon',
-          message: 'JasaBersih butuh akses mikrofon untuk fitur panggilan suara.',
-          buttonPositive: 'Izinkan',
-        });
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          toast.warning('Izin mikrofon diperlukan untuk menerima panggilan.');
-          return;
-        }
+      const micGranted = await requestMicPermission().catch(() => false);
+      if (!micGranted) {
+        toast.warning('Mikrofon belum diizinkan. Panggilan tetap dibuka, tapi suara kamu dimulai dalam keadaan mati.');
       }
       const { api } = await import('../../src/lib/api');
       const r = await api.post('/call/join', { bookingId: id });
@@ -400,6 +366,7 @@ function Chat() {
         callerLabel: peerName,
         maxDurationSec,
         sessionId: d.sessionId ?? null,
+        startMuted: !micGranted,
       });
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? e?.response?.data?.error?.message ?? e?.message ?? 'Gagal angkat panggilan';
@@ -408,6 +375,12 @@ function Chat() {
       setCallLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (autoAnswer !== '1' || autoAnswerTriedRef.current || !id || activeCall || callLoading) return;
+    autoAnswerTriedRef.current = true;
+    void answerCall();
+  }, [autoAnswer, id, activeCall, callLoading]);
 
   async function pickAndSendPhoto(source: 'camera' | 'gallery') {
     if (uploadingPhoto) return;
@@ -475,7 +448,7 @@ function Chat() {
       <KeyboardAvoidingView className="flex-1 bg-ink-50" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <SafeAreaView edges={['top']} className="bg-white">
           <View className="flex-row items-center gap-2 border-b border-ink-100 px-3 py-2">
-            <Pressable onPress={() => safeBack()} className="h-10 w-10 items-center justify-center">
+            <Pressable onPress={() => safeBack('/(tabs)/chats')} className="h-10 w-10 items-center justify-center">
               <ArrowLeft color="#0F172A" size={22} />
             </Pressable>
             {(() => {
@@ -707,32 +680,6 @@ function Chat() {
             <AlertCircle color="#B91C1C" size={16} />
             <Text className="font-sans flex-1 text-xs text-red-800">{blockWarning}</Text>
           </View>
-        )}
-
-        {/* Quick replies — hidden when chat is locked */}
-        {!(['completed', 'canceled'].includes(booking?.status ?? '')) && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-12">
-            <View className="flex-row gap-2 px-4 py-2">
-              {(useModeStore.getState().mode === 'freelancer' ? QUICK_REPLIES_CLEANER : QUICK_REPLIES_CUSTOMER).map((q) => {
-                const isFlashing = pendingQuick === q;
-                return (
-                  <Pressable
-                    key={q}
-                    onPress={() => handleSend(q, { fromQuick: q })}
-                    disabled={pendingQuick !== null}
-                    className={`rounded-full border px-3 py-1.5 ${
-                      isFlashing
-                        ? 'border-brand-600 bg-brand-600'
-                        : 'border-brand-200 bg-white'
-                    }`}
-                    style={isFlashing ? { transform: [{ scale: 0.95 }] } : undefined}
-                  >
-                    <Text className={`font-medium text-xs ${isFlashing ? 'text-white' : 'text-brand-700'}`}>{q}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
         )}
 
         {/* Composer or locked banner */}

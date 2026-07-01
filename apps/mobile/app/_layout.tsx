@@ -288,13 +288,13 @@ export default function RootLayout() {
       const bookingId = data?.bookingId as string | undefined;
       if (data?.type === 'incoming_call' && bookingId && initial.pressAction?.id !== 'decline') {
         void cancelCallNotification();
-        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } });
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } });
       }
     }).catch(() => {});
 
     // Foreground: Angkat/Tolak saat app terbuka
     const unsub = subscribeNotifeeCallEvents(
-      (bookingId) => router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } }),
+      (bookingId) => router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } }),
       () => { /* tolak — tidak perlu navigasi */ },
     );
     return () => unsub();
@@ -313,7 +313,7 @@ export default function RootLayout() {
 
       // Incoming call → buka chat dengan banner "Angkat / Tolak"
       if (type === 'incoming_call' && bookingId) {
-        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } });
+        router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } });
         return;
       }
 
@@ -480,6 +480,7 @@ export default function RootLayout() {
             serverUrl={callActive.serverUrl}
             callerLabel={callActive.callerLabel}
             maxDurationSec={callActive.maxDurationSec}
+            startMuted={callActive.startMuted}
             minimized={callMinimized}
             onMinimize={callMinimize}
             onEnd={async (reason, info) => {
@@ -509,7 +510,7 @@ export default function RootLayout() {
             onAnswer={() => {
               const { bookingId } = incomingCallNotif;
               setIncomingCallNotif(null);
-              router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1' } });
+              router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } });
             }}
             onDecline={() => setIncomingCallNotif(null)}
           />

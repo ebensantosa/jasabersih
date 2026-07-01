@@ -190,7 +190,7 @@ function CleanerProfileScreen() {
             </View>
 
             <View className="rounded-2xl bg-white p-4">
-              <Text className="font-bold mb-2 text-sm text-ink-900">Review dari Customer</Text>
+              <Text className="font-bold mb-2 text-sm text-ink-900">Ulasan pelanggan</Text>
               {reviews.length === 0 ? (
                 <Text className="font-sans text-[12px] text-ink-500">Belum ada review. Selesaikan job dulu - customer akan kasih rating.</Text>
               ) : (
@@ -206,7 +206,7 @@ function CleanerProfileScreen() {
                           strokeWidth={1}
                         />
                       ))}
-                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName?.trim() || 'Customer'}</Text>
+                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName?.trim() || 'Pelanggan'}</Text>
                       <Text className="font-sans ml-1 text-[10px] text-ink-400">
                         · {new Date(rv.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                       </Text>

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, BadgeCheck, MapPin, Star, Wrench } from 'lucide-react-native';
+import { ArrowLeft, BadgeCheck, MapPin, Star } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -95,7 +95,7 @@ export default function CleanerPublicProfile() {
             <View className="mt-1 flex-row items-center gap-1">
               <Star color="#FACC15" fill="#FACC15" size={14} strokeWidth={1} />
               <Text className="font-bold text-sm text-ink-900">{p.ratingAvg != null ? Number(p.ratingAvg).toFixed(2) : '-'}</Text>
-              <Text className="font-sans text-xs text-ink-500">({p.ratingCount ?? 0} review)</Text>
+              <Text className="font-sans text-xs text-ink-500">({p.ratingCount ?? 0} ulasan)</Text>
             </View>
             {yearsActive > 0 && (
               <Text className="font-sans mt-1 text-[11px] text-ink-500">
@@ -107,8 +107,11 @@ export default function CleanerPublicProfile() {
           {/* Stats */}
           <View className="flex-row gap-2">
             <Stat label="Job Selesai" value={String(p.totalJobsDone ?? 0)} sub="all-time" />
-            <Stat label="Bawa Alat" value={p.bringsTools ? 'Ya' : 'Tidak'} sub={p.bringsTools ? 'lengkap' : ''} />
-            <Stat label="Bawa Alat" value={p.bringsTools ? 'Ya' : 'Tidak'} sub={p.bringsTools ? 'lengkap' : ''} />
+            <Stat
+              label="Rating"
+              value={p.ratingAvg != null ? Number(p.ratingAvg).toFixed(2) : '-'}
+              sub={`${p.ratingCount ?? 0} ulasan`}
+            />
           </View>
 
           {/* Bio */}
@@ -148,7 +151,7 @@ export default function CleanerPublicProfile() {
           <View className="rounded-2xl bg-white p-4">
             <View className="mb-3 flex-row items-center gap-1">
               <Star color="#0F172A" size={14} />
-              <Text className="font-bold text-sm text-ink-900">Review Customer ({data.reviews.length})</Text>
+              <Text className="font-bold text-sm text-ink-900">Ulasan pelanggan ({data.reviews.length})</Text>
             </View>
             {data.reviews.length === 0 ? (
               <Text className="font-sans text-center text-xs text-ink-500">Belum ada review.</Text>
@@ -157,7 +160,7 @@ export default function CleanerPublicProfile() {
                 {data.reviews.map((r, i) => (
                   <View key={i} className="border-t border-ink-100 pt-3 first:border-t-0 first:pt-0">
                     <View className="flex-row items-center justify-between">
-                      <Text className="font-semibold text-xs text-ink-900">{r.raterName?.trim() || 'Customer'}</Text>
+                      <Text className="font-semibold text-xs text-ink-900">{r.raterName?.trim() || 'Pelanggan'}</Text>
                       <View className="flex-row items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((n) => (
                           <Star key={n} color="#FACC15" fill={n <= r.rating ? '#FACC15' : 'transparent'} size={11} strokeWidth={1} />

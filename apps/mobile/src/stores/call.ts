@@ -7,6 +7,7 @@ type ActiveCall = {
   callerLabel: string;
   maxDurationSec: number;
   sessionId: string | null;
+  startMuted?: boolean;
 };
 
 type CallStore = {

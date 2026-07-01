@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { useModeStore } from '../stores/mode';
 
 type ServerBooking = {
   paid_at: string | null;
@@ -20,20 +21,13 @@ type ServerBooking = {
   canceledAt?: string | null;
 };
 
-const STEPS: { key: keyof ServerBooking; label: string }[] = [
-  { key: 'paid_at', label: 'Dibayar' },
-  { key: 'matched_at', label: 'Cleaner ditemukan' },
-  { key: 'cleaner_otw_at', label: 'Cleaner menuju lokasi' },
-  { key: 'cleaner_arrived_at', label: 'Cleaner sampai / mulai kerja' },
-  { key: 'completed_at', label: 'Selesai' },
-];
-
 function fmt(t: string | null): string {
   if (!t) return '';
   return new Date(t).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function BookingTimeline({ bookingId, status }: { bookingId: string; status?: string }) {
+  const isCleaner = useModeStore((s) => s.mode === 'freelancer');
   const [data, setData] = useState<ServerBooking | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -63,14 +57,30 @@ export function BookingTimeline({ bookingId, status }: { bookingId: string; stat
     canceled_at: data.canceled_at ?? data.canceledAt ?? null,
   };
 
+  const steps: { key: keyof ServerBooking; label: string }[] = isCleaner
+    ? [
+        { key: 'paid_at', label: 'Dibayar' },
+        { key: 'matched_at', label: 'Job kamu diterima' },
+        { key: 'cleaner_otw_at', label: 'Kamu menuju lokasi' },
+        { key: 'cleaner_arrived_at', label: 'Kamu sampai / mulai kerja' },
+        { key: 'completed_at', label: 'Pekerjaan selesai' },
+      ]
+    : [
+        { key: 'paid_at', label: 'Dibayar' },
+        { key: 'matched_at', label: 'Cleaner ditemukan' },
+        { key: 'cleaner_otw_at', label: 'Cleaner menuju lokasi' },
+        { key: 'cleaner_arrived_at', label: 'Cleaner sampai / mulai kerja' },
+        { key: 'completed_at', label: 'Selesai' },
+      ];
+
   // Find current step (last with timestamp)
   let currentIdx = -1;
-  STEPS.forEach((s, i) => { if (timelineData[s.key]) currentIdx = i; });
+  steps.forEach((s, i) => { if (timelineData[s.key]) currentIdx = i; });
 
   return (
     <View className="rounded-2xl bg-white p-4">
       <Text className="font-bold mb-3 text-sm text-ink-900">Timeline Order</Text>
-      {STEPS.map((s, i) => {
+      {steps.map((s, i) => {
         const ts = timelineData[s.key] as string | null;
         const done = !!ts;
         const current = i === currentIdx && timelineData.status !== 'completed';
@@ -83,7 +93,7 @@ export function BookingTimeline({ bookingId, status }: { bookingId: string; stat
               }`}>
                 {done ? <Check color="white" size={12} strokeWidth={3} /> : current ? <Clock color="white" size={12} /> : null}
               </View>
-              {i < STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <View className={`my-1 w-0.5 flex-1 ${done ? 'bg-success' : 'bg-ink-200'}`} style={{ minHeight: 16 }} />
               )}
             </View>
