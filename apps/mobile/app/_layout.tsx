@@ -19,6 +19,10 @@ if (messaging) {
     const callerName = remoteMessage.data?.callerName as string | undefined;
     if (type === 'incoming_call' && bookingId) {
       await showIncomingCallNotification({ bookingId, callerName: callerName ?? 'Penelepon' });
+      return;
+    }
+    if (type === 'incoming_call_cancelled') {
+      await cancelCallNotification();
     }
   });
 }
@@ -40,7 +44,7 @@ import { api } from '../src/lib/api';
 import { trackEvent, setUserId, Track } from '../src/lib/analytics';
 import { toast } from '../src/stores/ui';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 
 // Tahan native splash sampai fonts + auth siap — di-hide manual via SplashScreen.hideAsync()
@@ -61,6 +65,7 @@ import { registerForPushAsync } from '../src/lib/pushSetup';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
 import { useBookingRealtime } from '../src/hooks/useBookingRealtime';
+import { useVisiblePoll } from '../src/lib/useVisiblePoll';
 import { useAddressesStore } from '../src/stores/addresses';
 import { useAuthStore } from '../src/stores/auth';
 import { useBookingsStore } from '../src/stores/bookings';
@@ -272,12 +277,44 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = Notifications.addNotificationReceivedListener((notif) => {
       const data = notif.request.content.data as any;
+      if (data?.type === 'incoming_call_cancelled') {
+        setIncomingCallNotif(null);
+        void cancelCallNotification().catch(() => {});
+        return;
+      }
       if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {
         setIncomingCallNotif({ bookingId: data.bookingId, callerName: data.callerName ?? 'Penelepon' });
       }
     });
     return () => sub.remove();
   }, []);
+
+  const syncIncomingCall = useCallback(async () => {
+    if (!useAuthStore.getState().tokens || useCallStore.getState().active) {
+      if (incomingCallNotif) {
+        setIncomingCallNotif(null);
+        void cancelCallNotification().catch(() => {});
+      }
+      return;
+    }
+    try {
+      const r = await api.get('/call/incoming');
+      const d = r.data?.data ?? r.data;
+      if (d?.active && d?.bookingId) {
+        setIncomingCallNotif((prev) => (
+          prev?.bookingId === d.bookingId && prev?.callerName === (d.callerName ?? 'Penelepon')
+            ? prev
+            : { bookingId: d.bookingId, callerName: d.callerName ?? 'Penelepon' }
+        ));
+      } else {
+        setIncomingCallNotif((prev) => (prev ? null : prev));
+        void cancelCallNotification().catch(() => {});
+      }
+    } catch {
+      // silent
+    }
+  }, [incomingCallNotif]);
+  useVisiblePoll(syncIncomingCall, 2000, authReady && !!profile);
 
   // Notifee: handle Angkat/Tolak dari full-screen incoming call notification
   useEffect(() => {
@@ -310,6 +347,11 @@ export default function RootLayout() {
 
       if (type) Track.notificationTapped(type);
       if (!type) return;
+      if (type === 'incoming_call_cancelled') {
+        setIncomingCallNotif(null);
+        void cancelCallNotification().catch(() => {});
+        return;
+      }
 
       // Incoming call → buka chat dengan banner "Angkat / Tolak"
       if (type === 'incoming_call' && bookingId) {
@@ -476,6 +518,8 @@ export default function RootLayout() {
         <BookingRealtimeMount />
         {callActive && (
           <CallOverlay
+            bookingId={callActive.bookingId}
+            sessionId={callActive.sessionId}
             token={callActive.token}
             serverUrl={callActive.serverUrl}
             callerLabel={callActive.callerLabel}
@@ -510,9 +554,15 @@ export default function RootLayout() {
             onAnswer={() => {
               const { bookingId } = incomingCallNotif;
               setIncomingCallNotif(null);
+              void cancelCallNotification().catch(() => {});
               router.navigate({ pathname: '/chat/[id]', params: { id: bookingId, incomingCall: '1', autoAnswer: '1' } });
             }}
-            onDecline={() => setIncomingCallNotif(null)}
+            onDecline={() => {
+              const { bookingId } = incomingCallNotif;
+              setIncomingCallNotif(null);
+              void cancelCallNotification().catch(() => {});
+              void api.post('/call/decline', { bookingId }).catch(() => {});
+            }}
           />
         )}
           </QueryProvider>

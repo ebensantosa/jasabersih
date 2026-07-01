@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AccessToken } from 'livekit-server-sdk';
 
@@ -105,6 +105,7 @@ export class CallController {
         data: {
           type: 'incoming_call',
           bookingId: body.bookingId,
+          sessionId,
           callerName: callerLabel,
           livekitUrl: LIVEKIT_URL,
         },
@@ -112,6 +113,84 @@ export class CallController {
     }
 
     return { token, url: LIVEKIT_URL, roomName: body.bookingId, sessionId };
+  }
+
+  @Get('incoming')
+  async getIncomingCall(@CurrentUser() user: AuthenticatedUser) {
+    const rows = await this.prisma.$queryRaw<{
+      session_id: string;
+      booking_id: string;
+      caller_name: string | null;
+      started_at: Date;
+    }[]>`
+      SELECT cs.id AS session_id,
+             cs.booking_id::text AS booking_id,
+             u.name AS caller_name,
+             cs.started_at
+        FROM call_sessions cs
+        JOIN users u ON u.id = cs.initiator_id
+       WHERE cs.recipient_id = ${user.id}::uuid
+         AND cs.answered_at IS NULL
+         AND cs.ended_at IS NULL
+         AND cs.started_at > NOW() - INTERVAL '90 seconds'
+       ORDER BY cs.started_at DESC
+       LIMIT 1
+    `;
+    const call = rows[0];
+    if (!call) return { active: false };
+    return {
+      active: true,
+      sessionId: call.session_id,
+      bookingId: call.booking_id,
+      callerName: call.caller_name ?? 'Penelepon',
+      startedAt: call.started_at,
+    };
+  }
+
+  @Get('session-status')
+  async getSessionStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('bookingId') bookingId?: string,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    if (!bookingId && !sessionId) throw new BadRequestException('bookingId or sessionId required');
+
+    const rows = await this.prisma.$queryRaw<{
+      id: string;
+      booking_id: string;
+      answered_at: Date | null;
+      ended_at: Date | null;
+      end_reason: string | null;
+      customer_id: string | null;
+      cleaner_id: string | null;
+    }[]>`
+      SELECT cs.id,
+             cs.booking_id::text AS booking_id,
+             cs.answered_at,
+             cs.ended_at,
+             cs.end_reason,
+             b.customer_id::text AS customer_id,
+             b.cleaner_id::text AS cleaner_id
+        FROM call_sessions cs
+        JOIN bookings b ON b.id = cs.booking_id
+       WHERE (${sessionId ?? null}::uuid IS NULL OR cs.id = ${sessionId ?? null}::uuid)
+         AND (${bookingId ?? null}::uuid IS NULL OR cs.booking_id = ${bookingId ?? null}::uuid)
+       ORDER BY cs.started_at DESC
+       LIMIT 1
+    `;
+    const session = rows[0];
+    if (!session) return { exists: false };
+    if (session.customer_id !== user.id && session.cleaner_id !== user.id) {
+      throw new BadRequestException('Kamu bukan participant panggilan ini.');
+    }
+    return {
+      exists: true,
+      sessionId: session.id,
+      bookingId: session.booking_id,
+      answered: !!session.answered_at,
+      ended: !!session.ended_at,
+      endReason: session.end_reason ?? null,
+    };
   }
 
   // Penerima join room yang sudah ada
@@ -151,6 +230,54 @@ export class CallController {
 
     const token = await generateToken(body.bookingId, user.id);
     return { token, url: LIVEKIT_URL, roomName: body.bookingId, sessionId };
+  }
+
+  @Post('decline')
+  async declineCall(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { bookingId: string },
+  ) {
+    if (!body?.bookingId) throw new BadRequestException('bookingId required');
+
+    const sessions = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id
+        FROM call_sessions
+       WHERE booking_id = ${body.bookingId}::uuid
+         AND recipient_id = ${user.id}::uuid
+         AND answered_at IS NULL
+         AND ended_at IS NULL
+       ORDER BY started_at DESC
+       LIMIT 1
+    `;
+    const sessionId = sessions[0]?.id ?? null;
+    if (!sessionId) return { ok: true };
+
+    await this.prisma.$executeRaw`
+      UPDATE call_sessions
+         SET ended_at = NOW(),
+             end_reason = 'declined'
+       WHERE id = ${sessionId}::uuid
+         AND ended_at IS NULL
+    `;
+
+    const initiatorRows = await this.prisma.$queryRaw<{ initiator_id: string | null }[]>`
+      SELECT initiator_id::text AS initiator_id
+        FROM call_sessions
+       WHERE id = ${sessionId}::uuid
+       LIMIT 1
+    `;
+    const initiatorId = initiatorRows[0]?.initiator_id ?? null;
+    if (initiatorId) {
+      await this.push.send({
+        userId: initiatorId,
+        data: {
+          type: 'incoming_call_cancelled',
+          bookingId: body.bookingId,
+        },
+      }).catch(() => {});
+    }
+
+    return { ok: true, sessionId };
   }
 
   // Akhiri call — update session + insert pesan riwayat ke chat
@@ -215,6 +342,16 @@ export class CallController {
         INSERT INTO chat_messages (booking_id, sender_id, recipient_id, content, message_type)
         VALUES (${body.bookingId}::uuid, ${user.id}::uuid, ${recipientId ?? null}::uuid, ${content}, ${messageType})
       `;
+
+      if (!body.answered && recipientId) {
+        await this.push.send({
+          userId: recipientId,
+          data: {
+            type: 'incoming_call_cancelled',
+            bookingId: body.bookingId,
+          },
+        }).catch(() => {});
+      }
     }
 
     return { ok: true };

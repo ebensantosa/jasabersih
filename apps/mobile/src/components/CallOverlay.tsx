@@ -23,6 +23,8 @@ type EndInfo = {
 };
 
 type Props = {
+  bookingId: string;
+  sessionId: string | null;
   token: string;
   serverUrl: string;
   callerLabel: string;
@@ -33,7 +35,7 @@ type Props = {
   onEnd: (reason?: 'timeout' | 'hangup' | 'error' | 'max_duration', info?: EndInfo) => void;
 };
 
-export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0, startMuted = false, minimized, onMinimize, onEnd }: Props) {
+export function CallOverlay({ bookingId, sessionId, token, serverUrl, callerLabel, maxDurationSec = 0, startMuted = false, minimized, onMinimize, onEnd }: Props) {
   // Track if the other side has connected — mid-call disconnects are not fatal errors
   const answeredRef = useRef(false);
 
@@ -66,6 +68,8 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
         onError={handleError}
       >
         <CallUI
+          bookingId={bookingId}
+          sessionId={sessionId}
           callerLabel={callerLabel}
           maxDurationSec={maxDurationSec}
           startMuted={startMuted}
@@ -79,6 +83,8 @@ export function CallOverlay({ token, serverUrl, callerLabel, maxDurationSec = 0,
 }
 
 function CallUI({
+  bookingId,
+  sessionId,
   callerLabel,
   maxDurationSec,
   startMuted,
@@ -86,6 +92,8 @@ function CallUI({
   answeredRef,
   onMinimize,
 }: {
+  bookingId: string;
+  sessionId: string | null;
   callerLabel: string;
   maxDurationSec: number;
   startMuted: boolean;
@@ -245,6 +253,34 @@ function CallUI({
     }, 1500);
     return () => clearTimeout(t);
   }, [otherConnected, timedOut]);
+
+  // Sinkron status session sebelum panggilan dijawab:
+  // - caller tutup ⇒ ringtone receiver ikut mati
+  // - receiver tolak ⇒ ringback caller ikut mati
+  useEffect(() => {
+    if (otherConnected || timedOut || !bookingId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const { api } = await import('../lib/api');
+        const r = await api.get('/call/session-status', { params: { bookingId, sessionId: sessionId ?? undefined } });
+        const d = r.data?.data ?? r.data;
+        if (cancelled || otherConnected) return;
+        if (!d?.exists || d?.ended) {
+          await room.disconnect().catch(() => {});
+          onEnd('hangup', { durationSec: elapsedRef.current, answered: false });
+        }
+      } catch {
+        // silent
+      }
+    };
+    void poll();
+    const t = setInterval(() => { void poll(); }, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [bookingId, sessionId, otherConnected, timedOut, room, onEnd]);
 
   const maxLabel = maxDurationSec > 0
     ? `Batas ${Math.floor(maxDurationSec / 60)} menit`

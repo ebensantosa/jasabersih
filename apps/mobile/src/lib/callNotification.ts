@@ -89,7 +89,7 @@ export async function cancelCallNotification() {
 // Dipanggil sekali dari _layout.tsx useEffect
 export function subscribeNotifeeCallEvents(
   onAnswer: (bookingId: string) => void,
-  onDecline: () => void,
+  onDecline: (bookingId?: string) => void,
 ): () => void {
   if (!notifee) return () => {};
   return notifee.onForegroundEvent(({ type, detail }: any) => {
@@ -101,7 +101,7 @@ export function subscribeNotifeeCallEvents(
       const actionId = detail.pressAction?.id;
       void cancelCallNotification();
       if (actionId === 'decline') {
-        onDecline();
+        onDecline(bookingId);
       } else if (bookingId) {
         onAnswer(bookingId);
       }

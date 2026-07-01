@@ -30,6 +30,7 @@ import { useAuthStore } from '../../src/stores/auth';
 import { useModeStore } from '../../src/stores/mode';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useConfig } from '../../src/stores/appContent';
+import { api } from '../../src/lib/api';
 
 // Decode JWT (no verify, just extract `sub` claim) to get current user id.
 function decodeJwtSub(token: string | undefined): string | null {
@@ -382,6 +383,29 @@ function Chat() {
     autoAnswerTriedRef.current = true;
     void answerCall();
   }, [autoAnswer, id, activeCall, callLoading]);
+
+  useEffect(() => {
+    if (!showIncomingBanner || !id || activeCall) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await api.get('/call/session-status', { params: { bookingId: id } });
+        const d = r.data?.data ?? r.data;
+        if (cancelled) return;
+        if (!d?.exists || d?.ended || d?.answered) {
+          setShowIncomingBanner(false);
+        }
+      } catch {
+        // silent
+      }
+    };
+    void poll();
+    const t = setInterval(() => { void poll(); }, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [showIncomingBanner, id, activeCall]);
 
   async function pickAndSendPhoto(source: 'camera' | 'gallery') {
     if (uploadingPhoto) return;
