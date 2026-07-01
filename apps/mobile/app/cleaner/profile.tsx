@@ -230,7 +230,7 @@ function CleanerProfileScreen() {
             )}
 
             <Pressable
-              onPress={() => router.push('/cleaner/calendar')}
+              onPress={() => router.push({ pathname: '/cleaner/calendar', params: { returnTo: '/cleaner/profile' } })}
               className="mt-3 flex-row items-center gap-3 rounded-2xl bg-white p-4"
               style={{ elevation: 2 }}
             >

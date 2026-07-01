@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
@@ -30,6 +30,10 @@ function CleanerCalendar() {
   const { bottom } = useSafeAreaInsets();
   const tabBarHeight = (Platform.OS === 'web' ? 64 : 72) + bottom;
   const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
+  const backTarget = typeof params.returnTo === 'string' && params.returnTo.trim()
+    ? params.returnTo
+    : '/(tabs)/jobs';
   const [monthDate, setMonthDate] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -101,7 +105,7 @@ function CleanerCalendar() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView edges={['top']} className="bg-white">
         <View className="flex-row items-center px-3 py-2">
-          <Pressable onPress={() => safeBack('/(tabs)/calendar')} className="h-10 w-10 items-center justify-center">
+          <Pressable onPress={() => safeBack(backTarget)} className="h-10 w-10 items-center justify-center">
             <ArrowLeft color="#0F172A" size={22} />
           </Pressable>
           <Text className="font-extrabold ml-1 flex-1 text-lg text-ink-900">Kalender Jadwal</Text>
