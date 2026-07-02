@@ -224,8 +224,7 @@ export function Security() {
       <View className="rounded-2xl bg-white">
         <Row icon={Info} label="Kebijakan Privasi" onPress={() => router.push('/account/privacy')} />
         <Row icon={Info} label="Syarat & Ketentuan" onPress={() => router.push('/account/terms')} />
-        <Row icon={Info} label="Tentang JasaBersih" onPress={() => router.push('/account/about')} />
-        <Row icon={Info} label="Hapus Akun" danger last />
+        <Row icon={Info} label="Tentang JasaBersih" onPress={() => router.push('/account/about')} last />
       </View>
     </>
   );
