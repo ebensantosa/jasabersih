@@ -268,8 +268,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(roomName(bookingId)).emit('read', { bookingId, readerId, readAt: new Date().toISOString() });
   }
 
-  // Called dari AdminChatController.sendMessage() untuk broadcast pesan admin ke room.
-  broadcastAdminMessage(payload: { id: string; bookingId: string; senderId: string; recipientId: string; content: string; messageType: 'text' | 'image'; attachmentUrl?: string | null; createdAt: string; isAdmin: true }): void {
+  // Broadcast pesan chat normal dari service lain (mis. call log)
+  broadcastChatMessage(payload: {
+    id: string;
+    bookingId: string;
+    senderId: string;
+    recipientId: string | null;
+    messageType: 'text' | 'image' | 'call_missed' | 'call_ended';
+    content: string;
+    attachmentUrl?: string | null;
+    createdAt: string;
+    isAdmin?: boolean;
+  }): void {
     this.server.to(roomName(payload.bookingId)).emit('message', {
       id: payload.id,
       bookingId: payload.bookingId,
@@ -279,8 +289,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       content: payload.content,
       attachmentUrl: payload.attachmentUrl ?? null,
       createdAt: payload.createdAt,
-      isAdmin: true,
+      isAdmin: !!payload.isAdmin,
     });
+
+    if (payload.recipientId) {
+      this.jobsGateway.emitToUser(payload.recipientId, 'chat:unread', { bookingId: payload.bookingId });
+    }
+  }
+
+  // Called dari AdminChatController.sendMessage() untuk broadcast pesan admin ke room.
+  broadcastAdminMessage(payload: { id: string; bookingId: string; senderId: string; recipientId: string; content: string; messageType: 'text' | 'image'; attachmentUrl?: string | null; createdAt: string; isAdmin: true }): void {
+    this.broadcastChatMessage({ ...payload, isAdmin: true });
   }
 }
 

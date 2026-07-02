@@ -910,10 +910,28 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
             <div>
               <div className="text-sm font-bold text-slate-900 mb-2">Riwayat Pembayaran</div>
               <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-left text-[10px] uppercase text-slate-500"><tr><th className="px-2 py-1">Status</th><th className="px-2 py-1">Amount</th><th className="px-2 py-1">Paid At</th></tr></thead>
+                <thead className="bg-slate-50 text-left text-[10px] uppercase text-slate-500"><tr><th className="px-2 py-1">Status</th><th className="px-2 py-1">Tipe</th><th className="px-2 py-1">Amount</th><th className="px-2 py-1">Paid At</th></tr></thead>
                 <tbody>
                   {data.payments.map((p: any) => (
-                    <tr key={p.id} className="border-t"><td className="px-2 py-1">{p.status}</td><td className="px-2 py-1">Rp {Number(p.amount).toLocaleString('id-ID')}</td><td className="px-2 py-1">{p.paidAt ? new Date(p.paidAt).toLocaleString('id-ID') : '—'}</td></tr>
+                    <tr key={p.id} className="border-t">
+                      <td className="px-2 py-1">{p.status}</td>
+                      <td className="px-2 py-1">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                          {(p.paymentType ?? 'booking') === 'upcharge'
+                            ? 'Tagihan Tambahan'
+                            : (p.paymentType ?? 'booking') === 'tip'
+                              ? 'Tip'
+                              : (p.paymentType ?? 'booking') === 'overtime'
+                                ? 'Overtime'
+                                : 'Booking'}
+                        </span>
+                        {p.paymentMethod ? (
+                          <div className="mt-1 text-[10px] text-slate-400">{String(p.paymentMethod)}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-1">Rp {Number(p.amount).toLocaleString('id-ID')}</td>
+                      <td className="px-2 py-1">{p.paidAt ? new Date(p.paidAt).toLocaleString('id-ID') : '—'}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>

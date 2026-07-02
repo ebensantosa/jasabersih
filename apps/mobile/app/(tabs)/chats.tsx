@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MessageCircle, ShieldCheck } from 'lucide-react-native';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { AuthGate } from '../../src/components/AuthGate';
 import { CleanerKycGate } from '../../src/components/CleanerKycGate';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/stores/auth';
+import { useBookingsStore } from '../../src/stores/bookings';
 import { useModeStore } from '../../src/stores/mode';
 import { toast } from '../../src/stores/ui';
 
@@ -33,6 +34,7 @@ function ChatsScreen() {
   // fetchChats useCallback ke-recreate tiap zustand update.
   const accessToken = useAuthStore((s) => s.tokens?.accessToken);
   const isCleaner = useModeStore((s) => s.mode) === 'freelancer';
+  const chatUnreadSignal = useBookingsStore((s) => s.chatUnreadSignal);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatRow[]>([]);
   const hasDataRef = useRef(false);
@@ -55,6 +57,16 @@ function ChatsScreen() {
   useFocusEffect(useCallback(() => {
     if (accessToken) void fetchChats();
   }, [fetchChats, accessToken]));
+
+  // Re-fetch saat ada pesan baru dari socket (chat:unread event via jobs socket)
+  const isFocusedRef = useRef(false);
+  useFocusEffect(useCallback(() => {
+    isFocusedRef.current = true;
+    return () => { isFocusedRef.current = false; };
+  }, []));
+  useEffect(() => {
+    if (isFocusedRef.current && accessToken) void fetchChats();
+  }, [chatUnreadSignal, accessToken, fetchChats]);
 
 
   return (

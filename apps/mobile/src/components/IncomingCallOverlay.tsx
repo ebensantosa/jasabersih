@@ -43,7 +43,11 @@ export function IncomingCallOverlay({ callerName, onAnswer, onDecline }: Props) 
 
   // Auto-decline setelah timeout
   useEffect(() => {
-    if (countdown <= 0) { onDecline(); return; }
+    if (countdown <= 0) {
+      stopRing();
+      onDecline();
+      return;
+    }
     const t = setInterval(() => setCountdown(s => s - 1), 1000);
     return () => clearInterval(t);
   }, [countdown]);

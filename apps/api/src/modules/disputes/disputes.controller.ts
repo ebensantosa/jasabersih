@@ -50,7 +50,7 @@ export class DisputesController {
   @Post('upload-url')
   async uploadUrl(@CurrentUser() user: AuthenticatedUser, @Body() body: { contentType: string }) {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowed.includes(body?.contentType)) throw new BadRequestException('contentType invalid.');
+    if (!allowed.includes(body?.contentType)) throw new BadRequestException('Tipe konten tidak valid.');
     return this.storage.createUploadUrl({
       bucket: 'private',
       keyPrefix: `disputes/${user.id}`,
@@ -71,16 +71,16 @@ export class DisputesController {
     const b = rows[0];
     if (!b) throw new NotFoundException('Booking tidak ditemukan.');
     if (b.customer_id !== user.id && b.cleaner_id !== user.id) {
-      throw new BadRequestException('Kamu bukan participant booking ini.');
+      throw new BadRequestException('Kamu bukan pihak di pesanan ini.');
     }
     const ALLOWED_STATUSES = ['matched', 'on_the_way', 'in_progress', 'completed'];
     if (!ALLOWED_STATUSES.includes(b.status)) {
-      throw new BadRequestException('Dispute hanya bisa diajukan saat booking masih aktif atau baru selesai.');
+      throw new BadRequestException('Laporan hanya bisa diajukan saat pesanan masih aktif atau baru selesai.');
     }
     // Completed bookings: only within 24h
     if (b.status === 'completed') {
       if (!b.completed_at || Date.now() - new Date(b.completed_at).getTime() > 24 * 3600_000) {
-        throw new BadRequestException('Batas waktu laporan sudah lewat (24 jam setelah selesai).');
+        throw new BadRequestException('Batas waktu laporan sudah lewat (24 jam setelah pesanan selesai).');
       }
     }
 
@@ -97,7 +97,7 @@ export class DisputesController {
            AND status IN ('open', 'in_progress', 'escalated')
       `;
       if (Number(cnt[0]?.c ?? 0) >= limits.maxOpenDisputesSameCleaner) {
-        throw new BadRequestException('Kamu sudah punya dispute open dengan cleaner ini. Tunggu admin review dulu.');
+        throw new BadRequestException('Kamu sudah memiliki laporan terbuka untuk cleaner ini. Tunggu tinjauan admin dulu.');
       }
     }
 
@@ -115,7 +115,7 @@ export class DisputesController {
         ${slaDueAt}::timestamptz
       ) RETURNING id
     `;
-    if (!inserted[0]?.id) throw new BadRequestException('Gagal membuat laporan. Coba lagi.');
+    if (!inserted[0]?.id) throw new BadRequestException('Gagal membuat laporan. Silakan coba lagi.');
     return { id: inserted[0].id, status: 'open' };
   }
 }

@@ -34,7 +34,7 @@ export type ChatMessage = {
   bookingId: string;
   senderId: string;
   recipientId: string | null;
-  messageType: 'text' | 'image';
+  messageType: 'text' | 'image' | 'call_missed' | 'call_ended';
   content: string;
   attachmentUrl: string | null;
   createdAt: string;

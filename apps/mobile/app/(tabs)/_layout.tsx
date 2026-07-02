@@ -32,6 +32,9 @@ export default function TabsLayout() {
   useEffect(() => {
     if (chatUnreadSignal > 0 && tokens && profile) void fetchChatUnread();
   }, [chatUnreadSignal, fetchChatUnread, tokens, profile]);
+  useEffect(() => {
+    if (tokens && profile) void fetchChatUnread();
+  }, [tokens, profile, fetchChatUnread]);
   useVisiblePoll(fetchChatUnread, 120_000, !!tokens && !!profile);
   useEffect(() => { if (!tokens || !profile) setChatUnread(0); }, [tokens, profile]);
 

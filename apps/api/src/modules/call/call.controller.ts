@@ -6,6 +6,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { ChatGateway } from '../chat/chat.gateway';
 import { PushService } from '../notifications/push.service';
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? '';
@@ -24,6 +25,7 @@ export class CallController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // Initiator (cleaner atau customer) mulai call → dapat token + notif dikirim ke pihak lain
@@ -326,8 +328,8 @@ export class CallController {
         ? ` · ${formatDuration(body.durationSec)}`
         : '';
       const content = body.answered
-        ? `📞 Panggilan selesai${durationLabel}`
-        : '📞 Panggilan tidak diangkat';
+        ? `Panggilan selesai${durationLabel}`
+        : 'Panggilan tidak diangkat';
 
       // Cari participant lain untuk recipient_id pesan
       const bRows = await this.prisma.$queryRaw<{ customer_id: string; cleaner_id: string }[]>`
@@ -338,10 +340,23 @@ export class CallController {
         ? (bk.customer_id === user.id ? bk.cleaner_id : bk.customer_id)
         : null;
 
-      await this.prisma.$executeRaw`
+      const insertedRows = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
         INSERT INTO chat_messages (booking_id, sender_id, recipient_id, content, message_type)
         VALUES (${body.bookingId}::uuid, ${user.id}::uuid, ${recipientId ?? null}::uuid, ${content}, ${messageType})
+        RETURNING id, created_at
       `;
+      const insertedMsg = insertedRows[0];
+      if (insertedMsg) {
+        this.chatGateway.broadcastChatMessage({
+          id: insertedMsg.id,
+          bookingId: body.bookingId,
+          senderId: user.id,
+          recipientId,
+          messageType,
+          content,
+          createdAt: insertedMsg.created_at.toISOString(),
+        });
+      }
 
       if (!body.answered && recipientId) {
         await this.push.send({

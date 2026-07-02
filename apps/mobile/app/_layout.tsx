@@ -183,36 +183,42 @@ export default function RootLayout() {
   useEffect(() => {
     // Canary: confirm OTA bundle loaded + API reachable. Check /var/log/jasabersih/api-out-0.log for "[trace]"
     void api.post('/health/trace', { step: 'boot', ota: '2026-06-30-v1.5.0' }).catch(() => {});
-    void hydrateStorageCache([
-      'app.mode',
-      'app.onboarded',
-      'cleaner.profile',
-      'cleaner.wallet',
-      'bookings.list',
-      'user.location',
-      'addresses.list',
-      'update.skipped',
-    ]).then(() => {
-      hydrateAuth();
-      hydrateMode();
-      hydrateCleaner();
-      hydrateBookings();
-      hydrateLocation();
-      hydrateAddresses();
-      hydrateWallet();
-      hydrateLocale();
-      hydrateCleaningMode();
-      hydrateUser();
-      // Fetch fresh app content (banners/services/config/popups) - non-blocking
-      void fetchAppContent();
-      // Anonymous users: ensure no stale user-bound data leaks to UI
-      if (!useAuthStore.getState().tokens) {
-        useAuthStore.getState().logout();
+    void (async () => {
+      try {
+        await hydrateStorageCache([
+          'app.mode',
+          'app.onboarded',
+          'cleaner.profile',
+          'cleaner.wallet',
+          'bookings.list',
+          'user.location',
+          'addresses.list',
+          'update.skipped',
+        ]);
+        hydrateAuth();
+        hydrateMode();
+        hydrateCleaner();
+        hydrateBookings();
+        hydrateLocation();
+        hydrateAddresses();
+        hydrateWallet();
+        hydrateLocale();
+        hydrateCleaningMode();
+        hydrateUser();
+        // Fetch fresh app content (banners/services/config/popups) - non-blocking
+        void fetchAppContent();
+        // Anonymous users: ensure no stale user-bound data leaks to UI
+        if (!useAuthStore.getState().tokens) {
+          useAuthStore.getState().logout();
+          setAuthReady(true);
+          return;
+        }
+        setAuthReady(false);
+      } catch {
+        // Jangan biarkan splash putih nyangkut kalau storage bootstrap gagal.
         setAuthReady(true);
-        return;
       }
-      setAuthReady(false);
-    });
+    })();
   }, [
     hydrateAuth,
     hydrateMode,
@@ -244,8 +250,14 @@ export default function RootLayout() {
     if (lastBootstrappedTokenRef.current === accessToken) return;
     lastBootstrappedTokenRef.current = accessToken;
     trackEvent('app_open');
+    let didFinish = false;
+    const bootTimeout = setTimeout(() => {
+      if (!didFinish) {
+        // Hard fallback supaya splash tidak berputar terus kalau refresh/profile fetch macet.
+        setAuthReady(true);
+      }
+    }, 10000);
     void (async () => {
-      let refreshFailed = false;
       try {
         await refreshAuth();
       } catch (e: any) {
@@ -256,9 +268,13 @@ export default function RootLayout() {
           return;
         }
         // Network/server error — keep tokens, proceed with cached data
-        refreshFailed = true;
       }
-      const profile = await fetchUser();
+      let profile: any = null;
+      try {
+        profile = await fetchUser();
+      } catch {
+        profile = null;
+      }
       // Jangan logout dari fetchUser failure — user mungkin online tapi /auth/me lambat.
       // Satu-satunya alasan logout yang valid: 401/403 dari refreshAuth (sudah ditangani di atas).
       // Kalau profile null, lanjut dengan cached profile atau tanpa profile (push tetap bisa register).
@@ -268,11 +284,17 @@ export default function RootLayout() {
       if (profile && useModeStore.getState().mode === 'freelancer' && !(profile as any)?.isFreelancer) {
         useModeStore.getState().setMode('customer');
       }
-      await syncSessionData(profile);
+      try {
+        await syncSessionData(profile);
+      } catch {
+        // cache sync gagal jangan blokir UI
+      }
       const currentMode = useModeStore.getState().mode;
       void registerForPushAsync(currentMode === 'freelancer' ? 'freelancer' : 'customer').catch(() => {});
       setAuthReady(true);
+      didFinish = true;
     })();
+    return () => clearTimeout(bootTimeout);
   }, [accessToken, refreshAuth, fetchUser, syncAddresses, syncBookings, syncWallet]);
 
   // Foreground: tampilkan in-app overlay saat app terbuka dan ada incoming call push

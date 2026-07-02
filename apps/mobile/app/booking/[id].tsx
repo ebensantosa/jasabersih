@@ -171,6 +171,7 @@ function BookingDetail() {
   const [bookingRating, setBookingRating] = useState<BookingRating>(null);
   const [advancing, setAdvancing] = useState(false);
   const [startCountdown, setStartCountdown] = useState<number | null>(null);
+  const [nowTs, setNowTs] = useState(Date.now());
   const [photoSummary, setPhotoSummary] = useState({ beforeCount: 0, afterCount: 0, damageCount: 0 });
   const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
   const [showUpchargeModal, setShowUpchargeModal] = useState(false);
@@ -183,6 +184,11 @@ function BookingDetail() {
   const [extensionBusy, setExtensionBusy] = useState(false);
   const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [subscriptionVisits, setSubscriptionVisits] = useState<Array<{ id: string; status: string; scheduledAt: string; visitIndex: number; visitTotal: number; cleanerName: string | null; completedAt: string | null }> | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function loadExtensionRequests() {
     if (!id || id.startsWith('bk_') || !booking || booking.pricingMode === 'hourly') return;
@@ -378,7 +384,11 @@ function BookingDetail() {
     && !hasRated
     && within24h
     && (booking?.recleanCount ?? 0) === 0;
-  const cleanerCanFinish = booking?.status === 'in_progress' && photoSummary.afterCount > 0;
+  const latestPendingUpcharge = [...upcharges].find((u) => u.status === 'pending') ?? null;
+  const pendingUpchargeHold = !!latestPendingUpcharge
+    && Number.isFinite(Date.parse(latestPendingUpcharge.createdAt))
+    && (nowTs - Date.parse(latestPendingUpcharge.createdAt) < 5 * 60_000);
+  const cleanerCanFinish = booking?.status === 'in_progress' && photoSummary.afterCount > 0 && !pendingUpchargeHold;
 
   const csWaNumber = useConfig('contact.whatsapp' as any, '6285124363374' as any) as unknown as string;
   async function openWaHelp() {
@@ -1453,7 +1463,11 @@ function BookingDetail() {
                       >
                         <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.finish')}</Text>
                       </Pressable>
-                      {!cleanerCanFinish && (
+                      {!cleanerCanFinish && pendingUpchargeHold ? (
+                        <Text className="mt-1 text-center text-[10px] text-amber-700">
+                          Masih ada charge tambahan menunggu respon customer. Tombol selesai dibuka otomatis setelah 5 menit bila belum dijawab.
+                        </Text>
+                      ) : !cleanerCanFinish && (
                         <Text className="mt-1 text-center text-[10px] text-amber-700">
                           Upload foto hasil kerja dulu sebelum menyelesaikan job.
                         </Text>

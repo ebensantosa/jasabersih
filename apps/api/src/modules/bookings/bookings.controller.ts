@@ -887,6 +887,7 @@ export class BookingsController {
       // include share ini), sehingga double-credit.
       return { ok: true, cleanerShare, platformFee, pct, walletDeducted: upchargeAmount, walletRemaining: walletBalance - upchargeAmount, _cleanerId: u.cleaner_id };
     });
+    this.jobs.emitBookingReload(user.id, id);
     this.jobs.emitBookingReload(result._cleanerId, id);
     void this.push.send({
       userId: result._cleanerId,
@@ -918,6 +919,7 @@ export class BookingsController {
          SET status = 'rejected', decided_at = NOW(), decided_by_user_id = ${user.id}::uuid
        WHERE id = ${upchargeId}::uuid
     `;
+    this.jobs.emitBookingReload(user.id, id);
     this.jobs.emitBookingReload(rows[0].cleaner_id, id);
     void this.push.send({
       userId: rows[0].cleaner_id,

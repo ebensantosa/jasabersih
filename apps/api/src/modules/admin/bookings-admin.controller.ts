@@ -274,7 +274,7 @@ export class AdminBookingsController {
     `;
 
     const payments = await this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT id, amount, status, paid_at AS "paidAt"
+      SELECT id, amount, status, paid_at AS "paidAt", payment_type AS "paymentType", payment_method AS "paymentMethod"
         FROM payments WHERE booking_id = ${id}::uuid ORDER BY id DESC LIMIT 5
     `;
 

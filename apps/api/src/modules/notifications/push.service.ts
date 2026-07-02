@@ -79,14 +79,51 @@ export class PushService {
 
     this.log.log(`send user=${payload.userId} type=${(payload.data as any)?.type ?? '-'} targetMode=${targetMode ?? 'null'} rawTokens=${tokens.length} validTokens=${validTokens.length}`);
 
-    // Dedup: kalau notif identik (user + type + referenceId) sudah ada di 1 jam terakhir, skip.
-    // Covers bookingId, withdrawalId, atau reference lain yg ada di data payload.
+    // Dedup hanya untuk event status yang memang 1x per reference.
+    // Chat harus selalu masuk supaya tiap pesan tetap memicu notifikasi.
     const bookingId = (payload.data as any)?.bookingId;
     const withdrawalId = (payload.data as any)?.withdrawalId;
     const refId = bookingId ?? withdrawalId;
     const notifType = (payload.data as any)?.type ?? payload.channel ?? 'system';
-    // incoming_call tidak di-dedup — setiap panggilan adalah event baru
-    if (refId && notifType !== 'incoming_call') {
+    const dedupEligible = new Set([
+      'booking_matched',
+      'booking_confirmed',
+      'booking_completed',
+      'booking_canceled',
+      'payment_confirmed',
+      'payment_paid',
+      'payment_completed',
+      'payment_underpaid',
+      'hourly_timer_expired',
+      'auto_completed',
+      'overtime_paid',
+      'upcharge_requested',
+      'upcharge_approved',
+      'upcharge_rejected',
+      'extension_requested',
+      'extension_accepted',
+      'extension_declined',
+      'helper_invited',
+      'helper_accepted',
+      'helper_declined',
+      'reclean_requested',
+      'reclean_accepted',
+      'reclean_rejected',
+      'rating_reminder',
+      'cleaner_reminder',
+      'customer_reminder',
+      'job_assigned',
+      'wallet_credit',
+      'withdrawal_approved',
+      'withdrawal_rejected',
+      'withdrawal_completed',
+      'withdrawal_failed',
+      'withdrawal_pending_maintenance',
+      'rating_received',
+      'earnings_cleared',
+    ]);
+    // incoming_call & chat tidak di-dedup — setiap panggilan / pesan adalah event baru
+    if (refId && notifType !== 'incoming_call' && notifType !== 'chat' && dedupEligible.has(notifType)) {
       const refKey = bookingId ? 'bookingId' : 'withdrawalId';
       const dup = await this.prisma.$queryRaw<{ c: number }[]>`
         SELECT COUNT(*)::int AS c FROM notifications

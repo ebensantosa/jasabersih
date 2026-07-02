@@ -727,7 +727,18 @@ export class PaymentsController {
       if (creditUsed >= amount) {
         // Wallet covers full - skip Flip, langsung finalize.
         if (body.type === 'upcharge') {
-          await this.finalizeUpcharge(user.id, body.bookingId, body.upchargeId!);
+          const cleanerId = await this.finalizeUpcharge(user.id, body.bookingId, body.upchargeId!);
+          this.jobs.emitBookingReload(user.id, body.bookingId);
+          if (cleanerId) this.jobs.emitBookingReload(cleanerId, body.bookingId);
+          if (cleanerId) {
+            void this.push.send({
+              userId: cleanerId,
+              channel: 'booking',
+              title: 'Charge tambahan dibayar',
+              body: 'Customer sudah melunasi tagihan tambahan. Silakan lanjutkan pekerjaan.',
+              data: { type: 'upcharge_paid', bookingId: body.bookingId, upchargeId: body.upchargeId },
+            }).catch(() => {});
+          }
         } else if (body.type === 'tip') {
           await this.finalizeTip(user.id, body.bookingId, b.cleaner_id!, amount);
         } else {
@@ -847,7 +858,7 @@ export class PaymentsController {
   }
 
   // Helpers untuk finalize wallet-only payment
-  private async finalizeUpcharge(userId: string, bookingId: string, upchargeId: string) {
+  private async finalizeUpcharge(userId: string, bookingId: string, upchargeId: string): Promise<string | null> {
     // Reuse logic dari /bookings/:id/upcharges/:upchargeId/approve - panggil endpoint internal.
     // Sederhana: inline minimal logic agar tidak circular dependency.
     return this.prisma.$transaction(async (tx) => {
@@ -874,6 +885,7 @@ export class PaymentsController {
       // Wallet credit cleaner dikreditkan saat booking complete — JANGAN insert di sini
       // karena forceComplete/auto-complete juga akan insert cleaner_payout (yang sudah
       // include share ini), sehingga double-credit.
+      return u.cleaner_id ?? null;
     });
   }
 
@@ -1006,7 +1018,18 @@ export class PaymentsController {
         try {
           const meta = typeof p.extra_metadata === 'string' ? JSON.parse(p.extra_metadata) : p.extra_metadata;
           if (p.payment_type === 'upcharge' && meta?.upchargeId && p.user_id && p.booking_id) {
-            await this.finalizeUpcharge(p.user_id, p.booking_id, meta.upchargeId);
+            const cleanerId = await this.finalizeUpcharge(p.user_id, p.booking_id, meta.upchargeId);
+            this.jobs.emitBookingReload(p.user_id, p.booking_id);
+            if (cleanerId) this.jobs.emitBookingReload(cleanerId, p.booking_id);
+            if (cleanerId) {
+              void this.push.send({
+                userId: cleanerId,
+                channel: 'booking',
+                title: 'Charge tambahan dibayar',
+                body: 'Customer sudah melunasi tagihan tambahan. Silakan lanjutkan pekerjaan.',
+                data: { type: 'upcharge_paid', bookingId: p.booking_id, upchargeId: meta.upchargeId },
+              }).catch(() => {});
+            }
           } else if (p.payment_type === 'tip' && meta?.cleanerId && p.booking_id && p.user_id) {
             await this.finalizeTip(p.user_id, p.booking_id, meta.cleanerId, Number(p.amount));
           } else if (p.payment_type === 'overtime' && meta?.durationHours && p.booking_id) {
@@ -1504,6 +1527,7 @@ export class PaymentsController {
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, booking_id AS "bookingId", amount, payment_method AS "paymentMethod",
              status, paid_at AS "paidAt", tripay_reference AS "reference",
+             payment_type AS "paymentType",
              pay_code AS "payCode", payment_url AS "paymentUrl",
              expired_at AS "expiredAt", created_at AS "createdAt",
              extra_metadata AS "extraMetadata"
@@ -1512,6 +1536,8 @@ export class PaymentsController {
     if (!rows[0]) throw new NotFoundException();
     const row = { ...rows[0] };
     const meta = (row.extraMetadata && typeof row.extraMetadata === 'object' ? row.extraMetadata : {}) as Record<string, unknown>;
+    const paymentType = typeof row.paymentType === 'string' ? row.paymentType : null;
+    const isExtraPayment = paymentType === 'upcharge' || paymentType === 'tip' || paymentType === 'overtime';
     const createdAt = row.createdAt instanceof Date ? row.createdAt : new Date(String(row.createdAt));
     const storedExpiredAt = row.expiredAt instanceof Date ? row.expiredAt : (row.expiredAt ? new Date(String(row.expiredAt)) : null);
     const resolvedExpiredAt =
@@ -1520,7 +1546,10 @@ export class PaymentsController {
         : createdAt && !Number.isNaN(createdAt.getTime())
           ? new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString()
           : null;
-    if (row.bookingId && row.status === 'pending') {
+    // Fallback booking-status inference hanya untuk pembayaran booking utama.
+    // Extra payment (upcharge/tip/overtime) harus menunggu status provider,
+    // jangan dianggap lunas hanya karena booking utamanya sudah berubah status.
+    if (row.bookingId && row.status === 'pending' && !isExtraPayment) {
       const bookingRows = await this.prisma.$queryRaw<{ status: string; paidAt: Date | null }[]>`
         SELECT status, paid_at AS "paidAt"
           FROM bookings
@@ -1546,3 +1575,4 @@ export class PaymentsController {
     };
   }
 }
+

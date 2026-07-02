@@ -170,10 +170,12 @@ function PaymentScreen() {
     const sub = AppState.addEventListener('change', async (state) => {
       if (state !== 'active') return;
       try {
-        await api.post(`/payments/flip/sync/${bookingId}`).catch(() => {});
-        await fetchOne(String(bookingId));
-        const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
-        if (latest && latest.status !== 'pending_payment') { finishAndRedirect(); return; }
+        if (!extraType) {
+          await api.post(`/payments/flip/sync/${bookingId}`).catch(() => {});
+          await fetchOne(String(bookingId));
+          const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+          if (latest && latest.status !== 'pending_payment') { finishAndRedirect(); return; }
+        }
         const r = await api.get(`/payments/${direct.paymentId}`);
         const status = (r.data?.data ?? r.data)?.status;
         if (status === 'paid') finishAndRedirect();
@@ -448,11 +450,14 @@ function PaymentScreen() {
               if (!bookingId || !direct) return;
               try {
                 // Trigger backend ke Flip ambil status fresh (instead of polling 4s).
-                await api.post(`/payments/flip/sync/${bookingId}`).catch(() => {});
-                // Re-fetch booking + payment status, kalau udah paid auto redirect.
-                await fetchOne(String(bookingId));
-                const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
-                if (latest && latest.status !== 'pending_payment') { finishAndRedirect(); return; }
+                // Untuk payment booking utama, booking status boleh dipakai sebagai shortcut.
+                // Mode ekstra harus menunggu status payment yang benar dari provider.
+                if (!extraType) {
+                  await api.post(`/payments/flip/sync/${bookingId}`).catch(() => {});
+                  await fetchOne(String(bookingId));
+                  const latest = useBookingsStore.getState().list.find((b) => b.id === bookingId);
+                  if (latest && latest.status !== 'pending_payment') { finishAndRedirect(); return; }
+                }
                 const r = await api.get(`/payments/${direct.paymentId}`);
                 const status = (r.data?.data ?? r.data)?.status;
                 if (status === 'paid') { finishAndRedirect(); return; }

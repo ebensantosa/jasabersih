@@ -49,6 +49,17 @@ function decodeJwtSub(token: string | undefined): string | null {
 import { toast } from '../../src/stores/ui';
 import { safeBack } from '../../src/lib/safeBack';
 
+const SAFE_QUICK_REPLIES = [
+  'Saya sudah mulai',
+  'Mohon tunggu sebentar',
+  'Saya sudah di lokasi',
+  'Ada kendala di lapangan',
+  'Tolong kirim detail tambahan',
+  'Saya sudah selesai',
+];
+const QUICK_REPLY_COOLDOWN_MS = 1500;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 function Chat() {
   const router = useRouter();
   const { id, incomingCall, autoAnswer } = useLocalSearchParams<{ id: string; incomingCall?: string; autoAnswer?: string }>();
@@ -71,9 +82,11 @@ function Chat() {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [callLoading, setCallLoading] = useState(false);
+  const [quickReplyLocked, setQuickReplyLocked] = useState(false);
   const startActiveCall = useCallStore(s => s.start);
   const activeCall = useCallStore(s => s.active?.bookingId === id ? s.active : null);
   const anyActiveCall = useCallStore(s => s.active);
+  const signalChatUnread = useBookingsStore((s) => s.signalChatUnread);
   // Jangan tampilkan incoming banner kalau sedang ada call aktif di booking lain
   const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1' && autoAnswer !== '1' && !useCallStore.getState().active);
 
@@ -85,11 +98,13 @@ function Chat() {
     if (!hasUnreadForMe) return;
     const t = setTimeout(() => {
       import('../../src/lib/api').then(({ api }) => {
-        api.post(`/chat/booking/${id}/read`).catch(() => {});
+        api.post(`/chat/booking/${id}/read`).then(() => {
+          signalChatUnread();
+        }).catch(() => {});
       });
     }, 2000);
     return () => clearTimeout(t);
-  }, [id, messages, myUserId, showIncomingBanner, activeCall]);
+  }, [id, messages, myUserId, showIncomingBanner, activeCall, signalChatUnread]);
   const callEnabled = useConfig('feature.call_enabled', true as any) !== false;
   const maxDurationSec = (useConfig('call.max_duration_minutes', 30) as number) * 60;
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
@@ -100,6 +115,7 @@ function Chat() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const callPulseAnim = useRef(new Animated.Value(1)).current;
   const autoAnswerTriedRef = useRef(false);
+  const quickReplyLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maximize = useCallStore(s => s.maximize);
 
   // Timer untuk "Sedang memanggil · MM:SS" di header saat call aktif
@@ -262,6 +278,15 @@ function Chat() {
     return () => clearTimeout(t);
   }, [blockWarning]);
 
+  useEffect(() => {
+    return () => {
+      if (quickReplyLockTimerRef.current) {
+        clearTimeout(quickReplyLockTimerRef.current);
+        quickReplyLockTimerRef.current = null;
+      }
+    };
+  }, []);
+
   if (!id) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
@@ -287,6 +312,21 @@ function Chat() {
         setBlockWarning(res.userMessage ?? 'Pesan ditolak - dilarang share kontak / link / tawaran di luar app.');
       }
     });
+  }
+
+  async function handleQuickReply(content: string) {
+    if (quickReplyLocked) {
+      toast.warning('Tunggu sebentar sebelum kirim balasan cepat lagi.');
+      return;
+    }
+    if (status !== 'connected') return;
+    setQuickReplyLocked(true);
+    if (quickReplyLockTimerRef.current) clearTimeout(quickReplyLockTimerRef.current);
+    quickReplyLockTimerRef.current = setTimeout(() => {
+      setQuickReplyLocked(false);
+      quickReplyLockTimerRef.current = null;
+    }, QUICK_REPLY_COOLDOWN_MS);
+    await handleSend(content);
   }
 
   function onChangeText(v: string) {
@@ -740,6 +780,24 @@ function Chat() {
           </SafeAreaView>
         ) : (
           <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
+            <View className="border-b border-ink-100 px-3 py-2">
+              <Text className="mb-2 font-semibold text-[11px] uppercase tracking-[0.08em] text-ink-400">
+                Balasan cepat
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
+                {SAFE_QUICK_REPLIES.map((reply) => (
+                  <QuickReplyChip
+                    key={reply}
+                    label={reply}
+                    disabled={status !== 'connected' || quickReplyLocked || sending}
+                    onPress={() => void handleQuickReply(reply)}
+                  />
+                ))}
+              </ScrollView>
+              {quickReplyLocked && (
+                <Text className="mt-1 text-[10px] text-ink-400">Balasan cepat sedang jeda sebentar supaya tidak spam.</Text>
+              )}
+            </View>
             <View className="flex-row items-center gap-2 px-3 py-2">
               <Pressable
                 onPress={() => setPhotoSheetOpen(true)}
@@ -865,6 +923,7 @@ function Bubble({
   const isImage = (messageType === 'image' || looksLikeImageUrl) && (attachmentUrl || text);
   const imageUrl = attachmentUrl ?? text;
   const isCallMessage = messageType === 'call_missed' || messageType === 'call_ended';
+  const callText = isCallMessage ? text.replace(/^📞\s*/, '').trim() : text;
   const bubbleBg = isMe ? 'bg-brand-600' : isAdmin ? 'bg-amber-50' : 'bg-white';
   const textColor = isMe ? 'text-white' : 'text-ink-800';
   const borderStyle = isMe ? {} : isAdmin ? { borderWidth: 1, borderColor: '#FDE68A' } : { borderWidth: 1, borderColor: '#E2E8F0' };
@@ -898,7 +957,7 @@ function Bubble({
               color: messageType === 'call_missed' ? '#DC2626' : '#16A34A',
             }}
           >
-            {text}
+            {callText}
           </Text>
         </View>
         <Text style={{ fontSize: 10, color: '#94A3B8' }}>{t}</Text>
@@ -939,6 +998,39 @@ function Bubble({
         )}
       </View>
     </View>
+  );
+}
+
+function QuickReplyChip({
+  label,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function animatePress() {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.94, duration: 70, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 140, useNativeDriver: true }),
+    ]).start();
+  }
+
+  return (
+    <AnimatedPressable
+      onPress={() => {
+        animatePress();
+        onPress();
+      }}
+      disabled={disabled}
+      style={{ transform: [{ scale }] }}
+      className="rounded-full border border-brand-200 bg-brand-50 px-3 py-2 disabled:opacity-40"
+    >
+      <Text className="font-semibold text-[11px] text-brand-700">{label}</Text>
+    </AnimatedPressable>
   );
 }
 

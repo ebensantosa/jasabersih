@@ -174,6 +174,7 @@ const TYPE_ICONS: Record<string, IconCfg> = {
   // Payment
   payment_paid: { Icon: CheckCircle2, bg: '#D1FAE5', color: '#047857' },
   payment_upcharge_paid: { Icon: CreditCard, bg: '#D1FAE5', color: '#047857' },
+  upcharge_paid: { Icon: CreditCard, bg: '#D1FAE5', color: '#047857' },
   payment_tip_paid: { Icon: Sparkles, bg: '#FEF3C7', color: '#B45309' },
   payment_confirmed: { Icon: CheckCircle2, bg: '#D1FAE5', color: '#047857' },
   payment_underpaid: { Icon: ShieldAlert, bg: '#FEF3C7', color: '#B45309' },

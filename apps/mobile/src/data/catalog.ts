@@ -42,18 +42,18 @@ export type ServiceCategory = {
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { code: 'kamar',          name: 'Kamar Tidur',     description: 'Kamar tidur standar',          icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 120_000, popular: true },
-  { code: 'kamar_km_dalam', name: 'Kamar + Toilet',  description: 'Kamar tidur + kamar mandi',    icon: BedDouble, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 160_000, popular: true },
+  { code: 'kamar_km_dalam', name: 'Kamar + Toilet',  description: 'Kamar tidur + kamar mandi',    icon: BedDouble, iconColor: '#0F766E', iconBg: '#D1FAE5', imageUrl: UNS('photo-1505693416388-ac5ce068fe85'), startingPrice: 160_000, popular: true },
   { code: 'kamar_mandi',    name: 'Toilet',          description: 'Kamar mandi / toilet',         icon: Bath,      iconColor: '#0E7490', iconBg: '#CFFAFE', imageUrl: UNS('photo-1552321554-5fefe8c9ef14'), startingPrice: 120_000 },
-  { code: 'dapur',          name: 'Dapur',           description: 'Area dapur',                   icon: ChefHat,   iconColor: '#B45309', iconBg: '#FEF3C7', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
-  { code: 'ruang_tamu',     name: 'Ruang Tamu',      description: 'Ruang tamu & keluarga',        icon: Sofa,      iconColor: '#7C3AED', iconBg: '#EDE9FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
-  { code: 'pindah_kos',     name: 'Pindah Kamar',     description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen, iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
-  { code: 'ruangan_kosong', name: 'Ruangan Kosong',  description: 'Ruangan kosongan tanpa furniture', icon: DoorOpen, iconColor: '#9333EA', iconBg: '#F3E8FF', imageUrl: UNS('photo-1505691938895-1758d7feb511'), startingPrice: 140_000 },
+  { code: 'dapur',          name: 'Dapur',           description: 'Area dapur',                   icon: ChefHat,   iconColor: '#0284C7', iconBg: '#E0F2FE', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
+  { code: 'ruang_tamu',     name: 'Ruang Tamu',      description: 'Ruang tamu & keluarga',        icon: Sofa,      iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
+  { code: 'pindah_kos',     name: 'Pindah Kamar',    description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen,  iconColor: '#0369A1', iconBg: '#E0F2FE', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
+  { code: 'ruangan_kosong', name: 'Ruangan Kosong',  description: 'Ruangan kosongan tanpa furniture', icon: DoorOpen, iconColor: '#0891B2', iconBg: '#CFFAFE', imageUrl: UNS('photo-1505691938895-1758d7feb511'), startingPrice: 140_000 },
   { code: 'garasi',         name: 'Garasi/Teras',    description: 'Garasi & teras',               icon: Car,       iconColor: '#475569', iconBg: '#E2E8F0', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
-  { code: 'pekarangan',     name: 'Pekarangan',      description: 'Halaman rumah',                icon: Trees,     iconColor: '#15803D', iconBg: '#DCFCE7', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
-  { code: 'ruko',           name: 'Ruko',            description: 'Bersih ruko/toko · per m²',    icon: Building2, iconColor: '#7C2D12', iconBg: '#FED7AA', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 6_000 },
-  { code: 'kantor',         name: 'Kantor',          description: 'Bersih kantor · per m²',       icon: Building2, iconColor: '#075985', iconBg: '#BAE6FD', imageUrl: UNS('photo-1497366754035-f200968a6e72'), startingPrice: 5_500 },
-  { code: 'apartemen',      name: 'Apartemen',       description: 'Bersih apartemen · per m²',    icon: Home,      iconColor: '#5B21B6', iconBg: '#DDD6FE', imageUrl: UNS('photo-1502672260266-1c1ef2d93688'), startingPrice: 8_000 },
-  { code: 'skala_besar',    name: 'Skala Besar',     description: 'Mall, pabrik, hotel · konsultasi', icon: Building2, iconColor: '#7C2D12', iconBg: '#FED7AA', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 0 },
+  { code: 'pekarangan',     name: 'Pekarangan',      description: 'Halaman rumah',                icon: Trees,     iconColor: '#0F766E', iconBg: '#D1FAE5', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
+  { code: 'ruko',           name: 'Ruko',            description: 'Bersih ruko/toko ? per m?',     icon: Building2, iconColor: '#0369A1', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 6_000 },
+  { code: 'kantor',         name: 'Kantor',          description: 'Bersih kantor ? per m?',        icon: Building2, iconColor: '#1D4ED8', iconBg: '#DBEAFE', imageUrl: UNS('photo-1497366754035-f200968a6e72'), startingPrice: 5_500 },
+  { code: 'apartemen',      name: 'Apartemen',       description: 'Bersih apartemen ? per m?',     icon: Home,      iconColor: '#0F766E', iconBg: '#CCFBF1', imageUrl: UNS('photo-1502672260266-1c1ef2d93688'), startingPrice: 8_000 },
+  { code: 'skala_besar',    name: 'Skala Besar',     description: 'Mall, pabrik, hotel ? konsultasi', icon: Building2, iconColor: '#0369A1', iconBg: '#CFFAFE', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 0 },
 ];
 
 // ============ PAKET FIXED COST (sesuai 06-pricing-modes.md) ============
