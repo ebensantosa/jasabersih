@@ -19,6 +19,7 @@ type Overview = {
   users: { total: number; active: number; suspended: number; banned: number; new_30d: number };
   cleaners: { total: number; approved: number; pending: number; under_review: number; rejected: number };
   pending: { kyc_pending: number; withdrawal_pending: number; disputes_open: number; blocked_chat_24h: number; fraud_strikes_24h: number };
+  cleanerWallets: { total_available: number; total_pending_escrow: number; total_pending_withdrawal: number };
   topCleaners: { id: string; name: string | null; phone: string; ratingAvg: number | null; ratingCount: number | null; totalJobsDone: number }[];
   topServices: { name: string; orders: number; gmv: number }[];
   geoBreakdown: { city: string; orders: number; gmv: number }[];
@@ -65,6 +66,25 @@ export default function AdminOverview(): React.ReactElement | null  {
         <GmvCard label="Hari Ini" orders={Number(data.today.orders)} gmv={Number(data.today.gmv)} revenue={Number(data.today.revenue)} />
         <GmvCard label="7 Hari" orders={Number(data.week.orders)} gmv={Number(data.week.gmv)} revenue={Number(data.week.revenue)} />
         <GmvCard label="30 Hari" orders={Number(data.month.orders)} gmv={Number(data.month.gmv)} revenue={Number(data.month.revenue)} />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <FinanceCard
+          label="Saldo Cleaner Siap Cair"
+          value={Number(data.cleanerWallets.total_available)}
+          subtitle="Patokan dana yang perlu siap untuk pencairan cleaner."
+          hint={`Withdraw pending: ${fmtRp(data.cleanerWallets.total_pending_withdrawal)}`}
+        />
+        <FinanceCard
+          label="Escrow Belum Cair"
+          value={Number(data.cleanerWallets.total_pending_escrow)}
+          subtitle="Pendapatan cleaner yang masih menunggu clearance."
+        />
+        <FinanceCard
+          label="Permintaan Penarikan Pending"
+          value={Number(data.cleanerWallets.total_pending_withdrawal)}
+          subtitle="Nominal yang sudah diajukan, menunggu review atau proses."
+        />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -207,6 +227,17 @@ function GmvCard({ label, orders, gmv, revenue }: { label: string; orders: numbe
         <span>•</span>
         <span>Take rate: <b>{fmtRp(revenue)}</b></span>
       </div>
+    </div>
+  );
+}
+
+function FinanceCard({ label, value, subtitle, hint }: { label: string; value: number; subtitle: string; hint?: string }) {
+  return (
+    <div className="rounded-md border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-blue-50 p-4">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">{label}</div>
+      <div className="mt-2 text-2xl font-bold text-slate-900">{fmtRp(value)}</div>
+      <p className="mt-2 text-xs leading-5 text-slate-600">{subtitle}</p>
+      {hint ? <div className="mt-3 text-[11px] font-medium text-blue-700">{hint}</div> : null}
     </div>
   );
 }

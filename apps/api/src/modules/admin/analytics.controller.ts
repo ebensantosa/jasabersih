@@ -19,7 +19,7 @@ export class AdminAnalyticsController {
       todayStats, weekStats, monthStats,
       bookingByStatus, last7Days,
       userCounts, cleanerCounts,
-      pendingActions, topCleaners,
+      pendingActions, cleanerWalletTotals, topCleaners,
       topServices, geoBreakdown,
     ] = await Promise.all([
       this.prisma.$queryRaw<{ orders: number; gmv: number; revenue: number }[]>`
@@ -85,6 +85,40 @@ export class AdminAnalyticsController {
           (SELECT COUNT(*)::int FROM chat_messages WHERE status = 'blocked' AND created_at >= NOW() - INTERVAL '24 hours') AS blocked_chat_24h,
           (SELECT COUNT(*)::int FROM fraud_strikes WHERE created_at >= NOW() - INTERVAL '24 hours') AS fraud_strikes_24h
       `,
+      this.prisma.$queryRaw<{ total_available: number; total_pending_escrow: number; total_pending_withdrawal: number }[]>`
+        WITH cleaner_users AS (
+          SELECT id
+          FROM users
+          WHERE is_freelancer = TRUE
+        ),
+        ledger AS (
+          SELECT
+            wle.user_id,
+            COALESCE(SUM(CASE WHEN wle.account_type = 'earnings' AND wle.status = 'CLEARED' THEN wle.amount ELSE 0 END), 0) AS earnings_cleared,
+            COALESCE(SUM(CASE WHEN wle.account_type = 'earnings' AND wle.status = 'PENDING' THEN wle.amount ELSE 0 END), 0) AS earnings_pending,
+            COALESCE(SUM(CASE WHEN wle.account_type = 'withdrawal' AND wle.status IN ('PENDING', 'CLEARED') THEN wle.amount ELSE 0 END), 0) AS withdrawn,
+            COALESCE(SUM(CASE WHEN wle.account_type = 'admin_debit' AND wle.status IN ('PENDING', 'CLEARED') THEN wle.amount ELSE 0 END), 0) AS admin_debited
+          FROM wallet_ledger_entries wle
+          INNER JOIN cleaner_users cu ON cu.id = wle.user_id
+          GROUP BY wle.user_id
+        ),
+        pending_withdrawals AS (
+          SELECT
+            w.user_id,
+            COALESCE(SUM(w.amount), 0) AS pending_withdrawal
+          FROM withdrawals w
+          INNER JOIN cleaner_users cu ON cu.id = w.user_id
+          WHERE w.review_status = 'pending'
+          GROUP BY w.user_id
+        )
+        SELECT
+          COALESCE(SUM(COALESCE(l.earnings_cleared, 0) - COALESCE(l.withdrawn, 0) - COALESCE(l.admin_debited, 0)), 0) AS total_available,
+          COALESCE(SUM(COALESCE(l.earnings_pending, 0)), 0) AS total_pending_escrow,
+          COALESCE(SUM(COALESCE(pw.pending_withdrawal, 0)), 0) AS total_pending_withdrawal
+        FROM cleaner_users cu
+        LEFT JOIN ledger l ON l.user_id = cu.id
+        LEFT JOIN pending_withdrawals pw ON pw.user_id = cu.id
+      `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
         SELECT u.id, u.name, u.phone,
                cp.rating_avg AS "ratingAvg", cp.rating_count AS "ratingCount",
@@ -127,6 +161,7 @@ export class AdminAnalyticsController {
       users: userCounts[0] ?? { total: 0, active: 0, suspended: 0, banned: 0, new_30d: 0 },
       cleaners: cleanerCounts[0] ?? { total: 0, approved: 0, pending: 0, under_review: 0, rejected: 0 },
       pending: pendingActions[0] ?? { kyc_pending: 0, withdrawal_pending: 0, disputes_open: 0, blocked_chat_24h: 0, fraud_strikes_24h: 0 },
+      cleanerWallets: cleanerWalletTotals[0] ?? { total_available: 0, total_pending_escrow: 0, total_pending_withdrawal: 0 },
       topCleaners,
       topServices,
       geoBreakdown,
