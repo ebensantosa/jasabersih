@@ -220,15 +220,18 @@ export class RatingsController {
     const rows = await this.prisma.$queryRaw<{ id: string; rating: number; review: string | null; createdAt: Date; raterName: string | null }[]>`
       SELECT r.id, r.rating, r.review, r.created_at AS "createdAt",
              COALESCE(
+               NULLIF(BTRIM(cu.name), ''),
                NULLIF(BTRIM(u.name), ''),
                NULLIF(BTRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), ''),
                CASE
-                 WHEN NULLIF(BTRIM(COALESCE(u.phone, '')), '') IS NOT NULL
-                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g'), 6))
+                 WHEN NULLIF(BTRIM(COALESCE(cu.phone, u.phone, '')), '') IS NOT NULL
+                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(COALESCE(cu.phone, u.phone), '[^0-9]', '', 'g'), 6))
                  ELSE 'Pengguna'
                END
              ) AS "raterName"
         FROM ratings r
+        LEFT JOIN bookings b ON b.id = r.booking_id
+        LEFT JOIN users cu ON cu.id = b.customer_id
         LEFT JOIN users u ON u.id = r.rater_id
        WHERE r.ratee_id = ${userId}::uuid
        ORDER BY r.created_at DESC LIMIT 50
