@@ -59,7 +59,7 @@ export class AdminDisputesController {
         LEFT JOIN bookings b ON b.id = d.booking_id
         WHERE d.id = ${id}::uuid LIMIT 1
     `;
-    if (rows.length === 0) throw new NotFoundException('Dispute tidak ditemukan.');
+    if (rows.length === 0) throw new NotFoundException('Sengketa tidak ditemukan.');
     const dispute = rows[0]!;
 
     // Sign URL untuk evidence (kalau format-nya { type, key })
@@ -120,11 +120,11 @@ export class AdminDisputesController {
     @Req() req: Request,
   ) {
     if (!body?.action || !body?.resolution || body.resolution.trim().length < 10) {
-      throw new BadRequestException('Action & resolution (min 10 char) wajib.');
+      throw new BadRequestException('Tindakan dan catatan keputusan (minimal 10 karakter) wajib diisi.');
     }
     const needsAmount = body.action === 'refund_customer' || body.action === 'debit_cleaner';
     if (needsAmount && (!body.payoutAmount || body.payoutAmount <= 0)) {
-      throw new BadRequestException('payoutAmount wajib untuk refund/debit.');
+      throw new BadRequestException('Jumlah kompensasi wajib diisi untuk refund atau potong saldo.');
     }
 
     // Idempotency guard: cegah double-refund kalau admin klik resolve dua kali.
@@ -132,7 +132,7 @@ export class AdminDisputesController {
       SELECT status FROM disputes WHERE id = ${id}::uuid LIMIT 1
     `;
     if (!disputeCheck[0] || disputeCheck[0].status === 'resolved') {
-      throw new BadRequestException('Dispute sudah resolved.');
+      throw new BadRequestException('Sengketa sudah selesai.');
     }
 
     // Get dispute info to know subject
@@ -140,7 +140,7 @@ export class AdminDisputesController {
       SELECT subject_user_id, booking_id FROM disputes WHERE id = ${id}::uuid LIMIT 1
     `;
     const dispute = drow[0];
-    if (!dispute) throw new NotFoundException('Dispute tidak ditemukan.');
+    if (!dispute) throw new NotFoundException('Sengketa tidak ditemukan.');
 
     // Update dispute status
     await this.prisma.$executeRaw`
@@ -184,7 +184,7 @@ export class AdminDisputesController {
       if (customerId) {
         await this.prisma.$executeRaw`
           INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
-          VALUES (${customerId}::uuid, 'refund_credit', ${body.payoutAmount}::bigint, 'dispute', ${id}::uuid, 'CLEARED', NOW(), ${'Refund dispute: ' + body.resolution.slice(0, 200)})
+          VALUES (${customerId}::uuid, 'refund_credit', ${body.payoutAmount}::bigint, 'dispute', ${id}::uuid, 'CLEARED', NOW(), ${'Refund sengketa: ' + body.resolution.slice(0, 200)})
         `;
       }
     }
@@ -224,7 +224,7 @@ export class AdminDisputesController {
                suspended_by = ${admin.id}::uuid
          WHERE id = ${dispute.subject_user_id}::uuid
       `;
-      // Force offline cleaner yang kena suspend supaya gak nongol di pool
+      // Paksa offline cleaner yang kena suspend supaya tidak muncul di pool
       // broadcast & gak bisa accept job baru.
       await this.prisma.$executeRaw`
         UPDATE cleaner_profiles SET is_available = FALSE
@@ -245,7 +245,7 @@ export class AdminDisputesController {
       `;
     }
 
-    // CLEAR escrow earnings cleaner langsung setelah dispute resolved.
+    // CLEAR escrow earnings cleaner langsung setelah sengketa selesai.
     // Sebelumnya pending entries nunggu cron 15-menitan -> cleaner liat saldo
     // masih pending walau dispute udh resolved. Sekarang flip PENDING -> CLEARED
     // utk booking yg disengketakan ini (skip kalau action=warranty_redo_approved
@@ -270,7 +270,7 @@ export class AdminDisputesController {
       ipAddress: req.ip ?? null,
     });
 
-    // Notify both raised_by and subject
+    // Kirim notifikasi ke kedua pihak
     const partyRows = await this.prisma.$queryRaw<{ raised_by: string | null; subject_user_id: string | null }[]>`
       SELECT raised_by, subject_user_id FROM disputes WHERE id = ${id}::uuid LIMIT 1
     `;
