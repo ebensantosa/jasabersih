@@ -377,15 +377,17 @@ function BookingDetail() {
     previousStatusRef.current = next;
   }, [booking?.status, isCleaner, router]);
   const within24h = !!booking?.completedAt && Date.now() - booking.completedAt < 24 * 3600_000;
+  const completedCustomerStateReady = isCleaner || booking?.status !== 'completed' || ratingLoaded;
   // Dispute bisa dilaporkan saat aktif DAN saat baru selesai dalam 24 jam (sebelum customer rate)
   const canDispute = booking
     && !id?.startsWith('bk_')
     && (
       ['matched', 'on_the_way', 'in_progress'].includes(booking.status)
-      || (booking.status === 'completed' && !isCleaner && !hasRated && within24h)
+      || (booking.status === 'completed' && completedCustomerStateReady && !isCleaner && !hasRated && within24h)
     );
   const canReclean = !isCleaner
     && booking?.status === 'completed'
+    && completedCustomerStateReady
     && !hasRated
     && within24h
     && (booking?.recleanCount ?? 0) === 0;
@@ -1516,7 +1518,12 @@ function BookingDetail() {
           <View className="absolute bottom-0 left-0 right-0 border-t border-ink-200 bg-white">
             <SafeAreaView edges={['bottom']}>
               <View className="p-4">
-                {hasRated ? (
+                {!ratingLoaded ? (
+                  <View className="flex-row items-center justify-center gap-2 rounded-2xl border border-ink-200 bg-white py-3.5">
+                    <ActivityIndicator size="small" color="#1D4ED8" />
+                    <Text className="font-semibold text-sm text-ink-700">Memeriksa status ulasan...</Text>
+                  </View>
+                ) : hasRated ? (
                   <>
                     <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-success/10 py-3.5">
                       <CheckCircle2 color="#047857" size={16} strokeWidth={2.4} />
