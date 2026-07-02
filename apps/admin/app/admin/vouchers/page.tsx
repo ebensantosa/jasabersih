@@ -24,7 +24,7 @@ export default function VouchersPage(): React.ReactElement | null  {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Vouchers & Promo</h1>
-          <p className="text-sm text-slate-500">Diskon code untuk customer. Track usage & abuse.</p>
+          <p className="text-sm text-slate-500">Kode diskon untuk customer. Pantau penggunaan dan penyalahgunaan.</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setEditing({})}>Buat Voucher</Button>
       </div>

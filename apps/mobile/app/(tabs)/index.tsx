@@ -282,7 +282,7 @@ export default function Home() {
                   style={isDisabled ? { opacity: 0.5 } : undefined}
                 >
                   <View
-                    style={{ backgroundColor: isDisabled ? '#E2E8F0' : isKonsul ? '#D1FAE5' : s.iconBg }}
+                    style={{ backgroundColor: isDisabled ? '#E0F2FE' : '#E0F2FE' }}
                     className="h-14 w-14 items-center justify-center rounded-2xl"
                   >
                     {isKonsul ? (

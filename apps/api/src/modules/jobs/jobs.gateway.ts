@@ -89,7 +89,24 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: AuthedSocket): void {
-    void client.leave(ROOM_AVAILABLE);
+    void (async () => {
+      try {
+        await client.leave(ROOM_AVAILABLE);
+      } catch {}
+
+      const userId = client.data?.userId;
+      if (!userId) return;
+
+      try {
+        await this.prisma.$executeRaw`
+          UPDATE cleaner_profiles
+             SET is_available = FALSE
+           WHERE user_id = ${userId}::uuid
+        `;
+      } catch (e: any) {
+        this.log.warn(`handleDisconnect offline cleanup failed userId=${userId}: ${e?.message ?? e}`);
+      }
+    })();
   }
 
   @SubscribeMessage('go-online')

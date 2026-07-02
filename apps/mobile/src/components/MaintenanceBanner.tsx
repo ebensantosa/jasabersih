@@ -28,9 +28,8 @@ const DISBURSEMENT_CODES = new Set(['bca', 'mandiri', 'bni', 'bri', 'gopay', 'ov
  * Banner tampil kalau salah satu sumber ada gangguan. Notice manual
  * di-prioritize (admin tau lebih detail), live data jadi fallback.
  *
- * context='withdrawal': filter hanya bank/e-wallet relevan untuk disbursement
- * (sembunyikan Alfamart, Indomaret, Kartu Kredit yang tidak ada kaitannya
- * dengan penarikan saldo cleaner).
+ * context='withdrawal': tampilkan hanya bank/e-wallet relevan untuk penarikan
+ * saldo cleaner (sembunyikan channel payment yang tidak dipakai untuk withdraw).
  */
 export function MaintenanceBanner({ context }: { context?: 'withdrawal' } = {}) {
   const manualNotice = useConfig('payment.maintenance_notice', '');
@@ -69,7 +68,7 @@ export function MaintenanceBanner({ context }: { context?: 'withdrawal' } = {}) 
           <Text className="font-bold text-[12px] text-emerald-900">Semua bank operasional</Text>
           <Text className="font-medium mt-0.5 text-[11px] leading-4 text-emerald-800">
             {context === 'withdrawal'
-              ? 'Tidak ada gangguan. Transfer penarikan ke bank & e-wallet berjalan normal.'
+              ? 'Tidak ada gangguan. Penarikan ke bank & e-wallet yang tersedia berjalan normal.'
               : 'Tidak ada gangguan terdeteksi. Transfer ke semua bank & e-wallet berjalan normal.'}
           </Text>
         </View>
@@ -88,8 +87,8 @@ export function MaintenanceBanner({ context }: { context?: 'withdrawal' } = {}) 
       </View>
       <View className="flex-1">
         <Text className="font-bold text-[12px] text-amber-900">
-            {context === 'withdrawal' ? 'Gangguan Bank / Transfer' : 'Gangguan Bank / Pembayaran'}
-          </Text>
+          {context === 'withdrawal' ? 'Gangguan Penarikan' : 'Gangguan Bank / Pembayaran'}
+        </Text>
         {hasManual && (
           <Text className="font-medium mt-0.5 text-[11px] leading-4 text-amber-800">{manualNotice}</Text>
         )}

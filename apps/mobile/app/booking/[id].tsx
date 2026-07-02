@@ -168,12 +168,13 @@ function BookingDetail() {
   const [recleanReason, setRecleanReason] = useState('');
   const [recleanSubmitting, setRecleanSubmitting] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  const [ratingLoaded, setRatingLoaded] = useState(false);
   const [bookingRating, setBookingRating] = useState<BookingRating>(null);
   const [advancing, setAdvancing] = useState(false);
   const [startCountdown, setStartCountdown] = useState<number | null>(null);
   const [nowTs, setNowTs] = useState(Date.now());
   const [photoSummary, setPhotoSummary] = useState({ beforeCount: 0, afterCount: 0, damageCount: 0 });
-  const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string }[]>([]);
+  const [upcharges, setUpcharges] = useState<{ id: string; amount: number; reason: string; photoUrl: string | null; status: string; createdAt: string; cleanerShare?: number; platformFee?: number; sharePct?: number }[]>([]);
   const [showUpchargeModal, setShowUpchargeModal] = useState(false);
   const [extensionRequests, setExtensionRequests] = useState<Array<{
     id: string; hoursRequested: number; pricePerHour: number; totalPrice: number;
@@ -348,6 +349,7 @@ function BookingDetail() {
   useFocusEffect(
     useCallback(() => {
       if (!id || id.startsWith('bk_') || booking?.status !== 'completed') return;
+      setRatingLoaded(false);
       let stale = false;
       api.get(`/ratings/booking/${id}`).then((r) => {
         if (stale) return;
@@ -357,7 +359,10 @@ function BookingDetail() {
         // (hasRated sudah true secara lokal), response stale tidak boleh reset ke false.
         setHasRated((prev) => prev || !!(data && typeof data.rating === 'number' && data.rating > 0));
         if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
-      }).catch(() => {});
+      }).catch(() => {})
+        .finally(() => {
+          if (!stale) setRatingLoaded(true);
+        });
       return () => { stale = true; };
     }, [id, booking?.status])
   );
@@ -632,6 +637,16 @@ function BookingDetail() {
       : booking.pricingMode === 'hourly'
         ? `Per Jam${booking.hourlyTierName ? ` · ${booking.hourlyTierName}` : ''}${booking.hours ? ` × ${booking.hours}j` : ''}`
         : 'Konsultasi WhatsApp';
+  const scrollBottomPadding = (() => {
+    if (booking.status === 'completed') return isCleaner ? 220 : 240;
+    if (isCleaner) {
+      if (booking.status === 'in_progress') return 300;
+      if (booking.status === 'on_the_way') return 260;
+      return 230;
+    }
+    if (booking.status === 'pending_payment') return 200;
+    return 220;
+  })();
 
   // Full-screen searching mode: pesanan sudah dibayar - tidak ada cancel.
   // SearchingCleanerView handle gradient + SafeArea + tombol footer inline
@@ -671,7 +686,7 @@ function BookingDetail() {
           </View>
         </SafeAreaView>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: booking.status === 'completed' ? 200 : 120 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingBottom: scrollBottomPadding }} showsVerticalScrollIndicator={false}>
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
             <View className="flex-row items-center gap-3">
               <CategoryIcon
@@ -733,7 +748,14 @@ function BookingDetail() {
               <Text className="font-bold text-base text-brand-700">›</Text>
             </Pressable>
           )}
-          {!isCleaner && booking.status === 'completed' && !hasRated && (
+          {!isCleaner && booking.status === 'completed' && !ratingLoaded ? (
+            <View className="mx-4 mt-3 rounded-2xl border border-ink-200 bg-white p-4">
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator size="small" color="#1D4ED8" />
+                <Text className="font-semibold text-sm text-ink-700">Memeriksa status ulasan...</Text>
+              </View>
+            </View>
+          ) : !isCleaner && booking.status === 'completed' && !hasRated && (
             <View className="mx-4 mt-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4">
               <View className="flex-row items-center gap-2">
                 <Text className="text-base">✓</Text>
@@ -1250,7 +1272,18 @@ function BookingDetail() {
                 return (
                   <View key={u.id} className={`mb-2 rounded-xl border p-3 ${isPending ? 'border-amber-300 bg-amber-50' : u.status === 'approved' ? 'border-emerald-300 bg-emerald-50' : 'border-ink-200 bg-ink-50'}`}>
                     <View className="flex-row items-center justify-between">
-                      <Text className="font-bold text-sm text-ink-900">+Rp {Number(u.amount).toLocaleString('id-ID')}</Text>
+                      <View>
+                        <Text className="font-bold text-sm text-ink-900">
+                          {isCleaner && Number(u.cleanerShare ?? 0) > 0
+                            ? `Kamu terima Rp ${Number(u.cleanerShare ?? 0).toLocaleString('id-ID')}`
+                            : `+Rp ${Number(u.amount).toLocaleString('id-ID')}`}
+                        </Text>
+                        {isCleaner && Number(u.cleanerShare ?? 0) > 0 && (
+                          <Text className="font-medium mt-0.5 text-[10px] text-ink-500">
+                            Total customer: Rp {Number(u.amount).toLocaleString('id-ID')}
+                          </Text>
+                        )}
+                      </View>
                       <Text className="font-bold text-[10px] uppercase tracking-wider">
                         {u.status === 'pending' ? '⏳ Menunggu' : u.status === 'approved' ? '✓ Disetujui' : '✕ Ditolak'}
                       </Text>
@@ -1464,11 +1497,11 @@ function BookingDetail() {
                         <Text className="font-bold text-sm text-white">{advancing ? t('auth.processing') : t('cleaner.finish')}</Text>
                       </Pressable>
                       {!cleanerCanFinish && pendingUpchargeHold ? (
-                        <Text className="mt-1 text-center text-[10px] text-amber-700">
+                        <Text className="mt-1.5 text-center text-[9px] leading-4 text-amber-700">
                           Masih ada charge tambahan menunggu respon customer. Tombol selesai dibuka otomatis setelah 5 menit bila belum dijawab.
                         </Text>
                       ) : !cleanerCanFinish && (
-                        <Text className="mt-1 text-center text-[10px] text-amber-700">
+                        <Text className="mt-1.5 text-center text-[9px] leading-4 text-amber-700">
                           Upload foto hasil kerja dulu sebelum menyelesaikan job.
                         </Text>
                       )}

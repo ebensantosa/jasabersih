@@ -43,22 +43,22 @@ export default function AdminOverview(): React.ReactElement | null  {
   }
   useEffect(() => { void load(); }, []);
 
-  if (loading) return <div className="py-20 text-center text-sm text-slate-500">Memuat analytics…</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-slate-500">Memuat analitik...</div>;
   if (!data) return <div className="py-20 text-center text-sm text-slate-500">Data tidak tersedia.</div>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
-        <p className="text-sm text-slate-500">Realtime metrics — refresh untuk update terbaru.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Ringkasan</h1>
+        <p className="text-sm text-slate-500">Metrik realtime - refresh untuk update terbaru.</p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <PendingCard icon={BadgeCheck} label="KYC Pending" count={Number(data.pending.kyc_pending)} href="/admin/kyc" color="amber" />
-        <PendingCard icon={Wallet} label="Withdrawal" count={Number(data.pending.withdrawal_pending)} href="/admin/wallet" color="blue" />
-        <PendingCard icon={ShieldAlert} label="Disputes Open" count={Number(data.pending.disputes_open)} href="/admin/disputes" color="red" />
-        <PendingCard icon={MessageSquare} label="Blocked Chat 24h" count={Number(data.pending.blocked_chat_24h)} href="/admin/chat" color="purple" />
-        <PendingCard icon={AlertTriangle} label="Fraud Strikes 24h" count={Number(data.pending.fraud_strikes_24h)} href="/admin/fraud" color="red" />
+        <PendingCard icon={BadgeCheck} label="KYC Tertunda" count={Number(data.pending.kyc_pending)} href="/admin/kyc" color="amber" />
+        <PendingCard icon={Wallet} label="Penarikan" count={Number(data.pending.withdrawal_pending)} href="/admin/wallet" color="blue" />
+        <PendingCard icon={ShieldAlert} label="Sengketa Terbuka" count={Number(data.pending.disputes_open)} href="/admin/disputes" color="red" />
+        <PendingCard icon={MessageSquare} label="Chat Diblokir 24 jam" count={Number(data.pending.blocked_chat_24h)} href="/admin/chat" color="purple" />
+        <PendingCard icon={AlertTriangle} label="Strike Fraud 24 jam" count={Number(data.pending.fraud_strikes_24h)} href="/admin/fraud" color="red" />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -70,7 +70,7 @@ export default function AdminOverview(): React.ReactElement | null  {
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-md border bg-white p-4 md:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Trend 7 Hari Terakhir</h2>
+            <h2 className="font-semibold">Tren 7 Hari Terakhir</h2>
             <TrendingUp size={16} className="text-slate-500" />
           </div>
           <TrendBars data={data.last7Days} />
@@ -88,33 +88,33 @@ export default function AdminOverview(): React.ReactElement | null  {
         <div className="rounded-md border bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2"><Users size={16} /> Customer</h2>
-            <Link href="/admin/users" className="text-xs text-blue-700 hover:underline">Lihat semua →</Link>
+            <Link href="/admin/users" className="text-xs text-blue-700 hover:underline">Lihat semua</Link>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Stat label="Total" value={Number(data.users.total)} />
             <Stat label="Baru 30 hari" value={Number(data.users.new_30d)} positive />
-            <Stat label="Suspended" value={Number(data.users.suspended)} />
-            <Stat label="Banned" value={Number(data.users.banned)} negative />
+            <Stat label="Ditangguhkan" value={Number(data.users.suspended)} />
+            <Stat label="Diblokir" value={Number(data.users.banned)} negative />
           </div>
         </div>
 
         <div className="rounded-md border bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2"><BadgeCheck size={16} /> Cleaner</h2>
-            <Link href="/admin/kyc" className="text-xs text-blue-700 hover:underline">KYC review →</Link>
+            <Link href="/admin/kyc" className="text-xs text-blue-700 hover:underline">Tinjau KYC</Link>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <Stat label="Approved" value={Number(data.cleaners.approved)} positive />
-            <Stat label="Under Review" value={Number(data.cleaners.under_review)} />
-            <Stat label="Pending" value={Number(data.cleaners.pending)} />
-            <Stat label="Rejected" value={Number(data.cleaners.rejected)} negative />
+            <Stat label="Disetujui" value={Number(data.cleaners.approved)} positive />
+            <Stat label="Sedang Ditinjau" value={Number(data.cleaners.under_review)} />
+            <Stat label="Tertunda" value={Number(data.cleaners.pending)} />
+            <Stat label="Ditolak" value={Number(data.cleaners.rejected)} negative />
           </div>
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-md border bg-white p-4">
-          <h2 className="mb-3 font-semibold flex items-center gap-2"><Star size={16} /> Top Cleaner</h2>
+          <h2 className="mb-3 font-semibold flex items-center gap-2"><Star size={16} /> Cleaner Teratas</h2>
           {data.topCleaners.length === 0 ? (
             <p className="py-6 text-center text-xs text-slate-500">Belum ada data.</p>
           ) : (

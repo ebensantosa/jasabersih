@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../lib/api';
 import { getChatSocket, type ChatMessage, type SendResult } from '../lib/chatSocket';
-import { shouldPlayChatSound } from '../lib/chatSoundDedup';
 import { playOneShotSound, prepareAudiblePlayback } from '../lib/sound';
 import { useUserStore } from '../stores/user';
 
@@ -13,7 +12,6 @@ export function useChatSocket(bookingId: string | undefined) {
   const [status, setStatus] = useState<Status>('connecting');
   const [otherTyping, setOtherTyping] = useState(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const playedMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Load history via REST first
   useEffect(() => {
@@ -29,7 +27,6 @@ export function useChatSocket(bookingId: string | undefined) {
             messageType: m.messageType, content: m.content, attachmentUrl: m.attachmentUrl,
             createdAt: m.createdAt, readAt: m.readAt ?? null, isAdmin: !!m.isAdmin,
           }));
-          playedMessageIdsRef.current = new Set(mapped.map((m) => m.id));
           setMessages(mapped);
         }
       } catch {
@@ -56,9 +53,7 @@ export function useChatSocket(bookingId: string | undefined) {
       if (msg.bookingId !== bookingId) return;
       const mapped: ChatMessage = { ...msg, isAdmin: !!msg.isAdmin };
       const myUserId = useUserStore.getState().profile?.id ?? null;
-      const isNewMessage = !playedMessageIdsRef.current.has(mapped.id);
-      if (isNewMessage) playedMessageIdsRef.current.add(mapped.id);
-      if (isNewMessage && mapped.senderId && mapped.senderId !== myUserId && shouldPlayChatSound(mapped.id)) {
+      if (mapped.senderId && mapped.senderId !== myUserId) {
         void prepareAudiblePlayback()
           .then(() => playOneShotSound(require('../../assets/sounds/chat_message.wav'), 0.75))
           .catch(() => {});

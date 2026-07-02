@@ -13,10 +13,10 @@ type Detail = {
 };
 
 const TABS: Array<{ key: 'pending' | 'under_review' | 'approved' | 'rejected'; label: string }> = [
-  { key: 'pending', label: 'Pending' },
-  { key: 'under_review', label: 'Under Review' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'rejected', label: 'Rejected' },
+  { key: 'pending', label: 'Tertunda' },
+  { key: 'under_review', label: 'Sedang Ditinjau' },
+  { key: 'approved', label: 'Disetujui' },
+  { key: 'rejected', label: 'Ditolak' },
 ];
 
 export default function KycPage(): React.ReactElement | null  {
@@ -300,7 +300,7 @@ function KycDetailModal({ data, onClose, onDone }: { data: Detail; onClose: () =
                 <img src={d.viewUrl} alt={d.doc_type ?? 'doc'} className="h-64 w-full bg-slate-100 object-contain" />
               ) : (
                 <div className="bg-slate-100 p-6 text-center">
-                  <a href={d.viewUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">Open file</a>
+                  <a href={d.viewUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">Buka file</a>
                 </div>
               )}
               <div className="flex items-center justify-between px-3 py-2 text-xs">

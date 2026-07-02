@@ -33,10 +33,10 @@ export default function WalletPage(): React.ReactElement | null  {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">Wallet & Withdrawal</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Dompet & Penarikan</h1>
       <p className="text-sm text-slate-500">
-        Cleaner submit -&gt; otomatis transfer ke rekening tujuan. Yg masuk tab <b>Pending</b> = auto-transfer
-        gagal / belum verified / butuh review. Admin proses manual via bank/wallet sendiri, lalu klik
+        Cleaner submit -&gt; otomatis transfer ke rekening tujuan. Yang masuk tab <b>Tertunda</b> = auto-transfer
+        gagal / belum terverifikasi / butuh peninjauan. Admin proses manual via bank/wallet sendiri, lalu klik
         <b>Manual</b> (input ref transfer). Tombol <b>Retry Auto</b> hanya kalau yakin masalah sistem pembayaran
         udh recover.
       </p>
@@ -148,14 +148,14 @@ function ApproveModal({ w, onClose, onDone }: { w: any; onClose: () => void; onD
     setErrors(e);
     if (Object.keys(e).length) return;
     setBusy(true);
-    try { await api.admin.approveWithdrawal(w.id, ref, note || undefined); toast.success('Withdrawal di-approve.'); onDone(); }
+    try { await api.admin.approveWithdrawal(w.id, ref, note || undefined); toast.success('Penarikan disetujui.'); onDone(); }
     catch (e: any) { toast.error(e?.message); }
     finally { setBusy(false); }
   }
 
   return (
     <Modal
-      title={`Approve Withdrawal — ${w.userName ?? '—'}`}
+      title={`Setujui penarikan — ${w.userName ?? '—'}`}
       open={true}
       onClose={onClose}
       footer={
@@ -189,14 +189,14 @@ function RejectModal({ w, onClose, onDone }: { w: any; onClose: () => void; onDo
     setErrors(e);
     if (Object.keys(e).length) return;
     setBusy(true);
-    try { await api.admin.rejectWithdrawal(w.id, reason); toast.success('Withdrawal di-reject.'); onDone(); }
+    try { await api.admin.rejectWithdrawal(w.id, reason); toast.success('Penarikan ditolak.'); onDone(); }
     catch (e: any) { toast.error(e?.message); }
     finally { setBusy(false); }
   }
 
   return (
     <Modal
-      title={`Reject Withdrawal — ${w.userName ?? '—'}`}
+      title={`Tolak penarikan — ${w.userName ?? '—'}`}
       open={true}
       onClose={onClose}
       footer={

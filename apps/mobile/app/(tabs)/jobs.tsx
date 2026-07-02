@@ -71,10 +71,10 @@ function JobsScreen() {
   const [active, setActive] = useState<ActiveJob[]>([]);
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [online, setOnline] = useState(false);
   const cleanerAreas = useCleanerStore((s) => s.serviceAreas);
   const setAreas = useCleanerStore((s) => s.setAreas);
   const setStoreAvailable = useCleanerStore((s) => s.setIsAvailable);
+  const online = useCleanerStore((s) => s.isAvailable);
   const noAreaPicked = cleanerAreas.length === 0;
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -93,8 +93,9 @@ function JobsScreen() {
     api.get('/cleaner/profile').then((r) => {
       const d = r.data?.data ?? r.data;
       const serverOnline = !!d?.isAvailable;
-      setOnline(serverOnline);
-      setStoreAvailable(serverOnline);
+      // Jangan matikan status lokal kalau server kebaca false sementara.
+      // Server boleh menyalakan ulang kalau true, tapi tidak memaksa off.
+      if (serverOnline) setStoreAvailable(true);
       const serverAreas = Array.isArray(d?.serviceAreas) ? d.serviceAreas.filter((a: any) => typeof a === 'string') : [];
       // Server is source of truth: kalau local & server beda, server yang menang.
       const localAreas = useCleanerStore.getState().serviceAreas;
@@ -147,7 +148,6 @@ function JobsScreen() {
   async function doToggle(next: boolean) {
     try {
       await api.patch('/cleaner/profile', { isAvailable: next });
-      setOnline(next);
       setStoreAvailable(next);
       if (!next) setAvailable([]);
       toast.success(next ? 'Status: Online - siap terima job' : 'Status: Offline');
@@ -190,7 +190,6 @@ function JobsScreen() {
       toast.success(`Foto tersimpan (${formatBytes(c.size)})`);
       setShowPhotoModal(false);
       await api.patch('/cleaner/profile', { isAvailable: true });
-      setOnline(true);
       setStoreAvailable(true);
       toast.success('Status: Online - siap terima job');
     } catch (e: any) {

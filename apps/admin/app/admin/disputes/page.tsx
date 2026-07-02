@@ -81,7 +81,7 @@ function disputeActionOptions(type: string | null | undefined) {
 
   if (looksCustomerAtFault && !looksCleanerAtFault) {
     return [
-      { value: 'suspend_subject', label: 'Suspend pihak yang diperiksa' },
+      { value: 'suspend_subject', label: 'Bekukan akun pihak terlapor' },
       { value: 'refund_customer', label: 'Kompensasi ke pelapor' },
       ...common,
       { value: 'warranty_redo_approved', label: 'Setujui pengerjaan ulang (garansi)' },
@@ -90,9 +90,9 @@ function disputeActionOptions(type: string | null | undefined) {
 
   if (looksCleanerAtFault) {
     return [
-      { value: 'debit_cleaner', label: 'Potong saldo pihak yang diperiksa' },
+      { value: 'debit_cleaner', label: 'Potong saldo pihak terlapor' },
       { value: 'refund_customer', label: 'Kompensasi ke pelapor' },
-      { value: 'suspend_subject', label: 'Suspend pihak yang diperiksa' },
+      { value: 'suspend_subject', label: 'Bekukan akun pihak terlapor' },
       ...common,
       { value: 'warranty_redo_approved', label: 'Setujui pengerjaan ulang (garansi)' },
     ];
@@ -100,8 +100,8 @@ function disputeActionOptions(type: string | null | undefined) {
 
   return [
     { value: 'refund_customer', label: 'Kompensasi ke pelapor' },
-    { value: 'debit_cleaner', label: 'Potong saldo pihak yang diperiksa' },
-    { value: 'suspend_subject', label: 'Suspend pihak yang diperiksa' },
+    { value: 'debit_cleaner', label: 'Potong saldo pihak terlapor' },
+    { value: 'suspend_subject', label: 'Bekukan akun pihak terlapor' },
     ...common,
     { value: 'warranty_redo_approved', label: 'Setujui pengerjaan ulang (garansi)' },
   ];
@@ -157,7 +157,7 @@ export default function DisputesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Sengketa</h1>
           <p className="text-sm text-slate-500">
             Pengaduan antara customer dan cleaner. Selesaikan dengan kompensasi, potong saldo,
-            suspend, atau pengerjaan ulang.
+            bekukan akun, atau pengerjaan ulang.
           </p>
         </div>
       </div>

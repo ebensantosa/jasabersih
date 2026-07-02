@@ -1,11 +1,10 @@
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+﻿import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, CreditCard, Plus, User, Wallet, Zap } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Field, validateMinLength } from '../../src/components/Field';
-import { MaintenanceBanner } from '../../src/components/MaintenanceBanner';
 import { formatRupiah } from '../../src/data/catalog';
 import { api } from '../../src/lib/api';
 import { MIN_WITHDRAW, useCleanerWalletStore } from '../../src/stores/cleanerWallet';
@@ -132,7 +131,7 @@ function Withdraw() {
   function doSubmit() {
     setConfirmModal(false);
     setSubmitting(true);
-    const destination = { bankAccountId: selectedBankAccountId };
+    const destination = { bankAccountId: selectedBankAccountId! };
     requestWithdrawalApi(amount, destination)
       .then((res) => {
         addWithdrawal(amount, {
@@ -163,7 +162,7 @@ function Withdraw() {
             </Text>
             {selectedAccount && (
               <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#475569', marginBottom: 4 }}>
-                Tujuan: {selectedAccount.bankCode.toUpperCase()} · {selectedAccount.accountNumber}
+                Rekening terpilih: {selectedAccount.bankCode.toUpperCase()} · {selectedAccount.accountHolderName}
               </Text>
             )}
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#64748B', marginBottom: 20 }}>
@@ -200,7 +199,7 @@ function Withdraw() {
               <>
                 {successModal.fee ? (
                   <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#64748B', textAlign: 'center', marginBottom: 4 }}>
-                    Biaya admin: {formatRupiah(successModal.fee)} · Diterima: {formatRupiah(successModal.transferAmount ?? (successModal.amount - (successModal.fee ?? 0)))}
+                    Biaya admin: {formatRupiah(successModal.fee)} Â· Diterima: {formatRupiah(successModal.transferAmount ?? (successModal.amount - (successModal.fee ?? 0)))}
                   </Text>
                 ) : null}
                 <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20 }}>
@@ -238,13 +237,6 @@ function Withdraw() {
         </SafeAreaView>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
-          {/* Banner gangguan bank - admin set di app_config:
-              'payment.maintenance_notice'. Cleaner aware kalau transfer
-              mungkin tertunda karena bank maintenance. */}
-          <View className="mb-3">
-            <MaintenanceBanner context="withdrawal" />
-          </View>
-
           {/* Verified accounts (preferred) */}
           {!loadingAccounts && verifiedAccounts.length > 0 && (
             <Section title="Rekening Tersimpan (Auto-Transfer)">
@@ -477,7 +469,7 @@ function Withdraw() {
                 </View>
               </View>
               <Text className="font-sans mt-2 text-[10px] text-ink-500">
-                Tujuan: {selectedAccount?.bankCode.toUpperCase() ?? method.label} � {selectedAccount?.accountNumber ?? '(pilih rekening dulu)'} a.n. {selectedAccount?.accountHolderName ?? '...'}
+                Rekening terpilih: {selectedAccount?.bankCode.toUpperCase() ?? method.label} · {selectedAccount?.accountHolderName ?? '(pilih rekening dulu)'}
               </Text>
             </View>
           )}
@@ -547,4 +539,6 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 
 
 export default withAuth(withCleanerKyc(Withdraw), 'freelancer');
+
+
 

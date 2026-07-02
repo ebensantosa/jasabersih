@@ -232,11 +232,23 @@ export class RatingsController {
     const rows = await this.prisma.$queryRaw<{ id: string; rating: number; review: string | null; createdAt: Date; raterName: string | null }[]>`
       SELECT r.id, r.rating, r.review, r.created_at AS "createdAt",
              COALESCE(
-               NULLIF(BTRIM(r.rater_name_snapshot), ''),
-               NULLIF(BTRIM(b.form_snapshot->>'customerName'), ''),
-               NULLIF(BTRIM(cu.name), ''),
-               NULLIF(BTRIM(u.name), ''),
-               NULLIF(BTRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), ''),
+               CASE
+                 WHEN LOWER(BTRIM(COALESCE(cu.name, ''))) IN ('pengguna', 'pelanggan', 'customer') THEN NULL
+                 ELSE NULLIF(BTRIM(cu.name), '')
+               END,
+               CASE
+                 WHEN LOWER(BTRIM(COALESCE(u.name, ''))) IN ('pengguna', 'pelanggan', 'customer') THEN NULL
+                 ELSE NULLIF(BTRIM(u.name), '')
+               END,
+               CASE
+                 WHEN LOWER(BTRIM(COALESCE(b.form_snapshot->>'customerName', ''))) IN ('pengguna', 'pelanggan', 'customer') THEN NULL
+                 ELSE NULLIF(BTRIM(b.form_snapshot->>'customerName'), '')
+               END,
+               CASE
+                 WHEN LOWER(BTRIM(COALESCE(r.rater_name_snapshot, ''))) IN ('pengguna', 'pelanggan', 'customer') THEN NULL
+                 ELSE NULLIF(BTRIM(r.rater_name_snapshot), '')
+               END,
+               NULLIF(BTRIM(SPLIT_PART(COALESCE(cu.email, u.email, ''), '@', 1)), ''),
                CASE
                  WHEN NULLIF(BTRIM(COALESCE(r.rater_phone_snapshot, b.form_snapshot->>'customerPhone', cu.phone, u.phone, '')), '') IS NOT NULL
                    THEN CONCAT('+', RIGHT(REGEXP_REPLACE(COALESCE(r.rater_phone_snapshot, b.form_snapshot->>'customerPhone', cu.phone, u.phone), '[^0-9]', '', 'g'), 6))

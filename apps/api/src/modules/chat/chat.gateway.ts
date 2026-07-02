@@ -264,13 +264,58 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(roomName(bookingId)).emit('read', { bookingId, readerId, readAt: new Date().toISOString() });
   }
 
+  // Persist + broadcast log sistem ke room booking.
+  async createSystemMessage(payload: {
+    bookingId: string;
+    senderId: string;
+    recipientId: string | null;
+    content: string;
+    messageType: 'system' | 'call_missed' | 'call_ended';
+    attachmentUrl?: string | null;
+  }): Promise<{ id: string; createdAt: string } | null> {
+    const inserted = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
+      INSERT INTO chat_messages (booking_id, sender_id, recipient_id, message_type, content, attachment_url, status, block_reason)
+      VALUES (
+        ${payload.bookingId}::uuid,
+        ${payload.senderId}::uuid,
+        ${payload.recipientId ?? null}::uuid,
+        ${payload.messageType},
+        ${payload.content},
+        ${payload.attachmentUrl ?? null},
+        'sent',
+        NULL
+      )
+      RETURNING id, created_at
+    `;
+    const msg = inserted[0];
+    if (!msg) return null;
+
+    this.server.to(roomName(payload.bookingId)).emit('message', {
+      id: msg.id,
+      bookingId: payload.bookingId,
+      senderId: payload.senderId,
+      recipientId: payload.recipientId,
+      messageType: payload.messageType,
+      content: payload.content,
+      attachmentUrl: payload.attachmentUrl ?? null,
+      createdAt: msg.created_at.toISOString(),
+      isAdmin: false,
+    });
+
+    if (payload.recipientId) {
+      this.jobsGateway.emitToUser(payload.recipientId, 'chat:unread', { bookingId: payload.bookingId });
+    }
+
+    return { id: msg.id, createdAt: msg.created_at.toISOString() };
+  }
+
   // Broadcast pesan chat normal dari service lain (mis. call log)
   broadcastChatMessage(payload: {
     id: string;
     bookingId: string;
     senderId: string;
     recipientId: string | null;
-    messageType: 'text' | 'image' | 'call_missed' | 'call_ended';
+    messageType: 'text' | 'image' | 'call_missed' | 'call_ended' | 'system';
     content: string;
     attachmentUrl?: string | null;
     createdAt: string;

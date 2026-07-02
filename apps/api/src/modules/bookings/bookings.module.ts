@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { ChatModule } from '../chat/chat.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ReferralModule } from '../referral/referral.module';
 import { StorageModule } from '../storage/storage.module';
@@ -15,7 +16,7 @@ import { SubscriptionWakeupService } from './subscription-wakeup.service';
 import { TravelFeeService } from './travel-fee.service';
 
 @Module({
-  imports: [AuthModule, NotificationsModule, StorageModule, ReferralModule],
+  imports: [AuthModule, NotificationsModule, StorageModule, ReferralModule, ChatModule],
   controllers: [BookingsController],
   providers: [
     SearchTimeoutService,

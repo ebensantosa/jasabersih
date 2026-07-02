@@ -795,7 +795,7 @@ function Chat() {
                 ))}
               </ScrollView>
               {quickReplyLocked && (
-                <Text className="mt-1 text-[10px] text-ink-400">Balasan cepat sedang jeda sebentar supaya tidak spam.</Text>
+                <Text className="mt-1 text-[10px] text-ink-400">Tunggu sebentar sebelum kirim balasan cepat lagi.</Text>
               )}
             </View>
             <View className="flex-row items-center gap-2 px-3 py-2">
@@ -923,10 +923,11 @@ function Bubble({
   const isImage = (messageType === 'image' || looksLikeImageUrl) && (attachmentUrl || text);
   const imageUrl = attachmentUrl ?? text;
   const isCallMessage = messageType === 'call_missed' || messageType === 'call_ended';
-  const callText = isCallMessage ? text.replace(/^📞\s*/, '').trim() : text;
-  const bubbleBg = isMe ? 'bg-brand-600' : isAdmin ? 'bg-amber-50' : 'bg-white';
+  const isSystemMessage = messageType === 'system';
+  const callText = text;
+  const bubbleBg = isMe ? 'bg-brand-600' : isSystemMessage ? 'bg-slate-50' : isAdmin ? 'bg-amber-50' : 'bg-white';
   const textColor = isMe ? 'text-white' : 'text-ink-800';
-  const borderStyle = isMe ? {} : isAdmin ? { borderWidth: 1, borderColor: '#FDE68A' } : { borderWidth: 1, borderColor: '#E2E8F0' };
+  const borderStyle = isMe ? {} : isSystemMessage ? { borderWidth: 1, borderColor: '#CBD5E1' } : isAdmin ? { borderWidth: 1, borderColor: '#FDE68A' } : { borderWidth: 1, borderColor: '#E2E8F0' };
 
   // Call history pill — centered, not left/right aligned
   if (isCallMessage) {
@@ -958,6 +959,39 @@ function Bubble({
             }}
           >
             {callText}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 10, color: '#94A3B8' }}>{t}</Text>
+      </View>
+    );
+  }
+
+  if (isSystemMessage) {
+    return (
+      <View style={{ alignSelf: 'center', alignItems: 'center', gap: 2, maxWidth: '92%' }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: '#F8FAFC',
+            borderWidth: 1,
+            borderColor: '#CBD5E1',
+            borderRadius: 16,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <ClipboardList size={13} color="#2563EB" />
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: '#0F172A',
+              textAlign: 'center',
+            }}
+          >
+            {text}
           </Text>
         </View>
         <Text style={{ fontSize: 10, color: '#94A3B8' }}>{t}</Text>
@@ -1027,7 +1061,7 @@ function QuickReplyChip({
       }}
       disabled={disabled}
       style={{ transform: [{ scale }] }}
-      className="rounded-full border border-brand-200 bg-brand-50 px-3 py-2 disabled:opacity-40"
+      className="rounded-full border border-brand-200 bg-white px-3.5 py-2.5 shadow-sm disabled:opacity-40"
     >
       <Text className="font-semibold text-[11px] text-brand-700">{label}</Text>
     </AnimatedPressable>

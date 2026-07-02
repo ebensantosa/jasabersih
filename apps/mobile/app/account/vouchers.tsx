@@ -68,6 +68,13 @@ function VouchersScreen() {
           <Text className="font-bold flex-1 text-base text-ink-900">Voucher Saya</Text>
         </View>
 
+        <View className="mx-3 mt-3 rounded-2xl border border-brand-200 bg-brand-50 p-3">
+          <Text className="font-semibold text-[11px] uppercase tracking-wider text-brand-700">Cara pakai</Text>
+          <Text className="mt-1 text-[11px] leading-4 text-ink-600">
+            Voucher paling cepat dipakai langsung di halaman checkout. Di sini kamu bisa lihat detail, salin kode, dan cek riwayat pemakaian.
+          </Text>
+        </View>
+
         <View className="flex-row gap-1 border-b border-ink-100 bg-white px-2">
           <TabBtn label={`Tersedia (${available.length})`} active={tab === 'available'} onPress={() => setTab('available')} />
           <TabBtn label={`Riwayat (${used.length})`} active={tab === 'used'} onPress={() => setTab('used')} />

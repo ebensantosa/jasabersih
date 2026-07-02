@@ -140,15 +140,27 @@ export function DisputeFormModal({
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-            <View className="rounded-2xl bg-amber-50 p-4">
-              <View className="flex-row items-start gap-2">
-                <ShieldInfo />
-                <View className="flex-1">
-                  <Text className="font-bold text-sm text-amber-900">Voucher Rp 50.000</Text>
-                  <Text className="font-sans mt-1 text-[11px] leading-4 text-amber-900">{introBody}</Text>
+            {isCleaner ? (
+              <View className="rounded-2xl bg-amber-50 p-4">
+                <View className="flex-row items-start gap-2">
+                  <ShieldInfo />
+                  <View className="flex-1">
+                    <Text className="font-bold text-sm text-amber-900">Laporkan kendala kerja</Text>
+                    <Text className="font-sans mt-1 text-[11px] leading-4 text-amber-900">{introBody}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            ) : (
+              <View className="rounded-2xl bg-amber-50 p-4">
+                <View className="flex-row items-start gap-2">
+                  <ShieldInfo />
+                  <View className="flex-1">
+                    <Text className="font-bold text-sm text-amber-900">Voucher Rp 50.000</Text>
+                    <Text className="font-sans mt-1 text-[11px] leading-4 text-amber-900">{introBody}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             <View className="rounded-2xl bg-white p-4">
               <Text className="font-bold mb-1 text-sm text-ink-900">{introTitle}</Text>
@@ -230,7 +242,7 @@ export function DisputeFormModal({
               <Text className="font-bold text-[11px] text-amber-900">Penting</Text>
               <Text className="font-sans mt-1 text-[11px] text-amber-900">
                 {isCleaner
-                  ? 'Gunakan laporan ini hanya untuk kendala kerja yang benar-benar terjadi di lapangan. Pastikan deskripsi jujur dan bukti relevan.'
+                  ? 'Gunakan laporan ini hanya untuk kendala kerja yang benar-benar terjadi di lapangan. Pastikan deskripsi jujur dan bukti relevan. Laporan ini tidak memberi reward voucher.'
                   : 'Laporan palsu dapat ditolak dan bisa berakibat sanksi pada akun kamu. Pastikan deskripsi jujur dan bukti relevan.'}
                 {'\n'}Waktu tanggapan admin maksimal 24 jam.
               </Text>

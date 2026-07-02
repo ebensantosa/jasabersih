@@ -93,8 +93,8 @@ export default function UsersPage(): React.ReactElement | null  {
     <div>
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
-          <p className="text-sm text-slate-500">Lihat customer & cleaner, suspend, ban, audit trail.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Manajemen Pengguna</h1>
+          <p className="text-sm text-slate-500">Lihat customer & cleaner, suspend, ban, dan jejak audit.</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setAdding(true)}>
           Tambah {tab === 'customer' ? 'Customer' : 'Cleaner'}
@@ -124,8 +124,8 @@ export default function UsersPage(): React.ReactElement | null  {
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
           <option value="all">Semua status</option>
           <option value="active">Aktif</option>
-          <option value="suspended">Suspended</option>
-          <option value="banned">Banned</option>
+          <option value="suspended">Ditangguhkan</option>
+          <option value="banned">Diblokir</option>
         </select>
       </div>
 
@@ -149,7 +149,7 @@ export default function UsersPage(): React.ReactElement | null  {
                   ) : (
                     <>
                       <th className="px-4 py-2">Rating</th>
-                      <th className="px-4 py-2">Jobs</th>
+                      <th className="px-4 py-2">Job</th>
                       <th className="px-4 py-2">Alat</th>
                     </>
                   )}
@@ -504,7 +504,7 @@ function UserDetailModal({ row, onClose, onChanged }: { row: Row; onClose: () =>
         </div>
       )}
 
-      {suspending && <ReasonModal title="Suspend User" placeholder="Alasan suspend (akan ditampilkan ke user)" durationField onClose={() => setSuspending(false)} onSubmit={async (reason, days) => {
+      {suspending && <ReasonModal title="Tangguhkan Pengguna" placeholder="Alasan suspend (akan ditampilkan ke user)" durationField onClose={() => setSuspending(false)} onSubmit={async (reason, days) => {
         try { await api.admin.suspendUser(row.id, reason, days); toast.success('User di-suspend.'); onChanged(); } catch (e: any) { toast.error(e?.message); }
       }} />}
       {banning && <ReasonModal title="Ban User (Permanen)" placeholder="Alasan ban — auto-cancel pending bookings" variant="danger" onClose={() => setBanning(false)} onSubmit={async (reason) => {

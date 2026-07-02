@@ -48,7 +48,7 @@ export default function FraudReportsPage(): React.ReactElement | null  {
     }
     try {
       const res = await api.admin.reviewFraudReport(id, decision, adminNotes || undefined);
-      toast.success(decision === 'approved' ? `Approved. Voucher: ${res.voucherCode}` : 'Ditolak.');
+      toast.success(decision === 'approved' ? `Disetujui. Voucher: ${res.voucherCode}` : 'Ditolak.');
       void load();
     } catch (e: any) { toast.error(e?.message); }
   }
@@ -58,8 +58,8 @@ export default function FraudReportsPage(): React.ReactElement | null  {
       <div className="flex items-center gap-3">
         <ShieldAlert className="text-red-600" size={24} />
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Fraud Reports</h1>
-          <p className="text-sm text-slate-500">Review laporan customer terhadap cleaner. Approved → voucher Rp 50k + strike cleaner.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Laporan Fraud</h1>
+          <p className="text-sm text-slate-500">Tinjau laporan customer terhadap cleaner. Disetujui - voucher Rp 50k + strike cleaner.</p>
         </div>
       </div>
 

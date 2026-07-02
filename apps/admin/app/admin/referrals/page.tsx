@@ -21,7 +21,7 @@ function rp(n: number | string | null | undefined): string {
   return 'Rp ' + Number(n ?? 0).toLocaleString('id-ID');
 }
 
-export default function ReferralsAdminPage(): React.ReactElement | null  {
+export default function ReferralAdminPage(): React.ReactElement | null  {
   const toast = useToast();
   const [tab, setTab] = useState<'overview' | 'leaderboard' | 'all'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
@@ -46,22 +46,22 @@ export default function ReferralsAdminPage(): React.ReactElement | null  {
   }
   useEffect(() => { void load(); /* eslint-disable-next-line */ }, [filter]);
 
-  if (loading && !stats) return <div className="py-20 text-center text-sm text-slate-500">Memuat…</div>;
+  if (loading && !stats) return <div className="py-20 text-center text-sm text-slate-500">Memuat...</div>;
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Referrals</h1>
-        <p className="text-sm text-slate-500">Track siapa refer siapa, jumlah teman terajak, & total bonus dibayar.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Referral</h1>
+        <p className="text-sm text-slate-500">Pantau siapa mengundang siapa, jumlah teman terajak, dan total bonus yang dibayarkan.</p>
       </div>
 
       {stats && (
         <div className="grid gap-3 md:grid-cols-5">
           <StatCard label="Total Referral" value={String(stats.total)} icon={<Gift size={16} />} color="blue" />
-          <StatCard label="Pending" value={String(stats.pending)} color="amber" />
-          <StatCard label="Qualified + Paid" value={String(stats.qualified + stats.paid)} color="green" />
+          <StatCard label="Tertunda" value={String(stats.pending)} color="amber" />
+          <StatCard label="Terverifikasi + Dibayar" value={String(stats.qualified + stats.paid)} color="green" />
           <StatCard label="Total Bonus Dibayar" value={rp(stats.totalPaid)} color="green" highlight />
-          <StatCard label="Total Kode Generate" value={String(stats.uniqueCodesGenerated)} color="slate" />
+          <StatCard label="Total Kode Dihasilkan" value={String(stats.uniqueCodesGenerated)} color="slate" />
         </div>
       )}
 
@@ -72,14 +72,14 @@ export default function ReferralsAdminPage(): React.ReactElement | null  {
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium ${tab === t ? 'border-b-2 border-blue-700 text-blue-700' : 'text-slate-500 hover:text-slate-900'}`}
           >
-            {t === 'overview' ? 'Overview' : t === 'leaderboard' ? 'Leaderboard' : 'Semua Referral'}
+            {t === 'overview' ? 'Ringkasan' : t === 'leaderboard' ? 'Peringkat' : 'Semua Referral'}
           </button>
         ))}
       </div>
 
       {tab === 'overview' && stats && (
         <div className="rounded-md border bg-white p-6">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold"><Trophy size={16} className="text-amber-600" /> Top 5 Referrer</h2>
+          <h2 className="mb-3 flex items-center gap-2 font-semibold"><Trophy size={16} className="text-amber-600" /> 5 Referral Teratas</h2>
           {leaders.slice(0, 5).map((l, i) => (
             <div key={l.userId} className="flex items-center gap-3 border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
               <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-700' : i === 2 ? 'bg-orange-100 text-orange-800' : 'bg-slate-100 text-slate-500'}`}>{i + 1}</div>
@@ -106,7 +106,7 @@ export default function ReferralsAdminPage(): React.ReactElement | null  {
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2 w-12">#</th>
-                <th className="px-4 py-2">Referrer</th>
+                <th className="px-4 py-2">Pengundang</th>
                 <th className="px-4 py-2">Kode</th>
                 <th className="px-4 py-2 text-right">Total Teman</th>
                 <th className="px-4 py-2 text-right">Total Bonus</th>
@@ -148,8 +148,8 @@ export default function ReferralsAdminPage(): React.ReactElement | null  {
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
               <option value="all">Semua status</option>
-              <option value="pending">Pending</option>
-              <option value="qualified">Qualified</option>
+              <option value="pending">Tertunda</option>
+              <option value="qualified">Tervalidasi</option>
               <option value="paid">Paid</option>
             </select>
           </div>
@@ -159,7 +159,7 @@ export default function ReferralsAdminPage(): React.ReactElement | null  {
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-2">Tanggal</th>
-                  <th className="px-4 py-2">Referrer (yg ngajak)</th>
+                  <th className="px-4 py-2">Pengundang</th>
                   <th className="px-4 py-2">Kode</th>
                   <th className="px-4 py-2">Referred (yg pakai)</th>
                   <th className="px-4 py-2">Status</th>

@@ -10,7 +10,7 @@ const AUDIENCES = [
   { value: 'all', label: 'Semua user aktif' },
   { value: 'customer', label: 'Customer (semua)' },
   { value: 'cleaner', label: 'Cleaner (semua)' },
-  { value: 'kyc_approved', label: 'Cleaner KYC Approved' },
+  { value: 'kyc_approved', label: 'KYC cleaner disetujui' },
   { value: 'new_customer_7d', label: 'Customer baru (< 7 hari)' },
   { value: 'inactive_30d', label: 'Customer tidak aktif 30 hari' },
 ];

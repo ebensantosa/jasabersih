@@ -25,8 +25,8 @@ export function useServices(): ServiceCategory[] {
         name: api.name,
         description: api.description ?? local?.description ?? '',
         icon: (local?.icon ?? Brush) as LucideIcon,
-        iconColor: local?.iconColor ?? '#475569',
-        iconBg: local?.iconBg ?? '#E2E8F0',
+        iconColor: local?.iconColor ?? '#1D4ED8',
+        iconBg: local?.iconBg ?? '#E0F2FE',
         // CMS-set icon URL kalau admin upload, override Lucide di tile grid
         customIconUrl: (api.iconUrl as string | undefined) ?? null,
         // Cover image: prefer admin-set from CMS, fallback ke local hardcoded

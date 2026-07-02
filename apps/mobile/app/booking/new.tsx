@@ -2,7 +2,7 @@ import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, ChevronLeft, Clock, MessageCircle, Minus, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image as RNImage, Linking, Modal as RNModal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image as RNImage, Linking, Modal as RNModal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddressField } from '../../src/components/AddressField';
@@ -52,6 +52,7 @@ import { checkCoverage, nearestAreaDistanceM } from '../../src/lib/coverage';
 import { useServices } from '../../src/hooks/useServices';
 import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { useBookingsStore } from '../../src/stores/bookings';
+import { api } from '../../src/lib/api';
 import { useLocationStore } from '../../src/stores/location';
 import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
@@ -89,10 +90,11 @@ const TOTAL_STEPS = 3;
 
 function NewBooking() {
   const router = useRouter();
-  const { category: categoryCode, package: packageId, reorder: reorderBookingId } = useLocalSearchParams<{
+  const { category: categoryCode, package: packageId, reorder: reorderBookingId, voucherCode } = useLocalSearchParams<{
     category: string;
     package?: string;
     reorder?: string;
+    voucherCode?: string;
   }>();
   const create = useBookingsStore((s) => s.create);
   const allBookings = useBookingsStore((s) => s.list);
@@ -627,13 +629,34 @@ function NewBooking() {
       : isSubscription
         ? Math.round(basePrice * subscriptionTierMultiplier) + subscriptionAddonTotal
         : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
+  type AvailableVoucher = {
+    id: string;
+    code: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    maxDiscount: number | null;
+    minOrder: number;
+    validUntil: string;
+  };
+  const [availableVouchers, setAvailableVouchers] = useState<AvailableVoucher[]>([]);
+  const [availableVouchersLoading, setAvailableVouchersLoading] = useState(false);
   const [voucher, setVoucher] = useState<{ code: string; discount: number; voucherId: string } | null>(null);
-  const [voucherInput, setVoucherInput] = useState('');
-  const [voucherChecking, setVoucherChecking] = useState(false);
+  const [voucherPickingCode, setVoucherPickingCode] = useState<string | null>(null);
   const totalBeforeOvertime = subtotal - (voucher?.discount ?? 0);
   const estimatedDurationMin = packageDurationMin + addonDurationMin;
   const overtimeQuote = useMemo(() => quoteNightOvertime(scheduleAt, estimatedDurationMin), [scheduleAt, estimatedDurationMin]);
   const total = totalBeforeOvertime + overtimeQuote.surcharge;
+  const eligibleVouchers = useMemo(
+    () => availableVouchers
+      .filter((v) => subtotal >= v.minOrder)
+      .sort((a, b) => {
+        const aPriority = a.type === 'percentage' ? 0 : 1;
+        const bPriority = b.type === 'percentage' ? 0 : 1;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return a.minOrder - b.minOrder;
+      }),
+    [availableVouchers, subtotal],
+  );
   const shouldRecommendExtraWorker =
     !isLargeScale
     && !isPostReno
@@ -647,22 +670,53 @@ function NewBooking() {
     );
   const needsWaConsultation = ((areaM2 >= 200 && !isLargeScale && !isPostReno) || workers > 1 || largeScaleOverLimit || postRenoOverLimit) && step === 1;
 
-  async function applyVoucher() {
-    if (!voucherInput.trim()) return;
-    setVoucherChecking(true);
+  async function loadAvailableVouchers() {
+    setAvailableVouchersLoading(true);
     try {
-      const { api } = await import('../../src/lib/api');
-      const res = await api.post('/vouchers/validate', { code: voucherInput.trim().toUpperCase(), orderAmount: subtotal });
+      const res = await api.get('/vouchers/available');
+      const list = (res.data?.data ?? res.data ?? []) as any[];
+      setAvailableVouchers(
+        list.map((v: any) => ({
+          id: String(v.id),
+          code: String(v.code),
+          type: v.type,
+          value: Number(v.value ?? 0),
+          maxDiscount: v.maxDiscount == null ? null : Number(v.maxDiscount),
+          minOrder: Number(v.minOrder ?? v.minOrderAmount ?? 0),
+          validUntil: String(v.validUntil ?? v.valid_until ?? ''),
+        })),
+      );
+    } catch {
+      setAvailableVouchers([]);
+    } finally {
+      setAvailableVouchersLoading(false);
+    }
+  }
+
+  async function applyVoucherByCode(code: string) {
+    const normalized = code.trim().toUpperCase();
+    if (!normalized) return;
+    setVoucherPickingCode(normalized);
+    try {
+      const res = await api.post('/vouchers/validate', { code: normalized, orderAmount: subtotal });
       const data = res.data?.data ?? res.data;
       setVoucher({ code: data.code, discount: data.discount, voucherId: data.voucherId });
-      setVoucherInput('');
       toast.success(`Voucher ${data.code} dipakai - hemat ${formatRupiah(data.discount)}!`);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? 'Voucher tidak valid');
     } finally {
-      setVoucherChecking(false);
+      setVoucherPickingCode(null);
     }
   }
+
+  useEffect(() => {
+    void loadAvailableVouchers();
+  }, []);
+
+  useEffect(() => {
+    if (!voucherCode || voucher?.code === String(voucherCode).trim().toUpperCase()) return;
+    void applyVoucherByCode(String(voucherCode));
+  }, [voucherCode]);
 
   function toggleSet<T extends string>(set: Set<T>, value: T): Set<T> {
     const next = new Set(set);
@@ -2191,36 +2245,79 @@ function NewBooking() {
                 </View>
 
                 <View className="mt-3 border-t border-ink-100 pt-3">
-                  <Text className="font-semibold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Voucher / Promo</Text>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-semibold text-[11px] uppercase tracking-wider text-ink-500">Voucher / Promo</Text>
+                    <Pressable onPress={() => router.push('/account/vouchers')} hitSlop={8}>
+                      <Text className="font-semibold text-[11px] text-brand-700">Lihat voucher saya</Text>
+                    </Pressable>
+                  </View>
                   {voucher ? (
-                    <View className="flex-row items-center justify-between rounded-xl border border-success/30 bg-success/10 p-3">
-                      <View>
-                        <Text className="font-bold text-sm text-success">{voucher.code}</Text>
-                        <Text className="font-sans text-[11px] text-ink-600">-{formatRupiah(voucher.discount)}</Text>
+                    <View className="mt-2 rounded-2xl border border-success/30 bg-success/10 p-3">
+                      <View className="flex-row items-start justify-between gap-3">
+                        <View className="flex-1">
+                          <Text className="font-bold text-sm text-success">{voucher.code}</Text>
+                          <Text className="font-sans text-[11px] text-ink-600">Hemat {formatRupiah(voucher.discount)}</Text>
+                        </View>
+                        <Pressable onPress={() => setVoucher(null)} className="rounded-full bg-white px-3 py-1.5">
+                          <Text className="font-medium text-xs text-ink-600">Hapus</Text>
+                        </Pressable>
                       </View>
-                      <Pressable onPress={() => setVoucher(null)} className="rounded-full bg-white px-3 py-1">
-                        <Text className="font-medium text-xs text-ink-600">Hapus</Text>
-                      </Pressable>
                     </View>
-                  ) : (
-                    <View className="flex-row gap-2">
-                      <TextInput
-                        value={voucherInput}
-                        onChangeText={(v) => setVoucherInput(v.toUpperCase())}
-                        placeholder="Masukkan kode"
-                        placeholderTextColor="#94A3B8"
-                        autoCapitalize="characters"
-                        className="font-sans flex-1 rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-900"
-                      />
-                      <Pressable
-                        onPress={applyVoucher}
-                        disabled={voucherChecking || !voucherInput.trim()}
-                        className={`rounded-xl px-4 py-2.5 ${voucherChecking || !voucherInput.trim() ? 'bg-brand-300' : 'bg-brand-600'}`}
-                      >
-                        <Text className="font-semibold text-sm text-white">{voucherChecking ? 'Cek…' : 'Pakai'}</Text>
-                      </Pressable>
-                    </View>
-                  )}
+                  ) : null}
+
+                  <View className="mt-2 gap-2">
+                    {availableVouchersLoading ? (
+                      <View className="items-center justify-center rounded-2xl border border-ink-200 bg-ink-50 py-5">
+                        <ActivityIndicator color="#1D4ED8" />
+                      </View>
+                    ) : eligibleVouchers.length === 0 ? (
+                      <View className="rounded-2xl border border-dashed border-ink-200 bg-ink-50 p-3">
+                        <Text className="font-medium text-[11px] leading-4 text-ink-500">
+                          Belum ada voucher yang cocok untuk total pesanan ini.
+                        </Text>
+                      </View>
+                    ) : (
+                      eligibleVouchers.map((v) => {
+                        const selected = voucher?.code === v.code;
+                        const label = v.type === 'percentage'
+                          ? `${v.value}% OFF`
+                          : `Rp ${v.value.toLocaleString('id-ID')} OFF`;
+                        const minOrderText = `Min order Rp ${v.minOrder.toLocaleString('id-ID')}`;
+                        const validUntilText = `Berlaku sampai ${new Date(v.validUntil).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+                        return (
+                          <Pressable
+                            key={v.id}
+                            onPress={() => void applyVoucherByCode(v.code)}
+                            disabled={voucherPickingCode === v.code}
+                            className={`rounded-2xl border p-3 ${selected ? 'border-success bg-success/10' : 'border-ink-200 bg-white'}`}
+                            style={{ opacity: voucherPickingCode === v.code ? 0.7 : 1 }}
+                          >
+                            <View className="flex-row items-start justify-between gap-3">
+                              <View className="flex-1">
+                                <Text className="font-bold text-sm text-ink-900">{v.code}</Text>
+                                <Text className="mt-0.5 text-[11px] text-ink-500">
+                                  {label} · {minOrderText}
+                                </Text>
+                                <Text className="mt-0.5 text-[10px] text-ink-400">{validUntilText}</Text>
+                              </View>
+                              <View className="items-end">
+                                <Text className={`font-bold text-xs ${selected ? 'text-success' : 'text-brand-700'}`}>
+                                  {selected ? 'Terpakai' : 'Pakai'}
+                                </Text>
+                                {voucherPickingCode === v.code ? (
+                                  <ActivityIndicator color="#1D4ED8" style={{ marginTop: 4 }} />
+                                ) : (
+                                  <Text className="mt-1 text-[10px] text-ink-400">
+                                    {selected ? 'Sedang aktif' : 'Tap untuk pilih'}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </Pressable>
+                        );
+                      })
+                    )}
+                  </View>
                 </View>
 
                 <View className="mt-3 border-t border-ink-100 pt-3">

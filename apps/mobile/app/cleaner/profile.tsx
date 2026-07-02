@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Camera, Star, Wrench } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +13,7 @@ import { useUserStore } from '../../src/stores/user';
 import { withAuth } from '../../src/components/AuthGate';
 import { withCleanerKyc } from '../../src/components/CleanerKycGate';
 import { safeBack } from '../../src/lib/safeBack';
+import { useCleanerStore } from '../../src/stores/cleaner';
 
 type Profile = {
   bio: string | null;
@@ -33,6 +34,8 @@ function CleanerProfileScreen() {
   const router = useRouter();
   const userProfile = useUserStore((s) => s.profile);
   const setUserProfile = useUserStore((s) => s.setProfile);
+  const storeIsAvailable = useCleanerStore((s) => s.isAvailable);
+  const setStoreIsAvailable = useCleanerStore((s) => s.setIsAvailable);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,7 +43,7 @@ function CleanerProfileScreen() {
   // form state
   const [bio, setBio] = useState('');
   const [bringsTools, setBringsTools] = useState(false);
-  const [isAvailable, setIsAvailable] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(storeIsAvailable);
   const [areasText, setAreasText] = useState('');
   const [languagesText, setLanguagesText] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -88,6 +91,7 @@ function CleanerProfileScreen() {
       setBio(p.bio ?? '');
       setBringsTools(!!p.bringsTools);
       setIsAvailable(!!p.isAvailable);
+      setStoreIsAvailable(!!p.isAvailable);
       const areas = Array.isArray(p.serviceAreas) ? p.serviceAreas : (p.serviceAreas?.areas ?? []);
       setAreasText((areas as string[]).join(', '));
       setLanguagesText((p.languages ?? []).join(', '));
@@ -108,7 +112,12 @@ function CleanerProfileScreen() {
       setLoading(false);
     }
   }
-  useEffect(() => { void load(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setIsAvailable(storeIsAvailable);
+      void load();
+    }, [storeIsAvailable]),
+  );
 
   async function save() {
     setSaving(true);
@@ -120,6 +129,7 @@ function CleanerProfileScreen() {
         serviceAreas: areasText.split(',').map((s) => s.trim()).filter(Boolean),
         languages: languagesText.split(',').map((s) => s.trim()).filter(Boolean),
       });
+      setStoreIsAvailable(isAvailable);
       toast.success('Profil disimpan.');
       void load();
     } catch (e: any) {
@@ -206,7 +216,7 @@ function CleanerProfileScreen() {
                           strokeWidth={1}
                         />
                       ))}
-                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName?.trim() || 'Pengguna'}</Text>
+                      <Text className="font-semibold ml-1 text-[11px] text-ink-700">{rv.raterName?.trim() || 'Pelanggan'}</Text>
                       <Text className="font-sans ml-1 text-[10px] text-ink-400">
                         · {new Date(rv.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                       </Text>

@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 
 import { PrismaService } from '../../common/prisma.service';
+import { ChatGateway } from '../chat/chat.gateway';
 import { ZodValidationPipe } from '../../common/zod.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
@@ -45,6 +46,7 @@ export class BookingsController {
     private readonly storage: StorageService,
     private readonly push: PushService,
     private readonly abuse: AbuseLimitsService,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // Preview travel fee untuk lokasi tertentu (dipakai mobile saat checkout)
@@ -889,6 +891,13 @@ export class BookingsController {
     });
     this.jobs.emitBookingReload(user.id, id);
     this.jobs.emitBookingReload(result._cleanerId, id);
+    void this.chatGateway.createSystemMessage({
+      bookingId: id,
+      senderId: user.id,
+      recipientId: result._cleanerId,
+      messageType: 'system',
+      content: `Tagihan tambahan disetujui. Total booking sudah diperbarui.`,
+    }).catch(() => {});
     void this.push.send({
       userId: result._cleanerId,
       channel: 'booking',
@@ -921,6 +930,13 @@ export class BookingsController {
     `;
     this.jobs.emitBookingReload(user.id, id);
     this.jobs.emitBookingReload(rows[0].cleaner_id, id);
+    void this.chatGateway.createSystemMessage({
+      bookingId: id,
+      senderId: user.id,
+      recipientId: rows[0].cleaner_id,
+      messageType: 'system',
+      content: `Tagihan tambahan ditolak. Lanjutkan pekerjaan sesuai pesanan awal.`,
+    }).catch(() => {});
     void this.push.send({
       userId: rows[0].cleaner_id,
       channel: 'booking',

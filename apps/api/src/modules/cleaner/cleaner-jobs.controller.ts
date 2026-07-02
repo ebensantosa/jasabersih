@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get,
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../common/prisma.service';
+import { ChatGateway } from '../chat/chat.gateway';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CleanerGuard } from '../auth/role.guard';
@@ -22,6 +23,7 @@ export class CleanerJobsController {
     private readonly push: PushService,
     private readonly storage: StorageService,
     private readonly referralPayout: ReferralPayoutService,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   private async syncPhotoLookupColumn(bookingId: string, type: 'before' | 'after') {
@@ -629,6 +631,21 @@ export class CleanerJobsController {
       throw new BadRequestException('Transisi status tidak diizinkan dari status saat ini.');
     }
 
+    const statusLogMap: Record<'on_the_way' | 'in_progress' | 'completed', string> = {
+      on_the_way: 'Cleaner menuju lokasi. Siapkan akses ya.',
+      in_progress: 'Cleaner sudah sampai. Pekerjaan dimulai sekarang.',
+      completed: 'Pekerjaan selesai. Silakan cek hasil dan beri rating.',
+    };
+    if (currentBooking.customer_id) {
+      void this.chatGateway.createSystemMessage({
+        bookingId: id,
+        senderId: user.id,
+        recipientId: currentBooking.customer_id,
+        messageType: 'system',
+        content: statusLogMap[body.to],
+      }).catch(() => {});
+    }
+
     // Auto-credit cleaner kalau completed (sama logic dgn admin force-complete)
     if (body.to === 'completed') {
       const b = await this.prisma.$queryRaw<{ customer_id: string | null; cleaner_payout: number | null }[]>`
@@ -976,6 +993,13 @@ export class CleanerJobsController {
     `;
     // Real-time + push notif ke customer
     this.jobs.emitBookingReload(b.customer_id, id);
+    void this.chatGateway.createSystemMessage({
+      bookingId: id,
+      senderId: user.id,
+      recipientId: b.customer_id,
+      messageType: 'system',
+      content: `Permintaan charge tambahan: ${nameList} (+Rp ${amount.toLocaleString('id-ID')}). Buka detail booking untuk setujui atau tolak.`,
+    }).catch(() => {});
     void this.push.send({
       userId: b.customer_id,
       channel: 'booking',
@@ -993,13 +1017,41 @@ export class CleanerJobsController {
       SELECT id FROM bookings WHERE id = ${id}::uuid AND cleaner_id = ${user.id}::uuid LIMIT 1
     `;
     if (!owns[0]) throw new ForbiddenException('Bukan job kamu.');
-    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+    const metaRows = await this.prisma.$queryRaw<{ total_amount: number; brings_tools: boolean | null }[]>`
+      SELECT b.total_amount, cp.brings_tools
+        FROM bookings b
+        LEFT JOIN cleaner_profiles cp ON cp.user_id = b.cleaner_id
+       WHERE b.id = ${id}::uuid
+       LIMIT 1
+    `;
+    const meta = metaRows[0];
+    const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
+      SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
+        FROM commission_tiers
+       ORDER BY range_min ASC NULLS FIRST
+    `;
+    const totalAmount = Number(meta?.total_amount ?? 0);
+    const bringsTools = !!meta?.brings_tools;
+    const tier = tiers.find((t) => totalAmount >= Number(t.range_min ?? 0) && (t.range_max == null || totalAmount <= Number(t.range_max)));
+    const sharePct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
+
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, amount, reason, photo_url AS "photoUrl", status,
              created_at AS "createdAt", decided_at AS "decidedAt"
         FROM booking_upcharges
        WHERE booking_id = ${id}::uuid
        ORDER BY created_at DESC
     `;
+    return rows.map((row) => {
+      const amount = Number(row.amount ?? 0);
+      const cleanerShare = Math.round((amount * sharePct) / 100);
+      return {
+        ...row,
+        cleanerShare,
+        platformFee: amount - cleanerShare,
+        sharePct,
+      };
+    });
   }
 
   // ===== HELPER INVITES (multi-cleaner jobs) =====
