@@ -226,25 +226,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.jobsGateway.emitToUser(recipientId, 'chat:unread', { bookingId: body.bookingId });
       }
 
-      // Push notification ke recipient (fire-and-forget)
+      // Push notification ke recipient (fire-and-forget).
+      // Chat harus selalu masuk ke perangkat recipient supaya
+      // notif + suara tetap konsisten walaupun recipient tidak sedang
+      // berada di room chat.
       if (recipientId) {
-        const room = this.server?.sockets?.adapter?.rooms?.get(roomName(body.bookingId));
-        const recipientOnline = !!room && Array.from(room).some((sid) => {
-          const s = this.server?.sockets?.sockets?.get(sid) as AuthedSocket | undefined;
-          return s?.data?.userId === recipientId;
-        });
-        if (!recipientOnline) {
-          const pushBody = body.messageType === 'image'
-            ? '📷 Mengirim foto'
-            : body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content;
-          void this.push.send({
-            userId: recipientId,
-            title: 'Pesan baru',
-            body: pushBody,
-            channel: 'chat',
-            data: { type: 'chat', bookingId: body.bookingId },
-          }).catch(() => {});
-        }
+        const pushBody = body.messageType === 'image'
+          ? '📷 Mengirim foto'
+          : body.content.length > 80 ? body.content.slice(0, 80) + '…' : body.content;
+        void this.push.send({
+          userId: recipientId,
+          title: 'Pesan baru',
+          body: pushBody,
+          channel: 'chat',
+          data: { type: 'chat', bookingId: body.bookingId, messageId: msg?.id ?? null },
+        }).catch(() => {});
       }
     }
 

@@ -63,6 +63,7 @@ import { UpdatePromptHost } from '../src/components/UpdatePrompt';
 import { useAppContent } from '../src/stores/appContent';
 import { useLocaleStore } from '../src/lib/i18n';
 import { registerForPushAsync } from '../src/lib/pushSetup';
+import { shouldPlayChatSound } from '../src/lib/chatSoundDedup';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
 import { useBookingRealtime } from '../src/hooks/useBookingRealtime';
@@ -313,9 +314,11 @@ export default function RootLayout() {
       }
       if (data?.type === 'chat') {
         signalChatUnread();
-        void prepareAudiblePlayback()
-          .then(() => playOneShotSound(require('../assets/sounds/chat_message.wav'), 0.75))
-          .catch(() => {});
+        if (shouldPlayChatSound(String(data?.messageId ?? ''))) {
+          void prepareAudiblePlayback()
+            .then(() => playOneShotSound(require('../assets/sounds/chat_message.wav'), 0.75))
+            .catch(() => {});
+        }
         return;
       }
       if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {

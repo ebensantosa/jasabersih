@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../lib/api';
 import { getChatSocket, type ChatMessage, type SendResult } from '../lib/chatSocket';
+import { shouldPlayChatSound } from '../lib/chatSoundDedup';
 import { playOneShotSound, prepareAudiblePlayback } from '../lib/sound';
 import { useUserStore } from '../stores/user';
 
@@ -57,7 +58,7 @@ export function useChatSocket(bookingId: string | undefined) {
       const myUserId = useUserStore.getState().profile?.id ?? null;
       const isNewMessage = !playedMessageIdsRef.current.has(mapped.id);
       if (isNewMessage) playedMessageIdsRef.current.add(mapped.id);
-      if (isNewMessage && mapped.senderId && mapped.senderId !== myUserId) {
+      if (isNewMessage && mapped.senderId && mapped.senderId !== myUserId && shouldPlayChatSound(mapped.id)) {
         void prepareAudiblePlayback()
           .then(() => playOneShotSound(require('../../assets/sounds/chat_message.wav'), 0.75))
           .catch(() => {});
