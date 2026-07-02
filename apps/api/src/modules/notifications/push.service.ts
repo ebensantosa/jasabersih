@@ -15,7 +15,7 @@ export type PushPayload = {
 function resolvePushAudio(channel?: PushPayload['channel']): { sound: string; channelId: string } {
   switch (channel) {
     case 'chat':
-      return { sound: 'chat_message.wav', channelId: 'chat_v2' };
+      return { sound: 'chat_message', channelId: 'chat_v3' };
     case 'incoming_call':
       return { sound: 'call_incoming.wav', channelId: 'incoming_call_v2' };
     case 'incoming_job':

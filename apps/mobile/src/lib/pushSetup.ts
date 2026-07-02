@@ -69,7 +69,7 @@ export async function registerForPushAsync(mode?: 'customer' | 'freelancer'): Pr
         vibrationPattern: [0, 250, 150, 250],
       });
     }
-    await Notifications.setNotificationChannelAsync('chat_v2', {
+    await Notifications.setNotificationChannelAsync('chat_v3', {
       name: 'Pesan Chat',
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'chat_message',
