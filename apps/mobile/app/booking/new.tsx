@@ -53,6 +53,7 @@ import { useServices } from '../../src/hooks/useServices';
 import { formatEndTime, quoteNightOvertime } from '../../src/lib/overtimePricing';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { useLocationStore } from '../../src/stores/location';
+import { useUserStore } from '../../src/stores/user';
 import { toast } from '../../src/stores/ui';
 import { withAuth } from '../../src/components/AuthGate';
 import { applyCleanMode, useCleaningModeStore } from '../../src/stores/cleaningMode';
@@ -95,6 +96,7 @@ function NewBooking() {
   }>();
   const create = useBookingsStore((s) => s.create);
   const allBookings = useBookingsStore((s) => s.list);
+  const userProfile = useUserStore((s) => s.profile);
   const SERVICE_CATEGORIES_LIVE = useServices();
 
   const category = SERVICE_CATEGORIES_LIVE.find((c) => c.code === categoryCode) ?? SERVICE_CATEGORIES[0];
@@ -789,10 +791,11 @@ function NewBooking() {
         notes,
         customerNotes: notes.trim() || undefined,
         photoCount,
-        cleanMode,
-        cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
-        voucherCode: voucher?.code,
-        overtimeSurcharge: overtimeQuote.surcharge,
+          cleanMode,
+          cleanModeMultiplier: cleanMode === 'deep' ? deepMultiplier : 1,
+          customerName: userProfile?.name?.trim() || undefined,
+          voucherCode: voucher?.code,
+          overtimeSurcharge: overtimeQuote.surcharge,
         overtimeHours: overtimeQuote.overtimeHours,
         estimatedEndAt: overtimeQuote.estimatedEnd.toISOString(),
         conditionPhotos: photos.map((p) => p.url).filter((url): url is string => Boolean(url)),
