@@ -50,13 +50,14 @@ export class CleanerPublicController {
     const reviews = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT r.rating, r.review, r.created_at AS "createdAt",
              COALESCE(
+               NULLIF(BTRIM(r.rater_name_snapshot), ''),
                NULLIF(BTRIM(b.form_snapshot->>'customerName'), ''),
                NULLIF(BTRIM(cu.name), ''),
                NULLIF(BTRIM(u.name), ''),
                NULLIF(BTRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), ''),
                CASE
-                 WHEN NULLIF(BTRIM(COALESCE(b.form_snapshot->>'customerPhone', cu.phone, u.phone, '')), '') IS NOT NULL
-                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(COALESCE(b.form_snapshot->>'customerPhone', cu.phone, u.phone), '[^0-9]', '', 'g'), 6))
+                 WHEN NULLIF(BTRIM(COALESCE(r.rater_phone_snapshot, b.form_snapshot->>'customerPhone', cu.phone, u.phone, '')), '') IS NOT NULL
+                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(COALESCE(r.rater_phone_snapshot, b.form_snapshot->>'customerPhone', cu.phone, u.phone), '[^0-9]', '', 'g'), 6))
                  ELSE 'Pengguna'
                END
              ) AS "raterName"

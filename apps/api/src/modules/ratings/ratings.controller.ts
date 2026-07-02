@@ -44,12 +44,24 @@ export class RatingsController {
     if (b.status !== 'completed') throw new BadRequestException('Booking belum selesai.');
     if (!b.cleaner_id) throw new BadRequestException('Booking belum ada cleaner.');
 
+    const customerRows = await this.prisma.$queryRaw<{ name: string | null; phone: string | null }[]>`
+      SELECT name, phone FROM users WHERE id = ${user.id}::uuid LIMIT 1
+    `;
+    const customerNameSnapshot = (
+      customerRows[0]?.name?.trim()
+      || ''
+    ).trim() || null;
+    const customerPhoneSnapshot = (
+      customerRows[0]?.phone?.trim()
+      || ''
+    ).trim() || null;
+
     // Insert rating (UNIQUE booking_id → throws kalau sudah pernah rate)
     try {
       await this.prisma.$executeRaw`
-        INSERT INTO ratings (booking_id, rater_id, ratee_id, rating, review, tip_amount)
+        INSERT INTO ratings (booking_id, rater_id, ratee_id, rating, review, tip_amount, rater_name_snapshot, rater_phone_snapshot)
         VALUES (${body.bookingId}::uuid, ${user.id}::uuid, ${b.cleaner_id}::uuid, ${body.rating}::int,
-                ${body.review ?? null}, ${body.tipAmount}::bigint)
+                ${body.review ?? null}, ${body.tipAmount}::bigint, ${customerNameSnapshot}, ${customerPhoneSnapshot})
       `;
     } catch {
       throw new BadRequestException('Booking ini sudah pernah di-rate.');
@@ -220,13 +232,14 @@ export class RatingsController {
     const rows = await this.prisma.$queryRaw<{ id: string; rating: number; review: string | null; createdAt: Date; raterName: string | null }[]>`
       SELECT r.id, r.rating, r.review, r.created_at AS "createdAt",
              COALESCE(
+               NULLIF(BTRIM(r.rater_name_snapshot), ''),
                NULLIF(BTRIM(b.form_snapshot->>'customerName'), ''),
                NULLIF(BTRIM(cu.name), ''),
                NULLIF(BTRIM(u.name), ''),
                NULLIF(BTRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), ''),
                CASE
-                 WHEN NULLIF(BTRIM(COALESCE(b.form_snapshot->>'customerPhone', cu.phone, u.phone, '')), '') IS NOT NULL
-                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(COALESCE(b.form_snapshot->>'customerPhone', cu.phone, u.phone), '[^0-9]', '', 'g'), 6))
+                 WHEN NULLIF(BTRIM(COALESCE(r.rater_phone_snapshot, b.form_snapshot->>'customerPhone', cu.phone, u.phone, '')), '') IS NOT NULL
+                   THEN CONCAT('+', RIGHT(REGEXP_REPLACE(COALESCE(r.rater_phone_snapshot, b.form_snapshot->>'customerPhone', cu.phone, u.phone), '[^0-9]', '', 'g'), 6))
                  ELSE 'Pengguna'
                END
              ) AS "raterName"
