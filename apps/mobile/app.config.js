@@ -152,6 +152,8 @@ module.exports = {
     android: {
       package: 'com.jasabersih.app',
       versionCode: 23,
+      targetSdkVersion: 35,
+      compileSdkVersion: 35,
       edgeToEdgeEnabled: false,
       permissions: [
         'USE_FULL_SCREEN_INTENT',
