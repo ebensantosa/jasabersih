@@ -166,8 +166,14 @@ export class AdminDisputesController {
        WHERE id = ${id}::uuid
     `;
 
-    // Garansi disetujui — booking di-reopen ke status 'searching' biar cleaner balik (atau admin assign manual)
+    // Garansi disetujui — notif cleaner lama dulu, lalu unassign & reopen booking
     if (body.action === 'warranty_redo_approved' && dispute.booking_id) {
+      // Ambil cleaner_id sebelum di-unassign supaya bisa kirim notif
+      const bookingRows = await this.prisma.$queryRaw<{ cleaner_id: string | null }[]>`
+        SELECT cleaner_id FROM bookings WHERE id = ${dispute.booking_id}::uuid LIMIT 1
+      `;
+      const oldCleanerId = bookingRows[0]?.cleaner_id;
+
       await this.prisma.$executeRaw`
         UPDATE bookings
            SET status = 'searching',
@@ -176,7 +182,7 @@ export class AdminDisputesController {
                admin_notes = COALESCE(admin_notes, '') || E'\n[garansi] ' || ${body.resolution}
          WHERE id = ${dispute.booking_id}::uuid
       `;
-      // Reverse earning cleaner (kalau sudah CLEARED, balikin saldo platform via reversal entry)
+      // Reverse earning cleaner
       await this.prisma.$executeRawUnsafe(
         `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
          SELECT user_id, 'earnings_reversal', -amount, reference_type, reference_id, 'CLEARED', NOW(), 'Reversal — garansi bersihkan ulang approved'
@@ -186,6 +192,16 @@ export class AdminDisputesController {
           LIMIT 1`,
         dispute.booking_id,
       );
+      // Notif ke cleaner lama bahwa garansi disetujui & mereka perlu bersihkan ulang
+      if (oldCleanerId) {
+        void this.push.send({
+          userId: oldCleanerId,
+          channel: 'system',
+          title: 'Garansi bersihkan ulang disetujui',
+          body: `Customer mengajukan garansi pada pesanan ini dan admin telah menyetujuinya. Kamu perlu kembali ke lokasi untuk membersihkan ulang. Pesanan akan segera di-assign kembali.`,
+          data: { type: 'warranty_redo_approved', bookingId: dispute.booking_id },
+        }).catch(() => {});
+      }
     }
 
     // Credit refund ke wallet customer (raised_by) saat action = refund_customer
