@@ -121,6 +121,19 @@ export class CustomerWalletController {
     `;
   }
 
+  @Get('wallet/tip-check')
+  async tipCheck(@CurrentUser() user: AuthenticatedUser, @Query('bookingId') bookingId?: string) {
+    if (!bookingId) return { amount: 0 };
+    const rows = await this.prisma.$queryRaw<{ amount: number }[]>`
+      SELECT COALESCE(SUM(amount), 0)::bigint AS amount
+        FROM wallet_ledger_entries
+       WHERE user_id = ${user.id}::uuid
+         AND reference_type = 'tip'
+         AND reference_id = ${bookingId}::uuid
+    `;
+    return { amount: Number(rows[0]?.amount ?? 0) };
+  }
+
   @Get('withdrawals')
   async withdrawals(@CurrentUser() user: AuthenticatedUser) {
     return this.prisma.$queryRaw<Record<string, unknown>[]>`

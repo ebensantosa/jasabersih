@@ -374,6 +374,14 @@ function BookingDetail() {
         // (hasRated sudah true secara lokal), response stale tidak boleh reset ke false.
         setHasRated((prev) => prev || !!(data && typeof data.rating === 'number' && data.rating > 0));
         if (data?.tipAmount) setTipGiven(Number(data.tipAmount));
+        // Fallback: cek wallet ledger kalau tipAmount belum ada di rating
+        // (tip dibayar via payment screen sebelum/tanpa rating)
+        if (!data?.tipAmount && id) {
+          api.get(`/customer/wallet/tip-check?bookingId=${id}`).then((tr) => {
+            const tipAmt = Number((tr.data?.data ?? tr.data)?.amount ?? 0);
+            if (tipAmt > 0) setTipGiven(tipAmt);
+          }).catch(() => {});
+        }
       }).catch(() => {})
         .finally(() => {
           if (!stale) setRatingLoaded(true);
