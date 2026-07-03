@@ -120,7 +120,7 @@ const firebasePlugins = [
       android: {
         kotlinVersion: '2.1.21',
         compileSdkVersion: 35,
-        targetSdkVersion: 34,
+        targetSdkVersion: 35,
         minSdkVersion: 24,
       },
     },
@@ -151,9 +151,7 @@ module.exports = {
     },
     android: {
       package: 'com.jasabersih.app',
-      versionCode: 24,
-      targetSdkVersion: 35,
-      compileSdkVersion: 35,
+      versionCode: 25,
       edgeToEdgeEnabled: false,
       permissions: [
         'USE_FULL_SCREEN_INTENT',
