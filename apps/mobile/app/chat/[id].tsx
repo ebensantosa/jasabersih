@@ -688,8 +688,11 @@ function Chat() {
         )}
 
         {/* Safety banner + Report button. Teks bisa diubah admin via app_config
-            key 'safety.chat_banner' (fallback ke default kalau gak ke-set). */}
-        {!isCleaner && <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />}
+            key 'safety.chat_banner' (fallback ke default kalau gak ke-set).
+            Disembunyikan saat pesanan selesai/batal. */}
+        {!isCleaner && !['completed', 'canceled'].includes(booking?.status ?? '') && (
+          <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />
+        )}
 
         {/* Incoming call banner — hidden kalau sudah dalam call aktif */}
         {showIncomingBanner && !activeCall && (
@@ -772,7 +775,7 @@ function Chat() {
               <View className="flex-1">
                 <Text className="font-semibold text-sm text-ink-700">Chat ditutup</Text>
                 <Text className="font-sans text-xs text-ink-500">
-                  {booking?.status === 'canceled' ? 'Pesanan dibatalkan.' : 'Pesanan selesai.'}{!isCleaner ? ' Ada masalah? Tap untuk lapor.' : ''}
+                  {booking?.status === 'canceled' ? 'Pesanan dibatalkan.' : 'Pesanan selesai. Terima kasih!'}
                 </Text>
               </View>
               {!isCleaner && <ChevronRight color="#94A3B8" size={16} strokeWidth={2.4} />}

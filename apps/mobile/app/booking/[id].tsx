@@ -378,13 +378,10 @@ function BookingDetail() {
   }, [booking?.status, isCleaner, router]);
   const within24h = !!booking?.completedAt && Date.now() - booking.completedAt < 24 * 3600_000;
   const completedCustomerStateReady = isCleaner || booking?.status !== 'completed' || ratingLoaded;
-  // Dispute bisa dilaporkan saat aktif DAN saat baru selesai dalam 24 jam (sebelum customer rate)
+  // Dispute hanya saat booking aktif (sebelum selesai)
   const canDispute = booking
     && !id?.startsWith('bk_')
-    && (
-      ['matched', 'on_the_way', 'in_progress'].includes(booking.status)
-      || (booking.status === 'completed' && completedCustomerStateReady && !isCleaner && !hasRated && within24h)
-    );
+    && ['matched', 'on_the_way', 'in_progress'].includes(booking.status);
   const canReclean = !isCleaner
     && booking?.status === 'completed'
     && completedCustomerStateReady
