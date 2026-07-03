@@ -850,8 +850,6 @@ function NewBooking() {
           customerName: userProfile?.name?.trim() || undefined,
           addressLabel: selectedAddress?.label || undefined,
           addressDetailNote: selectedAddress?.detailNote || undefined,
-          recipientName: selectedAddress?.recipientName || undefined,
-          recipientPhone: selectedAddress?.recipientPhone || undefined,
           voucherCode: voucher?.code,
           overtimeSurcharge: overtimeQuote.surcharge,
         overtimeHours: overtimeQuote.overtimeHours,
