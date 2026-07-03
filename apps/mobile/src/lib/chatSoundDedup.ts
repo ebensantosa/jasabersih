@@ -15,3 +15,15 @@ export function shouldPlayChatSound(messageId?: string | null): boolean {
   trimSeenIds();
   return true;
 }
+
+// Track booking ID yang sedang dibuka di chat screen.
+// Kalau push notif datang untuk booking yang sama, skip — WebSocket sudah handle suaranya.
+let activeChatBookingId: string | null = null;
+
+export function setActiveChatBooking(bookingId: string | null): void {
+  activeChatBookingId = bookingId;
+}
+
+export function isInActiveChat(bookingId?: string | null): boolean {
+  return !!bookingId && bookingId === activeChatBookingId;
+}

@@ -63,7 +63,7 @@ import { UpdatePromptHost } from '../src/components/UpdatePrompt';
 import { useAppContent } from '../src/stores/appContent';
 import { useLocaleStore } from '../src/lib/i18n';
 import { registerForPushAsync } from '../src/lib/pushSetup';
-import { shouldPlayChatSound } from '../src/lib/chatSoundDedup';
+import { shouldPlayChatSound, isInActiveChat } from '../src/lib/chatSoundDedup';
 import { hydrateStorageCache, persistKeys } from '../src/lib/storage';
 import { QueryProvider } from '../src/providers/QueryProvider';
 import { useBookingRealtime } from '../src/hooks/useBookingRealtime';
@@ -314,7 +314,9 @@ export default function RootLayout() {
       }
       if (data?.type === 'chat') {
         signalChatUnread();
-        if (shouldPlayChatSound(String(data?.messageId ?? ''))) {
+        // Skip suara dari push notif kalau user sudah di chat screen —
+        // WebSocket di useChatSocket sudah mainkan suara langsung (lebih reliable).
+        if (!isInActiveChat(data?.bookingId as string | undefined) && shouldPlayChatSound(String(data?.messageId ?? ''))) {
           void prepareAudiblePlayback()
             .then(() => playOneShotSound(require('../assets/sounds/chat_message.wav'), 0.75))
             .catch(() => {});

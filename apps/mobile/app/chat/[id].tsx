@@ -25,6 +25,7 @@ import * as Notifications from 'expo-notifications';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
 import { prepareAudiblePlayback } from '../../src/lib/sound';
+import { setActiveChatBooking } from '../../src/lib/chatSoundDedup';
 import { useCallStore } from '../../src/stores/call';
 import { uploadWithSignedUrl } from '../../src/lib/signedUpload';
 import { useAuthStore } from '../../src/stores/auth';
@@ -105,6 +106,14 @@ function Chat() {
     }, 2000);
     return () => clearTimeout(t);
   }, [id, messages, myUserId, showIncomingBanner, activeCall, signalChatUnread]);
+  // Daftarkan chat ini sebagai "aktif" supaya push notif tidak mainkan suara dobel
+  // (WebSocket sudah handle suara saat user ada di screen ini)
+  useEffect(() => {
+    if (!id) return;
+    setActiveChatBooking(id);
+    return () => setActiveChatBooking(null);
+  }, [id]);
+
   const callEnabled = useConfig('feature.call_enabled', true as any) !== false;
   const maxDurationSec = (useConfig('call.max_duration_minutes', 30) as number) * 60;
   const [cleanerStats, setCleanerStats] = useState<{ ratingAvg: number; ratingCount: number } | null>(null);
