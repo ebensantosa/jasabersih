@@ -133,8 +133,7 @@ export default function DisputesPage() {
     }
   }
 
-  async function takeOver(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
+  async function takeOver(id: string) {
     try {
       await api.admin.assignDispute(id);
       toast.success('Sengketa diambil alih.');
@@ -277,7 +276,7 @@ export default function DisputesPage() {
                         <div className="flex justify-end gap-1">
                           <Button size="sm" variant="secondary" onClick={() => openDetail(d.id)}>Detail</Button>
                           {d.status === 'open' && (
-                            <Button size="sm" variant="primary" onClick={(e) => takeOver(d.id, e)}>Ambil alih</Button>
+                            <Button size="sm" variant="primary" onClick={() => takeOver(d.id)}>Ambil alih</Button>
                           )}
                         </div>
                       </td>
