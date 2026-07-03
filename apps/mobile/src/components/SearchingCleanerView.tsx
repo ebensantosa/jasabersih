@@ -13,12 +13,10 @@ const STATUS_MESSAGES: { min: number; text: string }[] = [
   { min: 12, text: 'Hampir batas waktu. Jika belum cocok, customer service akan membantu manual.' },
 ];
 
-const TAB_BAR_HEIGHT = 49;
-
 function FooterCta({ footerCta }: { footerCta: { label: string; onPress: () => void; helper?: string } }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={{ marginTop: 18, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }}>
+    <View style={{ marginTop: 18, paddingBottom: Math.max(insets.bottom, 8) }}>
       <Pressable
         onPress={footerCta.onPress}
         style={{
@@ -128,8 +126,8 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             : [1, 0.45, 0.35, 1],
     });
 
-  const topPad = footerCta ? insets.top + 16 : 16;
-  const botPad = footerCta ? 16 : 0;
+  const topPad = insets.top + 16;
+  const botPad = footerCta ? 0 : Math.max(insets.bottom, 16);
 
   return (
     <LinearGradient
