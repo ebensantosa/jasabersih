@@ -105,7 +105,7 @@ export class CleanerProfileController {
           });
         }
       }
-      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = ${body.isAvailable}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
+      await this.prisma.$executeRaw`UPDATE cleaner_profiles SET is_available = ${body.isAvailable}, wants_available = ${body.isAvailable}, updated_at = NOW() WHERE user_id = ${user.id}::uuid`;
     }
 
     return { ok: true };
