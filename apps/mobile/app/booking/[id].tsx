@@ -142,13 +142,12 @@ function BookingDetail() {
     if (id && !id.startsWith('bk_') && !booking) void fetchOne(id);
   }, [id, booking, fetchOne]);
 
-  // Safety-net poll: WebSocket handles real-time updates. Poll slowly as fallback.
-  // pending_payment: poll lebih cepat supaya status update setelah bayar langsung terlihat.
+  // Safety-net poll: WebSocket (useBookingRealtime) handles real-time updates via booking:status event.
+  // Poll at 30s only as fallback in case WebSocket message is missed.
   const isSearching = !!id && !id.startsWith('bk_') && booking?.status === 'searching';
-  const isPendingPayment = !!id && !id.startsWith('bk_') && booking?.status === 'pending_payment';
   const isActiveBooking = !!id && !id.startsWith('bk_') &&
     ['pending_payment', 'searching', 'matched', 'cleaner_otw', 'on_the_way', 'in_progress', 'started'].includes(booking?.status ?? '');
-  useVisiblePoll(() => { if (id) void fetchOne(id); }, isPendingPayment ? 8_000 : 30_000, isActiveBooking);
+  useVisiblePoll(() => { if (id) void fetchOne(id); }, 30_000, isActiveBooking);
   const mode = useModeStore((s) => s.mode);
   const token = useAuthStore((s) => s.tokens?.accessToken);
   const myUserId = (() => {
