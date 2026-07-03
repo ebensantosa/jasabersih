@@ -82,8 +82,9 @@ export class AutoCompleteService {
     }
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  // autoCompleteStale dihapus — booking per ruangan diselesaikan manual oleh cleaner
   async autoCompleteStale(): Promise<void> {
+    return;
     const stale = await this.prisma.$queryRaw<{ id: string; customer_id: string | null; cleaner_id: string | null; cleaner_payout: number | null }[]>`
       SELECT id, customer_id, cleaner_id, cleaner_payout
         FROM bookings
