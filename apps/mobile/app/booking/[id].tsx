@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Info,
   MapPin,
   MessageCircle,
   Pause,
   Play,
   Sparkles,
+  User,
   X,
   XCircle,
 } from 'lucide-react-native';
@@ -993,6 +995,12 @@ function BookingDetail() {
             <View className="gap-3">
               <Detail icon={Calendar} label="Jadwal" value={formatScheduleWithTz(booking.scheduledAt, booking.addressLine)} />
               <Detail icon={MapPin} label="Alamat" value={booking.addressLine} />
+              {(booking.formSnapshot as any)?.addressDetailNote && (
+                <Detail icon={Info} label="Patokan / Keterangan" value={(booking.formSnapshot as any).addressDetailNote} />
+              )}
+              {(booking.formSnapshot as any)?.recipientName && (
+                <Detail icon={User} label="Kontak Lokasi" value={`${(booking.formSnapshot as any).recipientName}${(booking.formSnapshot as any).recipientPhone ? ` · ${(booking.formSnapshot as any).recipientPhone}` : ''}`} />
+              )}
               {booking.pricingMode === 'hourly' && booking.hours && (
                 <Detail icon={Clock} label="Durasi" value={`${booking.hours} jam`} />
               )}
