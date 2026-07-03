@@ -29,33 +29,46 @@ export class AdminDisputesController {
   ) {
     const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'escalated'];
     const filterStatus = status && VALID_STATUSES.includes(status) ? status : null;
-    const fromDate = from ? new Date(from) : null;
-    const toDate = to ? new Date(to) : null;
 
-    // Build safe parameterized query with optional filters
-    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
-      SELECT d.id, d.booking_id AS "bookingId", d.type, d.description, d.status, d.priority,
-             d.created_at AS "createdAt", d.sla_due_at AS "slaDueAt",
-             d.resolution, d.payout_amount AS "payoutAmount",
-             d.resolved_at AS "resolvedAt",
-             d.assigned_to AS "assignedTo",
-             d.subject_user_id AS "subjectUserId",
-             ru.name AS "raisedByName", ru.phone AS "raisedByPhone",
-             su.name AS "subjectName", su.phone AS "subjectPhone",
-             au.name AS "assignedAdminName"
-        FROM disputes d
-        LEFT JOIN users ru ON ru.id = d.raised_by
-        LEFT JOIN users su ON su.id = d.subject_user_id
-        LEFT JOIN admin_users au ON au.id = d.assigned_to
-       WHERE (${filterStatus}::text IS NULL OR d.status = ${filterStatus})
-         AND (${fromDate}::timestamptz IS NULL OR d.created_at >= ${fromDate})
-         AND (${toDate}::timestamptz IS NULL OR d.created_at < ${toDate} + INTERVAL '1 day')
-       ORDER BY
-         CASE d.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 ELSE 3 END,
-         d.created_at DESC
-       LIMIT 500
-    `;
-    return rows;
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (filterStatus) {
+      params.push(filterStatus);
+      conditions.push(`d.status = $${params.length}`);
+    }
+    if (from) {
+      params.push(new Date(from));
+      conditions.push(`d.created_at >= $${params.length}::timestamptz`);
+    }
+    if (to) {
+      params.push(new Date(to));
+      conditions.push(`d.created_at < $${params.length}::timestamptz + INTERVAL '1 day'`);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    return this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+      `SELECT d.id, d.booking_id AS "bookingId", d.type, d.description, d.status, d.priority,
+              d.created_at AS "createdAt", d.sla_due_at AS "slaDueAt",
+              d.resolution, d.payout_amount AS "payoutAmount",
+              d.resolved_at AS "resolvedAt",
+              d.assigned_to AS "assignedTo",
+              d.subject_user_id AS "subjectUserId",
+              ru.name AS "raisedByName", ru.phone AS "raisedByPhone",
+              su.name AS "subjectName", su.phone AS "subjectPhone",
+              au.name AS "assignedAdminName"
+         FROM disputes d
+         LEFT JOIN users ru ON ru.id = d.raised_by
+         LEFT JOIN users su ON su.id = d.subject_user_id
+         LEFT JOIN admin_users au ON au.id = d.assigned_to
+         ${where}
+        ORDER BY
+          CASE d.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 ELSE 3 END,
+          d.created_at DESC
+        LIMIT 500`,
+      ...params,
+    );
   }
 
   @Get(':id')
