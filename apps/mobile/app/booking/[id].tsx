@@ -275,9 +275,13 @@ function BookingDetail() {
 
   // Fetch dispute user untuk booking ini (supaya bisa tampilkan status laporan)
   useEffect(() => {
+    setMyDispute(undefined); // reset dulu supaya state booking lama tidak keliatan
     if (!id || id.startsWith('bk_')) { setMyDispute(null); return; }
     api.get(`/disputes/booking/${id}`)
-      .then((r) => setMyDispute((r.data?.data ?? r.data) ?? null))
+      .then((r) => {
+        const val = r.data?.data ?? r.data;
+        setMyDispute(val && typeof val === 'object' && val.id ? val : null);
+      })
       .catch(() => setMyDispute(null));
   }, [id, showDispute]); // refresh setelah submit dispute baru
 
