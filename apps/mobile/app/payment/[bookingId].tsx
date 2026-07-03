@@ -229,11 +229,10 @@ function PaymentScreen() {
         setWalletBalance(Number((r.data?.data ?? r.data)?.balance ?? 0));
       } catch { /* ignore */ }
       try {
+        // Bersihkan stale useCredit keys — tapi tidak auto-apply ke UI.
+        // Customer harus memilih sendiri mau pakai saldo atau tidak.
         const { storage } = await import('../../src/lib/storage');
-        const key = `useCredit:${bookingId}`;
-        const flag = storage.getString(key) ?? await AsyncStorage.getItem(key) ?? undefined;
-        if (flag === '1') setUseCredit(true);
-        storage.delete(key);
+        storage.delete(`useCredit:${bookingId}`);
         const allKeys = await AsyncStorage.getAllKeys();
         const staleKeys = allKeys.filter((item) => item.startsWith('useCredit:'));
         if (staleKeys.length > 0) await AsyncStorage.multiRemove(staleKeys);
@@ -594,37 +593,53 @@ function MethodPicker({
         ) : null}
         {walletBalance > 0 && (
           <>
+          {/* Saldo selalu ditampilkan sebagai pilihan (bukan auto-potong).
+              Customer yang decide mau pakai atau tidak. */}
           {fullSaldo ? (
             <>
             <Pressable
               disabled={disabled}
-              onPress={onPaySaldo}
-              className="flex-row items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4"
+              onPress={() => setUseCredit(!useCredit)}
+              className={`flex-row items-center gap-3 rounded-2xl border p-4 ${useCredit ? 'border-emerald-400 bg-emerald-50' : 'border-ink-200 bg-white'}`}
             >
-              <View className="h-12 w-14 items-center justify-center rounded-xl bg-emerald-600">
-                <WalletIcon color="white" size={20} />
+              <View className={`h-12 w-14 items-center justify-center rounded-xl ${useCredit ? 'bg-emerald-600' : 'bg-ink-200'}`}>
+                <WalletIcon color={useCredit ? 'white' : '#64748B'} size={20} />
               </View>
               <View className="flex-1">
-                <Text className="font-bold text-sm text-emerald-900">Bayar dengan Saldo</Text>
-                <Text className="font-medium mt-0.5 text-[11px] text-ink-600">
-                  Tap untuk bayar lunas — tidak perlu pilih bank.
+                <Text className="font-bold text-sm text-ink-900">Pakai Saldo ({formatRupiah(walletBalance)})</Text>
+                <Text className="font-medium mt-0.5 text-[11px] text-ink-500">
+                  {useCredit ? `Saldo cukup — tap Bayar untuk selesaikan pembayaran` : 'Tap untuk pilih bayar pakai saldo'}
                 </Text>
               </View>
+              <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${useCredit ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'}`}>
+                {useCredit && <Text className="font-bold text-white text-[9px]">✓</Text>}
+              </View>
             </Pressable>
-            <View className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2">
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-ink-600">Total pembayaran</Text>
-                <Text className="text-xs text-ink-700">{formatRupiah(total)}</Text>
+            {useCredit && (
+              <>
+              <View className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2">
+                <View className="flex-row justify-between">
+                  <Text className="text-xs text-ink-600">Total pembayaran</Text>
+                  <Text className="text-xs text-ink-700">{formatRupiah(total)}</Text>
+                </View>
+                <View className="flex-row justify-between mt-1">
+                  <Text className="text-xs text-ink-600">Saldo kamu</Text>
+                  <Text className="text-xs text-emerald-700">{formatRupiah(walletBalance)}</Text>
+                </View>
+                <View className="flex-row justify-between mt-1 border-t border-emerald-200 pt-1">
+                  <Text className="text-xs font-bold text-ink-900">Sisa saldo setelah bayar</Text>
+                  <Text className="text-xs font-bold text-emerald-700">{formatRupiah(walletBalance - total)}</Text>
+                </View>
               </View>
-              <View className="flex-row justify-between mt-1">
-                <Text className="text-xs text-ink-600">Saldo kamu</Text>
-                <Text className="text-xs text-emerald-700">{formatRupiah(walletBalance)}</Text>
-              </View>
-              <View className="flex-row justify-between mt-1 border-t border-emerald-200 pt-1">
-                <Text className="text-xs font-bold text-ink-900">Sisa saldo setelah bayar</Text>
-                <Text className="text-xs font-bold text-emerald-700">{formatRupiah(walletBalance - total)}</Text>
-              </View>
-            </View>
+              <Pressable
+                disabled={disabled}
+                onPress={onPaySaldo}
+                className="mt-2 rounded-2xl bg-emerald-600 p-4 items-center"
+              >
+                <Text className="font-bold text-sm text-white">Bayar {formatRupiah(total)} dengan Saldo</Text>
+              </Pressable>
+              </>
+            )}
             </>
           ) : (
             <Pressable
