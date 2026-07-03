@@ -98,6 +98,8 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!userId) return;
 
       try {
+        // Hanya set is_available = FALSE (socket presence), jangan ubah wants_available
+        // supaya FCM broadcast tetap kirim ke cleaner yang mau terima job meski app di background.
         await this.prisma.$executeRaw`
           UPDATE cleaner_profiles
              SET is_available = FALSE
@@ -138,7 +140,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await client.join(ROOM_AVAILABLE);
     await this.prisma.$executeRaw`
       UPDATE cleaner_profiles
-         SET is_available = TRUE
+         SET is_available = TRUE, wants_available = TRUE
        WHERE user_id = ${client.data.userId}::uuid
     `;
     return { ok: true };
@@ -149,7 +151,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await client.leave(ROOM_AVAILABLE);
     await this.prisma.$executeRaw`
       UPDATE cleaner_profiles
-         SET is_available = FALSE
+         SET is_available = FALSE, wants_available = FALSE
        WHERE user_id = ${client.data.userId}::uuid
     `;
     return { ok: true };
@@ -351,7 +353,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         FROM cleaner_profiles cp
         JOIN users u ON u.id = cp.user_id
        WHERE cp.kyc_status = 'approved'
-         AND COALESCE(cp.is_available, TRUE) = TRUE
+         AND COALESCE(cp.wants_available, FALSE) = TRUE
          AND u.deleted_at IS NULL
     `.catch(() => [] as { user_id: string; service_areas: unknown }[]);
 
