@@ -131,7 +131,7 @@ module.exports = {
   expo: {
     name: 'JasaBersih',
     slug: 'jasabersih-app',
-    version: '1.5.0',
+    version: '1.6.0',
     scheme: 'jasabersih',
     orientation: 'default',
     userInterfaceStyle: 'light',
@@ -151,7 +151,7 @@ module.exports = {
     },
     android: {
       package: 'com.jasabersih.app',
-      versionCode: 22,
+      versionCode: 23,
       edgeToEdgeEnabled: false,
       permissions: [
         'USE_FULL_SCREEN_INTENT',
