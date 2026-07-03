@@ -353,7 +353,6 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
        WHERE cp.kyc_status = 'approved'
          AND COALESCE(cp.is_available, TRUE) = TRUE
          AND u.deleted_at IS NULL
-       LIMIT 100
     `.catch(() => [] as { user_id: string; service_areas: unknown }[]);
 
     const eligible = cleaners.filter((cleaner) => {
