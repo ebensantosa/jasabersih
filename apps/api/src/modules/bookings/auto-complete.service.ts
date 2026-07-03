@@ -59,7 +59,7 @@ export class AutoCompleteService {
             `,
           ] : []),
         ]);
-        if (b.customer_id) {
+        if (b.customer_id != null) {
           void this.push.send({
             userId: b.customer_id, channel: 'booking',
             title: 'Waktu kerja selesai',
@@ -111,14 +111,15 @@ export class AutoCompleteService {
               LEFT JOIN pricing_hourly_tiers ht ON ht.id = bk.hourly_tier_id
              WHERE bk.id = ${b.id}::uuid LIMIT 1
           `;
-          if (ctx[0]) {
-            const base = Number(ctx[0].base ?? 0);
-            const travel = Number(ctx[0].travel ?? 0);
-            const bringsTools = !!ctx[0].brings_tools;
-            const isHourly = ctx[0].pricing_mode === 'hourly';
+          const ctx0 = ctx[0];
+          if (ctx0) {
+            const base = Number(ctx0.base ?? 0);
+            const travel = Number(ctx0.travel ?? 0);
+            const bringsTools = !!ctx0.brings_tools;
+            const isHourly = ctx0.pricing_mode === 'hourly';
             let sharePct: number;
-            if (isHourly && ctx[0].hourly_share_pct != null) {
-              sharePct = Number(ctx[0].hourly_share_pct);
+            if (isHourly && ctx0.hourly_share_pct != null) {
+              sharePct = Number(ctx0.hourly_share_pct);
             } else {
               const tiers = await this.prisma.$queryRaw<{ range_min: number | null; range_max: number | null; cleaner_share_no_tools: number; cleaner_share_with_tools: number }[]>`
                 SELECT range_min, range_max, cleaner_share_no_tools, cleaner_share_with_tools
@@ -128,6 +129,7 @@ export class AutoCompleteService {
               sharePct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
             }
             const payout = Math.round(base * sharePct / 100) + travel;
+            void bringsTools;
             if (payout > 0) {
               await this.prisma.$executeRaw`UPDATE bookings SET cleaner_payout = ${payout}::bigint WHERE id = ${b.id}::uuid`;
               b.cleaner_payout = payout;
@@ -159,7 +161,7 @@ export class AutoCompleteService {
             `,
           ] : []),
         ]);
-        if (b.customer_id) {
+        if (b.customer_id != null) {
           void this.push.send({
             userId: b.customer_id, channel: 'booking',
             title: 'Pesanan otomatis diselesaikan',
