@@ -826,6 +826,7 @@ export class CleanerJobsController {
         pauseStartedAt: pauseTs,
         pausedTotalSec: Number(booking.paused_total_sec ?? 0),
       });
+      this.jobs.emitBookingReload(booking.customer_id, id);
       return { ok: true, paused: true, pauseStartedAt: pauseTs };
     }
 
@@ -846,6 +847,7 @@ export class CleanerJobsController {
       pauseStartedAt: null,
       pausedTotalSec: newPausedTotal,
     });
+    this.jobs.emitBookingReload(booking.customer_id, id);
     return { ok: true, paused: false };
   }
 
