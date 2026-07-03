@@ -29,7 +29,7 @@ export class AutoCompleteService {
          AND started_at IS NOT NULL
          AND hours_booked IS NOT NULL
          AND pause_started_at IS NULL
-         AND started_at + (hours_booked::numeric * 3600 - COALESCE(paused_total_sec, 0))::int * INTERVAL '1 second' < NOW() - INTERVAL '1 minute'
+         AND started_at + (hours_booked::numeric * 3600 + COALESCE(paused_total_sec, 0))::int * INTERVAL '1 second' < NOW() - INTERVAL '1 minute'
     `;
     if (expired.length === 0) return;
     this.log.log(`Auto-complete hourly expired: ${expired.length} booking(s)`);
