@@ -92,21 +92,17 @@ function Chat() {
   // Jangan tampilkan incoming banner kalau sedang ada call aktif di booking lain
   const [showIncomingBanner, setShowIncomingBanner] = useState(!!id && incomingCall === '1' && autoAnswer !== '1' && !useCallStore.getState().active);
 
-  // Mark-read setelah 2 detik di chat — skip kalau call overlay aktif atau
-  // chat ditutup sebelum 2 detik (clearTimeout di cleanup).
+  // Mark-read saat masuk chat — langsung tanpa cek recipientId di client
+  // (backend yang filter berdasarkan user.id, jadi aman dipanggil tiap kali)
   useEffect(() => {
     if (!id || showIncomingBanner || activeCall) return;
-    const hasUnreadForMe = messages.some((m) => m.recipientId === myUserId && !m.readAt);
-    if (!hasUnreadForMe) return;
     const t = setTimeout(() => {
-      import('../../src/lib/api').then(({ api }) => {
-        api.post(`/chat/booking/${id}/read`).then(() => {
-          signalChatUnread();
-        }).catch(() => {});
-      });
-    }, 2000);
+      api.post(`/chat/booking/${id}/read`).then(() => {
+        signalChatUnread();
+      }).catch(() => {});
+    }, 1000);
     return () => clearTimeout(t);
-  }, [id, messages, myUserId, showIncomingBanner, activeCall, signalChatUnread]);
+  }, [id, showIncomingBanner, activeCall, signalChatUnread]);
   // Daftarkan chat ini sebagai "aktif" supaya push notif tidak mainkan suara dobel
   // (WebSocket sudah handle suara saat user ada di screen ini)
   useEffect(() => {
