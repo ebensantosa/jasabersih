@@ -102,6 +102,19 @@ export class AdminDisputesController {
       resourceId: id,
       ipAddress: req.ip ?? null,
     });
+    // Notif ke pelapor bahwa laporan sedang diproses
+    const r = await this.prisma.$queryRaw<{ raised_by: string | null }[]>`
+      SELECT raised_by FROM disputes WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (r[0]?.raised_by) {
+      void this.push.send({
+        userId: r[0].raised_by,
+        channel: 'system',
+        title: 'Laporanmu sedang diproses',
+        body: 'Tim kami sudah mengambil alih kasusmu dan sedang meninjau laporan.',
+        data: { type: 'dispute_in_progress', disputeId: id },
+      }).catch(() => {});
+    }
     return { ok: true };
   }
 

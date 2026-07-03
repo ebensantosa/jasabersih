@@ -47,6 +47,22 @@ export class DisputesController {
     `;
   }
 
+  @Get('booking/:bookingId')
+  async getByBooking(@CurrentUser() user: AuthenticatedUser, @Param('bookingId') bookingId: string) {
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT d.id, d.type, d.status, d.resolution, d.payout_amount AS "payoutAmount",
+             d.created_at AS "createdAt", d.resolved_at AS "resolvedAt",
+             su.name AS "subjectName"
+        FROM disputes d
+        LEFT JOIN users su ON su.id = d.subject_user_id
+       WHERE d.booking_id = ${bookingId}::uuid
+         AND d.raised_by = ${user.id}::uuid
+       ORDER BY d.created_at DESC
+       LIMIT 1
+    `;
+    return rows[0] ?? null;
+  }
+
   @Post('upload-url')
   async uploadUrl(@CurrentUser() user: AuthenticatedUser, @Body() body: { contentType: string }) {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];

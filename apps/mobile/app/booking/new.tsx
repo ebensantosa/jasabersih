@@ -627,7 +627,7 @@ function NewBooking() {
     : isPostReno
       ? postRenoTotal + addonTotal
       : isSubscription
-        ? Math.round(basePrice * subscriptionTierMultiplier) + subscriptionAddonTotal
+        ? basePrice + subscriptionAddonTotal
         : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   type AvailableVoucher = {
     id: string;

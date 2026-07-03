@@ -162,6 +162,7 @@ function BookingDetail() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ title: string; body: string; confirmText: string; onConfirm: () => void } | null>(null);
   const [showDispute, setShowDispute] = useState(false);
+  const [myDispute, setMyDispute] = useState<{ id: string; type: string; status: string; resolution: string | null; createdAt: string; resolvedAt: string | null } | null | undefined>(undefined);
   const [showRating, setShowRating] = useState(false);
   const [showProblemSheet, setShowProblemSheet] = useState(false);
   const [showRecleanForm, setShowRecleanForm] = useState(false);
@@ -271,6 +272,14 @@ function BookingDetail() {
     } catch { /* silent - not a subscription parent */ }
   }
   useEffect(() => { void loadSubscriptionVisits(); }, [id, isCleaner]);
+
+  // Fetch dispute user untuk booking ini (supaya bisa tampilkan status laporan)
+  useEffect(() => {
+    if (!id || id.startsWith('bk_')) { setMyDispute(null); return; }
+    api.get(`/disputes/booking/${id}`)
+      .then((r) => setMyDispute((r.data?.data ?? r.data) ?? null))
+      .catch(() => setMyDispute(null));
+  }, [id, showDispute]); // refresh setelah submit dispute baru
 
   async function approveUpcharge(upchargeId: string) {
     try {
@@ -1321,15 +1330,18 @@ function BookingDetail() {
             </Pressable>
           )}
 
-          {canDispute && (
+          {/* Dispute: kalau sudah ada laporan — tampilkan status card. Kalau belum dan bisa lapor — tampilkan tombol. */}
+          {myDispute ? (
+            <DisputeStatusCard dispute={myDispute} isCleaner={isCleaner} />
+          ) : canDispute ? (
             <Pressable
               onPress={() => setShowDispute(true)}
               className="mx-4 mt-3 flex-row items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3"
             >
               <AlertTriangle color="#B91C1C" size={16} />
-              <Text className="font-semibold text-sm text-red-700">{t('booking.report')}</Text>
+              <Text className="font-semibold text-sm text-red-700">{isCleaner ? 'Laporkan Kendala' : 'Laporkan Masalah'}</Text>
             </Pressable>
-          )}
+          ) : null}
 
         </ScrollView>
 
@@ -2076,6 +2088,51 @@ function CategoryIcon({ image, categoryCode }: { image: any; categoryCode?: stri
         <Image source={resolved} style={{ width: '100%', height: '100%' }} contentFit="cover" />
       ) : (
         <Sparkles color="#64748B" size={24} strokeWidth={2} />
+      )}
+    </View>
+  );
+}
+
+function DisputeStatusCard({ dispute, isCleaner }: {
+  dispute: { id: string; type: string; status: string; resolution: string | null; createdAt: string; resolvedAt: string | null };
+  isCleaner: boolean;
+}) {
+  const statusMeta: Record<string, { label: string; color: string; bg: string; border: string }> = {
+    open:        { label: 'Menunggu Tinjauan', color: '#92400E', bg: '#FFFBEB', border: '#FCD34D' },
+    in_progress: { label: 'Sedang Diproses',   color: '#1D4ED8', bg: '#EFF6FF', border: '#93C5FD' },
+    escalated:   { label: 'Dinaikan ke Tim',   color: '#7C3AED', bg: '#F5F3FF', border: '#C4B5FD' },
+    resolved:    { label: 'Selesai',            color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
+  };
+  const meta = statusMeta[dispute.status] ?? statusMeta.open;
+  const title = isCleaner ? 'Laporanmu tentang kondisi/customer' : 'Laporanmu tentang cleaner';
+
+  return (
+    <View className="mx-4 mt-3 rounded-xl border p-4" style={{ backgroundColor: meta.bg, borderColor: meta.border }}>
+      <View className="flex-row items-center justify-between mb-2">
+        <Text className="font-bold text-sm" style={{ color: meta.color }}>{title}</Text>
+        <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: meta.border }}>
+          <Text className="font-bold text-[10px]" style={{ color: meta.color }}>{meta.label}</Text>
+        </View>
+      </View>
+      {dispute.status === 'open' && (
+        <Text className="font-sans text-xs" style={{ color: meta.color }}>
+          Laporan diterima. Tim kami akan meninjau dalam 24 jam dan menghubungimu via notifikasi.
+        </Text>
+      )}
+      {dispute.status === 'in_progress' && (
+        <Text className="font-sans text-xs" style={{ color: meta.color }}>
+          Admin sedang meninjau kasusmu. Kamu akan dapat notifikasi saat ada keputusan.
+        </Text>
+      )}
+      {dispute.status === 'escalated' && (
+        <Text className="font-sans text-xs" style={{ color: meta.color }}>
+          Kasus diteruskan ke tim senior untuk ditinjau lebih lanjut.
+        </Text>
+      )}
+      {dispute.status === 'resolved' && dispute.resolution && (
+        <Text className="font-sans text-xs" style={{ color: meta.color }}>
+          Keputusan: {dispute.resolution}
+        </Text>
       )}
     </View>
   );

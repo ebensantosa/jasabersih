@@ -15,17 +15,29 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'resolved', label: 'Selesai' },
 ];
 
+// Tipe yang hanya bisa diajukan cleaner (perspektif cleaner terhadap customer/lokasi)
+const CLEANER_REPORT_TYPES = new Set(['customer_absent', 'address_issue', 'access_denied', 'scope_mismatch', 'unsafe_items']);
+
+function isCleanerReport(type: string | null | undefined): boolean {
+  return CLEANER_REPORT_TYPES.has(String(type ?? '').toLowerCase());
+}
+
 function disputeTypeLabel(type: string | null | undefined): string {
   const value = String(type ?? '').toLowerCase();
   const labels: Record<string, string> = {
-    customer_absent: 'Customer tidak hadir',
-    cleaner_absent: 'Cleaner tidak hadir',
-    late_arrival: 'Datang terlambat',
-    poor_quality: 'Kualitas pekerjaan kurang',
-    damage_claim: 'Klaim kerusakan',
-    payment_issue: 'Masalah pembayaran',
-    access_issue: 'Masalah akses lokasi',
-    no_show: 'Tidak datang',
+    // Customer melaporkan cleaner
+    quality:          'Hasil kerja kurang rapi',
+    no_show:          'Cleaner tidak datang',
+    theft:            'Kehilangan barang / pencurian',
+    payment:          'Masalah pembayaran',
+    harassment:       'Pelecehan / perilaku kasar',
+    other:            'Lainnya',
+    // Cleaner melaporkan kondisi / customer
+    customer_absent:  'Customer tidak ada di lokasi',
+    address_issue:    'Alamat / pin lokasi tidak sesuai',
+    access_denied:    'Akses lokasi ditolak',
+    scope_mismatch:   'Kondisi lapangan tidak sesuai pesanan',
+    unsafe_items:     'Barang berharga / risiko kerusakan',
   };
   return labels[value] ?? String(type ?? 'Sengketa');
 }
@@ -70,38 +82,27 @@ function priorityLabel(priority: string | null | undefined): string {
 }
 
 function disputeActionOptions(type: string | null | undefined) {
-  const value = String(type ?? '').toLowerCase();
-  const looksCustomerAtFault = value.includes('customer') || value.includes('absent') || value.includes('no_show');
-  const looksCleanerAtFault = value.includes('cleaner') || value.includes('late') || value.includes('damage') || value.includes('quality');
+  const cleanerReported = isCleanerReport(type);
 
   const common = [
     { value: 'warn_both', label: 'Berikan peringatan ke kedua pihak' },
     { value: 'dismiss', label: 'Tutup tanpa tindakan' },
   ];
 
-  if (looksCustomerAtFault && !looksCleanerAtFault) {
+  if (cleanerReported) {
+    // Cleaner lapor → subject = customer. Tindakan: sanksi customer atau tutup.
     return [
-      { value: 'suspend_subject', label: 'Bekukan akun pihak terlapor' },
-      { value: 'refund_customer', label: 'Kompensasi ke pelapor' },
+      { value: 'suspend_subject', label: 'Bekukan akun customer (pihak terlapor)' },
+      { value: 'refund_customer', label: 'Kompensasi ke cleaner (pelapor)' },
       ...common,
-      { value: 'warranty_redo_approved', label: 'Setujui pengerjaan ulang (garansi)' },
     ];
   }
 
-  if (looksCleanerAtFault) {
-    return [
-      { value: 'debit_cleaner', label: 'Potong saldo pihak terlapor' },
-      { value: 'refund_customer', label: 'Kompensasi ke pelapor' },
-      { value: 'suspend_subject', label: 'Bekukan akun pihak terlapor' },
-      ...common,
-      { value: 'warranty_redo_approved', label: 'Setujui pengerjaan ulang (garansi)' },
-    ];
-  }
-
+  // Customer lapor → subject = cleaner. Tindakan: sanksi cleaner, refund customer.
   return [
-    { value: 'refund_customer', label: 'Kompensasi ke pelapor' },
-    { value: 'debit_cleaner', label: 'Potong saldo pihak terlapor' },
-    { value: 'suspend_subject', label: 'Bekukan akun pihak terlapor' },
+    { value: 'refund_customer', label: 'Refund / kompensasi ke customer (pelapor)' },
+    { value: 'debit_cleaner', label: 'Potong saldo cleaner (pihak terlapor)' },
+    { value: 'suspend_subject', label: 'Bekukan akun cleaner (pihak terlapor)' },
     ...common,
     { value: 'warranty_redo_approved', label: 'Setujui pengerjaan ulang (garansi)' },
   ];
@@ -205,7 +206,12 @@ export default function DisputesPage() {
                 {list.map((d) => (
                   <tr key={d.id} className="cursor-pointer border-t hover:bg-blue-50" onClick={() => openDetail(d.id)}>
                     <td className="px-4 py-2">
-                      <Badge>{disputeTypeLabel(d.type)}</Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant={isCleanerReport(d.type) ? 'amber' : 'blue'}>
+                          {isCleanerReport(d.type) ? '🔧 Dari Cleaner' : '👤 Dari Customer'}
+                        </Badge>
+                        <span className="text-xs text-slate-500">{disputeTypeLabel(d.type)}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-2">
                       <div className="font-medium">{d.raisedByName ?? '-'}</div>
@@ -320,12 +326,22 @@ function DisputeDetailModal({
   return (
     <>
       <Modal title={`Sengketa · ${disputeTypeLabel(dispute.type)}`} open={!escalating} onClose={onClose} size="lg">
+        <div className="mb-3 flex items-center gap-2">
+          <Badge variant={isCleanerReport(dispute.type) ? 'amber' : 'blue'}>
+            {isCleanerReport(dispute.type) ? '🔧 Dilaporkan Cleaner' : '👤 Dilaporkan Customer'}
+          </Badge>
+          <span className="text-xs text-slate-500">
+            {isCleanerReport(dispute.type)
+              ? 'Cleaner melaporkan kendala dari pihak customer / kondisi lokasi'
+              : 'Customer melaporkan masalah terkait cleaner'}
+          </span>
+        </div>
         <div className="grid gap-3 md:grid-cols-2">
-          <InfoCard title="Pelapor">
+          <InfoCard title={isCleanerReport(dispute.type) ? 'Pelapor (Cleaner)' : 'Pelapor (Customer)'}>
             <div className="font-medium">{dispute.raisedByName ?? '-'}</div>
             <div className="text-xs text-slate-500">{dispute.raisedByPhone}</div>
           </InfoCard>
-          <InfoCard title="Pihak diperiksa">
+          <InfoCard title={isCleanerReport(dispute.type) ? 'Pihak diperiksa (Customer)' : 'Pihak diperiksa (Cleaner)'}>
             <div className="font-medium">{dispute.subjectName ?? '-'}</div>
             <div className="text-xs text-slate-500">{dispute.subjectPhone}</div>
           </InfoCard>
