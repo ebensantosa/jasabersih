@@ -319,6 +319,8 @@ function NewBooking() {
   }, [isPostReno, postRenoTargets, postRenoLevel, areaM2, bathrooms, postRenoHasKitchen]);
 
   const [dirtLevel, setDirtLevel] = useState<1 | 2 | 3>(1);
+  const [hasPriorDamage, setHasPriorDamage] = useState(false);
+  const [priorDamageNote, setPriorDamageNote] = useState('');
   const [photos, setPhotos] = useState<{ uri: string; size: number; url?: string }[]>([]);
   const photoCount = photos.length;
   const MAX_PHOTOS = 3;
@@ -851,6 +853,8 @@ function NewBooking() {
         subscriptionTier: isSubscription ? subscriptionTier : undefined,
         subscriptionTierMultiplier: isSubscription ? subscriptionTierMultiplier : undefined,
         dirtLevel,
+        hasPriorDamage,
+        priorDamageNote: hasPriorDamage ? priorDamageNote.trim() || undefined : undefined,
         dirtCharacters: Array.from(dirtChars),
         floorType,
         furnitureDensity: furniture,
@@ -1798,33 +1802,37 @@ function NewBooking() {
               )}
               {!isPostReno && !isSubscription && (
               <Section title="Tingkat Kotor">
-                <View className="flex-row gap-1.5">
+                <View className="gap-2">
                   {DIRT_LEVELS.map((d) => {
                     const active = d.level === dirtLevel;
                     return (
                       <Pressable
                         key={d.level}
                         onPress={() => setDirtLevel(d.level)}
-                        className={`flex-1 items-center rounded-xl border py-2.5 ${
-                          active ? 'border-brand-600 bg-brand-600' : 'border-ink-200 bg-white'
+                        className={`flex-row items-center gap-3 rounded-xl border px-4 py-3 ${
+                          active ? 'border-brand-600 bg-brand-50' : 'border-ink-200 bg-white'
                         }`}
                       >
-                        <Text className={`font-bold text-base ${active ? 'text-white' : 'text-ink-900'}`}>
-                          {d.level}
-                        </Text>
-                        <Text
-                          className={`font-medium text-[10px] ${active ? 'text-white' : 'text-ink-500'}`}
-                        >
-                          {d.label}
-                        </Text>
+                        <View className={`h-5 w-5 rounded-full border-2 items-center justify-center ${active ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'}`}>
+                          {active && <View className="h-2 w-2 rounded-full bg-white" />}
+                        </View>
+                        <View className="flex-1">
+                          <Text className={`font-bold text-sm ${active ? 'text-brand-700' : 'text-ink-900'}`}>
+                            {d.label}
+                          </Text>
+                          <Text className={`font-medium text-[11px] leading-4 mt-0.5 ${active ? 'text-brand-600' : 'text-ink-500'}`}>
+                            {d.desc}
+                          </Text>
+                        </View>
                       </Pressable>
                     );
                   })}
                 </View>
-                <Text className="font-sans mt-2 text-[11px] text-ink-500">
-                  {DIRT_LEVELS.find((d) => d.level === dirtLevel)?.desc}
+
+                <Label className="mt-5">Foto Kondisi Awal (opsional, max {MAX_PHOTOS})</Label>
+                <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
+                  Foto kondisi ruangan sebelum dibersihkan. Jika ada kerusakan sebelumnya, sertakan juga di sini.
                 </Text>
-                <Label className="mt-4">Foto Kondisi (opsional, max {MAX_PHOTOS})</Label>
                 <View className="flex-row flex-wrap gap-2">
                   {photos.map((p, i) => (
                     <View key={i} className="relative h-20 w-20">
@@ -1853,6 +1861,33 @@ function NewBooking() {
                 <Text className="font-sans mt-2 text-[10px] text-ink-500">
                   JPG / PNG / WEBP · auto compress {`<5MB`}
                 </Text>
+
+                <View className="mt-4">
+                <ToggleRow
+                  label="Ada kerusakan / kondisi khusus sebelumnya"
+                  value={hasPriorDamage}
+                  onChange={setHasPriorDamage}
+                />
+                </View>
+                {hasPriorDamage && (
+                  <>
+                    <TextInput
+                      value={priorDamageNote}
+                      onChangeText={setPriorDamageNote}
+                      placeholder="Jelaskan kerusakan / kondisi khusus (contoh: ubin retak di pojok kanan, cat mengelupas di dinding)"
+                      placeholderTextColor="#94A3B8"
+                      multiline
+                      numberOfLines={3}
+                      className="font-sans mt-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-ink-900"
+                      textAlignVertical="top"
+                    />
+                    <View className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                      <Text className="font-medium text-[11px] leading-4 text-amber-800">
+                        💡 Foto area yang rusak bersamaan dengan foto kondisi awal di atas — ini melindungi kamu jika ada klaim kerusakan setelah bersih-bersih.
+                      </Text>
+                    </View>
+                  </>
+                )}
 
                 {!isVacuum && <Label className="mt-4">Jenis Kotoran (pilih beberapa)</Label>}
                 {!isVacuum && <Text className="font-medium -mt-1 mb-2 text-[11px] text-ink-500">
