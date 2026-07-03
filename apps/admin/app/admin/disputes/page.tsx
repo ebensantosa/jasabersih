@@ -86,13 +86,8 @@ function disputeActionOptions(type: string | null | undefined) {
   ];
 }
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'Semua status' },
-  { value: 'open', label: 'Baru' },
-  { value: 'in_progress', label: 'Diproses' },
-  { value: 'escalated', label: 'Diproses (eskalasi)' },
-  { value: 'resolved', label: 'Selesai' },
-];
+
+const OPEN_STATUSES = new Set(['open', 'in_progress', 'escalated']);
 
 export default function DisputesPage() {
   const toast = useToast();
@@ -100,8 +95,8 @@ export default function DisputesPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any | null>(null);
 
-  // Filters
-  const [filterStatus, setFilterStatus] = useState('');
+  // Tabs: 'open' = terbuka, 'resolved' = selesai
+  const [tab, setTab] = useState<'open' | 'resolved'>('open');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
 
@@ -109,7 +104,6 @@ export default function DisputesPage() {
     setLoading(true);
     try {
       const data = await api.admin.listDisputes({
-        status: filterStatus || undefined,
         from: filterFrom || undefined,
         to: filterTo || undefined,
       });
@@ -122,7 +116,7 @@ export default function DisputesPage() {
     }
   }
 
-  useEffect(() => { void load(); }, [filterStatus, filterFrom, filterTo]);
+  useEffect(() => { void load(); }, [filterFrom, filterTo]);
 
   async function openDetail(id: string) {
     try {
@@ -143,16 +137,17 @@ export default function DisputesPage() {
     }
   }
 
-  const openCount = list.filter((d) => d.status === 'open').length;
+  const openCount = list.filter((d) => OPEN_STATUSES.has(d.status)).length;
+  const filtered = list
+    .filter((d) => tab === 'open' ? OPEN_STATUSES.has(d.status) : d.status === 'resolved')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Sengketa</h1>
-          <p className="text-sm text-slate-500">
-            Pengaduan antara customer dan cleaner.
-          </p>
+          <p className="text-sm text-slate-500">Pengaduan antara customer dan cleaner.</p>
         </div>
         {openCount > 0 && (
           <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700">
@@ -161,52 +156,45 @@ export default function DisputesPage() {
         )}
       </div>
 
-      {/* Filter bar */}
-      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border bg-slate-50 p-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Status</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Dari tanggal</label>
-          <input
-            type="date"
-            value={filterFrom}
-            onChange={(e) => setFilterFrom(e.target.value)}
-            className="rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Sampai tanggal</label>
-          <input
-            type="date"
-            value={filterTo}
-            onChange={(e) => setFilterTo(e.target.value)}
-            className="rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800"
-          />
-        </div>
-        {(filterStatus || filterFrom || filterTo) && (
+      {/* Tabs */}
+      <div className="mt-4 flex gap-1 border-b">
+        {([['open', 'Terbuka'], ['resolved', 'Selesai']] as const).map(([key, label]) => (
           <button
-            onClick={() => { setFilterStatus(''); setFilterFrom(''); setFilterTo(''); }}
-            className="text-xs text-slate-500 hover:text-slate-800 underline"
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === key
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
           >
-            Reset filter
+            {label}
+            <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-xs ${
+              tab === key ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {key === 'open' ? openCount : list.length - openCount}
+            </span>
           </button>
-        )}
+        ))}
+
+        {/* Date filters */}
+        <div className="ml-auto flex items-center gap-2 pb-1">
+          <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)}
+            className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800" />
+          <span className="text-xs text-slate-400">s/d</span>
+          <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)}
+            className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800" />
+          {(filterFrom || filterTo) && (
+            <button onClick={() => { setFilterFrom(''); setFilterTo(''); }}
+              className="text-xs text-slate-400 hover:text-slate-700 underline">Reset</button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4">
         {loading ? (
           <div className="py-10 text-center text-sm text-slate-500">Memuat...</div>
-        ) : list.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="rounded-md border border-dashed p-10 text-center text-sm text-slate-500">
             Tidak ada sengketa ditemukan.
           </div>
@@ -228,7 +216,7 @@ export default function DisputesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((d) => (
+                  {filtered.map((d) => (
                     <tr
                       key={d.id}
                       className="cursor-pointer border-t hover:bg-blue-50"
@@ -285,7 +273,7 @@ export default function DisputesPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-slate-400">{list.length} sengketa</p>
+            <p className="mt-2 text-xs text-slate-400">{filtered.length} sengketa</p>
           </>
         )}
       </div>
