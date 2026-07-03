@@ -343,6 +343,16 @@ export class AdminCmsController {
     return { id };
   }
 
+  @Patch('addons/reorder')
+  @Roles('super_admin', 'ops')
+  async reorderAddons(@Body() body: { items: Array<{ id: string; displayOrder: number }> }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {
+    for (const it of body.items) {
+      await this.prisma.$executeRaw`UPDATE add_ons SET display_order = ${it.displayOrder}::int WHERE id = ${it.id}::uuid`;
+    }
+    await this.audit.log({ adminId: admin.id, action: 'addon.reorder', resourceType: 'add_on', changes: body, ipAddress: req.ip ?? null });
+    return { ok: true };
+  }
+
   @Patch('addons/:id')
   @Roles('super_admin', 'ops')
   async updateAddon(@Param('id') id: string, @Body() body: { name?: string; price?: number; durationMin?: number; description?: string; isActive?: boolean; inputType?: 'qty' | 'checkbox'; displayOrder?: number }, @CurrentAdmin() admin: AdminPrincipal, @Req() req: Request) {

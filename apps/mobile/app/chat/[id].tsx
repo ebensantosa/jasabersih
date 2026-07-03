@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { formatScheduleWithTz } from '../../src/lib/datetime';
 import { formatRupiah } from '../../src/data/catalog';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Lock, Phone, Send, ShieldAlert, Star, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, ChevronRight, ClipboardList, Image as ImageIcon, Lock, Phone, Send, ShieldAlert, Star, X, Zap } from 'lucide-react-native';
 import { withAuth } from '../../src/components/AuthGate';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -84,6 +84,7 @@ function Chat() {
   const [blockWarning, setBlockWarning] = useState<string | null>(null);
   const [callLoading, setCallLoading] = useState(false);
   const [quickReplyLocked, setQuickReplyLocked] = useState(false);
+  const [lastSentReply, setLastSentReply] = useState<string | null>(null);
   const startActiveCall = useCallStore(s => s.start);
   const activeCall = useCallStore(s => s.active?.bookingId === id ? s.active : null);
   const anyActiveCall = useCallStore(s => s.active);
@@ -324,12 +325,11 @@ function Chat() {
   }
 
   async function handleQuickReply(content: string) {
-    if (quickReplyLocked) {
-      toast.warning('Tunggu sebentar sebelum kirim balasan cepat lagi.');
-      return;
-    }
+    if (quickReplyLocked) return;
     if (status !== 'connected') return;
     setQuickReplyLocked(true);
+    setLastSentReply(content);
+    setTimeout(() => setLastSentReply(null), 900);
     if (quickReplyLockTimerRef.current) clearTimeout(quickReplyLockTimerRef.current);
     quickReplyLockTimerRef.current = setTimeout(() => {
       setQuickReplyLocked(false);
@@ -792,23 +792,22 @@ function Chat() {
           </SafeAreaView>
         ) : (
           <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
-            <View className="border-b border-ink-100 px-3 py-2">
-              <Text className="mb-2 font-semibold text-[11px] uppercase tracking-[0.08em] text-ink-400">
-                Balasan cepat
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
+            <View className="border-b border-ink-100 px-3 pt-2 pb-2">
+              <View className="flex-row items-center gap-1 mb-1.5">
+                <Zap color="#94A3B8" size={10} fill="#94A3B8" />
+                <Text className="font-semibold text-[10px] uppercase tracking-widest text-ink-400">Balasan cepat</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 16 }}>
                 {SAFE_QUICK_REPLIES.map((reply) => (
                   <QuickReplyChip
                     key={reply}
                     label={reply}
                     disabled={status !== 'connected' || quickReplyLocked || sending}
+                    sent={lastSentReply === reply}
                     onPress={() => void handleQuickReply(reply)}
                   />
                 ))}
               </ScrollView>
-              {quickReplyLocked && (
-                <Text className="mt-1 text-[10px] text-ink-400">Tunggu sebentar sebelum kirim balasan cepat lagi.</Text>
-              )}
             </View>
             <View className="flex-row items-center gap-2 px-3 py-2">
               <Pressable
@@ -1050,18 +1049,20 @@ function Bubble({
 function QuickReplyChip({
   label,
   disabled,
+  sent,
   onPress,
 }: {
   label: string;
   disabled?: boolean;
+  sent?: boolean;
   onPress: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   function animatePress() {
     Animated.sequence([
-      Animated.timing(scale, { toValue: 0.94, duration: 70, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 140, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 0.92, duration: 60, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 150, useNativeDriver: true }),
     ]).start();
   }
 
@@ -1073,9 +1074,15 @@ function QuickReplyChip({
       }}
       disabled={disabled}
       style={{ transform: [{ scale }] }}
-      className="rounded-full border border-brand-200 bg-white px-3.5 py-2.5 shadow-sm disabled:opacity-40"
+      className={
+        sent
+          ? 'rounded-full border border-emerald-400 bg-emerald-500 px-3.5 py-2 shadow-sm'
+          : 'rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm disabled:opacity-40'
+      }
     >
-      <Text className="font-semibold text-[11px] text-brand-700">{label}</Text>
+      <Text className={sent ? 'font-semibold text-[11px] text-white' : 'font-semibold text-[11px] text-slate-700'}>
+        {sent ? '✓ ' : ''}{label}
+      </Text>
     </AnimatedPressable>
   );
 }

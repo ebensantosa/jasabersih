@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Badge, Button, Input, Modal, Switch, Textarea, useConfirm, useToast } from '../../../components/ui';
@@ -81,6 +81,20 @@ export default function ServicesPage(): React.ReactElement | null  {
     try { await api.admin.deleteService(s.id); toast.success('Dihapus.'); void load(); } catch (e: any) { toast.error(e?.message); }
   }
 
+  async function move(idx: number, dir: -1 | 1) {
+    const next = idx + dir;
+    if (next < 0 || next >= list.length) return;
+    const newList = [...list];
+    [newList[idx], newList[next]] = [newList[next]!, newList[idx]!];
+    setList(newList);
+    try {
+      await api.admin.reorderServices(newList.map((s, i) => ({ id: s.id, displayOrder: i + 1 })));
+    } catch (e: any) {
+      toast.error(e?.message);
+      void load();
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -97,11 +111,27 @@ export default function ServicesPage(): React.ReactElement | null  {
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-              <tr><th className="px-4 py-2">Icon</th><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Jenis</th><th className="px-4 py-2">Home</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Sort</th><th className="px-4 py-2 text-right">Aksi</th></tr>
+              <tr>
+                <th className="w-14 px-3 py-2 text-center">Urut</th>
+                <th className="px-4 py-2">Icon</th>
+                <th className="px-4 py-2">Nama</th>
+                <th className="px-4 py-2">Code</th>
+                <th className="px-4 py-2">Jenis</th>
+                <th className="px-4 py-2">Home</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2 text-right">Aksi</th>
+              </tr>
             </thead>
             <tbody>
-              {list.map((s) => (
+              {list.map((s, idx) => (
                 <tr key={s.id} className="border-t hover:bg-slate-50">
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <button onClick={() => move(idx, -1)} disabled={idx === 0} className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-20"><ChevronUp size={14} /></button>
+                      <span className="text-[10px] font-mono text-slate-400">{idx + 1}</span>
+                      <button onClick={() => move(idx, 1)} disabled={idx === list.length - 1} className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-20"><ChevronDown size={14} /></button>
+                    </div>
+                  </td>
                   <td className="px-4 py-2">
                     {s.iconUrl
                       ? <img src={s.iconUrl} alt="" className="h-12 w-12 rounded object-cover border" />
@@ -112,7 +142,6 @@ export default function ServicesPage(): React.ReactElement | null  {
                   <td className="px-4 py-2">{s.isBundle ? <Badge variant="amber"> Paket Lengkap</Badge> : <Badge>Reguler</Badge>}</td>
                   <td className="px-4 py-2"><Badge variant={s.showOnHome ? 'green' : 'red'}>{s.showOnHome ? 'Ya' : 'Tidak'}</Badge></td>
                   <td className="px-4 py-2"><Badge variant={s.isActive ? 'green' : 'red'}>{s.isActive ? '🟢 Aktif' : '🔴 Off'}</Badge></td>
-                  <td className="px-4 py-2 text-xs">{s.displayOrder}</td>
                   <td className="px-4 py-2 text-right">
                     <Button size="sm" variant="ghost" icon={<Pencil size={12} />} onClick={() => setEditing(s)}>Edit</Button>
                     <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(s)}>Hapus</Button>

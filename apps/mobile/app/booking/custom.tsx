@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Bath, Bed, Brush, Camera, Check, ChefHat, Droplets, Layers, Minus, Plus, Sofa, Square, Trees, Warehouse, Wind } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Alert, Image as RNImage, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,6 +36,101 @@ function iconFor(code: string): any {
   if (c.includes('sampah') || c.includes('saluran')) return Droplets;
   return Brush;
 }
+
+type RoomItemProps = {
+  room: Item;
+  selection: RoomSelection;
+  deepMultiplier: number;
+  last: boolean;
+  onBump: (key: string, mode: keyof RoomSelection, delta: number) => void;
+  onToggleMode: (key: string, mode: keyof RoomSelection) => void;
+};
+const RoomItem = memo(function RoomItem({ room, selection, deepMultiplier, last, onBump, onToggleMode }: RoomItemProps) {
+  const Icon = room.icon;
+  const deepPrice = applyCleanMode(room.price, 'deep', deepMultiplier);
+  const deepDuration = Math.ceil(room.durationMin * deepMultiplier);
+  const totalSelected = selection.general + selection.deep;
+  const isDeep = selection.deep > 0;
+  const count = isDeep ? selection.deep : selection.general;
+  const activeMode: keyof RoomSelection = isDeep ? 'deep' : 'general';
+  const activePrice = isDeep ? deepPrice : room.price;
+  const activeDuration = isDeep ? deepDuration : room.durationMin;
+  return (
+    <View key={room.key} className={`py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
+      <View className="mb-3 flex-row items-center gap-3">
+        <View className="h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
+          <Icon color="#1D4ED8" size={20} strokeWidth={2} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-ink-900">{room.label}</Text>
+          <Text className="text-[11px] text-ink-500">Pilih jenis pembersihan untuk ruangan ini</Text>
+        </View>
+        {totalSelected > 0 && (
+          <View className="rounded-full bg-ink-100 px-2.5 py-1">
+            <Text className="text-[10px] font-bold text-ink-700">{totalSelected} dipilih</Text>
+          </View>
+        )}
+      </View>
+      <View className={`rounded-2xl border p-3 ${isDeep ? 'border-emerald-300 bg-emerald-50' : totalSelected > 0 ? 'border-brand-300 bg-brand-50' : 'border-ink-200 bg-white'}`}>
+        <View className="flex-row items-start justify-between gap-2">
+          <View className="flex-1">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-sm font-semibold text-ink-900">{formatRupiah(activePrice)}</Text>
+              <View className={`rounded-full px-2 py-1 ${isDeep ? 'bg-emerald-100' : 'bg-ink-100'}`}>
+                <Text className={`text-[10px] font-bold ${isDeep ? 'text-emerald-800' : 'text-ink-700'}`}>{isDeep ? 'Deep Clean' : 'General'}</Text>
+              </View>
+            </View>
+            <Text className="mt-0.5 text-[11px] text-ink-500">Estimasi {activeDuration} menit</Text>
+            <Text className={`mt-1 text-[10px] ${isDeep ? 'text-emerald-700' : 'text-ink-500'}`}>
+              {isDeep ? 'Deep Clean untuk area lebih kotor atau butuh hasil lebih detail.' : 'General untuk pembersihan rutin dan kondisi normal.'}
+            </Text>
+          </View>
+          <QtyControl
+            value={count}
+            onMinus={() => onBump(room.key, activeMode, -1)}
+            onPlus={() => onBump(room.key, activeMode, 1)}
+            tone={isDeep ? 'deep' : 'brand'}
+          />
+        </View>
+        <Pressable
+          onPress={() => onToggleMode(room.key, isDeep ? 'general' : 'deep')}
+          className="mt-3 flex-row items-center gap-2 border-t border-ink-100 pt-3"
+        >
+          <View className={`h-5 w-5 items-center justify-center rounded border ${isDeep ? 'border-emerald-500 bg-emerald-500' : 'border-ink-300 bg-white'}`}>
+            {isDeep && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+          </View>
+          <Text className={`flex-1 text-[11px] font-semibold ${isDeep ? 'text-emerald-700' : 'text-ink-600'}`}>
+            {isDeep ? 'Deep Clean aktif untuk ruangan ini' : 'Centang jika ruangan ini perlu Deep Clean'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+});
+
+type ExtraItemProps = {
+  extra: Item;
+  qty: number;
+  last: boolean;
+  onBump: (key: string, delta: number) => void;
+};
+const ExtraItem = memo(function ExtraItem({ extra, qty, last, onBump }: ExtraItemProps) {
+  const Icon = extra.icon;
+  return (
+    <View key={extra.key} className={`flex-row items-center gap-3 py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
+      <View className="h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
+        <Icon color="#1D4ED8" size={20} strokeWidth={2} />
+      </View>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-ink-900">{extra.label}</Text>
+        <Text className="text-[11px] text-ink-500">
+          {formatRupiah(extra.price)}{extra.unit ? ` / ${extra.unit}` : ''}{` · ~${extra.durationMin}m`}
+        </Text>
+      </View>
+      <QtyControl value={qty} onMinus={() => onBump(extra.key, -1)} onPlus={() => onBump(extra.key, 1)} />
+    </View>
+  );
+});
 
 function makeDateOptions(): { date: Date; label: string; sub: string }[] {
   const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -263,37 +358,26 @@ function CustomBooking() {
   const overtimeQuote = useMemo(() => quoteNightOvertime(scheduleAt, totalMin), [scheduleAt, totalMin]);
   const total = totalBeforeOvertime + overtimeQuote.surcharge;
 
-  function bumpExtra(key: string, delta: number) {
-    setExtraCounts((prev) => ({ ...prev, [key]: Math.max(0, Math.min(50, (prev[key] ?? 0) + delta)) }));
-  }
 
-  function bumpRoom(key: string, mode: keyof RoomSelection, delta: number) {
+  const bumpRoom = useCallback((key: string, mode: keyof RoomSelection, delta: number) => {
     setRoomCounts((prev) => {
       const current = prev[key] ?? { general: 0, deep: 0 };
       const nextValue = Math.max(0, Math.min(50, current[mode] + delta));
-      return {
-        ...prev,
-        [key]: {
-          general: mode === 'general' ? nextValue : 0,
-          deep: mode === 'deep' ? nextValue : 0,
-        },
-      };
+      return { ...prev, [key]: { general: mode === 'general' ? nextValue : 0, deep: mode === 'deep' ? nextValue : 0 } };
     });
-  }
+  }, []);
 
-  function setRoomMode(key: string, mode: keyof RoomSelection) {
+  const setRoomMode = useCallback((key: string, mode: keyof RoomSelection) => {
     setRoomCounts((prev) => {
       const current = prev[key] ?? { general: 0, deep: 0 };
       const carryCount = Math.max(current.general, current.deep, 1);
-      return {
-        ...prev,
-        [key]: {
-          general: mode === 'general' ? carryCount : 0,
-          deep: mode === 'deep' ? carryCount : 0,
-        },
-      };
+      return { ...prev, [key]: { general: mode === 'general' ? carryCount : 0, deep: mode === 'deep' ? carryCount : 0 } };
     });
-  }
+  }, []);
+
+  const bumpExtra = useCallback((key: string, delta: number) => {
+    setExtraCounts((prev) => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) + delta) }));
+  }, []);
 
   function showPhotoPicker() {
     if (Platform.OS === 'web') {
@@ -505,102 +589,6 @@ function CustomBooking() {
     }
   }
 
-  function renderRoomItem(room: Item, idx: number, last: boolean) {
-    const Icon = room.icon;
-    const selection = roomCounts[room.key] ?? { general: 0, deep: 0 };
-    const deepPrice = applyCleanMode(room.price, 'deep', deepMultiplier);
-    const deepDuration = Math.ceil(room.durationMin * deepMultiplier);
-    const totalSelected = selection.general + selection.deep;
-    const isDeep = selection.deep > 0;
-    const count = isDeep ? selection.deep : selection.general;
-    const activeMode: keyof RoomSelection = isDeep ? 'deep' : 'general';
-    const activePrice = isDeep ? deepPrice : room.price;
-    const activeDuration = isDeep ? deepDuration : room.durationMin;
-
-    return (
-      <View key={room.key} className={`py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
-        <View className="mb-3 flex-row items-center gap-3">
-          <View className="h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
-            <Icon color="#1D4ED8" size={20} strokeWidth={2} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-semibold text-ink-900">{room.label}</Text>
-            <Text className="text-[11px] text-ink-500">Pilih jenis pembersihan untuk ruangan ini</Text>
-          </View>
-          {totalSelected > 0 && (
-            <View className="rounded-full bg-ink-100 px-2.5 py-1">
-              <Text className="text-[10px] font-bold text-ink-700">{totalSelected} dipilih</Text>
-            </View>
-          )}
-        </View>
-
-        <View
-          className={`rounded-2xl border p-3 ${
-            isDeep ? 'border-emerald-300 bg-emerald-50' : totalSelected > 0 ? 'border-brand-300 bg-brand-50' : 'border-ink-200 bg-white'
-          }`}
-        >
-          <View className="flex-row items-start justify-between gap-2">
-            <View className="flex-1">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-sm font-semibold text-ink-900">{formatRupiah(activePrice)}</Text>
-                <View className={`rounded-full px-2 py-1 ${isDeep ? 'bg-emerald-100' : 'bg-ink-100'}`}>
-                  <Text className={`text-[10px] font-bold ${isDeep ? 'text-emerald-800' : 'text-ink-700'}`}>
-                    {isDeep ? 'Deep Clean' : 'General'}
-                  </Text>
-                </View>
-              </View>
-              <Text className="mt-0.5 text-[11px] text-ink-500">Estimasi {activeDuration} menit</Text>
-              <Text className={`mt-1 text-[10px] ${isDeep ? 'text-emerald-700' : 'text-ink-500'}`}>
-                {isDeep
-                  ? 'Deep Clean untuk area lebih kotor atau butuh hasil lebih detail.'
-                  : 'General untuk pembersihan rutin dan kondisi normal.'}
-              </Text>
-            </View>
-            <QtyControl
-              value={count}
-              onMinus={() => bumpRoom(room.key, activeMode, -1)}
-              onPlus={() => bumpRoom(room.key, activeMode, 1)}
-              tone={isDeep ? 'deep' : 'brand'}
-            />
-          </View>
-
-          <Pressable
-            onPress={() => setRoomMode(room.key, isDeep ? 'general' : 'deep')}
-            className="mt-3 flex-row items-center gap-2 border-t border-ink-100 pt-3"
-          >
-            <View className={`h-5 w-5 items-center justify-center rounded border ${isDeep ? 'border-emerald-500 bg-emerald-500' : 'border-ink-300 bg-white'}`}>
-              {isDeep && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
-            </View>
-            <Text className={`flex-1 text-[11px] font-semibold ${isDeep ? 'text-emerald-700' : 'text-ink-600'}`}>
-              {isDeep ? 'Deep Clean aktif untuk ruangan ini' : 'Centang jika ruangan ini perlu Deep Clean'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
-  function renderExtraItem(extra: Item, idx: number, last: boolean) {
-    const Icon = extra.icon;
-    const qty = extraCounts[extra.key] ?? 0;
-    return (
-      <View key={extra.key} className={`flex-row items-center gap-3 py-3 ${!last ? 'border-b border-ink-100' : ''}`}>
-        <View className="h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
-          <Icon color="#1D4ED8" size={20} strokeWidth={2} />
-        </View>
-        <View className="flex-1">
-          <Text className="text-sm font-semibold text-ink-900">{extra.label}</Text>
-          <Text className="text-[11px] text-ink-500">
-            {formatRupiah(extra.price)}
-            {extra.unit ? ` / ${extra.unit}` : ''}
-            {` · ~${extra.durationMin}m`}
-          </Text>
-        </View>
-        <QtyControl value={qty} onMinus={() => bumpExtra(extra.key, -1)} onPlus={() => bumpExtra(extra.key, 1)} />
-      </View>
-    );
-  }
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -626,7 +614,17 @@ function CustomBooking() {
                 General cocok untuk pembersihan rutin harian. Deep Clean cocok untuk area yang lebih kotor, lama tidak dibersihkan, atau butuh pengerjaan lebih detail.
               </Text>
             </View>
-            {rooms.map((room, idx) => renderRoomItem(room, idx, idx === rooms.length - 1))}
+            {rooms.map((room, idx) => (
+              <RoomItem
+                key={room.key}
+                room={room}
+                selection={roomCounts[room.key] ?? { general: 0, deep: 0 }}
+                deepMultiplier={deepMultiplier}
+                last={idx === rooms.length - 1}
+                onBump={bumpRoom}
+                onToggleMode={setRoomMode}
+              />
+            ))}
           </View>
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
@@ -634,7 +632,15 @@ function CustomBooking() {
               <Text className="text-sm font-bold text-ink-900">Tambahan</Text>
               <Text className="text-[10px] text-ink-500">{extras.length} pilihan</Text>
             </View>
-            {extras.map((extra, idx) => renderExtraItem(extra, idx, idx === extras.length - 1))}
+            {extras.map((extra, idx) => (
+              <ExtraItem
+                key={extra.key}
+                extra={extra}
+                qty={extraCounts[extra.key] ?? 0}
+                last={idx === extras.length - 1}
+                onBump={bumpExtra}
+              />
+            ))}
           </View>
 
           <View className="mx-4 mt-3 rounded-2xl bg-white p-4">

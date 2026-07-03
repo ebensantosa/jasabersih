@@ -313,6 +313,7 @@ export function createClient(opts: ClientOptions) {
 
       addons: () => request<any[]>('GET', '/admin/cms/addons'),
       createAddon: (body: any) => request<{ id: string }>('POST', '/admin/cms/addons', body),
+      reorderAddons: (items: Array<{ id: string; displayOrder: number }>) => request<{ ok: true }>('PATCH', '/admin/cms/addons/reorder', { items }),
       updateAddon: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/addons/${id}`, body),
       deleteAddon: (id: string) => request<{ ok: true }>('DELETE', `/admin/cms/addons/${id}`),
 

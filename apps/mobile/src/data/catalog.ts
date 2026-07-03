@@ -46,14 +46,15 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { code: 'kamar_mandi',    name: 'Toilet',          description: 'Kamar mandi / toilet',         icon: Bath,      iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1552321554-5fefe8c9ef14'), startingPrice: 120_000 },
   { code: 'dapur',          name: 'Dapur',           description: 'Area dapur',                   icon: ChefHat,   iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1556909114-f6e7ad7d3136'), startingPrice: 160_000, popular: true },
   { code: 'ruang_tamu',     name: 'Ruang Tamu',      description: 'Ruang tamu & keluarga',        icon: Sofa,      iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1555041469-a586c61ea9bc'), startingPrice: 150_000 },
+  { code: 'kos',            name: 'Bersih Kost',     description: 'Bersih kamar kost serah terima', icon: DoorOpen,  iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
   { code: 'pindah_kos',     name: 'Pindah Kamar',    description: 'Cleaning kamar kos (kosongan)', icon: DoorOpen,  iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1522708323590-d24dbb6b0267'), startingPrice: 200_000 },
   { code: 'ruangan_kosong', name: 'Ruangan Kosong',  description: 'Ruangan kosongan tanpa furniture', icon: DoorOpen, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1505691938895-1758d7feb511'), startingPrice: 140_000 },
   { code: 'garasi',         name: 'Garasi/Teras',    description: 'Garasi & teras',               icon: Car,       iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1597007030739-6d2e7172ee6c'), startingPrice: 130_000 },
   { code: 'pekarangan',     name: 'Pekarangan',      description: 'Halaman rumah',                icon: Trees,     iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1416879595882-3373a0480b5b'), startingPrice: 150_000 },
-  { code: 'ruko',           name: 'Ruko',            description: 'Bersih ruko/toko ? per m?',     icon: Building2, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 6_000 },
-  { code: 'kantor',         name: 'Kantor',          description: 'Bersih kantor ? per m?',        icon: Building2, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366754035-f200968a6e72'), startingPrice: 5_500 },
-  { code: 'apartemen',      name: 'Apartemen',       description: 'Bersih apartemen ? per m?',     icon: Home,      iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1502672260266-1c1ef2d93688'), startingPrice: 8_000 },
-  { code: 'skala_besar',    name: 'Skala Besar',     description: 'Mall, pabrik, hotel ? konsultasi', icon: Building2, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 0 },
+  { code: 'ruko',           name: 'Ruko',            description: 'Bersih ruko/toko · per m²',     icon: Building2, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 6_000 },
+  { code: 'kantor',         name: 'Kantor',          description: 'Bersih kantor · per m²',        icon: Building2, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366754035-f200968a6e72'), startingPrice: 5_500 },
+  { code: 'apartemen',      name: 'Apartemen',       description: 'Bersih apartemen · per m²',     icon: Home,      iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1502672260266-1c1ef2d93688'), startingPrice: 8_000 },
+  { code: 'skala_besar',    name: 'Skala Besar',     description: 'Mall, pabrik, hotel · konsultasi dulu', icon: Building2, iconColor: '#1D4ED8', iconBg: '#E0F2FE', imageUrl: UNS('photo-1497366216548-37526070297c'), startingPrice: 0 },
 ];
 
 // ============ PAKET FIXED COST (sesuai 06-pricing-modes.md) ============
@@ -74,6 +75,7 @@ export const PACKAGES: Package[] = [
   { id: 'pkg_toilet',         categoryCode: 'kamar_mandi',    name: 'Toilet',         price: 120_000, durationMin: 90,  scope: 'Kamar mandi / toilet' },
   { id: 'pkg_dapur',          categoryCode: 'dapur',          name: 'Dapur',          price: 160_000, durationMin: 120, scope: 'Area dapur lengkap' },
   { id: 'pkg_ruang_tamu',     categoryCode: 'ruang_tamu',     name: 'Ruang Tamu',     price: 150_000, durationMin: 90,  scope: 'Ruang tamu & keluarga' },
+  { id: 'pkg_kos',            categoryCode: 'kos',            name: 'Bersih Kost',     price: 200_000, durationMin: 180, scope: 'Bersih kamar kost saat serah terima / kosongan' },
   { id: 'pkg_pindah_kos',     categoryCode: 'pindah_kos',     name: 'Pindah Kamar',    price: 200_000, durationMin: 180, scope: 'Serah terima kamar kos' },
   { id: 'pkg_ruangan_kosong', categoryCode: 'ruangan_kosong', name: 'Ruangan Kosong', price: 140_000, durationMin: 100, scope: 'Ruangan tanpa furniture · pasca pindah / baru beli' },
   { id: 'pkg_garasi',         categoryCode: 'garasi',         name: 'Garasi/Teras',   price: 130_000, durationMin: 90,  scope: 'Garasi atau teras depan' },

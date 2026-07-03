@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Package, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { api } from '../../../lib/api';
 import { Badge, Button, Input, Modal, Switch, Textarea, useConfirm, useToast } from '../../../components/ui';
@@ -47,6 +47,20 @@ export default function AddonsPage(): React.ReactElement | null {
       void load();
     } catch (e: any) {
       toast.error(e?.message);
+    }
+  }
+
+  async function move(idx: number, dir: -1 | 1) {
+    const next = idx + dir;
+    if (next < 0 || next >= list.length) return;
+    const newList = [...list];
+    [newList[idx], newList[next]] = [newList[next]!, newList[idx]!];
+    setList(newList);
+    try {
+      await api.admin.reorderAddons(newList.map((a, i) => ({ id: a.id, displayOrder: i + 1 })));
+    } catch (e: any) {
+      toast.error(e?.message);
+      void load();
     }
   }
 
@@ -105,9 +119,15 @@ export default function AddonsPage(): React.ReactElement | null {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {list.map((a) => (
+                {list.map((a, idx) => (
                   <tr key={a.id} className={a.isActive ? '' : 'opacity-50'}>
-                    <td className="px-3 py-2 text-center font-mono text-xs text-slate-500">{a.displayOrder ?? 0}</td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button onClick={() => move(idx, -1)} disabled={idx === 0} className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-20"><ChevronUp size={13} /></button>
+                        <span className="text-[10px] font-mono text-slate-400">{idx + 1}</span>
+                        <button onClick={() => move(idx, 1)} disabled={idx === list.length - 1} className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-20"><ChevronDown size={13} /></button>
+                      </div>
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs text-slate-500">{a.code ?? '-'}</td>
                     <td className="px-3 py-2">
                       <div className="font-semibold">{a.name}</div>

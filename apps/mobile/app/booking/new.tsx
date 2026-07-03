@@ -206,7 +206,7 @@ function NewBooking() {
 
   // Layanan satuan (per-ruangan) - sembunyikan Properti, Ruangan, Fasilitas Lain.
   // Tampil bullet list pekerjaan saja. Untuk full_house/paket_bundle/custom flow tetap full.
-  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'pindah_kos', 'ruangan_kosong', 'garasi', 'pekarangan', 'vacuum_lantai'];
+  const SIMPLE_SERVICE_CODES = ['kamar', 'kamar_km_dalam', 'kamar_mandi', 'dapur', 'ruang_tamu', 'kos', 'pindah_kos', 'ruangan_kosong', 'garasi', 'pekarangan', 'vacuum_lantai'];
   const PER_METER_CODES = ['ruko', 'kantor', 'apartemen'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
   const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
@@ -734,8 +734,8 @@ function NewBooking() {
       toast.error('Masukin luas area minimal 50 m²');
       return;
     }
-    if (step === 1 && isPostReno && areaM2 < 20) {
-      toast.error('Masukin luas area minimal 20 m²');
+    if (step === 1 && isPostReno && areaM2 < 10) {
+      toast.error('Masukin luas area minimal 10 m²');
       return;
     }
     if (step === 2 && isSubscription && subscriptionVisits > 0 && subscriptionDates.length !== subscriptionVisits) {
@@ -1275,14 +1275,14 @@ function NewBooking() {
                       Masukin luas total area yang dibersihin pasca renovasi.
                     </Text>
                     <View className="flex-row items-center rounded-xl border border-ink-200 bg-white">
-                      <Pressable onPress={() => setAreaM2(Math.max(0, areaM2 - 10))} className="h-12 w-12 items-center justify-center">
+                      <Pressable onPress={() => setAreaM2(Math.max(10, areaM2 - 10))} className="h-12 w-12 items-center justify-center">
                         <Minus color="#1D4ED8" size={20} strokeWidth={2.4} />
                       </Pressable>
                       <TextInput
                         value={String(areaM2)}
                         onChangeText={(v) => {
                           const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
-                          setAreaM2(Number.isFinite(n) ? Math.min(10000, Math.max(0, n)) : 0);
+                          setAreaM2(Number.isFinite(n) ? Math.min(10000, Math.max(10, n)) : 10);
                         }}
                         keyboardType="number-pad"
                         placeholder="100"
@@ -1293,7 +1293,7 @@ function NewBooking() {
                         <Plus color="#1D4ED8" size={20} strokeWidth={2.4} />
                       </Pressable>
                     </View>
-                    <Text className="font-sans mt-1.5 text-[10px] text-ink-500">Satuan m² · tombol +/- ubah 10 m²</Text>
+                    <Text className="font-sans mt-1.5 text-[10px] text-ink-500">Satuan m² · min 10 m² · tombol +/- ubah 10 m²</Text>
                     {postRenoOverLimit && (
                       <View className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
                         <Text className="font-bold text-xs text-amber-900">Luas {'>'} 300 m² - perlu survei</Text>
