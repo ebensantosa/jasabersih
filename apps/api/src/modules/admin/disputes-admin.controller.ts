@@ -22,8 +22,18 @@ export class AdminDisputesController {
 
   @Get()
   @Roles('super_admin', 'ops', 'fraud_analyst', 'support')
-  async list(@Query('status') status: 'open' | 'in_progress' | 'resolved' | 'escalated' = 'open') {
-    return this.prisma.$queryRaw<Record<string, unknown>[]>`
+  async list(
+    @Query('status') status?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'escalated'];
+    const filterStatus = status && VALID_STATUSES.includes(status) ? status : null;
+    const fromDate = from ? new Date(from) : null;
+    const toDate = to ? new Date(to) : null;
+
+    // Build safe parameterized query with optional filters
+    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT d.id, d.booking_id AS "bookingId", d.type, d.description, d.status, d.priority,
              d.created_at AS "createdAt", d.sla_due_at AS "slaDueAt",
              d.resolution, d.payout_amount AS "payoutAmount",
@@ -37,12 +47,15 @@ export class AdminDisputesController {
         LEFT JOIN users ru ON ru.id = d.raised_by
         LEFT JOIN users su ON su.id = d.subject_user_id
         LEFT JOIN admin_users au ON au.id = d.assigned_to
-       WHERE d.status = ${status}
+       WHERE (${filterStatus}::text IS NULL OR d.status = ${filterStatus})
+         AND (${fromDate}::timestamptz IS NULL OR d.created_at >= ${fromDate})
+         AND (${toDate}::timestamptz IS NULL OR d.created_at < ${toDate} + INTERVAL '1 day')
        ORDER BY
          CASE d.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 ELSE 3 END,
-         d.created_at ASC
-       LIMIT 200
+         d.created_at DESC
+       LIMIT 500
     `;
+    return rows;
   }
 
   @Get(':id')

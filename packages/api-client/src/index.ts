@@ -250,8 +250,14 @@ export function createClient(opts: ClientOptions) {
       updateServicePackage: (id: string, body: { note?: string; includes?: string[]; price?: number; durationMin?: number }) =>
         request<unknown>('PATCH', `/admin/config/services/${id}/package`, body),
       // Disputes
-      listDisputes: (status: 'open' | 'in_progress' | 'resolved' | 'escalated' = 'open') =>
-        request<any[]>('GET', `/admin/disputes?status=${status}`),
+      listDisputes: (params?: { status?: string; from?: string; to?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.status) q.set('status', params.status);
+        if (params?.from) q.set('from', params.from);
+        if (params?.to) q.set('to', params.to);
+        const qs = q.toString();
+        return request<any[]>('GET', `/admin/disputes${qs ? `?${qs}` : ''}`);
+      },
       disputeDetail: (id: string) =>
         request<{ dispute: any }>('GET', `/admin/disputes/${id}`),
       assignDispute: (id: string) =>
