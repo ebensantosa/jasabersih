@@ -324,20 +324,35 @@ export class AdminDisputesController {
       ipAddress: req.ip ?? null,
     });
 
-    // Kirim notifikasi ke kedua pihak
+    // Notif hanya ke pelapor dengan alasan keputusan admin
     const partyRows = await this.prisma.$queryRaw<{ raised_by: string | null; subject_user_id: string | null }[]>`
       SELECT raised_by, subject_user_id FROM disputes WHERE id = ${id}::uuid LIMIT 1
     `;
     const parties = partyRows[0];
-    const summary = body.action === 'refund_customer' ? 'Refund disetujui' :
-      body.action === 'debit_cleaner' ? 'Sengketa diputus — saldo cleaner dipotong' :
-      body.action === 'suspend_subject' ? 'Akun di-suspend' :
-      body.action === 'warn_both' ? 'Peringatan dikeluarkan' : 'Laporan ditolak';
+    const outcomeLabel = body.action === 'refund_customer' ? 'Refund disetujui' :
+      body.action === 'debit_cleaner' ? 'Kompensasi disetujui' :
+      body.action === 'suspend_subject' ? 'Laporan disetujui' :
+      body.action === 'warn_both' ? 'Peringatan diberikan ke kedua pihak' :
+      body.action === 'warranty_redo_approved' ? 'Garansi pengerjaan ulang disetujui' : 'Laporan ditutup';
     if (parties?.raised_by) {
-      void this.push.send({ userId: parties.raised_by, channel: 'system', title: 'Sengketa selesai', body: summary, data: { type: 'dispute_resolved', disputeId: id } }).catch(() => {});
+      void this.push.send({
+        userId: parties.raised_by,
+        channel: 'system',
+        title: `Sengketa selesai · ${outcomeLabel}`,
+        body: body.resolution.slice(0, 200),
+        data: { type: 'dispute_resolved', disputeId: id },
+      }).catch(() => {});
     }
-    if (parties?.subject_user_id && parties.subject_user_id !== parties.raised_by) {
-      void this.push.send({ userId: parties.subject_user_id, channel: 'system', title: 'Sengketa selesai', body: summary, data: { type: 'dispute_resolved', disputeId: id } }).catch(() => {});
+    // Khusus suspend: beritahu subjek bahwa akun-nya di-suspend (tanpa detail internal)
+    if (body.action === 'suspend_subject' && parties?.subject_user_id && parties.subject_user_id !== parties.raised_by) {
+      const days = body.suspendDays ?? 14;
+      void this.push.send({
+        userId: parties.subject_user_id,
+        channel: 'system',
+        title: 'Akun kamu di-suspend',
+        body: `Akun kamu di-suspend selama ${days} hari berdasarkan hasil tinjauan admin. Hubungi support jika ada pertanyaan.`,
+        data: { type: 'account_suspended' },
+      }).catch(() => {});
     }
 
     return { ok: true };
