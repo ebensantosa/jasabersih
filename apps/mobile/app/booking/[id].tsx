@@ -662,8 +662,6 @@ function BookingDetail() {
   })();
 
   // Full-screen searching mode: pesanan sudah dibayar - tidak ada cancel.
-  // SearchingCleanerView handle gradient + SafeArea + tombol footer inline
-  // (bukan overlay absolute - cegah nabrak stats card).
   if (!isCleaner && booking.status === 'searching' && !searchTimeout) {
     return (
       <>
@@ -672,11 +670,7 @@ function BookingDetail() {
           <SearchingCleanerView
             elapsedSec={elapsedSec}
             broadcastedTo={broadcastedTo}
-            footerCta={{
-              label: 'Kembali ke beranda',
-              onPress: () => router.replace('/'),
-              helper: 'Pencarian tetap berjalan di latar. Notifikasi dikirim saat cleaner menerima.',
-            }}
+            onBack={() => router.replace('/')}
           />
         </View>
       </>
@@ -1157,7 +1151,7 @@ function BookingDetail() {
             </View>
           )}
 
-          {/* Cleaner gak perlu lihat rincian harga customer - sembunyikan blok pembayaran. */}
+          {/* Customer: rincian harga + total */}
           {!isCleaner && booking.totalPrice > 0 && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-ink-400">
@@ -1175,10 +1169,7 @@ function BookingDetail() {
                   value={formatRupiah(booking.basePrice)}
                 />
                 {booking.dirtSurcharge > 0 && (
-                  <Row
-                    label={`Surcharge tingkat kotor`}
-                    value={`+${formatRupiah(booking.dirtSurcharge)}`}
-                  />
+                  <Row label="Surcharge tingkat kotor" value={`+${formatRupiah(booking.dirtSurcharge)}`} />
                 )}
                 {booking.addOns.map((a) => (
                   <Row key={a.code} label={a.name} value={`+${formatRupiah(a.price)}`} />
@@ -1187,6 +1178,45 @@ function BookingDetail() {
               <View className="mt-3 border-t border-ink-100 pt-3">
                 <Row label={t('bd.total')} value={formatRupiah(booking.totalPrice)} bold />
               </View>
+            </View>
+          )}
+
+          {/* Cleaner: pendapatan (bukan harga customer) */}
+          {isCleaner && (
+            <View className="mx-4 mt-3 rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
+              <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-emerald-700">
+                Pendapatan Kamu
+              </Text>
+              <View className="gap-2">
+                <Row
+                  label={booking.packageName ?? booking.categoryName ?? 'Layanan'}
+                  value={booking.cleanerPayout != null ? formatRupiah(booking.cleanerPayout) : '—'}
+                />
+                {booking.addOns.length > 0 && booking.addOns.map((a) => (
+                  <Row key={a.code} label={`Tambahan: ${a.name}`} value={`termasuk`} />
+                ))}
+                {upcharges.filter((u) => u.status === 'approved' && Number(u.cleanerShare ?? 0) > 0).map((u) => (
+                  <Row key={u.id} label="Biaya Tambahan (disetujui)" value={`+${formatRupiah(Number(u.cleanerShare))}`} />
+                ))}
+              </View>
+              {booking.cleanerPayout != null && (
+                <View className="mt-3 border-t border-emerald-200 pt-3">
+                  <Row
+                    label="Yang Kamu Terima"
+                    value={formatRupiah(
+                      booking.cleanerPayout +
+                      upcharges.filter((u) => u.status === 'approved' && Number(u.cleanerShare ?? 0) > 0)
+                        .reduce((s, u) => s + Number(u.cleanerShare), 0)
+                    )}
+                    bold
+                  />
+                </View>
+              )}
+              {booking.cleanerPayout == null && (
+                <Text className="font-sans mt-2 text-[11px] text-emerald-700">
+                  Pendapatan dikonfirmasi setelah job selesai.
+                </Text>
+              )}
             </View>
           )}
 
@@ -1291,10 +1321,10 @@ function BookingDetail() {
                       <View>
                         <Text className="font-bold text-sm text-ink-900">
                           {isCleaner && Number(u.cleanerShare ?? 0) > 0
-                            ? `Kamu terima Rp ${Number(u.cleanerShare ?? 0).toLocaleString('id-ID')}`
-                            : `+Rp ${Number(u.amount).toLocaleString('id-ID')}`}
+                            ? `Kamu terima ${formatRupiah(Number(u.cleanerShare))}`
+                            : `+${formatRupiah(Number(u.amount))}`}
                         </Text>
-                        {isCleaner && Number(u.cleanerShare ?? 0) > 0 && (
+                        {false && isCleaner && Number(u.cleanerShare ?? 0) > 0 && (
                           <Text className="font-medium mt-0.5 text-[10px] text-ink-500">
                             Total customer: Rp {Number(u.amount).toLocaleString('id-ID')}
                           </Text>

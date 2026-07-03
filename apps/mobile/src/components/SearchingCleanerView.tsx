@@ -1,9 +1,9 @@
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BellRing, MapPin, Search, Users } from 'lucide-react-native';
+import { ArrowLeft, BellRing, MapPin, Search } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
 import { Animated, Easing, Pressable, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_MESSAGES: { min: number; text: string }[] = [
   { min: 0, text: 'Mencari cleaner terdekat dari lokasi kamu.' },
@@ -13,43 +13,17 @@ const STATUS_MESSAGES: { min: number; text: string }[] = [
   { min: 12, text: 'Hampir batas waktu. Jika belum cocok, customer service akan membantu manual.' },
 ];
 
-function FooterCta({ footerCta }: { footerCta: { label: string; onPress: () => void; helper?: string } }) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={{ marginTop: 18, paddingBottom: Math.max(insets.bottom, 8) }}>
-      <Pressable
-        onPress={footerCta.onPress}
-        style={{
-          backgroundColor: 'rgba(255,255,255,0.18)',
-          borderRadius: 16,
-          paddingVertical: 14,
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.35)',
-        }}
-      >
-        <Text style={{ color: 'white', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
-          {footerCta.label}
-        </Text>
-      </Pressable>
-      {footerCta.helper && (
-        <Text style={{ marginTop: 6, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
-          {footerCta.helper}
-        </Text>
-      )}
-    </View>
-  );
-}
-
 type Props = {
   elapsedSec: number;
   timeoutSec?: number;
   broadcastedTo?: number;
-  /** Optional CTA tombol di bawah - bisa dipake render 'Kembali ke beranda' */
+  /** Callback untuk tombol back di pojok kiri atas */
+  onBack?: () => void;
+  /** @deprecated pakai onBack */
   footerCta?: { label: string; onPress: () => void; helper?: string };
 };
 
-export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo, footerCta }: Props) {
+export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadcastedTo, onBack, footerCta }: Props) {
   const insets = useSafeAreaInsets();
   const safeElapsed = Number.isFinite(elapsedSec) ? Math.max(0, elapsedSec) : 0;
   const safeTimeout = Number.isFinite(timeoutSec) && timeoutSec > 0 ? timeoutSec : 15 * 60;
@@ -126,8 +100,9 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
             : [1, 0.45, 0.35, 1],
     });
 
-  const topPad = insets.top + 16;
-  const botPad = footerCta ? 0 : Math.max(insets.bottom, 16);
+  const backHandler = onBack ?? footerCta?.onPress;
+  const topPad = insets.top + 8;
+  const botPad = Math.max(insets.bottom, 16);
 
   return (
     <LinearGradient
@@ -137,8 +112,17 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
       style={{ flex: 1 }}
     >
         <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: topPad, paddingBottom: botPad, justifyContent: 'space-between' }}>
-          {/* Header label */}
-          <View style={{ alignItems: 'center' }}>
+          {/* Header: back arrow + label */}
+          <View>
+            {backHandler && (
+              <Pressable
+                onPress={backHandler}
+                style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}
+                hitSlop={8}
+              >
+                <ArrowLeft color="rgba(255,255,255,0.9)" size={22} strokeWidth={2.4} />
+              </Pressable>
+            )}
             <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }}>
               {[0, 1, 2].map((index) => (
                 <Animated.View
@@ -245,10 +229,6 @@ export function SearchingCleanerView({ elapsedSec, timeoutSec = 15 * 60, broadca
                 : `Sisa ${minLeft}:${String(secLeft).padStart(2, '0')} sebelum CS mengambil alih`}
             </Text>
 
-            {/* Footer CTA - pakai insets.bottom + tab bar height supaya tidak nabrak bottom nav */}
-            {footerCta && (
-              <FooterCta footerCta={footerCta} />
-            )}
           </View>
         </View>
     </LinearGradient>

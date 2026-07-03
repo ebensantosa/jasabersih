@@ -188,7 +188,7 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     showOnHome: service?.showOnHome ?? true,
     isBundle: service?.isBundle ?? false,
     isActive: service?.isActive ?? true,
-    displayOrder: service?.displayOrder ?? 0,
+    displayOrder: service?.displayOrder ?? 99,
     unitPrice: service?.unitPrice ? Number(service.unitPrice) : 0,
     durationMin: service?.durationMin ? Number(service.durationMin) : 60,
     pricingTemplate: service?.pricingTemplate ?? 'per_parameter',
@@ -319,14 +319,17 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
               <strong>Fixed Cost</strong>: isi Harga & Durasi di bawah. Customer tidak perlu isi properti/kondisi, langsung ke jadwal.
             </div>
           )}
+          <div className="rounded border bg-emerald-50 p-3 text-[11px] text-emerald-900">
+            💰 Harga di sini adalah <strong>pendapatan bersih cleaner</strong> (yang cleaner terima), bukan harga yang dibayar customer.
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label={form.pricingTemplate === 'fixed_cost' ? 'Harga Tetap (Rp)' : 'Harga per Unit (Rp)'}
+              label={form.pricingTemplate === 'fixed_cost' ? 'Pendapatan Cleaner (Rp)' : 'Pendapatan per Unit (Rp)'}
               type="number"
               value={String(form.unitPrice)}
               onChange={(v) => setForm({ ...form, unitPrice: Number(v) || 0 })}
               error={errors.unitPrice}
-              helpText={form.pricingTemplate === 'fixed_cost' ? 'Harga flat yang customer bayar.' : 'Misal: 120000 untuk Kamar Tidur = Rp 120.000/kamar.'}
+              helpText={form.pricingTemplate === 'fixed_cost' ? 'Jumlah bersih yang masuk ke wallet cleaner.' : 'Misal: 80000 = cleaner terima Rp 80.000/unit.'}
             />
             <Input
               label="Durasi (menit)"

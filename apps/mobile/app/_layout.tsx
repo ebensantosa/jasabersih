@@ -323,6 +323,13 @@ export default function RootLayout() {
         }
         return;
       }
+      // Job baru masuk saat app terbuka (foreground) → mainkan suara agar cleaner aware
+      if (data?.type === 'incoming_job' || data?.type === 'incoming_job_v2') {
+        void prepareAudiblePlayback()
+          .then(() => playOneShotSound(require('../assets/sounds/order_incoming.wav'), 1.0))
+          .catch(() => {});
+        return;
+      }
       if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {
         // Cancel any existing Notifee notification so only in-app overlay plays sound (no dual ringtone)
         void cancelCallNotification().catch(() => {});
