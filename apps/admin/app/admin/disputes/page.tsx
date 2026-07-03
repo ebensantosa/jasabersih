@@ -90,10 +90,10 @@ function disputeActionOptions(type: string | null | undefined) {
   ];
 
   if (cleanerReported) {
-    // Cleaner lapor → subject = customer. Tindakan: sanksi customer atau tutup.
+    // Cleaner lapor → subject = customer. Tindakan: sanksi customer atau kompensasi cleaner.
     return [
+      { value: 'refund_customer', label: 'Kompensasi ke cleaner (% dari total pesanan)' },
       { value: 'suspend_subject', label: 'Bekukan akun customer (pihak terlapor)' },
-      { value: 'refund_customer', label: 'Kompensasi ke cleaner (pelapor)' },
       ...common,
     ];
   }
@@ -401,14 +401,33 @@ function DisputeDetailModal({
                 onChange={(v) => setForm({ ...form, action: v as any })}
               />
               {(form.action === 'refund_customer' || form.action === 'debit_cleaner') && (
-                <Input
-                  label="Jumlah (Rp)"
-                  type="number"
-                  required
-                  value={form.payoutAmount}
-                  onChange={(v) => setForm({ ...form, payoutAmount: v })}
-                  error={errors.payoutAmount}
-                />
+                <div>
+                  <Input
+                    label={`Jumlah kompensasi (Rp)${dispute.bookingTotal ? ` · Total pesanan: Rp ${Number(dispute.bookingTotal).toLocaleString('id-ID')}` : ''}`}
+                    type="number"
+                    required
+                    value={form.payoutAmount}
+                    onChange={(v) => setForm({ ...form, payoutAmount: v })}
+                    error={errors.payoutAmount}
+                  />
+                  {dispute.bookingTotal && Number(dispute.bookingTotal) > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {[25, 50, 75, 100].map((pct) => {
+                        const amt = Math.round(Number(dispute.bookingTotal) * pct / 100);
+                        return (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => setForm({ ...form, payoutAmount: String(amt) })}
+                            className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                          >
+                            {pct}% = Rp {amt.toLocaleString('id-ID')}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
               {form.action === 'suspend_subject' && (
                 <Input
