@@ -909,12 +909,17 @@ export class PaymentsController {
          SET hours_booked = hours_booked + ${durationHours}::numeric
        WHERE id = ${bookingId}::uuid AND status = 'in_progress'
     `;
-    const rows = await this.prisma.$queryRaw<{ cleaner_id: string | null }[]>`
-      SELECT cleaner_id FROM bookings WHERE id = ${bookingId}::uuid LIMIT 1
+    const rows = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string }[]>`
+      SELECT cleaner_id, customer_id FROM bookings WHERE id = ${bookingId}::uuid LIMIT 1
     `;
-    if (rows[0]?.cleaner_id) {
+    const b = rows[0];
+    if (!b) return;
+    // Realtime: reload booking di kedua sisi supaya timer langsung update
+    this.jobs.emitBookingReload(b.customer_id, bookingId);
+    if (b.cleaner_id) this.jobs.emitBookingReload(b.cleaner_id, bookingId);
+    if (b.cleaner_id) {
       void this.push.send({
-        userId: rows[0].cleaner_id,
+        userId: b.cleaner_id,
         channel: 'booking',
         title: 'Customer perpanjang waktu!',
         body: `+${durationHours} jam ditambahkan. Lanjutkan pekerjaan.`,
