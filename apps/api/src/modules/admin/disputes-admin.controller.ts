@@ -176,9 +176,8 @@ export class AdminDisputesController {
 
       await this.prisma.$executeRaw`
         UPDATE bookings
-           SET status = 'searching',
-               cleaner_id = NULL,
-               matched_at = NULL,
+           SET status = 'in_progress',
+               reclean_status = 'warranty_approved',
                admin_notes = COALESCE(admin_notes, '') || E'\n[garansi] ' || ${body.resolution}
          WHERE id = ${dispute.booking_id}::uuid
       `;

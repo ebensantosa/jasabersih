@@ -268,7 +268,8 @@ export class CleanerJobsController {
              s.icon_url AS "serviceIcon",
              pp.name AS "packageName",
              ht.name AS "hourlyTierName",
-             u.name AS "customerName"
+             u.name AS "customerName",
+             b.reclean_status AS "recleanStatus"
         FROM bookings b
         LEFT JOIN services s ON s.id = b.service_id
         LEFT JOIN pricing_packages pp ON pp.id = b.package_id

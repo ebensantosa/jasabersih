@@ -334,20 +334,29 @@ function JobsScreen() {
               🔥 Job Aktif ({active.length})
             </Text>
             <View className="mt-2 gap-2">
-              {active.map((j) => (
+              {active.map((j) => {
+                const isWarrantyRedo = (j as any).recleanStatus === 'warranty_approved';
+                return (
                 <Pressable
                   key={j.id}
                   onPress={() => router.push({ pathname: '/booking/[id]', params: { id: j.id } })}
                   className="flex-row items-center gap-2 rounded-xl bg-white p-3"
+                  style={isWarrantyRedo ? { borderWidth: 2, borderColor: '#DC2626', backgroundColor: '#FEF2F2' } : undefined}
                 >
                   <View className="flex-1">
+                    {isWarrantyRedo && (
+                      <View className="mb-1 self-start rounded-md bg-red-600 px-2 py-0.5">
+                        <Text className="font-bold text-[10px] text-white">⚠️ Garansi — Bersihkan Ulang</Text>
+                      </View>
+                    )}
                     <Text className="font-semibold text-sm text-ink-900">
                       {j.pricingMode === 'hourly'
                         ? (j.hoursBooked != null ? (j.hoursBooked < 1 ? `${j.hoursBooked * 60} Menit` : `${j.hoursBooked} Jam`) : 'Layanan Per Jam')
                         : (j.serviceName ?? 'Layanan')}
                     </Text>
-                    <Text className="font-medium text-[11px]" style={{ color: '#047857' }}>
-                      {j.status === 'matched' ? 'Dijadwalkan' :
+                    <Text className="font-medium text-[11px]" style={{ color: isWarrantyRedo ? '#DC2626' : '#047857' }}>
+                      {isWarrantyRedo ? 'Perlu kembali ke lokasi' :
+                       j.status === 'matched' ? 'Dijadwalkan' :
                        j.status === 'on_the_way' || j.status === 'cleaner_otw' ? 'Otw lokasi' :
                        j.status === 'in_progress' || j.status === 'started' ? 'Sedang dikerjakan' : j.status}
                     </Text>
@@ -356,10 +365,11 @@ function JobsScreen() {
                     </Text>
                   </View>
                   <View className="items-end">
-                    <ChevronRight color="#94A3B8" size={14} />
+                    <ChevronRight color={isWarrantyRedo ? '#DC2626' : '#94A3B8'} size={14} />
                   </View>
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}
