@@ -45,9 +45,7 @@ function CheckboxRow({ item, checked, onToggle, commissionPct }: { item: Item; c
             ~{formatRupiah(share)} untukmu{item.isPackage ? ' · Layanan utama' : ''}
           </Text>
         ) : (
-          <Text className={`font-medium mt-0.5 text-[11px] ${checked ? 'text-brand-600' : 'text-ink-500'}`}>
-            {formatRupiah(item.price)}{item.isPackage ? ' · Layanan utama' : ''}
-          </Text>
+          <Text className={`font-medium mt-0.5 text-[11px] text-ink-300`}>Memuat...</Text>
         )}
       </View>
     </Pressable>
@@ -66,9 +64,7 @@ function QtyRow({ item, qty, onChange, commissionPct }: { item: Item; qty: numbe
             ~{formatRupiah(share)} / item untukmu{item.isPackage ? ' · Layanan utama' : ''}
           </Text>
         ) : (
-          <Text className={`font-medium mt-0.5 text-[11px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>
-            {formatRupiah(item.price)} / item{item.isPackage ? ' · Layanan utama' : ''}
-          </Text>
+          <Text className="font-medium mt-0.5 text-[11px] text-ink-300">Memuat...</Text>
         )}
       </View>
       <View className="flex-row items-center gap-2">
