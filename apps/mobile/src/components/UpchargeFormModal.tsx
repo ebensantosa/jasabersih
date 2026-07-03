@@ -23,7 +23,8 @@ function isSpecialUnit(desc: string | null | undefined) {
   return d.includes('per m²') || d.includes('/m²') || d.includes('per panel') || d.includes('per lubang') || d.includes('per daun');
 }
 
-function CheckboxRow({ item, checked, onToggle }: { item: Item; checked: boolean; onToggle: () => void }) {
+function CheckboxRow({ item, checked, onToggle, commissionPct }: { item: Item; checked: boolean; onToggle: () => void; commissionPct?: number }) {
+  const share = commissionPct != null ? Math.round(item.price * commissionPct / 100) : null;
   return (
     <Pressable
       onPress={onToggle}
@@ -39,23 +40,36 @@ function CheckboxRow({ item, checked, onToggle }: { item: Item; checked: boolean
       </View>
       <View className="flex-1">
         <Text className={`font-semibold text-[13px] ${checked ? 'text-brand-900' : 'text-ink-900'}`}>{item.name}</Text>
-        <Text className={`font-medium mt-0.5 text-[11px] ${checked ? 'text-brand-600' : 'text-ink-500'}`}>
-          {formatRupiah(item.price)}{item.isPackage ? ' · Layanan utama' : ''}
-        </Text>
+        {share != null ? (
+          <Text className={`font-medium mt-0.5 text-[11px] ${checked ? 'text-emerald-700' : 'text-emerald-600'}`}>
+            ~{formatRupiah(share)} untukmu{item.isPackage ? ' · Layanan utama' : ''}
+          </Text>
+        ) : (
+          <Text className={`font-medium mt-0.5 text-[11px] ${checked ? 'text-brand-600' : 'text-ink-500'}`}>
+            {formatRupiah(item.price)}{item.isPackage ? ' · Layanan utama' : ''}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
 }
 
-function QtyRow({ item, qty, onChange }: { item: Item; qty: number; onChange: (n: number) => void }) {
+function QtyRow({ item, qty, onChange, commissionPct }: { item: Item; qty: number; onChange: (n: number) => void; commissionPct?: number }) {
   const active = qty > 0;
+  const share = commissionPct != null ? Math.round(item.price * commissionPct / 100) : null;
   return (
     <View className={`flex-row items-center gap-3 rounded-xl border p-3 ${active ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white'}`}>
       <View className="flex-1">
         <Text className={`font-semibold text-[13px] ${active ? 'text-brand-900' : 'text-ink-900'}`}>{item.name}</Text>
-        <Text className={`font-medium mt-0.5 text-[11px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>
-          {formatRupiah(item.price)} / item{item.isPackage ? ' · Layanan utama' : ''}
-        </Text>
+        {share != null ? (
+          <Text className={`font-medium mt-0.5 text-[11px] ${active ? 'text-emerald-700' : 'text-emerald-600'}`}>
+            ~{formatRupiah(share)} / item untukmu{item.isPackage ? ' · Layanan utama' : ''}
+          </Text>
+        ) : (
+          <Text className={`font-medium mt-0.5 text-[11px] ${active ? 'text-brand-600' : 'text-ink-500'}`}>
+            {formatRupiah(item.price)} / item{item.isPackage ? ' · Layanan utama' : ''}
+          </Text>
+        )}
       </View>
       <View className="flex-row items-center gap-2">
         <Pressable
@@ -124,6 +138,7 @@ export function UpchargeFormModal({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cleanerShare, setCleanerShare] = useState<{ share: number; pct: number } | null>(null);
+  const [commissionPct, setCommissionPct] = useState<number | undefined>(undefined);
 
   const allItems = useMemo(() => [...services, ...addons], [services, addons]);
 
@@ -134,6 +149,16 @@ export function UpchargeFormModal({
     setQtys((prev) => ({ ...prev, [id]: Math.max(0, n) }));
   }
 
+  // Fetch commission % once on mount so per-item share can be shown immediately
+  useEffect(() => {
+    api.post(`/cleaner/jobs/${bookingId}/upcharge-preview`, { amount: 100000 })
+      .then((r) => {
+        const d = r.data?.data ?? r.data;
+        setCommissionPct(Number(d.pct ?? 40));
+      })
+      .catch(() => {});
+  }, [bookingId]);
+
   // Fetch cleaner's commission split from server when total changes
   useEffect(() => {
     if (total === 0) { setCleanerShare(null); return; }
@@ -142,6 +167,7 @@ export function UpchargeFormModal({
         const r = await api.post(`/cleaner/jobs/${bookingId}/upcharge-preview`, { amount: total });
         const d = r.data?.data ?? r.data;
         setCleanerShare({ share: Number(d.cleanerShare ?? 0), pct: Number(d.pct ?? 40) });
+        setCommissionPct(Number(d.pct ?? 40));
       } catch { setCleanerShare(null); }
     }, 400);
     return () => clearTimeout(t);
@@ -219,7 +245,7 @@ export function UpchargeFormModal({
                 <Text className="font-bold mb-2 text-[11px] uppercase tracking-wider text-ink-500">Layanan Utama</Text>
                 <View className="gap-2 mb-4">
                   {services.map((item) => (
-                    <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} />
+                    <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} commissionPct={commissionPct} />
                   ))}
                 </View>
               </>
@@ -236,9 +262,10 @@ export function UpchargeFormModal({
                         item={item}
                         checked={(qtys[item.id] ?? 0) > 0}
                         onToggle={() => setQty(item.id, (qtys[item.id] ?? 0) > 0 ? 0 : 1)}
+                        commissionPct={commissionPct}
                       />
                     ) : (
-                      <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} />
+                      <QtyRow key={item.id} item={item} qty={qtys[item.id] ?? 0} onChange={(n) => setQty(item.id, n)} commissionPct={commissionPct} />
                     )
                   )}
                 </View>
