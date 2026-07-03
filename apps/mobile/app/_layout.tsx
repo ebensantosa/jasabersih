@@ -324,7 +324,7 @@ export default function RootLayout() {
         return;
       }
       // Job baru masuk saat app terbuka (foreground) → mainkan suara agar cleaner aware
-      if (data?.type === 'incoming_job' || data?.type === 'incoming_job_v2') {
+      if (data?.type === 'incoming_job' || data?.type === 'incoming_job_v2' || data?.type === 'job_assigned') {
         void prepareAudiblePlayback()
           .then(() => playOneShotSound(require('../assets/sounds/order_incoming.wav'), 1.0))
           .catch(() => {});
