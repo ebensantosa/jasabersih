@@ -1181,11 +1181,11 @@ function BookingDetail() {
             </View>
           )}
 
-          {/* Cleaner: pendapatan (bukan harga customer) */}
+          {/* Cleaner: invoice pendapatan (base + semua upcharge dalam 1 card) */}
           {isCleaner && (
             <View className="mx-4 mt-3 rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
               <Text className="font-semibold mb-3 text-xs uppercase tracking-wider text-emerald-700">
-                Pendapatan Kamu
+                Rincian Pendapatan Kamu
               </Text>
               <View className="gap-2">
                 <Row
@@ -1193,11 +1193,23 @@ function BookingDetail() {
                   value={booking.cleanerPayout != null ? formatRupiah(booking.cleanerPayout) : '—'}
                 />
                 {booking.addOns.length > 0 && booking.addOns.map((a) => (
-                  <Row key={a.code} label={`Tambahan: ${a.name}`} value={`termasuk`} />
+                  <Row key={a.code} label={`Tambahan: ${a.name}`} value="termasuk" />
                 ))}
-                {upcharges.filter((u) => u.status === 'approved' && Number(u.cleanerShare ?? 0) > 0).map((u) => (
-                  <Row key={u.id} label="Biaya Tambahan (disetujui)" value={`+${formatRupiah(Number(u.cleanerShare))}`} />
-                ))}
+                {upcharges.map((u) => {
+                  const share = Number(u.cleanerShare ?? 0);
+                  const badge = u.status === 'approved' ? '✓' : u.status === 'pending' ? '⏳' : '✕';
+                  const color = u.status === 'approved' ? 'text-emerald-700' : u.status === 'pending' ? 'text-amber-700' : 'text-ink-400';
+                  return (
+                    <View key={u.id} className="flex-row items-center justify-between">
+                      <Text className={`font-medium text-[13px] flex-1 mr-2 ${color}`}>
+                        {badge} Charge Tambahan {u.status === 'pending' ? '(menunggu)' : u.status === 'rejected' ? '(ditolak)' : ''}
+                      </Text>
+                      <Text className={`font-semibold text-[13px] ${color}`}>
+                        {u.status === 'rejected' ? '—' : share > 0 ? `+${formatRupiah(share)}` : '—'}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
               {booking.cleanerPayout != null && (
                 <View className="mt-3 border-t border-emerald-200 pt-3">
@@ -1309,8 +1321,8 @@ function BookingDetail() {
             </View>
           )}
 
-          {/* Upcharge requests */}
-          {upcharges.length > 0 && (
+          {/* Upcharge requests — customer POV only; cleaner lihat di card Rincian Pendapatan */}
+          {upcharges.length > 0 && !isCleaner && (
             <View className="mx-4 mt-3 rounded-2xl bg-white p-4">
               <Text className="font-bold mb-2 text-sm text-ink-900">Charge Tambahan</Text>
               {upcharges.map((u) => {

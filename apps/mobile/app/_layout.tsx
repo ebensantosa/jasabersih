@@ -330,6 +330,22 @@ export default function RootLayout() {
           .catch(() => {});
         return;
       }
+      // Notifikasi booking/payment penting saat foreground → ping ringan supaya user aware
+      const FOREGROUND_PING_TYPES = new Set([
+        'booking_matched', 'booking_status_change', 'booking_completed', 'booking_canceled',
+        'booking_canceled_admin', 'booking_created_by_admin', 'booking_no_show',
+        'payment_paid', 'payment_confirmed', 'payment_completed',
+        'upcharge_requested', 'upcharge_approved', 'upcharge_rejected',
+        'extension_requested', 'extension_accepted', 'extension_declined',
+        'reclean_requested', 'reclean_accepted', 'reclean_rejected',
+        'search_timeout', 'rating_reminder',
+      ]);
+      if (data?.type && FOREGROUND_PING_TYPES.has(String(data.type))) {
+        void prepareAudiblePlayback()
+          .then(() => playOneShotSound(require('../assets/sounds/chat_message.wav'), 0.85))
+          .catch(() => {});
+        return;
+      }
       if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {
         // Cancel any existing Notifee notification so only in-app overlay plays sound (no dual ringtone)
         void cancelCallNotification().catch(() => {});
