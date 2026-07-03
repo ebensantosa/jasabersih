@@ -260,6 +260,9 @@ function PaymentScreen() {
       } else if (extraType === 'tip') {
         await api.post(`/bookings/${bookingId}/tip`, { amount: extraAmount });
         toast.success('Tip terkirim');
+      } else if (extraType === 'overtime') {
+        await api.post('/payments/extra/pay-wallet', { bookingId, type: 'overtime', durationHours: extraDurationHours });
+        toast.success('Perpanjangan berhasil!');
       } else if (booking) {
         await api.post(`/bookings/${bookingId}/pay`, { useCredit: true });
       } else { return; }
@@ -287,6 +290,7 @@ function PaymentScreen() {
 
   async function pickMethod(senderBank: string, senderBankType: DirectResult['senderBankType']) {
     if (!bookingId) return;
+    setUseCredit(false); // Bank method dipilih, bukan saldo
     // Clear interval lama (kalau user pilih method baru tanpa back dulu)
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     setPickingCode(senderBank);
@@ -298,7 +302,7 @@ function PaymentScreen() {
             bookingId,
             type: extraType,
             ...(extraType === 'upcharge' ? { upchargeId: extraUpchargeId } : extraType === 'overtime' ? { durationHours: extraDurationHours } : { tipAmount: extraAmount }),
-            senderBank, senderBankType, useCredit,
+            senderBank, senderBankType, useCredit: false,
           }
         : { bookingId, senderBank, senderBankType, useCredit };
       const res = await api.post(endpoint, payload);

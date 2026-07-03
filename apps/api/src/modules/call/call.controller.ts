@@ -7,6 +7,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ChatGateway } from '../chat/chat.gateway';
+import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? '';
@@ -26,6 +27,7 @@ export class CallController {
     private readonly prisma: PrismaService,
     private readonly push: PushService,
     private readonly chatGateway: ChatGateway,
+    private readonly jobs: JobsGateway,
   ) {}
 
   // Initiator (cleaner atau customer) mulai call → dapat token + notif dikirim ke pihak lain
@@ -359,6 +361,8 @@ export class CallController {
       }
 
       if (!body.answered && recipientId) {
+        // WebSocket (instan) + push (fallback kalau app background)
+        this.jobs.emitCallCancelled(recipientId, body.bookingId);
         await this.push.send({
           userId: recipientId,
           data: {

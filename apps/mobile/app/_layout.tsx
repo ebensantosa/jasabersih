@@ -81,6 +81,7 @@ import { useCallStore } from '../src/stores/call';
 import { CallOverlay } from '../src/components/CallOverlay';
 import { CallBanner } from '../src/components/CallBanner';
 import { IncomingCallOverlay } from '../src/components/IncomingCallOverlay';
+import { getJobsSocket } from '../src/lib/jobsSocket';
 
 function BookingRealtimeMount() {
   useBookingRealtime();
@@ -297,6 +298,19 @@ export default function RootLayout() {
     })();
     return () => clearTimeout(bootTimeout);
   }, [accessToken, refreshAuth, fetchUser, syncAddresses, syncBookings, syncWallet]);
+
+  // WebSocket: stop ringtone instan saat caller cancel (lebih cepat dari push notif)
+  useEffect(() => {
+    const tokens = useAuthStore.getState().tokens;
+    if (!tokens?.accessToken) return;
+    const socket = getJobsSocket();
+    function onCallCancelled(data: { bookingId: string }) {
+      setIncomingCallNotif((prev) => (prev?.bookingId === data?.bookingId ? null : prev));
+      void cancelCallNotification().catch(() => {});
+    }
+    socket.on('call:cancelled', onCallCancelled);
+    return () => { socket.off('call:cancelled', onCallCancelled); };
+  }, []);
 
   // Foreground: tampilkan in-app overlay saat app terbuka dan ada incoming call push
   useEffect(() => {

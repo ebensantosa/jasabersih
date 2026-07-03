@@ -2028,6 +2028,10 @@ function HourlyCountdown({
           >
             {timerBusy ? (
               <ActivityIndicator color="white" size="small" />
+            ) : pauseOnCooldown ? (
+              <Text className="font-bold text-[11px] text-white">
+                {isPaused ? 'Lanjut Kerja' : 'Jeda Kerja'} ({Math.ceil((pauseCooldownUntil - now) / 1000)}s)
+              </Text>
             ) : (
               <>
                 {isPaused ? <Play color="white" size={12} strokeWidth={2.8} /> : <Pause color="white" size={12} strokeWidth={2.8} />}
@@ -2054,13 +2058,13 @@ function HourlyCountdown({
         Countdown ini tampil sama di aplikasi customer dan cleaner sebagai acuan durasi kerja.
       </Text>
 
-      {nearEnd && !isCleaner && pricePerHour && (
+      {!isCleaner && pricePerHour && !overtime && (
         <Pressable
           onPress={onExtend}
-          className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5"
+          className={`mt-3 flex-row items-center justify-center gap-2 rounded-xl py-2.5 ${nearEnd ? 'bg-brand-600' : 'bg-brand-100'}`}
         >
-          <Clock color="white" size={14} strokeWidth={2.4} />
-          <Text className="font-bold text-sm text-white">Perpanjang Waktu Kerja</Text>
+          <Clock color={nearEnd ? 'white' : '#1D4ED8'} size={14} strokeWidth={2.4} />
+          <Text className={`font-bold text-sm ${nearEnd ? 'text-white' : 'text-brand-700'}`}>Perpanjang Waktu Kerja</Text>
         </Pressable>
       )}
       {nearEnd && isCleaner && (

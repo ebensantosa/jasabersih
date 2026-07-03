@@ -13,6 +13,7 @@ export function useBookingRealtime() {
   const signalReload = useBookingsStore((s) => s.signalReload);
   const signalChatUnread = useBookingsStore((s) => s.signalChatUnread);
   const fetchOne = useBookingsStore((s) => s.fetchOne);
+  const syncFromApi = useBookingsStore((s) => s.syncFromApi);
 
   useEffect(() => {
     if (!tokens?.accessToken) return;
@@ -44,16 +45,23 @@ export function useBookingRealtime() {
       signalChatUnread();
     }
 
+    // Sync missed events after reconnect (e.g. app was in background)
+    function onConnect() {
+      void syncFromApi(true).catch(() => {});
+    }
+
     socket.on('booking:timer', onTimer);
     socket.on('booking:status', onStatus);
     socket.on('booking:reload', onReload);
     socket.on('chat:unread', onChatUnread);
+    socket.on('connect', onConnect);
 
     return () => {
       socket.off('booking:timer', onTimer);
       socket.off('booking:status', onStatus);
       socket.off('booking:reload', onReload);
       socket.off('chat:unread', onChatUnread);
+      socket.off('connect', onConnect);
     };
-  }, [tokens, patchTimer, setStatus, signalReload, signalChatUnread, fetchOne]);
+  }, [tokens, patchTimer, setStatus, signalReload, signalChatUnread, fetchOne, syncFromApi]);
 }

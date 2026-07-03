@@ -619,6 +619,81 @@ export class PaymentsController {
     }
   }
 
+  // Pay extra (overtime/tip/upcharge) fully using wallet balance — no Flip involved.
+  @Post('extra/pay-wallet')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async extraPayWallet(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { bookingId: string; type: 'overtime' | 'tip' | 'upcharge'; durationHours?: number; tipAmount?: number; upchargeId?: string },
+  ) {
+    if (!body?.bookingId || !body?.type) throw new BadRequestException('bookingId dan type wajib.');
+
+    const bRows = await this.prisma.$queryRaw<{ id: string; customer_id: string; cleaner_id: string | null; status: string }[]>`
+      SELECT id, customer_id, cleaner_id, status FROM bookings WHERE id = ${body.bookingId}::uuid LIMIT 1
+    `;
+    const b = bRows[0];
+    if (!b) throw new NotFoundException('Booking tidak ditemukan.');
+    if (b.customer_id !== user.id) throw new BadRequestException('Bukan booking kamu.');
+
+    let amount = 0;
+    if (body.type === 'overtime') {
+      if (!body.durationHours || ![0.5, 1, 2, 3].includes(body.durationHours)) throw new BadRequestException('durationHours harus 0.5, 1, 2, atau 3.');
+      if (b.status !== 'in_progress') throw new BadRequestException('Booking tidak sedang berjalan.');
+      const tierRow = await this.prisma.$queryRaw<{ price_per_hour: number }[]>`
+        SELECT ht.price_per_hour FROM bookings bk JOIN pricing_hourly_tiers ht ON ht.id = bk.hourly_tier_id WHERE bk.id = ${body.bookingId}::uuid LIMIT 1
+      `;
+      if (!tierRow[0]) throw new BadRequestException('Bukan booking per jam atau tier tidak ditemukan.');
+      amount = Math.round(Number(tierRow[0].price_per_hour) * body.durationHours);
+    } else if (body.type === 'tip') {
+      if (!body.tipAmount || body.tipAmount <= 0) throw new BadRequestException('tipAmount wajib > 0.');
+      if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner.');
+      amount = Number(body.tipAmount);
+    } else if (body.type === 'upcharge') {
+      if (!body.upchargeId) throw new BadRequestException('upchargeId wajib.');
+      const uRows = await this.prisma.$queryRaw<{ id: string; amount: number; status: string }[]>`
+        SELECT id, amount, status FROM booking_upcharges WHERE id = ${body.upchargeId}::uuid AND booking_id = ${body.bookingId}::uuid LIMIT 1
+      `;
+      const u = uRows[0];
+      if (!u) throw new NotFoundException('Upcharge tidak ditemukan.');
+      if (u.status !== 'pending') throw new BadRequestException('Upcharge sudah diputuskan.');
+      amount = Number(u.amount);
+    }
+
+    // Check wallet balance
+    const balRow = await this.prisma.$queryRawUnsafe<{ b: number }[]>(
+      `SELECT COALESCE(SUM(CASE WHEN account_type IN ('refund_credit','topup','earnings') AND status='CLEARED' THEN amount ELSE 0 END),0)
+            - COALESCE(SUM(CASE WHEN account_type IN ('credit_use','withdrawal','admin_debit') AND status IN ('PENDING','CLEARED') THEN amount ELSE 0 END),0) AS b
+         FROM wallet_ledger_entries WHERE user_id = $1::uuid`,
+      user.id,
+    );
+    const balance = Number(balRow[0]?.b ?? 0);
+    if (balance < amount) throw new BadRequestException(`Saldo tidak cukup. Saldo kamu ${balance}, dibutuhkan ${amount}.`);
+
+    // Debit customer wallet first
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
+       VALUES ($1::uuid, 'credit_use', $2, 'booking', $3::uuid, 'CLEARED', NOW(), $4)`,
+      user.id, amount, body.bookingId,
+      body.type === 'overtime' ? `Perpanjangan overtime +${body.durationHours}j`
+        : body.type === 'tip' ? 'Tip untuk cleaner'
+        : 'Charge tambahan',
+    );
+
+    // Finalize
+    if (body.type === 'overtime') {
+      await this.finalizeOvertime(body.bookingId, body.durationHours!);
+    } else if (body.type === 'tip') {
+      await this.finalizeTip(user.id, body.bookingId, b.cleaner_id!, amount);
+    } else {
+      const cleanerId = await this.finalizeUpcharge(user.id, body.bookingId, body.upchargeId!);
+      this.jobs.emitBookingReload(user.id, body.bookingId);
+      if (cleanerId) this.jobs.emitBookingReload(cleanerId, body.bookingId);
+    }
+
+    return { ok: true, paidViaWallet: true, walletDeducted: amount, walletRemaining: balance - amount };
+  }
+
   // Extra payment (upcharge / tip) via Flip. Sama struktur dgn /flip/create-direct
   // tapi: payment_type ditandai + extra_metadata simpan upchargeId/tipAmount.
   // Callback finalize-nya hook ke approveUpcharge / tip ledger insert.
@@ -904,9 +979,22 @@ export class PaymentsController {
   }
 
   private async finalizeOvertime(bookingId: string, durationHours: number): Promise<void> {
+    // Extend jam + update cleaner_payout sesuai share pct tier
+    const tierRow = await this.prisma.$queryRaw<{ price_per_hour: number; cleaner_share_pct: number; cleaner_id: string | null; customer_id: string }[]>`
+      SELECT ht.price_per_hour, ht.cleaner_share_pct, b.cleaner_id, b.customer_id
+        FROM bookings b
+        JOIN pricing_hourly_tiers ht ON ht.id = b.hourly_tier_id
+       WHERE b.id = ${bookingId}::uuid LIMIT 1
+    `;
+    const tier = tierRow[0];
+    const overtimeRevenue = tier ? Math.round(Number(tier.price_per_hour) * durationHours) : 0;
+    const cleanerShare = tier ? Math.round(overtimeRevenue * Number(tier.cleaner_share_pct) / 100) : 0;
+
     await this.prisma.$executeRaw`
       UPDATE bookings
-         SET hours_booked = hours_booked + ${durationHours}::numeric
+         SET hours_booked = hours_booked + ${durationHours}::numeric,
+             total_amount = total_amount + ${overtimeRevenue}::bigint,
+             cleaner_payout = COALESCE(cleaner_payout, 0) + ${cleanerShare}::bigint
        WHERE id = ${bookingId}::uuid AND status = 'in_progress'
     `;
     const rows = await this.prisma.$queryRaw<{ cleaner_id: string | null; customer_id: string }[]>`

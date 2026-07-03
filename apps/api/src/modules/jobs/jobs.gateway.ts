@@ -267,6 +267,11 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server?.to(`user:${userId}`)?.emit('booking:reload', { bookingId });
   }
 
+  /** Notify receiver that caller cancelled before answering — stops ringtone instantly. */
+  emitCallCancelled(userId: string, bookingId: string): void {
+    this.server?.to(`user:${userId}`)?.emit('call:cancelled', { bookingId });
+  }
+
   /** Emit any named event to a specific user via their per-user room. */
   emitToUser(userId: string, event: string, data: unknown): void {
     this.server?.to(`user:${userId}`)?.emit(event, data);

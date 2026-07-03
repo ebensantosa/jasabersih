@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { useChatSocket } from '../../src/hooks/useChatSocket';
+import { getJobsSocket } from '../../src/lib/jobsSocket';
 import { compressImage, formatBytes } from '../../src/lib/imageCompress';
 import { prepareAudiblePlayback } from '../../src/lib/sound';
 import { setActiveChatBooking } from '../../src/lib/chatSoundDedup';
@@ -461,7 +462,16 @@ function Chat() {
         setShowIncomingBanner(false);
       }
     });
-    return () => sub.remove();
+    // WebSocket fallback — instan tanpa tergantung push delivery
+    const socket = getJobsSocket();
+    function onCallCancelled(data: { bookingId: string }) {
+      if (data?.bookingId === id) setShowIncomingBanner(false);
+    }
+    socket.on('call:cancelled', onCallCancelled);
+    return () => {
+      sub.remove();
+      socket.off('call:cancelled', onCallCancelled);
+    };
   }, [id]);
 
   async function pickAndSendPhoto(source: 'camera' | 'gallery') {
@@ -818,12 +828,8 @@ function Chat() {
           </SafeAreaView>
         ) : (
           <SafeAreaView edges={['bottom']} className="border-t border-ink-200 bg-white">
-            <View className="border-b border-ink-100 px-3 pt-2 pb-2">
-              <View className="flex-row items-center gap-1 mb-1.5">
-                <Zap color="#94A3B8" size={10} fill="#94A3B8" />
-                <Text className="font-semibold text-[10px] uppercase tracking-widest text-ink-400">Balasan cepat</Text>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 16 }}>
+            <View className="border-b border-ink-100 px-3 pt-1.5 pb-1.5">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 5, paddingRight: 12 }}>
                 {SAFE_QUICK_REPLIES.map((reply) => (
                   <QuickReplyChip
                     key={reply}
@@ -1004,34 +1010,29 @@ function Bubble({
   }
 
   if (isSystemMessage) {
+    const emoji = /sampai|tiba|mulai/i.test(text) ? '🧹'
+      : /menuju|perjalanan|otw/i.test(text) ? '🚗'
+      : /selesai|complete/i.test(text) ? '✅'
+      : /bayar|lunas|payment/i.test(text) ? '💳'
+      : /overtime|perpanjang/i.test(text) ? '⏱'
+      : 'ℹ️';
     return (
-      <View style={{ alignSelf: 'center', alignItems: 'center', gap: 2, maxWidth: '92%' }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
+      <View style={{ alignSelf: 'stretch', alignItems: 'center', marginVertical: 6, paddingHorizontal: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 4,
             backgroundColor: '#F8FAFC',
-            borderWidth: 1,
-            borderColor: '#CBD5E1',
-            borderRadius: 16,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-          }}
-        >
-          <ClipboardList size={13} color="#2563EB" />
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: '#0F172A',
-              textAlign: 'center',
-            }}
-          >
-            {text}
-          </Text>
+            borderRadius: 999,
+            paddingHorizontal: 10, paddingVertical: 4,
+            borderWidth: 1, borderColor: '#E2E8F0',
+          }}>
+            <Text style={{ fontSize: 11 }}>{emoji}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: '#64748B' }}>{text}</Text>
+          </View>
+          <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
         </View>
-        <Text style={{ fontSize: 10, color: '#94A3B8' }}>{t}</Text>
+        <Text style={{ fontSize: 9.5, color: '#CBD5E1', marginTop: 3 }}>{t}</Text>
       </View>
     );
   }
@@ -1102,11 +1103,11 @@ function QuickReplyChip({
       style={{ transform: [{ scale }] }}
       className={
         sent
-          ? 'rounded-full border border-emerald-400 bg-emerald-500 px-3.5 py-2 shadow-sm'
-          : 'rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm disabled:opacity-40'
+          ? 'rounded-full border border-emerald-400 bg-emerald-500 px-2.5 py-1 '
+          : 'rounded-full border border-slate-200 bg-white px-2.5 py-1 disabled:opacity-40'
       }
     >
-      <Text className={sent ? 'font-semibold text-[11px] text-white' : 'font-semibold text-[11px] text-slate-700'}>
+      <Text className={sent ? 'font-medium text-[10px] text-white' : 'font-medium text-[10px] text-slate-600'}>
         {sent ? '✓ ' : ''}{label}
       </Text>
     </AnimatedPressable>
