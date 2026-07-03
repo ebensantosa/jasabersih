@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { SortableRow, SortableTable } from '../../../components/SortableTable';
 
 import { api } from '../../../lib/api';
 import { Badge, Button, Input, Modal, Switch, Textarea, useConfirm, useToast } from '../../../components/ui';
@@ -50,11 +51,7 @@ export default function AddonsPage(): React.ReactElement | null {
     }
   }
 
-  async function move(idx: number, dir: -1 | 1) {
-    const next = idx + dir;
-    if (next < 0 || next >= list.length) return;
-    const newList = [...list];
-    [newList[idx], newList[next]] = [newList[next]!, newList[idx]!];
+  async function handleReorder(newList: Addon[]) {
     setList(newList);
     try {
       await api.admin.reorderAddons(newList.map((a, i) => ({ id: a.id, displayOrder: i + 1 })));
@@ -105,60 +102,46 @@ export default function AddonsPage(): React.ReactElement | null {
       ) : (
         <>
           <div className="mt-6 overflow-x-auto rounded-md border bg-white">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-600">
-                <tr>
-                  <th className="px-3 py-2 text-center">Urut</th>
-                  <th className="px-3 py-2 text-left">Code</th>
-                  <th className="px-3 py-2 text-left">Nama</th>
-                  <th className="px-3 py-2 text-right">Harga</th>
-                  <th className="px-3 py-2 text-right">Durasi</th>
-                  <th className="px-3 py-2 text-center">Input</th>
-                  <th className="px-3 py-2 text-center">Status</th>
-                  <th className="px-3 py-2 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {list.map((a, idx) => (
-                  <tr key={a.id} className={a.isActive ? '' : 'opacity-50'}>
-                    <td className="px-3 py-2 text-center">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <button onClick={() => move(idx, -1)} disabled={idx === 0} className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-20"><ChevronUp size={13} /></button>
-                        <span className="text-[10px] font-mono text-slate-400">{idx + 1}</span>
-                        <button onClick={() => move(idx, 1)} disabled={idx === list.length - 1} className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-20"><ChevronDown size={13} /></button>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs text-slate-500">{a.code ?? '-'}</td>
-                    <td className="px-3 py-2">
-                      <div className="font-semibold">{a.name}</div>
-                      {a.description && <div className="text-xs text-slate-500">{a.description}</div>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold text-brand-700">{rupiah(Number(a.price))}</td>
-                    <td className="px-3 py-2 text-right text-xs text-slate-500">{a.durationMin} mnt</td>
-                    <td className="px-3 py-2 text-center">
-                      <Badge variant={a.inputType === 'checkbox' ? 'blue' : 'slate'}>
-                        {a.inputType === 'checkbox' ? 'centang' : 'qty'}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button onClick={() => toggleActive(a)}>
-                        {a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}
-                      </button>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(a)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => del(a)}>
-                          Hapus
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <SortableTable
+              items={list}
+              onReorder={handleReorder}
+              head={<>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-600">Code</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-600">Nama</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-600">Harga</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-600">Durasi</th>
+                <th className="px-3 py-2 text-center text-xs uppercase text-slate-600">Input</th>
+                <th className="px-3 py-2 text-center text-xs uppercase text-slate-600">Status</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-600">Aksi</th>
+              </>}
+              renderRow={(a) => (
+                <SortableRow key={a.id} id={a.id}>
+                  <td className={`px-3 py-2 font-mono text-xs text-slate-500 ${a.isActive ? '' : 'opacity-50'}`}>{a.code ?? '-'}</td>
+                  <td className={`px-3 py-2 ${a.isActive ? '' : 'opacity-50'}`}>
+                    <div className="font-semibold">{a.name}</div>
+                    {a.description && <div className="text-xs text-slate-500">{a.description}</div>}
+                  </td>
+                  <td className={`px-3 py-2 text-right font-semibold text-brand-700 ${a.isActive ? '' : 'opacity-50'}`}>{rupiah(Number(a.price))}</td>
+                  <td className={`px-3 py-2 text-right text-xs text-slate-500 ${a.isActive ? '' : 'opacity-50'}`}>{a.durationMin} mnt</td>
+                  <td className={`px-3 py-2 text-center ${a.isActive ? '' : 'opacity-50'}`}>
+                    <Badge variant={a.inputType === 'checkbox' ? 'blue' : 'slate'}>
+                      {a.inputType === 'checkbox' ? 'centang' : 'qty'}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button onClick={() => toggleActive(a)}>
+                      {a.isActive ? <Badge variant="green">aktif</Badge> : <Badge>nonaktif</Badge>}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(a)}>Edit</Button>
+                      <Button size="sm" variant="ghost" icon={<Trash2 size={11} />} onClick={() => del(a)}>Hapus</Button>
+                    </div>
+                  </td>
+                </SortableRow>
+              )}
+            />
           </div>
           <p className="mt-2 text-xs text-slate-400">
             {activeCount} aktif · {inactiveCount} nonaktif · {list.length} total
