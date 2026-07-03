@@ -88,7 +88,9 @@ export class SystemConfigController {
              show_on_home AS "showOnHome",
              is_bundle AS "isBundle",
              unit_price AS "unitPrice",
-             duration_min AS "durationMin"
+             duration_min AS "durationMin",
+             pricing_template AS "pricingTemplate",
+             form_config AS "formConfig"
         FROM services ORDER BY display_order ASC NULLS LAST, name ASC
     `;
   }
@@ -115,14 +117,16 @@ export class SystemConfigController {
   @Post('services')
   @Roles('super_admin', 'ops')
   async createService(
-    @Body() body: { code: string; name: string; description?: string; iconUrl?: string; coverImageUrl?: string; displayOrder?: number },
+    @Body() body: { code: string; name: string; description?: string; iconUrl?: string; coverImageUrl?: string; displayOrder?: number; pricingTemplate?: string; formConfig?: Record<string, unknown> },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
     if (!body.code || !body.name) throw new BadRequestException('code & name wajib.');
+    const pricingTemplate = body.pricingTemplate ?? 'per_parameter';
+    const formConfig = JSON.stringify(body.formConfig ?? {});
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
-      INSERT INTO services (code, name, description, icon_url, cover_image_url, display_order, is_active)
-      VALUES (${body.code}, ${body.name}, ${body.description ?? null}, ${body.iconUrl ?? null}, ${body.coverImageUrl ?? null}, ${body.displayOrder ?? null}, TRUE)
+      INSERT INTO services (code, name, description, icon_url, cover_image_url, display_order, is_active, pricing_template, form_config)
+      VALUES (${body.code}, ${body.name}, ${body.description ?? null}, ${body.iconUrl ?? null}, ${body.coverImageUrl ?? null}, ${body.displayOrder ?? null}, TRUE, ${pricingTemplate}, ${formConfig}::jsonb)
       RETURNING id
     `;
     const newId = rows[0]?.id;
@@ -142,7 +146,7 @@ export class SystemConfigController {
   @Roles('super_admin', 'ops')
   async updateService(
     @Param('id') id: string,
-    @Body() body: { name?: string; description?: string; iconUrl?: string; coverImageUrl?: string; isActive?: boolean; displayOrder?: number; showOnHome?: boolean; isBundle?: boolean; unitPrice?: number; durationMin?: number },
+    @Body() body: { name?: string; description?: string; iconUrl?: string; coverImageUrl?: string; isActive?: boolean; displayOrder?: number; showOnHome?: boolean; isBundle?: boolean; unitPrice?: number; durationMin?: number; pricingTemplate?: string; formConfig?: Record<string, unknown> },
     @CurrentAdmin() admin: AdminPrincipal,
     @Req() req: Request,
   ) {
@@ -156,6 +160,8 @@ export class SystemConfigController {
     if (body.isBundle !== undefined) await this.prisma.$executeRaw`UPDATE services SET is_bundle = ${body.isBundle}::boolean WHERE id = ${id}::uuid`;
     if (body.unitPrice !== undefined) await this.prisma.$executeRaw`UPDATE services SET unit_price = ${body.unitPrice}::bigint WHERE id = ${id}::uuid`;
     if (body.durationMin !== undefined) await this.prisma.$executeRaw`UPDATE services SET duration_min = ${body.durationMin}::int WHERE id = ${id}::uuid`;
+    if (body.pricingTemplate !== undefined) await this.prisma.$executeRaw`UPDATE services SET pricing_template = ${body.pricingTemplate} WHERE id = ${id}::uuid`;
+    if (body.formConfig !== undefined) await this.prisma.$executeRaw`UPDATE services SET form_config = ${JSON.stringify(body.formConfig)}::jsonb WHERE id = ${id}::uuid`;
     await this.audit.log({
       adminId: admin.id,
       action: 'service.update',

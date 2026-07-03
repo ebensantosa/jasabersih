@@ -38,6 +38,17 @@ export type ServiceCategory = {
   isBundle?: boolean;
   /** False = lagi maintenance / tidak tersedia. Mobile tampil grey + blok CTA. Default true. */
   isActive?: boolean;
+  /** 'per_parameter' (harga dinamis) atau 'fixed_cost' (harga tetap = unitPrice). Default per_parameter. */
+  pricingTemplate?: 'per_parameter' | 'fixed_cost';
+  /** Harga tetap (Rp) untuk fixed_cost template. */
+  unitPrice?: number;
+  /** Durasi estimasi (menit) dari admin. */
+  durationMin?: number;
+  /** Field form yang ditampilkan ke customer saat booking. */
+  formConfig?: {
+    properties?: string[];
+    conditions?: string[];
+  };
 };
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [

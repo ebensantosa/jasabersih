@@ -20,6 +20,8 @@ export function useServices(): ServiceCategory[] {
       const pkgs = apiPackages.filter((p) => p.serviceId === api.id);
       const minPrice = pkgs.length > 0 ? Math.min(...pkgs.map((p) => Number(p.price))) : (local?.startingPrice ?? 0);
 
+      const rawFormConfig = (api as any).formConfig;
+      const formConfig = rawFormConfig && typeof rawFormConfig === 'object' ? rawFormConfig as { properties?: string[]; conditions?: string[] } : undefined;
       const merged: ServiceCategory = {
         code: api.code,
         name: api.name,
@@ -31,7 +33,7 @@ export function useServices(): ServiceCategory[] {
         customIconUrl: (api.iconUrl as string | undefined) ?? null,
         // Cover image: prefer admin-set from CMS, fallback ke local hardcoded
         imageUrl: ((api as any).coverImageUrl as string | undefined) ?? local?.imageUrl ?? SERVICE_CATEGORIES[0]!.imageUrl,
-        startingPrice: minPrice,
+        startingPrice: (api as any).pricingTemplate === 'fixed_cost' && (api as any).unitPrice ? Number((api as any).unitPrice) : minPrice,
         popular: local?.popular,
         // Default true kalau API gak return field (backwards compat)
         showOnHome: api.showOnHome !== false,
@@ -39,6 +41,10 @@ export function useServices(): ServiceCategory[] {
         isBundle: (api as any).isBundle === true,
         // Default true kalau API gak return field (backwards compat).
         isActive: (api as any).isActive !== false,
+        pricingTemplate: ((api as any).pricingTemplate as 'per_parameter' | 'fixed_cost') ?? 'per_parameter',
+        unitPrice: (api as any).unitPrice ? Number((api as any).unitPrice) : undefined,
+        durationMin: (api as any).durationMin ? Number((api as any).durationMin) : undefined,
+        formConfig: formConfig && (Array.isArray(formConfig.properties) || Array.isArray(formConfig.conditions)) ? formConfig : undefined,
       };
       return merged;
     });

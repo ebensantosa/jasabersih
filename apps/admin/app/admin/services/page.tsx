@@ -146,9 +146,39 @@ export default function ServicesPage(): React.ReactElement | null {
   );
 }
 
+const ALL_PROPERTIES = [
+  { key: 'propertyType', label: 'Jenis Properti' },
+  { key: 'floor', label: 'Lantai' },
+  { key: 'hasLift', label: 'Ada Lift' },
+  { key: 'bedrooms', label: 'Jumlah Kamar Tidur' },
+  { key: 'bathrooms', label: 'Jumlah Kamar Mandi' },
+  { key: 'areaM2', label: 'Luas Area (m²)' },
+  { key: 'facilities', label: 'Fasilitas Tambahan' },
+];
+
+const ALL_CONDITIONS = [
+  { key: 'cleanMode', label: 'Mode Deep / General Clean' },
+  { key: 'dirtLevel', label: 'Tingkat Kotoran' },
+  { key: 'dirtCharacters', label: 'Jenis Kotoran / Kondisi' },
+  { key: 'floorType', label: 'Jenis Lantai' },
+  { key: 'furnitureDensity', label: 'Kepadatan Furniture' },
+  { key: 'hasWater', label: 'Ada Air' },
+  { key: 'hasElectricity', label: 'Ada Listrik' },
+  { key: 'hasPet', label: 'Ada Hewan Peliharaan' },
+];
+
 function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const isEdit = !!service;
+
+  const existingFormConfig = (service?.formConfig && typeof service.formConfig === 'object') ? service.formConfig : {};
+  const existingProperties: string[] = Array.isArray(existingFormConfig.properties)
+    ? existingFormConfig.properties
+    : ALL_PROPERTIES.map((p) => p.key);
+  const existingConditions: string[] = Array.isArray(existingFormConfig.conditions)
+    ? existingFormConfig.conditions
+    : ALL_CONDITIONS.map((c) => c.key);
+
   const [form, setForm] = useState({
     code: service?.code ?? '',
     name: service?.name ?? '',
@@ -161,7 +191,17 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     displayOrder: service?.displayOrder ?? 0,
     unitPrice: service?.unitPrice ? Number(service.unitPrice) : 0,
     durationMin: service?.durationMin ? Number(service.durationMin) : 60,
+    pricingTemplate: service?.pricingTemplate ?? 'per_parameter',
   });
+  const [enabledProperties, setEnabledProperties] = useState<Set<string>>(new Set(existingProperties));
+  const [enabledConditions, setEnabledConditions] = useState<Set<string>>(new Set(existingConditions));
+
+  function toggleProp(key: string) {
+    setEnabledProperties((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
+  function toggleCond(key: string) {
+    setEnabledConditions((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -186,11 +226,21 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
     const e: Record<string, string> = {};
     if (!form.code) e.code = 'Wajib.';
     if (!form.name) e.name = 'Wajib.';
+    if (form.pricingTemplate === 'fixed_cost' && form.unitPrice <= 0) e.unitPrice = 'Harga wajib diisi untuk Fixed Cost.';
     setErrors(e);
     if (Object.keys(e).length) return;
     setBusy(true);
     try {
-      const payload = { ...form, unitPrice: form.unitPrice > 0 ? form.unitPrice : undefined, durationMin: form.durationMin > 0 ? form.durationMin : undefined };
+      const formConfig = {
+        properties: ALL_PROPERTIES.map((p) => p.key).filter((k) => enabledProperties.has(k)),
+        conditions: ALL_CONDITIONS.map((c) => c.key).filter((k) => enabledConditions.has(k)),
+      };
+      const payload = {
+        ...form,
+        unitPrice: form.unitPrice > 0 ? form.unitPrice : undefined,
+        durationMin: form.durationMin > 0 ? form.durationMin : undefined,
+        formConfig,
+      };
       if (isEdit) await api.admin.updateService(service.id, payload);
       else await api.admin.createService(payload);
       if (isEdit) {
@@ -246,15 +296,87 @@ function ServiceFormModal({ service, onClose, onSaved }: { service: any | null; 
         </section>
 
         <section className="space-y-3">
-          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Harga per Unit (Flat)</div>
-          <div className="rounded border bg-blue-50 p-3 text-[11px] text-blue-900">
-            Harga ini dipakai di booking baru sistem <strong>flat per unit</strong>.<br/>
-            Customer pilih layanan ini + jumlah (qty), total = harga × qty.<br/>
-            <strong>Cleaner hanya melihat pendapatan mereka</strong>, bukan harga customer.
-          </div>
+          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Template Harga</div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Harga per Unit (Rp)" type="number" value={String(form.unitPrice)} onChange={(v) => setForm({ ...form, unitPrice: Number(v) || 0 })} helpText="Misal: 120000 untuk Kamar Tidur = Rp 120.000/kamar." />
-            <Input label="Durasi per Unit (menit)" type="number" value={String(form.durationMin)} onChange={(v) => setForm({ ...form, durationMin: Number(v) || 60 })} helpText="Estimasi waktu per unit (untuk hitung total durasi)." />
+            {(['per_parameter', 'fixed_cost'] as const).map((tpl) => (
+              <button
+                key={tpl}
+                type="button"
+                onClick={() => setForm({ ...form, pricingTemplate: tpl })}
+                className={`rounded-lg border-2 p-3 text-left transition-colors ${form.pricingTemplate === tpl ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+              >
+                <div className="font-semibold text-sm text-slate-800">{tpl === 'per_parameter' ? '📐 Per Parameter' : '🏷️ Fixed Cost'}</div>
+                <div className="mt-1 text-[11px] text-slate-500">
+                  {tpl === 'per_parameter'
+                    ? 'Harga dihitung dinamis berdasarkan input customer (kamar, luas, kondisi, dll).'
+                    : 'Harga tetap — customer langsung tahu total tanpa isi banyak form.'}
+                </div>
+              </button>
+            ))}
+          </div>
+          {form.pricingTemplate === 'fixed_cost' && (
+            <div className="rounded border bg-amber-50 p-3 text-[11px] text-amber-900">
+              <strong>Fixed Cost</strong>: isi Harga & Durasi di bawah. Customer tidak perlu isi properti/kondisi, langsung ke jadwal.
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label={form.pricingTemplate === 'fixed_cost' ? 'Harga Tetap (Rp)' : 'Harga per Unit (Rp)'}
+              type="number"
+              value={String(form.unitPrice)}
+              onChange={(v) => setForm({ ...form, unitPrice: Number(v) || 0 })}
+              error={errors.unitPrice}
+              helpText={form.pricingTemplate === 'fixed_cost' ? 'Harga flat yang customer bayar.' : 'Misal: 120000 untuk Kamar Tidur = Rp 120.000/kamar.'}
+            />
+            <Input
+              label="Durasi (menit)"
+              type="number"
+              value={String(form.durationMin)}
+              onChange={(v) => setForm({ ...form, durationMin: Number(v) || 60 })}
+              helpText="Estimasi waktu pengerjaan."
+            />
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="border-b pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">Konfigurasi Form Booking</div>
+          <div className="rounded border bg-slate-50 p-3 text-[11px] text-slate-600">
+            Centang field yang muncul saat customer booking layanan ini. Hapus centang untuk menyederhanakan form.
+            {form.pricingTemplate === 'fixed_cost' && <span className="ml-1 text-amber-700 font-medium">(Fixed Cost: form properti & kondisi bisa dikosongkan semua)</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="mb-2 text-xs font-semibold text-slate-700">Properti</div>
+              <div className="space-y-1.5">
+                {ALL_PROPERTIES.map((p) => (
+                  <label key={p.key} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={enabledProperties.has(p.key)}
+                      onChange={() => toggleProp(p.key)}
+                      className="h-3.5 w-3.5 rounded"
+                    />
+                    <span className="text-[12px] text-slate-700">{p.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-semibold text-slate-700">Kondisi</div>
+              <div className="space-y-1.5">
+                {ALL_CONDITIONS.map((c) => (
+                  <label key={c.key} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={enabledConditions.has(c.key)}
+                      onChange={() => toggleCond(c.key)}
+                      className="h-3.5 w-3.5 rounded"
+                    />
+                    <span className="text-[12px] text-slate-700">{c.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 

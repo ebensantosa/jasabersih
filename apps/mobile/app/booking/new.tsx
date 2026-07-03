@@ -210,6 +210,12 @@ function NewBooking() {
   const PER_METER_CODES = ['ruko', 'kantor', 'apartemen'];
   const isSimpleService = SIMPLE_SERVICE_CODES.includes(category?.code ?? '');
   const isPerMeter = PER_METER_CODES.includes(category?.code ?? '');
+  // Fixed cost template: harga tetap dari admin, skip form properti & kondisi
+  const isFixedCost = category?.pricingTemplate === 'fixed_cost';
+  // Helper to check if a form field is enabled via formConfig (null = no config = show all)
+  const formConfig = category?.formConfig;
+  const isPropEnabled = (key: string) => !formConfig?.properties || formConfig.properties.includes(key);
+  const isCondEnabled = (key: string) => !formConfig?.conditions || formConfig.conditions.includes(key);
   const isVacuum = category?.code === 'vacuum_lantai';
   const isSubscription = category?.code === 'subscription';
   const [subscriptionDates, setSubscriptionDates] = useState<string[]>([]); // ISO YYYY-MM-DD list
@@ -622,13 +628,15 @@ function NewBooking() {
   // basePrice sudah include deepSurcharge (via applyCleanMode). Surcharge lain = additive di atasnya.
   // Subscription: addon dikali jumlah kunjungan (paket bulanan = layanan tambahan per visit).
   const subscriptionAddonTotal = isSubscription && subscriptionVisits > 0 ? addonTotal * subscriptionVisits : addonTotal;
-  const subtotal = isLargeScale
-    ? largeScaleTargetTotal + addonTotal
-    : isPostReno
-      ? postRenoTotal + addonTotal
-      : isSubscription
-        ? basePrice + subscriptionAddonTotal
-        : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
+  const subtotal = isFixedCost
+    ? (category?.unitPrice ?? 0) + addonTotal
+    : isLargeScale
+      ? largeScaleTargetTotal + addonTotal
+      : isPostReno
+        ? postRenoTotal + addonTotal
+        : isSubscription
+          ? basePrice + subscriptionAddonTotal
+          : basePrice + dirtSurcharge + sizeSurcharge + floorSurcharge + furnitureSurcharge + roomSurcharge + propertySurcharge + petSurcharge + addonTotal;
   type AvailableVoucher = {
     id: string;
     code: string;
@@ -726,8 +734,14 @@ function NewBooking() {
   }
 
   function next() {
-    if (step === 1 && !pkg && !isLargeScale && !isPostReno) {
+    if (step === 1 && !pkg && !isLargeScale && !isPostReno && !isFixedCost) {
       toast.error('Pilih paket dulu');
+      return;
+    }
+    // Fixed cost: skip properti & kondisi steps, langsung ke jadwal
+    if (isFixedCost && step < 3) {
+      setStep(3);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
     if (step === 1 && isLargeScale && areaM2 < 50) {
@@ -762,6 +776,8 @@ function NewBooking() {
 
   function back() {
     if (step > 1) {
+      // Fixed cost: step 3 → langsung keluar (tidak ada step properti/kondisi)
+      if (isFixedCost) { safeBack(); return; }
       setStep(step - 1);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } else {
@@ -770,7 +786,7 @@ function NewBooking() {
   }
 
   function submit() {
-    if ((!pkg && !isLargeScale && !isPostReno) || !category) return;
+    if ((!pkg && !isLargeScale && !isPostReno && !isFixedCost) || !category) return;
     if (!address.trim()) {
       setAddressError('Alamat wajib diisi (pin di peta atau ketik manual)');
       toast.error('Alamat wajib diisi');
@@ -784,7 +800,7 @@ function NewBooking() {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     setSubmitting(true);
-    if ((!pkg && !isLargeScale && !isPostReno) || !category) {
+    if ((!pkg && !isLargeScale && !isPostReno && !isFixedCost) || !category) {
       toast.error('Paket layanan belum tersedia. Coba pilih layanan lain atau hubungi customer service.');
       submitLockRef.current = false;
       setSubmitting(false);
@@ -798,12 +814,12 @@ function NewBooking() {
     let booking;
     try {
       booking = await create({
-      pricingMode: 'package',
+      pricingMode: isFixedCost ? 'package' : 'package',
       categoryCode: category.code,
       categoryName: category.name,
       categoryImage: category.imageUrl,
       packageId: selectedPackage?.id,
-      packageName: selectedPackage ? (cleanMode === 'deep' ? `${selectedPackage.name} (Deep Cleaning)` : selectedPackage.name) : category.name,
+      packageName: isFixedCost ? category.name : selectedPackage ? (cleanMode === 'deep' ? `${selectedPackage.name} (Deep Cleaning)` : selectedPackage.name) : category.name,
       addressLine: address,
       lat: coords?.lat ?? undefined,
       lng: coords?.lng ?? undefined,
@@ -814,8 +830,8 @@ function NewBooking() {
         price: a.price,
         qty: getAddonQty(a.code),
       })),
-      basePrice,
-      dirtSurcharge,
+      basePrice: isFixedCost ? (category?.unitPrice ?? 0) : basePrice,
+      dirtSurcharge: isFixedCost ? 0 : dirtSurcharge,
       totalPrice: total,
       customerNotes: notes.trim() || undefined,
       formSnapshot: {
@@ -850,6 +866,7 @@ function NewBooking() {
           customerName: userProfile?.name?.trim() || undefined,
           addressLabel: selectedAddress?.label || undefined,
           addressDetailNote: selectedAddress?.detailNote || undefined,
+          pricingTemplate: category?.pricingTemplate ?? 'per_parameter',
           voucherCode: voucher?.code,
           overtimeSurcharge: overtimeQuote.surcharge,
         overtimeHours: overtimeQuote.overtimeHours,

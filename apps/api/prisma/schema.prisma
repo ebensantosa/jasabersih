@@ -102,15 +102,17 @@ model Address {
 // ============ SERVICES & PRICING ============
 
 model Service {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code         String   @unique @db.VarChar(50)
-  name         String   @db.VarChar(100)
-  description  String?
-  iconUrl      String?  @map("icon_url") @db.VarChar(500)
-  isActive     Boolean  @default(true) @map("is_active")
-  displayOrder Int?     @map("display_order")
-  unitPrice    BigInt?  @map("unit_price")
-  durationMin  Int?     @map("duration_min")
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code            String   @unique @db.VarChar(50)
+  name            String   @db.VarChar(100)
+  description     String?
+  iconUrl         String?  @map("icon_url") @db.VarChar(500)
+  isActive        Boolean  @default(true) @map("is_active")
+  displayOrder    Int?     @map("display_order")
+  unitPrice       BigInt?  @map("unit_price")
+  durationMin     Int?     @map("duration_min")
+  pricingTemplate String   @default("per_parameter") @map("pricing_template") @db.VarChar(20)
+  formConfig      Json     @default("{}") @map("form_config")
 
   packages PricingPackage[]
 

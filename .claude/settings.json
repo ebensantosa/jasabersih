@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s https://api.jasabersih.com/*)",
+      "Bash(curl -s https://dashboard.jasabersih.com/*)",
+      "Bash(npx tsc --project *)",
+      "Bash(pnpm --filter * exec tsc *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git status *)"
+    ]
+  }
+}

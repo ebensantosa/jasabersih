@@ -129,7 +129,9 @@ export class AppContentController {
                is_bundle AS "isBundle",
                is_active AS "isActive",
                unit_price AS "unitPrice",
-               duration_min AS "durationMin"
+               duration_min AS "durationMin",
+               pricing_template AS "pricingTemplate",
+               form_config AS "formConfig"
           FROM services ORDER BY display_order ASC NULLS LAST, name ASC
       `,
       this.prisma.$queryRaw<Record<string, unknown>[]>`
