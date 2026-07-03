@@ -650,6 +650,12 @@ export class PaymentsController {
     } else if (body.type === 'tip') {
       if (!body.tipAmount || body.tipAmount <= 0) throw new BadRequestException('tipAmount wajib > 0.');
       if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner.');
+      const existingTip = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM wallet_ledger_entries
+         WHERE user_id = ${user.id}::uuid AND reference_type = 'tip' AND reference_id = ${body.bookingId}::uuid
+         LIMIT 1
+      `;
+      if (existingTip.length > 0) throw new BadRequestException('Kamu sudah memberikan tip untuk pesanan ini.');
       amount = Number(body.tipAmount);
     } else if (body.type === 'upcharge') {
       if (!body.upchargeId) throw new BadRequestException('upchargeId wajib.');
@@ -744,6 +750,12 @@ export class PaymentsController {
       extra = { ...extra, upchargeId: body.upchargeId };
     } else if (body.type === 'tip') {
       if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner untuk dikasih tip.');
+      const existingTipFlip = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM wallet_ledger_entries
+         WHERE user_id = ${user.id}::uuid AND reference_type = 'tip' AND reference_id = ${body.bookingId}::uuid
+         LIMIT 1
+      `;
+      if (existingTipFlip.length > 0) throw new BadRequestException('Kamu sudah memberikan tip untuk pesanan ini.');
       amount = Number(body.tipAmount);
       extra = { ...extra, tipAmount: amount, cleanerId: b.cleaner_id };
     } else {
@@ -967,8 +979,7 @@ export class PaymentsController {
   }
 
   private async finalizeTip(userId: string, bookingId: string, cleanerId: string, amount: number) {
-    // Tip masuk ke cleaner earnings (CLEARED langsung, gak ada escrow utk tip) +
-    // record di ratings.tip_amount. Kalau rating belum ada, buat row baru tanpa rating value.
+    const label = `Rp ${amount.toLocaleString('id-ID')}`;
     await this.prisma.$executeRaw`
       INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
       VALUES (${cleanerId}::uuid, 'earnings', ${amount}, 'tip', ${bookingId}::uuid, 'CLEARED', NOW(), ${'Tip dari customer'})
@@ -978,6 +989,33 @@ export class PaymentsController {
       VALUES (${bookingId}::uuid, ${userId}::uuid, ${cleanerId}::uuid, ${amount})
       ON CONFLICT (booking_id) DO UPDATE SET tip_amount = COALESCE(ratings.tip_amount, 0) + ${amount}
     `;
+    // Push notif ke cleaner
+    void this.push.send({
+      userId: cleanerId,
+      channel: 'booking',
+      title: '💛 Kamu dapat tip!',
+      body: `Customer memberikan tip ${label} untukmu. Terima kasih sudah kerja keras!`,
+      data: { type: 'tip_received', bookingId },
+    }).catch(() => {});
+    // Chat system message
+    const content = `💛 Customer memberikan tip ${label} untuk cleaner`;
+    const insertedRows = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
+      INSERT INTO chat_messages (booking_id, sender_id, recipient_id, content, message_type)
+      VALUES (${bookingId}::uuid, ${userId}::uuid, ${cleanerId}::uuid, ${content}, 'system')
+      RETURNING id, created_at
+    `;
+    const msg = insertedRows[0];
+    if (msg) {
+      this.chat.broadcastChatMessage({
+        id: msg.id,
+        bookingId,
+        senderId: userId,
+        recipientId: cleanerId,
+        messageType: 'system',
+        content,
+        createdAt: msg.created_at.toISOString(),
+      });
+    }
   }
 
   private async finalizeOvertime(bookingId: string, durationHours: number): Promise<void> {

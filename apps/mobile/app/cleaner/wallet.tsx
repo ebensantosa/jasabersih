@@ -309,6 +309,11 @@ function EntryRow({ entry, last }: { entry: WalletEntry; last: boolean }) {
     iconColor = '#DC2626';
     bgColor = '#FEE2E2';
     statusLabel = 'Gagal';
+  } else if (entry.type === 'tip') {
+    icon = TrendingUp;
+    iconColor = '#D97706';
+    bgColor = '#FEF3C7';
+    statusLabel = '💛 Tip';
   }
   const Icon = icon;
   const date = new Date(entry.createdAt).toLocaleString('id-ID', {
