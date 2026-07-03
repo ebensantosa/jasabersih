@@ -8,6 +8,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { ChatGateway } from '../chat/chat.gateway';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
 import { TripayService } from './tripay.service';
@@ -76,6 +77,7 @@ export class PaymentsController {
     private readonly flip: FlipService,
     private readonly push: PushService,
     private readonly jobs: JobsGateway,
+    private readonly chat: ChatGateway,
   ) {}
 
   private findFirstNestedString(value: unknown, matcher: (key: string, str: string) => boolean): string | undefined {
@@ -1013,6 +1015,27 @@ export class PaymentsController {
         body: `+${durationHours} jam ditambahkan. Lanjutkan pekerjaan.`,
         data: { type: 'overtime_paid', bookingId },
       }).catch(() => {});
+    }
+
+    // Insert system message ke chat supaya kedua pihak lihat info overtime
+    const label = durationHours === 0.5 ? '30 menit' : `${durationHours} jam`;
+    const content = `⏱ Customer menambah waktu kerja +${label}`;
+    const insertedRows = await this.prisma.$queryRaw<{ id: string; created_at: Date }[]>`
+      INSERT INTO chat_messages (booking_id, sender_id, recipient_id, content, message_type)
+      VALUES (${bookingId}::uuid, ${b.customer_id}::uuid, ${b.cleaner_id ?? null}::uuid, ${content}, 'system')
+      RETURNING id, created_at
+    `;
+    const msg = insertedRows[0];
+    if (msg) {
+      this.chat.broadcastChatMessage({
+        id: msg.id,
+        bookingId,
+        senderId: b.customer_id,
+        recipientId: b.cleaner_id ?? null,
+        messageType: 'system',
+        content,
+        createdAt: msg.created_at.toISOString(),
+      });
     }
   }
 
