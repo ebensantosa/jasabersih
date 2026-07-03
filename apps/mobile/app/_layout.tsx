@@ -324,6 +324,8 @@ export default function RootLayout() {
         return;
       }
       if (data?.type === 'incoming_call' && data?.bookingId && !useCallStore.getState().active) {
+        // Cancel any existing Notifee notification so only in-app overlay plays sound (no dual ringtone)
+        void cancelCallNotification().catch(() => {});
         setIncomingCallNotif({ bookingId: data.bookingId, callerName: data.callerName ?? 'Penelepon' });
       }
     });
@@ -342,6 +344,8 @@ export default function RootLayout() {
       const r = await api.get('/call/incoming');
       const d = r.data?.data ?? r.data;
       if (d?.active && d?.bookingId) {
+        // Cancel Notifee notification so only in-app overlay plays sound
+        void cancelCallNotification().catch(() => {});
         setIncomingCallNotif((prev) => (
           prev?.bookingId === d.bookingId && prev?.callerName === (d.callerName ?? 'Penelepon')
             ? prev

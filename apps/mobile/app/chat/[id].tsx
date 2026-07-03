@@ -446,7 +446,7 @@ function Chat() {
       }
     };
     void poll();
-    const t = setInterval(() => { void poll(); }, 1500);
+    const t = setInterval(() => { void poll(); }, 3000);
     return () => {
       cancelled = true;
       clearInterval(t);
@@ -697,6 +697,36 @@ function Chat() {
             Disembunyikan saat pesanan selesai/batal. */}
         {!isCleaner && !['completed', 'canceled'].includes(booking?.status ?? '') && (
           <SafetyBanner onReport={() => router.push({ pathname: '/report-cleaner', params: { bookingId: id! } })} />
+        )}
+
+        {/* Booking status banner — OTW / in_progress */}
+        {booking && ['on_the_way', 'in_progress'].includes(booking.status ?? '') && !showIncomingBanner && (
+          <View
+            style={{
+              backgroundColor: booking.status === 'in_progress' ? '#F0FDF4' : '#EFF6FF',
+              borderBottomWidth: 1,
+              borderBottomColor: booking.status === 'in_progress' ? '#BBF7D0' : '#BFDBFE',
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontSize: 16 }}>
+              {booking.status === 'in_progress' ? '🧹' : '🚗'}
+            </Text>
+            <Text style={{
+              flex: 1,
+              fontSize: 12,
+              fontFamily: 'Inter_600SemiBold',
+              color: booking.status === 'in_progress' ? '#15803D' : '#1D4ED8',
+            }}>
+              {booking.status === 'in_progress'
+                ? 'Cleaner sedang mengerjakan pesananmu'
+                : 'Cleaner sedang dalam perjalanan ke lokasimu'}
+            </Text>
+          </View>
         )}
 
         {/* Incoming call banner — hidden kalau sudah dalam call aktif */}
