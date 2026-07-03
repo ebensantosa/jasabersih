@@ -259,6 +259,7 @@ function BookingDetail() {
   // React to WebSocket booking:reload signal (upcharge/extension pushed by server)
   useEffect(() => {
     if (!reloadSignal) return;
+    if (id) void fetchOne(String(id));
     void loadUpcharges();
     void loadExtensionRequests();
   }, [reloadSignal]); // eslint-disable-line react-hooks/exhaustive-deps
