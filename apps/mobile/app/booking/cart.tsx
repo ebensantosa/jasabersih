@@ -1,5 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Minus, Plus, Clock, CalendarDays, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Check, Minus, Plus, Clock, CalendarDays, ChevronRight } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,14 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { withAuth } from '../../src/components/AuthGate';
 import { ADDONS, SERVICE_CATEGORIES, formatRupiah } from '../../src/data/catalog';
-import { useAppContent } from '../../src/stores/appContent';
+import { useAppContent, type Addon } from '../../src/stores/appContent';
 import { useBookingsStore } from '../../src/stores/bookings';
 import { toast } from '../../src/stores/ui';
 import { type SavedAddress } from '../../src/stores/addresses';
 import { AddressPickerInline } from '../../src/components/AddressPicker';
 import { safeBack } from '../../src/lib/safeBack';
 
-// Grup addon untuk tampilan terorganisir
+// Grup addon dari catalog lokal (untuk grouping label)
 const ADDON_GROUPS = [...new Set(ADDONS.map((a) => a.group))];
 
 // Layanan yang tidak bisa dipilih per-unit (modal WA / bundle khusus)
@@ -35,6 +35,7 @@ function BookingCart() {
   const router = useRouter();
   const createBooking = useBookingsStore((s) => s.create);
   const apiServices = useAppContent((s) => s.services ?? []);
+  const apiAddons = useAppContent((s) => s.addons ?? []);
   const [serviceItems, setServiceItems] = useState<Record<string, number>>({});
   const [addonItems, setAddonItems] = useState<Record<string, number>>({});
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -64,6 +65,21 @@ function BookingCart() {
     });
   }
 
+  // Merge API addons dengan local catalog (untuk icon & group)
+  const addons = useMemo(() => {
+    if (apiAddons.length > 0) {
+      return apiAddons
+        .filter((a) => a.code)
+        .map((a) => {
+          const local = ADDONS.find((l) => l.code === a.code);
+          return { ...a, group: local?.group ?? 'Lainnya', unit: local?.unit, icon: local?.icon };
+        });
+    }
+    return ADDONS.map((a) => ({ ...a, inputType: 'qty' as const }));
+  }, [apiAddons]);
+
+  const addonGroups = useMemo(() => [...new Set(addons.map((a) => a.group))], [addons]);
+
   function setAddonQty(code: string, delta: number) {
     setAddonItems((prev) => {
       const next = (prev[code] ?? 0) + delta;
@@ -72,13 +88,20 @@ function BookingCart() {
     });
   }
 
+  function toggleAddon(code: string) {
+    setAddonItems((prev) => {
+      if (prev[code]) { const { [code]: _, ...rest } = prev; return rest; }
+      return { ...prev, [code]: 1 };
+    });
+  }
+
   const serviceTotal = useMemo(() =>
     services.reduce((s, svc) => s + (serviceItems[svc.code] ?? 0) * svc.unitPrice, 0),
   [services, serviceItems]);
 
   const addonTotal = useMemo(() =>
-    ADDONS.reduce((s, a) => s + (addonItems[a.code] ?? 0) * a.price, 0),
-  [addonItems]);
+    addons.reduce((s, a) => s + (addonItems[a.code!] ?? 0) * a.price, 0),
+  [addons, addonItems]);
 
   const grandTotal = serviceTotal + addonTotal;
 
@@ -87,9 +110,9 @@ function BookingCart() {
 
   const estimatedMinutes = useMemo(() => {
     const svcMins = services.reduce((s, svc) => s + (serviceItems[svc.code] ?? 0) * svc.durationMin, 0);
-    const addonMins = ADDONS.reduce((s, a) => s + (addonItems[a.code] ?? 0) * a.durationMin, 0);
+    const addonMins = addons.reduce((s, a) => s + (addonItems[a.code!] ?? 0) * a.durationMin, 0);
     return svcMins + addonMins;
-  }, [services, serviceItems, addonItems]);
+  }, [services, serviceItems, addons, addonItems]);
 
   async function submit() {
     if (totalItems === 0) { toast.error('Pilih minimal 1 layanan.'); return; }
@@ -100,9 +123,9 @@ function BookingCart() {
       .filter((s) => (serviceItems[s.code] ?? 0) > 0)
       .map((s) => ({ code: s.code, name: s.name, qty: serviceItems[s.code]!, unitPrice: s.unitPrice, durationMin: s.durationMin }));
 
-    const selectedAddons: AddonItem[] = ADDONS
-      .filter((a) => (addonItems[a.code] ?? 0) > 0)
-      .map((a) => ({ code: a.code, name: a.name, qty: addonItems[a.code]!, price: a.price, durationMin: a.durationMin }));
+    const selectedAddons: AddonItem[] = addons
+      .filter((a) => (addonItems[a.code!] ?? 0) > 0)
+      .map((a) => ({ code: a.code!, name: a.name, qty: addonItems[a.code!]!, price: a.price, durationMin: a.durationMin }));
 
     const categoryName = selectedServices.map((s) => s.name).join(', ');
 
@@ -214,41 +237,53 @@ function BookingCart() {
           <View>
             <Text className="font-extrabold text-sm text-ink-900 mb-2">Layanan Tambahan</Text>
             <Text className="font-sans text-xs text-ink-500 mb-3">Opsional. Ditambahkan ke total harga.</Text>
-            {ADDON_GROUPS.map((group) => {
-              const groupAddons = ADDONS.filter((a) => a.group === group);
+            {addonGroups.map((group) => {
+              const groupAddons = addons.filter((a) => a.group === group);
+              if (groupAddons.length === 0) return null;
               return (
                 <View key={group} className="mb-3">
                   <Text className="font-bold text-[11px] uppercase tracking-wider text-ink-400 mb-1.5">{group}</Text>
                   <View className="gap-1.5">
                     {groupAddons.map((addon) => {
-                      const qty = addonItems[addon.code] ?? 0;
+                      const code = addon.code!;
+                      const qty = addonItems[code] ?? 0;
+                      const isCheckbox = addon.inputType === 'checkbox';
                       return (
-                        <View key={addon.code} className="flex-row items-center bg-white rounded-xl px-3 py-2.5" style={{ elevation: 1 }}>
+                        <View key={code} className="flex-row items-center bg-white rounded-xl px-3 py-2.5" style={{ elevation: 1 }}>
                           <View className="flex-1">
                             <Text className="font-semibold text-[13px] text-ink-800">{addon.name}</Text>
                             <Text className="font-medium text-[11px] text-ink-400 mt-0.5">
-                              {formatRupiah(addon.price)}{addon.unit ? ` / ${addon.unit}` : ''}
+                              {formatRupiah(addon.price)}{(addon as any).unit ? ` / ${(addon as any).unit}` : ''}
                             </Text>
                           </View>
-                          <View className="flex-row items-center gap-2.5">
-                            {qty > 0 && (
-                              <>
-                                <Pressable
-                                  onPress={() => setAddonQty(addon.code, -1)}
-                                  className="h-7 w-7 items-center justify-center rounded-full bg-ink-100"
-                                >
-                                  <Minus color="#475569" size={12} strokeWidth={2.5} />
-                                </Pressable>
-                                <Text className="font-extrabold text-sm text-ink-900 w-4 text-center">{qty}</Text>
-                              </>
-                            )}
+                          {isCheckbox ? (
                             <Pressable
-                              onPress={() => setAddonQty(addon.code, 1)}
-                              className={`h-7 w-7 items-center justify-center rounded-full ${qty > 0 ? 'bg-emerald-600' : 'bg-emerald-50 border border-emerald-300'}`}
+                              onPress={() => toggleAddon(code)}
+                              className={`h-7 w-7 items-center justify-center rounded-full border-2 ${qty > 0 ? 'border-emerald-600 bg-emerald-600' : 'border-ink-300 bg-white'}`}
                             >
-                              <Plus color={qty > 0 ? 'white' : '#059669'} size={12} strokeWidth={2.5} />
+                              {qty > 0 && <Check color="white" size={14} strokeWidth={3} />}
                             </Pressable>
-                          </View>
+                          ) : (
+                            <View className="flex-row items-center gap-2.5">
+                              {qty > 0 && (
+                                <>
+                                  <Pressable
+                                    onPress={() => setAddonQty(code, -1)}
+                                    className="h-7 w-7 items-center justify-center rounded-full bg-ink-100"
+                                  >
+                                    <Minus color="#475569" size={12} strokeWidth={2.5} />
+                                  </Pressable>
+                                  <Text className="font-extrabold text-sm text-ink-900 w-4 text-center">{qty}</Text>
+                                </>
+                              )}
+                              <Pressable
+                                onPress={() => setAddonQty(code, 1)}
+                                className={`h-7 w-7 items-center justify-center rounded-full ${qty > 0 ? 'bg-emerald-600' : 'bg-emerald-50 border border-emerald-300'}`}
+                              >
+                                <Plus color={qty > 0 ? 'white' : '#059669'} size={12} strokeWidth={2.5} />
+                              </Pressable>
+                            </View>
+                          )}
                         </View>
                       );
                     })}
@@ -323,7 +358,7 @@ function BookingCart() {
                 );
               })}
               {Object.entries(addonItems).map(([code, qty]) => {
-                const addon = ADDONS.find((a) => a.code === code);
+                const addon = addons.find((a) => a.code === code);
                 if (!addon) return null;
                 return (
                   <View key={code} className="flex-row justify-between">
