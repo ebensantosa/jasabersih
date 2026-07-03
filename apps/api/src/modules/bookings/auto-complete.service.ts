@@ -111,8 +111,8 @@ export class AutoCompleteService {
               LEFT JOIN pricing_hourly_tiers ht ON ht.id = bk.hourly_tier_id
              WHERE bk.id = ${b.id}::uuid LIMIT 1
           `;
-          const ctx0 = ctx[0];
-          if (ctx0) {
+          if (ctx[0] != null) {
+            const ctx0 = ctx[0]!;
             const base = Number(ctx0.base ?? 0);
             const travel = Number(ctx0.travel ?? 0);
             const bringsTools = !!ctx0.brings_tools;
@@ -129,7 +129,6 @@ export class AutoCompleteService {
               sharePct = Number((bringsTools ? tier?.cleaner_share_with_tools : tier?.cleaner_share_no_tools) ?? 40);
             }
             const payout = Math.round(base * sharePct / 100) + travel;
-            void bringsTools;
             if (payout > 0) {
               await this.prisma.$executeRaw`UPDATE bookings SET cleaner_payout = ${payout}::bigint WHERE id = ${b.id}::uuid`;
               b.cleaner_payout = payout;
@@ -163,7 +162,7 @@ export class AutoCompleteService {
         ]);
         if (b.customer_id != null) {
           void this.push.send({
-            userId: b.customer_id, channel: 'booking',
+            userId: b.customer_id as string, channel: 'booking',
             title: 'Pesanan otomatis diselesaikan',
             body: 'Tim kami otomatis menyelesaikan pesananmu yang sudah > 4 jam. Yuk kasih rating!',
             data: { type: 'auto_completed', bookingId: b.id },
