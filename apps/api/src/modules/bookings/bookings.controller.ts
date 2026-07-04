@@ -13,6 +13,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { AbuseLimitsService } from '../../common/abuse-limits.service';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
+import { TelegramService } from '../notifications/telegram.service';
 import { StorageService } from '../storage/storage.service';
 import { TravelFeeService } from './travel-fee.service';
 
@@ -47,6 +48,7 @@ export class BookingsController {
     private readonly push: PushService,
     private readonly abuse: AbuseLimitsService,
     private readonly chatGateway: ChatGateway,
+    private readonly telegram: TelegramService,
   ) {}
 
   // Preview travel fee untuk lokasi tertentu (dipakai mobile saat checkout)
@@ -569,6 +571,27 @@ export class BookingsController {
       channel: 'booking',
       targetMode: 'customer',
     }).catch(() => {});
+
+    // Notifikasi Telegram ke grup admin
+    void (async () => {
+      try {
+        const info = await this.prisma.$queryRawUnsafe<{ name: string; total_amount: number; address_line: string; scheduled_at: Date; service_name: string | null }[]>(
+          `SELECT u.name, b.total_amount, b.address_line, b.scheduled_at,
+                  COALESCE(b.form_snapshot->>'categoryName', b.form_snapshot->>'packageName', b.form_snapshot->>'hourlyTierName', 'Layanan') AS service_name
+             FROM bookings b
+             JOIN users u ON u.id = b.customer_id
+            WHERE b.id = $1::uuid LIMIT 1`,
+          id,
+        );
+        if (info[0]) {
+          const { name, total_amount, address_line, scheduled_at, service_name } = info[0];
+          const fmt = (n: number) => 'Rp ' + Number(n).toLocaleString('id-ID');
+          const date = new Date(scheduled_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
+          const msg = `🧹 <b>Order Masuk!</b>\n\n👤 ${name}\n🛠 ${service_name}\n💰 ${fmt(total_amount)}\n📍 ${address_line}\n📅 ${date}\n\n🔗 ID: <code>${id.slice(0, 8).toUpperCase()}</code>`;
+          void this.telegram.send(msg).catch(() => {});
+        }
+      } catch { /* silent */ }
+    })();
 
     return { ok: true };
   }
