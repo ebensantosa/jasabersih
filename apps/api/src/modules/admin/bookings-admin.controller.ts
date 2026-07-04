@@ -6,6 +6,7 @@ import { AdminAuditService } from '../../common/admin-audit.service';
 import { AdminJwtGuard, AdminRbacGuard, CurrentAdmin, Roles, type AdminPrincipal } from '../../common/admin-auth';
 import { PrismaService } from '../../common/prisma.service';
 import { PushService } from '../notifications/push.service';
+import { TelegramService } from '../notifications/telegram.service';
 import { ReferralPayoutService } from '../referral/referral-payout.service';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { StorageService } from '../storage/storage.service';
@@ -23,6 +24,7 @@ export class AdminBookingsController {
     private readonly jobs: JobsGateway,
     private readonly storage: StorageService,
     private readonly referralPayout: ReferralPayoutService,
+    private readonly telegram: TelegramService,
   ) {}
 
   // Ambil atau buat akun customer khusus admin (phone: +62000000000001, name: "Admin JasaBersih").
@@ -199,6 +201,14 @@ export class AdminBookingsController {
       void this.jobs.broadcastIncomingJob(bookingId).catch((e) => this.log.error(`broadcastIncomingJob error: ${e?.message}`));
     } else {
       this.log.log(`createManual skip broadcast bookingId=${bookingId} cleanerId=${body.cleanerId ?? null} paymentStatus=${body.paymentStatus ?? 'unpaid'}`);
+    }
+
+    // Notif Telegram ke grup admin
+    if (bookingId) {
+      const fmt = (n: number) => 'Rp ' + Number(n).toLocaleString('id-ID');
+      const date = new Date(body.scheduledAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
+      const msg = `🧹 <b>Order Masuk (Admin)!</b>\n\n👤 ${body.customerPhone}\n🛠 ${body.cityName ?? 'Pesanan Admin'}\n💰 ${fmt(body.totalAmount)}\n📍 ${body.addressLine}\n📅 ${date}\n\n🔗 ID: <code>${bookingId.slice(0, 8).toUpperCase()}</code>`;
+      void this.telegram.send(msg).catch(() => {});
     }
 
     return { id: bookingId, customerId, status };
