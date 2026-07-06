@@ -440,6 +440,8 @@ export class AdminController {
     await this.prisma.$executeRaw`UPDATE city_requests SET user_id = NULL WHERE user_id = ${id}::uuid`;
     // cleaner_area_requests.reviewed_by_admin_id → admin_users (ON DELETE SET NULL, auto-handled)
     // city_requests.reviewed_by_admin_id → admin_users (ON DELETE SET NULL, auto-handled)
+    // call_sessions
+    await this.prisma.$executeRaw`DELETE FROM call_sessions WHERE initiator_id = ${id}::uuid`;
     // referral_codes
     await this.prisma.$executeRaw`DELETE FROM referral_codes WHERE user_id = ${id}::uuid`;
     // Akhirnya hapus user — tabel dengan ON DELETE CASCADE handle otomatis
