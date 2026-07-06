@@ -151,10 +151,9 @@ module.exports = {
     },
     android: {
       package: 'com.jasabersih.app',
-      versionCode: 25,
+      versionCode: 26,
       edgeToEdgeEnabled: false,
       permissions: [
-        'USE_FULL_SCREEN_INTENT',
         'FOREGROUND_SERVICE',
         'WAKE_LOCK',
         'VIBRATE',
