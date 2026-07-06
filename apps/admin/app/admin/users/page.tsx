@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Briefcase, Eye, Loader2, Pencil, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
@@ -181,7 +181,7 @@ export default function UsersPage(): React.ReactElement | null  {
                       </>
                     ) : (
                       <>
-                        <td className="px-4 py-2"> {r.rating != null ? Number(r.rating).toFixed(2) : '—'}</td>
+                        <td className="px-4 py-2"> {r.rating != null ? Number(r.rating).toFixed(2) : '—'}</td>
                         <td className="px-4 py-2 font-bold">{Number(r.jobsDone ?? 0)}</td>
                         <td className="px-4 py-2">
                           <button
