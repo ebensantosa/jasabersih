@@ -62,9 +62,21 @@ function AreasTab() {
   const toast = useToast();
   const confirm = useConfirm();
   const [list, setList] = useState<any[]>([]);
+  const [cleanerCounts, setCleanerCounts] = useState<Record<string, number>>({});
   const [editing, setEditing] = useState<any | null>(null);
 
-  async function load() { try { setList(await api.admin.serviceAreas()); } catch (e: any) { toast.error(e?.message); } }
+  async function load() {
+    try {
+      const [areas, counts] = await Promise.all([
+        api.admin.serviceAreas(),
+        api.admin.serviceAreaCleanerCounts().catch(() => []),
+      ]);
+      setList(areas);
+      const map: Record<string, number> = {};
+      for (const c of counts) map[c.city] = Number(c.count ?? 0);
+      setCleanerCounts(map);
+    } catch (e: any) { toast.error(e?.message); }
+  }
   useEffect(() => { void load(); }, []);
 
   async function toggle(a: any) {
@@ -85,7 +97,7 @@ function AreasTab() {
       <div className="overflow-hidden rounded-md border bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Kota</th><th className="px-4 py-2">Radius</th><th className="px-4 py-2">Surge</th><th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th></tr>
+            <tr><th className="px-4 py-2">Nama</th><th className="px-4 py-2">Kota</th><th className="px-4 py-2">Radius</th><th className="px-4 py-2">Surge</th><th className="px-4 py-2">Cleaner</th><th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Aksi</th></tr>
           </thead>
           <tbody>
             {list.map((a) => (
@@ -94,6 +106,7 @@ function AreasTab() {
                 <td className="px-4 py-2">{a.city}</td>
                 <td className="px-4 py-2 text-xs">{(Number(a.radiusM) / 1000).toFixed(1)} km</td>
                 <td className="px-4 py-2 text-xs">{Number(a.surgeMultiplier).toFixed(2)}×</td>
+                <td className="px-4 py-2 text-xs font-semibold">{cleanerCounts[a.city] ?? 0} cleaner</td>
                 <td className="px-4 py-2"><button onClick={() => toggle(a)}><Badge>{a.isActive ? 'aktif' : 'nonaktif'}</Badge></button></td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant="ghost" icon={<Pencil size={11} />} onClick={() => setEditing(a)}>Edit</Button>
@@ -101,7 +114,7 @@ function AreasTab() {
                 </td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada area aktif.</td></tr>}
+            {list.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Belum ada area aktif.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -207,6 +207,19 @@ export class AdminCmsController {
     `;
   }
 
+  @Get('service-areas/cleaner-counts')
+  @Roles('super_admin', 'ops')
+  async cleanerCountsByArea() {
+    return this.prisma.$queryRaw<{ city: string; count: number }[]>`
+      SELECT sa.city, COUNT(DISTINCT ca.user_id)::int AS count
+        FROM service_areas sa
+        LEFT JOIN cleaner_areas ca ON ca.city = sa.city AND ca.is_active = TRUE
+        LEFT JOIN users u ON u.id = ca.user_id AND u.status = 'active' AND u.is_freelancer = TRUE
+       GROUP BY sa.city
+       ORDER BY sa.city ASC
+    `;
+  }
+
   @Post('service-areas')
   @Roles('super_admin', 'ops')
   async createArea(

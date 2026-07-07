@@ -301,6 +301,7 @@ export function createClient(opts: ClientOptions) {
       updateAnnouncement: (id: string, body: any) => request<unknown>('PATCH', `/admin/cms/announcements/${id}`, body),
 
       serviceAreas: () => request<any[]>('GET', '/admin/cms/service-areas'),
+      serviceAreaCleanerCounts: () => request<{ city: string; count: number }[]>('GET', '/admin/cms/service-areas/cleaner-counts'),
       listCityRequests: () => request<any[]>('GET', '/admin/cms/city-requests'),
       deleteCityRequest: (id: string) => request<{ ok: true }>('DELETE', `/admin/cms/city-requests/${id}`),
       ackCityRequest: (id: string) => request<{ ok: true }>('POST', `/admin/cms/city-requests/${id}/ack`),
