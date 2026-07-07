@@ -211,10 +211,11 @@ export class AdminCmsController {
   @Roles('super_admin', 'ops')
   async cleanerCountsByArea() {
     return this.prisma.$queryRaw<{ city: string; count: number }[]>`
-      SELECT sa.city, COUNT(DISTINCT ca.user_id)::int AS count
+      SELECT sa.city,
+             COUNT(DISTINCT cp.user_id)::int AS count
         FROM service_areas sa
-        LEFT JOIN cleaner_areas ca ON ca.city = sa.city AND ca.is_active = TRUE
-        LEFT JOIN users u ON u.id = ca.user_id AND u.status = 'active' AND u.is_freelancer = TRUE
+        LEFT JOIN cleaner_profiles cp ON cp.service_areas @> to_jsonb(sa.city::text)
+        LEFT JOIN users u ON u.id = cp.user_id AND u.status = 'active' AND u.is_freelancer = TRUE
        GROUP BY sa.city
        ORDER BY sa.city ASC
     `;
