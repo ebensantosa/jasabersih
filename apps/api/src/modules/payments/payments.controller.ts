@@ -518,7 +518,8 @@ export class PaymentsController {
         // Kalau Flip return maintenance/unavailable error → auto-disable method ini 2 jam
         if (this.isMaintenanceError(errMsg)) {
           await this.autoDisableMethod(body.senderBank, errMsg.slice(0, 120));
-          throw new BadRequestException(`${body.senderBank.toUpperCase()} sedang maintenance. Silakan pilih metode lain — kami sudah otomatis sembunyikan sementara.`);
+          const methodName = CHECKOUT_METHODS.find(m => m.senderBank === body.senderBank)?.name ?? body.senderBank.toUpperCase();
+          throw new BadRequestException(`${methodName} sedang maintenance. Silakan pilih metode lain — kami sudah otomatis sembunyikan sementara.`);
         }
         // Fallback: kalau direct mode error (Flip API changed), pakai hosted checkout page.
         this.flipLog.warn(`createDirect failed (${errMsg}), falling back to hosted checkout`);
@@ -867,7 +868,8 @@ export class PaymentsController {
         const extraErrMsg = directErr?.message ?? '';
         if (this.isMaintenanceError(extraErrMsg)) {
           await this.autoDisableMethod(body.senderBank, extraErrMsg.slice(0, 120));
-          throw new BadRequestException(`${body.senderBank.toUpperCase()} sedang maintenance. Silakan pilih metode lain.`);
+          const methodName2 = CHECKOUT_METHODS.find(m => m.senderBank === body.senderBank)?.name ?? body.senderBank.toUpperCase();
+          throw new BadRequestException(`${methodName2} sedang maintenance. Silakan pilih metode lain.`);
         }
         this.flipLog.warn(`createDirect extra failed (${extraErrMsg}), fallback`);
         result = await this.flip.createBill({
