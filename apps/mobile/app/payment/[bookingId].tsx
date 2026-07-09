@@ -909,6 +909,38 @@ function BigCountdown({ expiredAt }: { expiredAt: string }) {
   );
 }
 
+function PaymentWebView({ url }: { url: string }) {
+  const [loadError, setLoadError] = useState(false);
+  if (loadError) {
+    return (
+      <ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center', gap: 16 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', textAlign: 'center' }}>
+          Gagal memuat halaman pembayaran
+        </Text>
+        <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 }}>
+          Buka link berikut di browser untuk menyelesaikan pembayaran:
+        </Text>
+        <Pressable
+          onPress={() => Linking.openURL(url).catch(() => {})}
+          style={{ backgroundColor: '#1D4ED8', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' }}
+        >
+          <Text style={{ color: 'white', fontWeight: '800', fontSize: 15 }}>Buka di Browser</Text>
+        </Pressable>
+        <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center' }} selectable>{url}</Text>
+      </ScrollView>
+    );
+  }
+  return (
+    <WebView
+      source={{ uri: url }}
+      startInLoadingState
+      style={{ flex: 1 }}
+      onError={() => setLoadError(true)}
+      onHttpError={(e) => { if (e.nativeEvent.statusCode >= 400) setLoadError(true); }}
+    />
+  );
+}
+
 function PaymentInstructions({ data, onCopy, bookingId, onManualSync }: { data: DirectResult; onCopy: () => void; bookingId: string; onManualSync?: () => void }) {
   const CountdownBanner = data.expiredAt ? <BigCountdown expiredAt={data.expiredAt} /> : null;
   const formatExpiredHeader = (ex: string | null | undefined) => {
@@ -1151,9 +1183,7 @@ function PaymentInstructions({ data, onCopy, bookingId, onManualSync }: { data: 
         </ScrollView>
       );
     }
-    return (
-      <WebView source={{ uri: data.paymentUrl }} startInLoadingState style={{ flex: 1 }} />
-    );
+    return <PaymentWebView url={data.paymentUrl} />;
   }
 
   return (
