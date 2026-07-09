@@ -393,7 +393,6 @@ export class PaymentsController {
         customerName: u.name ?? 'JasaBersih Customer',
         customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
         customerPhone: u.phone,
-        redirectUrl: `https://jasabersih.com/booking/${b.id}`,
       });
 
       // Flip returns link_url without protocol (e.g. "flip.id/pwf-sandbox/..").
@@ -859,7 +858,6 @@ export class PaymentsController {
           customerName: u.name ?? 'JasaBersih Customer',
           customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
           customerPhone: u.phone,
-          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
           senderBank: body.senderBank,
           senderBankType: flipSenderBankType,
         });
@@ -877,7 +875,6 @@ export class PaymentsController {
           customerName: u.name ?? 'JasaBersih Customer',
           customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
           customerPhone: u.phone,
-          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
         });
       }
 
