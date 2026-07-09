@@ -17,6 +17,13 @@ import { FlipService } from './flip.service';
 // Flip returns bill_payment.id (small int) as the canonical payment ID used in callbacks.
 // link_id is the bill-level ID which may be a large BigInt in newer Flip API versions.
 // We store whichever field matches what Flip sends as bill_link_id in callbacks.
+function toHttps(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^https:\/\//i.test(url)) return url;
+  if (/^http:\/\//i.test(url)) return url.replace(/^http:/i, 'https:');
+  return `https://${url}`;
+}
+
 function resolveFlipLinkId(result: any): string {
   const paymentId = result?.bill_payment?.id ?? result?.bill_link_id ?? result?.id;
   const billId = result?.link_id;
@@ -396,11 +403,7 @@ export class PaymentsController {
         customerPhone: u.phone,
       });
 
-      // Flip returns link_url without protocol (e.g. "flip.id/pwf-sandbox/..").
-      // Normalize to absolute https URL so browser/WebView opens correctly.
-      const checkoutUrl = /^https?:\/\//i.test(result.link_url)
-        ? result.link_url
-        : `https://${result.link_url}`;
+      const checkoutUrl = toHttps(result.link_url);
 
       await this.prisma.$executeRaw`
         UPDATE payments
@@ -594,9 +597,7 @@ export class PaymentsController {
          WHERE id = ${paymentId}::uuid
       `;
 
-      const checkoutUrl = result.link_url
-        ? (/^https?:\/\//i.test(result.link_url) ? result.link_url : `https://${result.link_url}`)
-        : null;
+      const checkoutUrl = toHttps(result.link_url);
       return {
         paymentId,
         provider: 'flip',
@@ -932,7 +933,7 @@ export class PaymentsController {
         qrUrl: qrUrl ?? null,
         nmid: nmid ?? null,
         walletUrl: walletUrl ?? null,
-        paymentUrl: result.link_url ? (/^https?:\/\//i.test(result.link_url) ? result.link_url : `https://${result.link_url}`) : null,
+        paymentUrl: toHttps(result.link_url),
         expiredAt, linkId: result.link_id,
         creditUsed,
       };
