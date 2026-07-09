@@ -252,6 +252,7 @@ export class PaymentsController {
     const lower = msg.toLowerCase();
     return lower.includes('maintenance') || lower.includes('pemeliharaan') ||
            lower.includes('not available') || lower.includes('not active') ||
+           lower.includes('not enabled') || lower.includes('is not enabled') ||
            lower.includes('unavailable') || lower.includes('belum aktif') ||
            lower.includes('channel is currently') || lower.includes('bank sedang') ||
            lower.includes('suspended') || lower.includes('disabled by provider');
