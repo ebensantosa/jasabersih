@@ -526,7 +526,6 @@ export class PaymentsController {
           customerName: u.name ?? 'JasaBersih Customer',
           customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
           customerPhone: u.phone,
-          redirectUrl: `https://jasabersih.com/booking/${b.id}`,
         });
         fellBackToCheckout = true;
       }
