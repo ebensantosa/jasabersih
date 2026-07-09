@@ -66,7 +66,7 @@ const CHECKOUT_METHODS: CheckoutMethodDef[] = [
   { code: 'GOPAY', name: 'GoPay', group: 'ewallet', senderBank: 'gopay', senderBankType: 'wallet_account' },
   { code: 'OVO', name: 'OVO', group: 'ewallet', senderBank: 'ovo', senderBankType: 'wallet_account' },
   { code: 'DANA', name: 'DANA', group: 'ewallet', senderBank: 'dana', senderBankType: 'wallet_account' },
-  { code: 'SHOPEEPAY', name: 'ShopeePay', group: 'ewallet', senderBank: 'shopeepay', senderBankType: 'wallet_account' },
+  { code: 'SHOPEEPAY', name: 'ShopeePay', group: 'ewallet', senderBank: 'shopeepay_app', senderBankType: 'wallet_account' },
   { code: 'LINKAJA', name: 'LinkAja', group: 'ewallet', senderBank: 'linkaja', senderBankType: 'wallet_account' },
   { code: 'ALFAMART', name: 'Alfamart', group: 'retail', senderBank: 'alfamart', senderBankType: 'retail', description: 'Bayar langsung di kasir' },
   { code: 'INDOMARET', name: 'Indomaret', group: 'retail', senderBank: 'indomaret', senderBankType: 'retail', description: 'Bayar langsung di kasir' },
