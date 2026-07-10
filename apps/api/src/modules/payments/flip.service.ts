@@ -122,6 +122,7 @@ export class FlipService {
     }
     if (input.redirectUrl) payload.redirect_url = input.redirectUrl;
 
+    this.log.log(`flip direct-bill payload: ${JSON.stringify({ ...payload, sender_phone_number: payload.sender_phone_number ? '***' : undefined })}`);
     const res = await fetch(`${c.baseUrl}/pwf/bill`, {
       method: 'POST',
       headers: {
