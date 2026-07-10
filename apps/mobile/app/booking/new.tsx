@@ -736,7 +736,7 @@ function NewBooking() {
   }
 
   function next() {
-    if (step === 1 && !pkg && !isLargeScale && !isPostReno && !isFixedCost) {
+    if (step === 1 && !pkg && !isLargeScale && !isPostReno && !isFixedCost && !isPerMeter) {
       toast.error('Pilih paket dulu');
       return;
     }
@@ -788,7 +788,7 @@ function NewBooking() {
   }
 
   function submit() {
-    if ((!pkg && !isLargeScale && !isPostReno && !isFixedCost) || !category) return;
+    if ((!pkg && !isLargeScale && !isPostReno && !isFixedCost && !isPerMeter) || !category) return;
     if (!address.trim()) {
       setAddressError('Alamat wajib diisi (pin di peta atau ketik manual)');
       toast.error('Alamat wajib diisi');
@@ -802,7 +802,7 @@ function NewBooking() {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     setSubmitting(true);
-    if ((!pkg && !isLargeScale && !isPostReno && !isFixedCost) || !category) {
+    if ((!pkg && !isLargeScale && !isPostReno && !isFixedCost && !isPerMeter) || !category) {
       toast.error('Paket layanan belum tersedia. Coba pilih layanan lain atau hubungi customer service.');
       submitLockRef.current = false;
       setSubmitting(false);
@@ -2533,13 +2533,13 @@ function NewBooking() {
               ) : (
                 <Pressable
                   onPress={next}
-                  disabled={(step === 1 && !pkg && !isLargeScale && !isPostReno) || submitting}
-                  className={`h-12 flex-1 items-center justify-center rounded-2xl ${(step === 1 && !pkg && !isLargeScale && !isPostReno) || submitting ? 'bg-ink-300' : 'bg-brand-600'}`}
+                  disabled={(step === 1 && !pkg && !isLargeScale && !isPostReno && !isPerMeter) || submitting}
+                  className={`h-12 flex-1 items-center justify-center rounded-2xl ${(step === 1 && !pkg && !isLargeScale && !isPostReno && !isPerMeter) || submitting ? 'bg-ink-300' : 'bg-brand-600'}`}
                 >
                   <Text className="font-bold text-sm text-white" numberOfLines={1}>
                     {submitting
                       ? 'Memproses…'
-                      : (step === 1 && !pkg && !isLargeScale && !isPostReno)
+                      : (step === 1 && !pkg && !isLargeScale && !isPostReno && !isPerMeter)
                         ? 'Memuat...'
                         : step === TOTAL_STEPS
                           ? `Buat Pesanan · ${formatRupiah(Math.max(0, total + (travelQuote?.travelFee ?? 0) - (useCredit ? Math.min(walletBalance, total + (travelQuote?.travelFee ?? 0)) : 0)))}`
