@@ -318,6 +318,16 @@ export class PaymentsController {
     return senderBankType;
   }
 
+  // Resolve the correct Flip sender_bank value from CHECKOUT_METHODS.
+  // Mobile app may send the display code (e.g. 'shopeepay') while Flip requires a different value (e.g. 'shopeepay_app').
+  private resolveFlipSenderBank(senderBank: string): string {
+    return (
+      CHECKOUT_METHODS.find(
+        m => m.senderBank === senderBank || m.code.toLowerCase() === senderBank.toLowerCase(),
+      )?.senderBank ?? senderBank
+    );
+  }
+
   // ============ FLIP ============
 
   // Create Flip bill for a booking. Returns checkout URL (open in WebView).
@@ -501,7 +511,8 @@ export class PaymentsController {
     try {
       let result: any;
       let fellBackToCheckout = false;
-      const flipSenderBankType = this.toFlipSenderBankType(body.senderBank, body.senderBankType);
+      const resolvedSenderBank = this.resolveFlipSenderBank(body.senderBank);
+      const flipSenderBankType = this.toFlipSenderBankType(resolvedSenderBank, body.senderBankType);
       try {
         result = await this.flip.createDirectBill({
           title: `JasaBersih · Booking ${b.id.slice(0, 8)}`,
@@ -510,7 +521,7 @@ export class PaymentsController {
           customerName: u.name ?? 'JasaBersih Customer',
           customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
           customerPhone: u.phone,
-          senderBank: body.senderBank,
+          senderBank: resolvedSenderBank,
           senderBankType: flipSenderBankType,
         });
       } catch (directErr: any) {
@@ -518,7 +529,7 @@ export class PaymentsController {
         // Kalau Flip return maintenance/unavailable error → auto-disable method ini 2 jam
         if (this.isMaintenanceError(errMsg)) {
           await this.autoDisableMethod(body.senderBank, errMsg.slice(0, 120));
-          const methodName = CHECKOUT_METHODS.find(m => m.senderBank === body.senderBank)?.name ?? body.senderBank.toUpperCase();
+          const methodName = CHECKOUT_METHODS.find(m => m.senderBank === resolvedSenderBank || m.code.toLowerCase() === body.senderBank.toLowerCase())?.name ?? body.senderBank.toUpperCase();
           throw new BadRequestException(`${methodName} sedang maintenance. Silakan pilih metode lain — kami sudah otomatis sembunyikan sementara.`);
         }
         // Fallback: kalau direct mode error (Flip API changed), pakai hosted checkout page.
@@ -852,7 +863,8 @@ export class PaymentsController {
 
     try {
       let result: any;
-      const flipSenderBankType = this.toFlipSenderBankType(body.senderBank, body.senderBankType);
+      const resolvedSenderBank2 = this.resolveFlipSenderBank(body.senderBank);
+      const flipSenderBankType = this.toFlipSenderBankType(resolvedSenderBank2, body.senderBankType);
       try {
         result = await this.flip.createDirectBill({
           title: `JasaBersih · ${body.type === 'upcharge' ? 'Charge Tambahan' : body.type === 'overtime' ? `Overtime +${body.durationHours}j` : 'Tip Cleaner'} ${b.id.slice(0, 8)}`,
@@ -861,14 +873,14 @@ export class PaymentsController {
           customerName: u.name ?? 'JasaBersih Customer',
           customerEmail: u.email ?? `${u.phone}@jasabersih.com`,
           customerPhone: u.phone,
-          senderBank: body.senderBank,
+          senderBank: resolvedSenderBank2,
           senderBankType: flipSenderBankType,
         });
       } catch (directErr: any) {
         const extraErrMsg = directErr?.message ?? '';
         if (this.isMaintenanceError(extraErrMsg)) {
           await this.autoDisableMethod(body.senderBank, extraErrMsg.slice(0, 120));
-          const methodName2 = CHECKOUT_METHODS.find(m => m.senderBank === body.senderBank)?.name ?? body.senderBank.toUpperCase();
+          const methodName2 = CHECKOUT_METHODS.find(m => m.senderBank === resolvedSenderBank2 || m.code.toLowerCase() === body.senderBank.toLowerCase())?.name ?? body.senderBank.toUpperCase();
           throw new BadRequestException(`${methodName2} sedang maintenance. Silakan pilih metode lain.`);
         }
         this.flipLog.warn(`createDirect extra failed (${extraErrMsg}), fallback`);
