@@ -294,7 +294,20 @@ export class AdminBookingsController {
     `;
     const tipAmount = Number(tipRows[0]?.tipAmount ?? 0);
 
-    return { booking, photos: photosWithUrl, charges, payments, tipAmount };
+    const earningRows = await this.prisma.$queryRaw<{ status: string; amount: number; cleared_at: string | null }[]>`
+      SELECT status, amount, cleared_at FROM wallet_ledger_entries
+       WHERE reference_id = ${id}::uuid AND account_type = 'earnings'
+       ORDER BY created_at DESC LIMIT 1
+    `;
+    const earning = earningRows[0] ?? null;
+
+    const activeDisputeRows = await this.prisma.$queryRaw<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count FROM disputes
+       WHERE booking_id = ${id}::uuid AND status IN ('open','in_progress','escalated')
+    `;
+    const hasActiveDispute = Number(activeDisputeRows[0]?.count ?? 0) > 0;
+
+    return { booking, photos: photosWithUrl, charges, payments, tipAmount, earning, hasActiveDispute };
   }
 
   // Issue refund as non-cashable credit to customer's wallet.
@@ -627,6 +640,70 @@ export class AdminBookingsController {
       }
     }
     return { ok: true, results, total: body.ids.length, succeeded: results.filter((r) => r.ok).length };
+  }
+
+  @Post(':id/release-earnings')
+  @Roles('super_admin', 'ops')
+  async releaseEarnings(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @Req() req: Request,
+  ) {
+    const bookings = await this.prisma.$queryRaw<{ status: string; paid_at: string | null; cleaner_id: string | null; cleaner_payout: number | null }[]>`
+      SELECT status, paid_at, cleaner_id, cleaner_payout FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    `;
+    if (!bookings[0]) throw new NotFoundException('Booking tidak ditemukan.');
+    const b = bookings[0];
+
+    if (!b.paid_at) throw new BadRequestException('Pembayaran customer belum terkonfirmasi. Dana tidak bisa dirilis.');
+    if (b.status !== 'completed') throw new BadRequestException('Booking belum berstatus selesai. Dana tidak bisa dirilis.');
+    if (!b.cleaner_id) throw new BadRequestException('Belum ada cleaner yang ditugaskan.');
+
+    const disputeRows = await this.prisma.$queryRaw<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count FROM disputes
+       WHERE booking_id = ${id}::uuid AND status IN ('open','in_progress','escalated')
+    `;
+    if (Number(disputeRows[0]?.count ?? 0) > 0) {
+      throw new BadRequestException('Ada dispute aktif pada booking ini. Selesaikan dispute terlebih dahulu.');
+    }
+
+    const pendingRows = await this.prisma.$queryRaw<{ id: string; amount: number }[]>`
+      SELECT id, amount FROM wallet_ledger_entries
+       WHERE reference_id = ${id}::uuid AND account_type = 'earnings' AND status = 'PENDING'
+       LIMIT 1
+    `;
+    if (pendingRows.length === 0) {
+      throw new BadRequestException('Tidak ada earning PENDING untuk booking ini. Mungkin sudah di-release atau belum ada.');
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE wallet_ledger_entries
+         SET status = 'CLEARED', cleared_at = NOW()
+       WHERE reference_id = ${id}::uuid
+         AND account_type = 'earnings'
+         AND status = 'PENDING'
+    `;
+
+    const payout = Number(b.cleaner_payout ?? 0);
+    if (payout > 0) {
+      void this.push.send({
+        userId: b.cleaner_id!,
+        channel: 'wallet',
+        title: 'Earning kamu cair 💰',
+        body: `Rp ${payout.toLocaleString('id-ID')} masuk ke saldo dan bisa langsung ditarik.`,
+        data: { type: 'earnings_cleared', bookingId: id },
+      }).catch(() => {});
+    }
+
+    await this.audit.log({
+      adminId: admin.id,
+      action: 'booking.release_earnings',
+      resourceType: 'booking',
+      resourceId: id,
+      changes: { cleanerId: b.cleaner_id, payout },
+      ipAddress: req.ip ?? null,
+    });
+    return { ok: true };
   }
 
   @Post(':id/reassign')

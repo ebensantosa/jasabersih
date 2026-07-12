@@ -670,7 +670,26 @@ function AdminChatPanel({ bookingId }: { bookingId: string }) {
 
 function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.admin.getBookingDetail>> | null>(null);
+  const [releasing, setReleasing] = useState(false);
+  const [releaseMsg, setReleaseMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   useEffect(() => { api.admin.getBookingDetail(bookingId).then(setData).catch(() => {}); }, [bookingId]);
+
+  async function handleRelease() {
+    if (!confirm('Rilis dana ke cleaner sekarang? Tindakan ini tidak dapat dibatalkan.')) return;
+    setReleasing(true);
+    setReleaseMsg(null);
+    try {
+      await api.admin.releaseEarnings(bookingId);
+      setReleaseMsg({ ok: true, text: 'Dana berhasil dirilis ke cleaner.' });
+      const fresh = await api.admin.getBookingDetail(bookingId);
+      setData(fresh);
+    } catch (e: any) {
+      setReleaseMsg({ ok: false, text: e?.message ?? 'Gagal merilis dana.' });
+    } finally {
+      setReleasing(false);
+    }
+  }
 
   const before = data?.photos?.filter((p) => p.photoType === 'before') ?? [];
   const after = data?.photos?.filter((p) => p.photoType === 'after') ?? [];
@@ -847,6 +866,70 @@ function BookingDetailModal({ bookingId, onClose }: { bookingId: string; onClose
                 {payout === 0 && (
                   <div className="text-[10px] text-amber-700">Cleaner payout belum di-set (booking belum match cleaner).</div>
                 )}
+
+                {/* Tombol rilis manual */}
+                {(() => {
+                  const b = data?.booking as any;
+                  const earning = data?.earning;
+                  const canRelease =
+                    b?.status === 'completed' &&
+                    b?.paid_at &&
+                    b?.cleaner_id &&
+                    earning?.status === 'PENDING' &&
+                    !data?.hasActiveDispute;
+                  const alreadyCleared = earning?.status === 'CLEARED';
+                  const noEarning = !earning;
+
+                  if (alreadyCleared) {
+                    return (
+                      <div className="mt-3 rounded-lg bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-800">
+                        Dana sudah dirilis ke cleaner {earning?.cleared_at ? `· ${new Date(earning.cleared_at).toLocaleString('id-ID')}` : ''}
+                      </div>
+                    );
+                  }
+                  if (noEarning || !b?.cleaner_id) return null;
+                  if (!b?.paid_at) {
+                    return (
+                      <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                        Tidak bisa rilis — pembayaran customer belum terkonfirmasi.
+                      </div>
+                    );
+                  }
+                  if (b?.status !== 'completed') {
+                    return (
+                      <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                        Tidak bisa rilis — booking belum berstatus selesai.
+                      </div>
+                    );
+                  }
+                  if (data?.hasActiveDispute) {
+                    return (
+                      <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">
+                        Tidak bisa rilis — ada dispute aktif pada booking ini.
+                      </div>
+                    );
+                  }
+                  if (!canRelease) return null;
+                  return (
+                    <div className="mt-3 space-y-2">
+                      {releaseMsg && (
+                        <div className={`rounded-lg px-3 py-2 text-xs font-semibold ${releaseMsg.ok ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {releaseMsg.text}
+                        </div>
+                      )}
+                      <button
+                        onClick={handleRelease}
+                        disabled={releasing}
+                        className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {releasing ? 'Merilis…' : '💸 Rilis Dana ke Cleaner Sekarang'}
+                      </button>
+                      <div className="text-[10px] text-slate-500 text-center">
+                        Dana akan langsung masuk ke saldo cleaner dan bisa ditarik. Biasanya otomatis dalam 24 jam.
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })()}

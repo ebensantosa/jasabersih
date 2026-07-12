@@ -111,9 +111,11 @@ export function createClient(opts: ClientOptions) {
       reassignCleaner: (bookingId: string, cleanerId: string, reason?: string) =>
         request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/reassign`, { cleanerId, reason }),
       getBookingDetail: (bookingId: string) =>
-        request<{ booking: any; photos: { id: string; photoType: string; url: string; uploadedAt: string }[]; charges: any[]; payments: any[] }>(
+        request<{ booking: any; photos: { id: string; photoType: string; url: string; uploadedAt: string }[]; charges: any[]; payments: any[]; earning: { status: string; amount: number; cleared_at: string | null } | null; hasActiveDispute: boolean }>(
           'GET', `/admin/bookings/${bookingId}`,
         ),
+      releaseEarnings: (bookingId: string) =>
+        request<{ ok: true }>('POST', `/admin/bookings/${bookingId}/release-earnings`),
       getAdminCustomer: () => request<{ id: string; name: string; phone: string }>('GET', '/admin/bookings/admin-customer'),
       createManualBooking: (body: {
         customerPhone: string; customerName?: string;
