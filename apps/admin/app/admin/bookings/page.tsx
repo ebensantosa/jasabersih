@@ -397,7 +397,10 @@ export default function Bookings(): React.ReactElement | null  {
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {filtered.map((o) => {
-                const s = STATUS_BADGE[o.status];
+                const isRefunded = o.status === 'canceled' && Number(o.refundedAmount ?? 0) > 0;
+                const s = isRefunded
+                  ? { label: 'Refund', bg: '#FEF3C7', fg: '#92400E' }
+                  : STATUS_BADGE[o.status];
                 const isTerminal = o.status === 'completed' || o.status === 'canceled';
                 const canAssign = !isTerminal && (!o.cleanerName || ['searching', 'matched', 'on_the_way', 'in_progress', 'disputed'].includes(o.status));
                 const isReassign = canAssign && !!o.cleanerName;
