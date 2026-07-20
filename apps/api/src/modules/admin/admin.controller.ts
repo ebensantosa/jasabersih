@@ -42,7 +42,7 @@ export class AdminController {
           (b.form_snapshot->>'createdByAdmin')::boolean AS "isManual",
           EXISTS (
             SELECT 1 FROM wallet_ledger_entries w
-             WHERE w.reference_type = 'booking' AND w.reference_id = b.id
+             WHERE w.reference_type = 'booking' AND w.reference_id::text = b.id::text
                AND w.account_type = 'refund_credit'
           ) AS "isRefunded"
         FROM bookings b
