@@ -40,11 +40,11 @@ export class AdminController {
           cl.name AS "cleanerName",
           COALESCE(s.name, sp.name, p.name) AS service,
           (b.form_snapshot->>'createdByAdmin')::boolean AS "isManual",
-          COALESCE((
-            SELECT SUM(w.amount) FROM wallet_ledger_entries w
+          EXISTS (
+            SELECT 1 FROM wallet_ledger_entries w
              WHERE w.reference_type = 'booking' AND w.reference_id = b.id
                AND w.account_type = 'refund_credit'
-          ), 0)::bigint AS "refundedAmount"
+          ) AS "isRefunded"
         FROM bookings b
         LEFT JOIN users cu ON cu.id = b.customer_id
         LEFT JOIN users cl ON cl.id = b.cleaner_id

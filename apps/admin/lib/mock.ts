@@ -24,7 +24,7 @@ export type Order = {
   total: number;
   status: OrderStatus;
   createdAt: string;
-  refundedAmount?: number;
+  isRefunded?: boolean;
 };
 
 export type Cleaner = {
