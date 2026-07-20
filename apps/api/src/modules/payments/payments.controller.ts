@@ -11,6 +11,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ChatGateway } from '../chat/chat.gateway';
 import { JobsGateway } from '../jobs/jobs.gateway';
 import { PushService } from '../notifications/push.service';
+import { TelegramService } from '../notifications/telegram.service';
 import { TripayService } from './tripay.service';
 import { FlipService } from './flip.service';
 
@@ -85,6 +86,7 @@ export class PaymentsController {
     private readonly push: PushService,
     private readonly jobs: JobsGateway,
     private readonly chat: ChatGateway,
+    private readonly telegram: TelegramService,
   ) {}
 
   private findFirstNestedString(value: unknown, matcher: (key: string, str: string) => boolean): string | undefined {
@@ -1238,6 +1240,26 @@ export class PaymentsController {
         if (p.booking_id) {
           if (p.user_id) this.jobs.emitBookingStatus(p.user_id, { bookingId: p.booking_id, status: 'searching' });
           void this.jobs.broadcastIncomingJob(p.booking_id).catch(() => {});
+          // Telegram notification to admin group
+          void (async () => {
+            try {
+              const info = await this.prisma.$queryRawUnsafe<{ name: string; total_amount: number; address_line: string; scheduled_at: Date; service_name: string | null }[]>(
+                `SELECT u.name, b.total_amount, b.address_line, b.scheduled_at,
+                        COALESCE(b.form_snapshot->>'categoryName', b.form_snapshot->>'packageName', b.form_snapshot->>'hourlyTierName', 'Layanan') AS service_name
+                   FROM bookings b
+                   JOIN users u ON u.id = b.customer_id
+                  WHERE b.id = $1::uuid LIMIT 1`,
+                p.booking_id,
+              );
+              if (info[0]) {
+                const { name, total_amount, address_line, scheduled_at, service_name } = info[0];
+                const fmt = (n: number) => 'Rp ' + Number(n).toLocaleString('id-ID');
+                const date = new Date(scheduled_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
+                const msg = `🧹 <b>Order Masuk!</b>\n\n👤 ${name}\n🛠 ${service_name}\n💰 ${fmt(total_amount)}\n📍 ${address_line}\n📅 ${date}\n\n🔗 ID: <code>${p.booking_id.slice(0, 8).toUpperCase()}</code>`;
+                void this.telegram.send(msg).catch(() => {});
+              }
+            } catch { /* silent */ }
+          })();
         }
       }
     } else if ((status === 'FAILED' || status === 'CANCELLED') && !['failed', 'cancelled'].includes(p.status)) {
