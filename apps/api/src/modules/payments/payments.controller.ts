@@ -1255,7 +1255,7 @@ export class PaymentsController {
                 const { name, total_amount, address_line, scheduled_at, service_name } = info[0];
                 const fmt = (n: number) => 'Rp ' + Number(n).toLocaleString('id-ID');
                 const date = new Date(scheduled_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
-                const msg = `🧹 <b>Order Masuk!</b>\n\n👤 ${name}\n🛠 ${service_name}\n💰 ${fmt(total_amount)}\n📍 ${address_line}\n📅 ${date}\n\n🔗 ID: <code>${p.booking_id.slice(0, 8).toUpperCase()}</code>`;
+                const msg = `🧹 <b>Order Masuk!</b>\n\n👤 ${name}\n🛠 ${service_name}\n💰 ${fmt(total_amount)}\n📍 ${address_line}\n📅 ${date}\n\n🔗 ID: <code>${p.booking_id!.slice(0, 8).toUpperCase()}</code>`;
                 void this.telegram.send(msg).catch(() => {});
               }
             } catch { /* silent */ }
