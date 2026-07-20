@@ -321,8 +321,8 @@ export class AdminBookingsController {
   ) {
     if (!body.amount || body.amount <= 0) throw new BadRequestException('Nominal refund harus > 0');
     if (!body.reason || body.reason.length < 5) throw new BadRequestException('Alasan min 5 karakter');
-    const bk = await this.prisma.$queryRaw<{ customer_id: string; total_amount: number }[]>`
-      SELECT customer_id, total_amount FROM bookings WHERE id = ${id}::uuid LIMIT 1
+    const bk = await this.prisma.$queryRaw<{ customer_id: string; total_amount: number; status: string; cleaner_id: string | null }[]>`
+      SELECT customer_id, total_amount, status, cleaner_id FROM bookings WHERE id = ${id}::uuid LIMIT 1
     `;
     if (bk.length === 0) throw new NotFoundException('Booking tidak ditemukan');
     if (!bk[0]!.customer_id) throw new BadRequestException('Booking tidak ada customer');
@@ -345,9 +345,34 @@ export class AdminBookingsController {
       INSERT INTO wallet_ledger_entries (user_id, account_type, amount, reference_type, reference_id, status, cleared_at, description)
       VALUES (${bk[0]!.customer_id}::uuid, 'refund_credit', ${body.amount}, 'booking', ${id}::uuid, 'CLEARED', NOW(), ${body.reason})
     `;
+
+    // Otomatis cancel booking jika belum terminal (completed/canceled)
+    const currentStatus = bk[0]!.status;
+    if (currentStatus !== 'completed' && currentStatus !== 'canceled') {
+      await this.prisma.$executeRaw`
+        UPDATE bookings SET status = 'canceled', canceled_at = NOW()
+         WHERE id = ${id}::uuid
+      `;
+      // Notif ke cleaner jika ada yang sudah di-assign
+      const cleanerId = bk[0]!.cleaner_id;
+      if (cleanerId) {
+        void this.push.send({
+          userId: cleanerId,
+          channel: 'booking',
+          title: 'Pesanan dibatalkan',
+          body: 'Pesanan telah dibatalkan oleh admin dan customer mendapat refund.',
+          data: { type: 'booking_canceled', bookingId: id },
+        }).catch(() => {});
+      }
+      // Jika masih searching, hentikan broadcast job
+      if (currentStatus === 'searching') {
+        this.jobs.emitJobTaken(id, 'admin');
+      }
+    }
+
     await this.audit.log({
       adminId: admin.id, action: 'booking.refund_credit', resourceType: 'booking', resourceId: id,
-      changes: { amount: body.amount, reason: body.reason }, ipAddress: req.ip ?? null,
+      changes: { amount: body.amount, reason: body.reason, autoCanceled: currentStatus !== 'completed' && currentStatus !== 'canceled' }, ipAddress: req.ip ?? null,
     });
     return { ok: true };
   }
