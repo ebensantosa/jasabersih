@@ -369,7 +369,7 @@ function PhotoGrid({
   onDelete?: (photo: Photo) => void;
 }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} removeClippedSubviews={false}>
       <View className="flex-row gap-2 pb-1">
         {photos.map((p) => (
           <View key={p.id} style={{ width: 100, height: 100 }}>
