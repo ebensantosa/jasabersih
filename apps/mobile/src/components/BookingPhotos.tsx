@@ -90,7 +90,7 @@ export function BookingPhotos({
       if (!lib.granted) { toast.warning('Butuh akses kamera/galeri.'); return; }
     }
     const picked = await ImagePicker.launchCameraAsync({ quality: 1 }).catch(() => null) ??
-      await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+      await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
 
