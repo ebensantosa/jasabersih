@@ -131,7 +131,7 @@ module.exports = {
   expo: {
     name: 'JasaBersih',
     slug: 'jasabersih-app',
-    version: '1.6.3',
+    version: '1.6.5',
     scheme: 'jasabersih',
     orientation: 'default',
     userInterfaceStyle: 'light',
@@ -145,13 +145,13 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.jasabersih.app',
-      buildNumber: '22',
+      buildNumber: '24',
       icon: './assets/icon.png',
       googleServicesFile: './GoogleService-Info.plist',
     },
     android: {
       package: 'com.jasabersih.app',
-      versionCode: 29,
+      versionCode: 31,
       edgeToEdgeEnabled: false,
       permissions: [
         'FOREGROUND_SERVICE',

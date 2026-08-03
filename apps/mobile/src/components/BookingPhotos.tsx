@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, CheckCircle2, Download, Lock, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 
 import { useVisiblePoll } from '../lib/useVisiblePoll';
 
@@ -84,13 +84,32 @@ export function BookingPhotos({
       toast.warning('Isi deskripsi kerusakan dulu (min 10 karakter).');
       return;
     }
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!lib.granted) { toast.warning('Butuh akses kamera/galeri.'); return; }
+    const [cameraPerm, libraryPerm] = await Promise.all([
+      ImagePicker.requestCameraPermissionsAsync(),
+      ImagePicker.requestMediaLibraryPermissionsAsync(),
+    ]);
+    if (!cameraPerm.granted && !libraryPerm.granted) {
+      toast.warning('Butuh akses kamera/galeri.'); return;
     }
-    const picked = await ImagePicker.launchCameraAsync({ quality: 1 }).catch(() => null) ??
-      await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+
+    let source: 'camera' | 'library' | null = null;
+    if (cameraPerm.granted && libraryPerm.granted) {
+      source = await new Promise<'camera' | 'library' | null>((resolve) => {
+        Alert.alert('Pilih Sumber Foto', '', [
+          { text: 'Kamera', onPress: () => resolve('camera') },
+          { text: 'Galeri', onPress: () => resolve('library') },
+          { text: 'Batal', style: 'cancel', onPress: () => resolve(null) },
+        ]);
+      });
+    } else {
+      source = cameraPerm.granted ? 'camera' : 'library';
+    }
+    if (!source) return;
+
+    const picked = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ quality: 1 }).catch(() => null)
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 }).catch(() => null);
+    if (!picked) return;
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
 
