@@ -396,8 +396,14 @@ export class CleanerWalletController {
       return { id, transferAmount, flipFee };
       });
     } catch (e: any) {
-      if (e?.code === 'P2002' || (e?.message && e.message.includes('uniq_one_pending_withdrawal_per_user'))) {
-        throw new BadRequestException('Permintaan tarik dana duplikat. Kamu sudah punya penarikan yang sedang diproses.');
+      const msg: string = e?.message ?? '';
+      const isDuplicate =
+        e?.code === 'P2002' ||
+        e?.code === 'P2010' && msg.includes('23505') ||
+        msg.includes('uniq_one_pending_withdrawal_per_user') ||
+        msg.includes('flip_idempotency_key');
+      if (isDuplicate) {
+        throw new BadRequestException('Permintaan tarik dana baru saja diproses. Tunggu beberapa saat lalu coba lagi.');
       }
       throw e;
     }
