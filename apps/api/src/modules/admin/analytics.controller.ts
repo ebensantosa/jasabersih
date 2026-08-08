@@ -20,28 +20,29 @@ export class AdminAnalyticsController {
       bookingByStatus, last7Days,
       userCounts, cleanerCounts,
       pendingActions, cleanerWalletTotals, topCleaners,
-      topServices, geoBreakdown,
+      topServices, geoBreakdown, voucherStats, inactivityStats,
     ] = await Promise.all([
+      // Hanya hitung booking yang sudah lunas (paid_at IS NOT NULL)
       this.prisma.$queryRaw<{ orders: number; gmv: number; revenue: number }[]>`
         SELECT
           COUNT(*)::int AS orders,
           COALESCE(SUM(total_amount), 0) AS gmv,
           COALESCE(SUM(platform_fee), 0) AS revenue
-        FROM bookings WHERE created_at >= CURRENT_DATE
+        FROM bookings WHERE paid_at >= CURRENT_DATE AND paid_at IS NOT NULL
       `,
       this.prisma.$queryRaw<{ orders: number; gmv: number; revenue: number }[]>`
         SELECT
           COUNT(*)::int AS orders,
           COALESCE(SUM(total_amount), 0) AS gmv,
           COALESCE(SUM(platform_fee), 0) AS revenue
-        FROM bookings WHERE created_at >= NOW() - INTERVAL '7 days'
+        FROM bookings WHERE paid_at >= NOW() - INTERVAL '7 days' AND paid_at IS NOT NULL
       `,
       this.prisma.$queryRaw<{ orders: number; gmv: number; revenue: number }[]>`
         SELECT
           COUNT(*)::int AS orders,
           COALESCE(SUM(total_amount), 0) AS gmv,
           COALESCE(SUM(platform_fee), 0) AS revenue
-        FROM bookings WHERE created_at >= NOW() - INTERVAL '30 days'
+        FROM bookings WHERE paid_at >= NOW() - INTERVAL '30 days' AND paid_at IS NOT NULL
       `,
       this.prisma.$queryRaw<{ status: string; count: number }[]>`
         SELECT status, COUNT(*)::int AS count
@@ -50,12 +51,12 @@ export class AdminAnalyticsController {
       `,
       this.prisma.$queryRaw<{ day: Date; orders: number; gmv: number }[]>`
         SELECT
-          DATE_TRUNC('day', created_at) AS day,
+          DATE_TRUNC('day', paid_at) AS day,
           COUNT(*)::int AS orders,
           COALESCE(SUM(total_amount), 0) AS gmv
         FROM bookings
-        WHERE created_at >= NOW() - INTERVAL '7 days'
-        GROUP BY DATE_TRUNC('day', created_at)
+        WHERE paid_at >= NOW() - INTERVAL '7 days' AND paid_at IS NOT NULL
+        GROUP BY DATE_TRUNC('day', paid_at)
         ORDER BY day ASC
       `,
       this.prisma.$queryRaw<{ total: number; active: number; suspended: number; banned: number; new_30d: number }[]>`
@@ -144,6 +145,21 @@ export class AdminAnalyticsController {
         WHERE b.created_at >= NOW() - INTERVAL '30 days'
         GROUP BY city ORDER BY orders DESC LIMIT 6
       `,
+      this.prisma.$queryRaw<{ used_30d: number; total_discount_30d: number; unique_users_30d: number }[]>`
+        SELECT
+          COUNT(*)::int AS used_30d,
+          COALESCE(SUM(vu.discount_amount), 0)::bigint AS total_discount_30d,
+          COUNT(DISTINCT vu.user_id)::int AS unique_users_30d
+        FROM voucher_usage vu
+        WHERE vu.created_at >= NOW() - INTERVAL '30 days'
+      `,
+      this.prisma.$queryRaw<{ suspended_total: number; suspended_7d: number }[]>`
+        SELECT
+          SUM(CASE WHEN u.status = 'suspended' THEN 1 ELSE 0 END)::int AS suspended_total,
+          SUM(CASE WHEN u.status = 'suspended' AND u.updated_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END)::int AS suspended_7d
+        FROM users u
+        WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL
+      `,
     ]);
 
     // Funnel calculation (last 30 days)
@@ -165,6 +181,8 @@ export class AdminAnalyticsController {
       topCleaners,
       topServices,
       geoBreakdown,
+      voucher30d: voucherStats[0] ?? { used_30d: 0, total_discount_30d: 0, unique_users_30d: 0 },
+      cleanerSuspended: inactivityStats[0] ?? { suspended_total: 0, suspended_7d: 0 },
       funnel30d: {
         totalOrders: totalOrders30d,
         completed: completedCount,

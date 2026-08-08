@@ -24,6 +24,8 @@ type Overview = {
   topServices: { name: string; orders: number; gmv: number }[];
   geoBreakdown: { city: string; orders: number; gmv: number }[];
   funnel30d: { totalOrders: number; completed: number; cancelled: number; completionRate: number; cancelRate: number };
+  voucher30d: { used_30d: number; total_discount_30d: number; unique_users_30d: number };
+  cleanerSuspended: { suspended_total: number; suspended_7d: number };
 };
 
 function fmtRp(n: number | string | null | undefined): string {
@@ -85,6 +87,42 @@ export default function AdminOverview(): React.ReactElement | null  {
           value={Number(data.cleanerWallets.total_pending_withdrawal)}
           subtitle="Nominal yang sudah diajukan, menunggu review atau proses."
         />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-md border bg-white p-4">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Voucher (30 hari)</div>
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            <div>
+              <div className="text-2xl font-bold text-slate-900">{Number(data.voucher30d?.used_30d ?? 0)}</div>
+              <div className="text-[11px] text-slate-500">kali digunakan</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-emerald-600">{fmtRp(data.voucher30d?.total_discount_30d ?? 0)}</div>
+              <div className="text-[11px] text-slate-500">total diskon</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-slate-900">{Number(data.voucher30d?.unique_users_30d ?? 0)}</div>
+              <div className="text-[11px] text-slate-500">user unik</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-md border bg-white p-4">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Freelancer Disuspend</div>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div>
+              <div className="text-2xl font-bold text-amber-600">{Number(data.cleanerSuspended?.suspended_total ?? 0)}</div>
+              <div className="text-[11px] text-slate-500">total disuspend</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-red-500">{Number(data.cleanerSuspended?.suspended_7d ?? 0)}</div>
+              <div className="text-[11px] text-slate-500">disuspend 7 hari terakhir</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">termasuk suspend otomatis (tidak aktif)</div>
+            </div>
+          </div>
+          <Link href="/admin/users?tab=cleaner&status=suspended" className="mt-3 block text-xs text-blue-600 hover:underline">Lihat freelancer suspended →</Link>
+        </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -220,12 +258,12 @@ function PendingCard({ icon: Icon, label, count, href, color }: { icon: any; lab
 function GmvCard({ label, orders, gmv, revenue }: { label: string; orders: number; gmv: number; revenue: number }) {
   return (
     <div className="rounded-md border bg-white p-4">
-      <div className="text-xs uppercase text-slate-500">{label}</div>
+      <div className="text-xs uppercase text-slate-500">{label} <span className="normal-case text-emerald-600 font-medium">(lunas)</span></div>
       <div className="mt-1 text-2xl font-bold">{fmtRp(gmv)}</div>
       <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
         <span><b>{orders}</b> order</span>
         <span>•</span>
-        <span>Take rate: <b>{fmtRp(revenue)}</b></span>
+        <span>Platform fee: <b>{fmtRp(revenue)}</b></span>
       </div>
     </div>
   );
