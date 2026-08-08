@@ -24,7 +24,8 @@ type Overview = {
   topServices: { name: string; orders: number; gmv: number }[];
   geoBreakdown: { city: string; orders: number; gmv: number }[];
   funnel30d: { totalOrders: number; completed: number; cancelled: number; completionRate: number; cancelRate: number };
-  voucher30d: { used_30d: number; total_discount_30d: number; unique_users_30d: number; net_revenue_30d: number };
+  voucher30d: { used_30d: number; total_discount_30d: number; unique_users_30d: number };
+  netRevenue30d: number;
   cleanerSuspended: { suspended_total: number; suspended_7d: number };
 };
 
@@ -71,7 +72,7 @@ export default function AdminOverview(): React.ReactElement | null  {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <NetIncomeCard netRevenue30d={Number(data.voucher30d?.net_revenue_30d ?? 0)} />
+        <NetIncomeCard netRevenue30d={Number(data.netRevenue30d ?? 0)} />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
