@@ -71,6 +71,13 @@ export default function AdminOverview(): React.ReactElement | null  {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
+        <NetIncomeCard
+          revenue30d={Number(data.month.revenue)}
+          voucherDiscount30d={Number(data.voucher30d?.total_discount_30d ?? 0)}
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
         <FinanceCard
           label="Saldo Cleaner Siap Cair"
           value={Number(data.cleanerWallets.total_available)}
@@ -252,6 +259,27 @@ function PendingCard({ icon: Icon, label, count, href, color }: { icon: any; lab
       </div>
       <ChevronRight size={14} className={`${cls.icon} opacity-40 group-hover:opacity-100`} />
     </Link>
+  );
+}
+
+function NetIncomeCard({ revenue30d, voucherDiscount30d }: { revenue30d: number; voucherDiscount30d: number }) {
+  const net = revenue30d - voucherDiscount30d;
+  const isNegative = net < 0;
+  return (
+    <div className={`rounded-md border p-4 ${isNegative ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white'}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Pendapatan Bersih (30 hari)</div>
+      <div className={`mt-2 text-3xl font-bold ${isNegative ? 'text-red-600' : 'text-emerald-700'}`}>{fmtRp(net)}</div>
+      <div className="mt-3 space-y-1 text-xs text-slate-600">
+        <div className="flex justify-between">
+          <span>Platform fee (komisi)</span>
+          <span className="font-medium">{fmtRp(revenue30d)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Diskon voucher</span>
+          <span className="font-medium text-red-500">− {fmtRp(voucherDiscount30d)}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
