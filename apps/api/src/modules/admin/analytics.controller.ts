@@ -152,14 +152,14 @@ export class AdminAnalyticsController {
           COUNT(DISTINCT vu.user_id)::int AS unique_users_30d
         FROM voucher_usage vu
         WHERE vu.created_at >= NOW() - INTERVAL '30 days'
-      `,
+      `.catch(() => [{ used_30d: 0, total_discount_30d: 0, unique_users_30d: 0 }]),
       this.prisma.$queryRaw<{ suspended_total: number; suspended_7d: number }[]>`
         SELECT
           SUM(CASE WHEN u.status = 'suspended' THEN 1 ELSE 0 END)::int AS suspended_total,
           SUM(CASE WHEN u.status = 'suspended' AND u.updated_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END)::int AS suspended_7d
         FROM users u
         WHERE u.is_freelancer = TRUE AND u.deleted_at IS NULL
-      `,
+      `.catch(() => [{ suspended_total: 0, suspended_7d: 0 }]),
     ]);
 
     // Funnel calculation (last 30 days)
