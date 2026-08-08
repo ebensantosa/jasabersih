@@ -156,8 +156,8 @@ export function createClient(opts: ClientOptions) {
         request<{ ok: true; results: { id: string; ok: boolean; error?: string }[]; total: number; succeeded: number }>(
           'POST', `/admin/bookings/bulk-action`, { ids, action, reason },
         ),
-      listCleaners: (params?: { status?: string; q?: string; limit?: number }) =>
-        request<unknown[]>('GET', `/admin/cleaners${qs(params ? { status: params.status, q: params.q, limit: params.limit != null ? String(params.limit) : undefined } : undefined)}`),
+      listCleaners: (params?: { status?: string; q?: string; limit?: number; dateFrom?: string; dateTo?: string }) =>
+        request<unknown[]>('GET', `/admin/cleaners${qs(params ? { status: params.status, q: params.q, limit: params.limit != null ? String(params.limit) : undefined, dateFrom: params.dateFrom, dateTo: params.dateTo } : undefined)}`),
       createCleaner: (body: { name: string; phone: string; email?: string; password: string; bringsTools?: boolean; serviceAreas?: string[]; autoApprove?: boolean }) =>
         request<{ id: string; phone: string; name: string }>('POST', '/admin/cleaners', body),
       deleteCleaner: (id: string, reason?: string) =>
@@ -170,7 +170,7 @@ export function createClient(opts: ClientOptions) {
         request<{ id: string; phone: string; name: string }>('POST', '/admin/customers', body),
       deleteCustomer: (id: string, reason?: string) =>
         request<{ ok: true }>('DELETE', `/admin/customers/${id}`, { reason }),
-      listUsers: (params?: { q?: string; status?: string; role?: 'customer' | 'cleaner' }) =>
+      listUsers: (params?: { q?: string; status?: string; role?: 'customer' | 'cleaner'; dateFrom?: string; dateTo?: string }) =>
         request<unknown[]>('GET', `/admin/users${qs(params)}`),
       getUser: (id: string) => request<{ user: any; strikes: any[]; recentBookings: any[] }>('GET', `/admin/users/${id}`),
       suspendUser: (id: string, reason: string, durationDays?: number) =>

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Briefcase, Eye, Loader2, Pencil, Plus, Search, ShieldOff, Trash2, User, UserX, Wallet } from 'lucide-react';
 
 import { api } from '../../../lib/api';
@@ -32,6 +32,9 @@ export default function UsersPage(): React.ReactElement | null  {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [viewing, setViewing] = useState<Row | null>(null);
   const [editing, setEditing] = useState<Row | null>(null);
   const [walletUser, setWalletUser] = useState<Row | null>(null);
@@ -77,17 +80,27 @@ export default function UsersPage(): React.ReactElement | null  {
   async function load() {
     setLoading(true);
     try {
+      const status = filterStatus === 'all' ? undefined : filterStatus;
+      const from = dateFrom || undefined;
+      const to = dateTo || undefined;
       if (tab === 'customer') {
-        const r = await api.admin.listUsers({ q: q || undefined, status: filterStatus === 'all' ? undefined : filterStatus, role: 'customer' }) as Row[];
+        const r = await api.admin.listUsers({ q: q || undefined, status, role: 'customer', dateFrom: from, dateTo: to }) as Row[];
         setRows(r);
       } else {
-        const r = await api.admin.listCleaners({ status: filterStatus === 'all' ? undefined : filterStatus }) as Row[];
+        const r = await api.admin.listCleaners({ q: q || undefined, status, dateFrom: from, dateTo: to }) as Row[];
         setRows(r);
       }
     } catch (e: any) { toast.error(e?.message); }
     finally { setLoading(false); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [tab, filterStatus]);
+
+  function onQChange(val: string) {
+    setQ(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => void load(), 500);
+  }
+
+  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [tab, filterStatus, dateFrom, dateTo]);
 
   return (
     <div>
@@ -110,12 +123,12 @@ export default function UsersPage(): React.ReactElement | null  {
         </button>
       </div>
 
-      <div className="mt-3 flex gap-2">
-        <div className="relative flex-1">
+      <div className="mt-3 flex flex-wrap gap-2">
+        <div className="relative min-w-[220px] flex-1">
           <Search size={14} className="absolute left-3 top-3 text-slate-400" />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => onQChange(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load()}
             placeholder="Cari nama / email / no HP…"
             className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm"
@@ -127,6 +140,17 @@ export default function UsersPage(): React.ReactElement | null  {
           <option value="suspended">Ditangguhkan</option>
           <option value="banned">Diblokir</option>
         </select>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-slate-500 whitespace-nowrap">Daftar dari</span>
+          <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-2 text-sm" />
+          <span className="text-xs text-slate-500">s/d</span>
+          <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-2 text-sm" />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-red-500 hover:underline">Reset</button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -200,7 +224,14 @@ export default function UsersPage(): React.ReactElement | null  {
                       </>
                     )}
                     <td className="px-4 py-2"><StatusBadge status={r.status ?? 'active'} /></td>
-                    <td className="px-4 py-2 text-xs text-slate-500">{r.joinedAt ? new Date(r.joinedAt).toLocaleDateString('id-ID') : '—'}</td>
+                    <td className="px-4 py-2 text-xs text-slate-500">
+                      {r.joinedAt ? (
+                        <div>
+                          <div>{new Date(r.joinedAt).toLocaleDateString('id-ID')}</div>
+                          <div className="text-slate-400">{new Date(r.joinedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      ) : '—'}
+                    </td>
                     <td className="px-4 py-2 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="secondary" icon={<Eye size={12} />} onClick={() => setViewing(r)}>Detail</Button>

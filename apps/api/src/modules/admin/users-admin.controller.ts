@@ -20,8 +20,16 @@ export class AdminUsersController {
 
   @Get()
   @Roles('super_admin', 'ops', 'support', 'fraud_analyst')
-  async list(@Query('q') q?: string, @Query('status') status?: string, @Query('role') role?: 'customer' | 'cleaner') {
+  async list(
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('role') role?: 'customer' | 'cleaner',
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
     const search = q && q.trim().length > 0 ? `%${q.trim()}%` : null;
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
     const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT
         u.id, u.name, u.email, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
@@ -36,8 +44,10 @@ export class AdminUsersController {
         AND (${role ?? null}::text IS NULL
              OR (${role ?? null} = 'customer' AND u.is_customer = TRUE)
              OR (${role ?? null} = 'cleaner' AND u.is_freelancer = TRUE))
+        AND (${from}::timestamptz IS NULL OR u.created_at >= ${from}::timestamptz)
+        AND (${to}::timestamptz IS NULL OR u.created_at <= ${to}::timestamptz)
       ORDER BY u.created_at DESC
-      LIMIT 100
+      LIMIT 200
     `;
     return rows;
   }

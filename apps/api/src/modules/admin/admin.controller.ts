@@ -138,19 +138,20 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
   ) {
-    // Whitelist status terhadap nilai enum yang valid (mencegah SQL injection via status).
     const VALID_STATUS = new Set(['active', 'pending', 'approved', 'rejected', 'suspended', 'banned']);
     const safeStatus = status && VALID_STATUS.has(status) ? status : null;
-    // Query string: dipakai sebagai parameter LIKE (bukan template), aman.
     const safeQ = (q ?? '').trim().slice(0, 50);
-    const limit = Math.min(Math.max(Number(limitStr ?? 100) || 100, 1), 500);
+    const limit = Math.min(Math.max(Number(limitStr ?? 200) || 200, 1), 500);
     const likeParam = safeQ ? `%${safeQ}%` : null;
-    // Pakai $queryRawUnsafe dengan positional parameters ($1, $2, ...) — driver Postgres handle escaping.
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
       `
       SELECT
-        u.id, u.name, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
+        u.id, u.name, u.phone, u.email, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         cp.kyc_status AS status,
         cp.brings_tools AS "bringsTools",
         cp.rating_avg AS rating,
@@ -166,13 +167,17 @@ export class AdminController {
           OR ($1 = 'suspended' AND u.status = 'suspended')
           OR ($1 NOT IN ('active', 'banned', 'suspended') AND cp.kyc_status = $1)
         )
-        AND ($2::text IS NULL OR u.name ILIKE $2 OR u.phone ILIKE $2)
+        AND ($2::text IS NULL OR u.name ILIKE $2 OR u.phone ILIKE $2 OR u.email ILIKE $2)
+        AND ($4::timestamptz IS NULL OR u.created_at >= $4::timestamptz)
+        AND ($5::timestamptz IS NULL OR u.created_at <= $5::timestamptz)
       ORDER BY u.created_at DESC
       LIMIT $3::int
     `,
       safeStatus,
       likeParam,
       limit,
+      from,
+      to,
     );
     return rows;
   }
