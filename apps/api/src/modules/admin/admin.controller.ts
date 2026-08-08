@@ -138,16 +138,23 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Query('sortBy') sortBy?: string,
   ) {
     const VALID_STATUS = new Set(['active', 'pending', 'approved', 'rejected', 'suspended', 'banned']);
     const safeStatus = status && VALID_STATUS.has(status) ? status : null;
     const safeQ = (q ?? '').trim().slice(0, 50);
     const limit = Math.min(Math.max(Number(limitStr ?? 200) || 200, 1), 500);
     const likeParam = safeQ ? `%${safeQ}%` : null;
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
+    const orderClause = (() => {
+      switch (sortBy) {
+        case 'oldest': return 'u.created_at ASC';
+        case 'name_asc': return 'u.name ASC NULLS LAST';
+        case 'name_desc': return 'u.name DESC NULLS LAST';
+        case 'rating': return 'cp.rating_avg DESC NULLS LAST, cp.total_jobs_done DESC';
+        case 'most_jobs': return 'cp.total_jobs_done DESC NULLS LAST';
+        default: return 'u.created_at DESC';
+      }
+    })();
     const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
       `
       SELECT
@@ -168,16 +175,12 @@ export class AdminController {
           OR ($1 NOT IN ('active', 'banned', 'suspended') AND cp.kyc_status = $1)
         )
         AND ($2::text IS NULL OR u.name ILIKE $2 OR u.phone ILIKE $2 OR u.email ILIKE $2)
-        AND ($4::timestamptz IS NULL OR u.created_at >= $4::timestamptz)
-        AND ($5::timestamptz IS NULL OR u.created_at <= $5::timestamptz)
-      ORDER BY u.created_at DESC
+      ORDER BY ${orderClause}
       LIMIT $3::int
     `,
       safeStatus,
       likeParam,
       limit,
-      from,
-      to,
     );
     return rows;
   }

@@ -32,8 +32,7 @@ export default function UsersPage(): React.ReactElement | null  {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [sortBy, setSortBy] = useState<string>('newest');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [viewing, setViewing] = useState<Row | null>(null);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -81,13 +80,11 @@ export default function UsersPage(): React.ReactElement | null  {
     setLoading(true);
     try {
       const status = filterStatus === 'all' ? undefined : filterStatus;
-      const from = dateFrom || undefined;
-      const to = dateTo || undefined;
       if (tab === 'customer') {
-        const r = await api.admin.listUsers({ q: q || undefined, status, role: 'customer', dateFrom: from, dateTo: to }) as Row[];
+        const r = await api.admin.listUsers({ q: q || undefined, status, role: 'customer', sortBy }) as Row[];
         setRows(r);
       } else {
-        const r = await api.admin.listCleaners({ q: q || undefined, status, dateFrom: from, dateTo: to }) as Row[];
+        const r = await api.admin.listCleaners({ q: q || undefined, status, sortBy }) as Row[];
         setRows(r);
       }
     } catch (e: any) { toast.error(e?.message); }
@@ -100,7 +97,7 @@ export default function UsersPage(): React.ReactElement | null  {
     debounceRef.current = setTimeout(() => void load(), 500);
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [tab, filterStatus, dateFrom, dateTo]);
+  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [tab, filterStatus, sortBy]);
 
   return (
     <div>
@@ -140,17 +137,15 @@ export default function UsersPage(): React.ReactElement | null  {
           <option value="suspended">Ditangguhkan</option>
           <option value="banned">Diblokir</option>
         </select>
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-slate-500 whitespace-nowrap">Daftar dari</span>
-          <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-2 text-sm" />
-          <span className="text-xs text-slate-500">s/d</span>
-          <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-2 text-sm" />
-          {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-red-500 hover:underline">Reset</button>
-          )}
-        </div>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <option value="newest">Terbaru daftar</option>
+          <option value="oldest">Terlama daftar</option>
+          <option value="name_asc">Nama A–Z</option>
+          <option value="name_desc">Nama Z–A</option>
+          {tab === 'customer' && <option value="most_orders">Order terbanyak</option>}
+          {tab === 'cleaner' && <option value="rating">Rating tertinggi</option>}
+          {tab === 'cleaner' && <option value="most_jobs">Job terbanyak</option>}
+        </select>
       </div>
 
       <div className="mt-4">

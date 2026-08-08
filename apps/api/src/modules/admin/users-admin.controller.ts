@@ -24,31 +24,35 @@ export class AdminUsersController {
     @Query('q') q?: string,
     @Query('status') status?: string,
     @Query('role') role?: 'customer' | 'cleaner',
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Query('sortBy') sortBy?: string,
   ) {
     const search = q && q.trim().length > 0 ? `%${q.trim()}%` : null;
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    const rows = await this.prisma.$queryRaw<Record<string, unknown>[]>`
+    const orderClause = (() => {
+      switch (sortBy) {
+        case 'oldest': return 'u.created_at ASC';
+        case 'name_asc': return 'u.name ASC NULLS LAST';
+        case 'name_desc': return 'u.name DESC NULLS LAST';
+        case 'most_orders': return '"totalOrders" DESC';
+        default: return 'u.created_at DESC';
+      }
+    })();
+    const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         u.id, u.name, u.email, u.phone, u.photo_url AS "photoUrl", u.created_at AS "joinedAt",
         u.is_customer AS "isCustomer", u.is_freelancer AS "isFreelancer",
         u.status, u.suspended_until AS "suspendedUntil", u.suspend_reason AS "suspendReason",
-        (SELECT COUNT(*) FROM bookings WHERE customer_id = u.id) AS "totalOrders",
-        (SELECT COUNT(*) FROM fraud_strikes WHERE user_id = u.id) AS "strikes"
+        (SELECT COUNT(*)::int FROM bookings WHERE customer_id = u.id) AS "totalOrders",
+        (SELECT COUNT(*)::int FROM fraud_strikes WHERE user_id = u.id) AS "strikes"
       FROM users u
       WHERE 1=1
-        AND (${search}::text IS NULL OR u.name ILIKE ${search} OR u.phone ILIKE ${search} OR u.email ILIKE ${search})
-        AND (${status ?? null}::text IS NULL OR u.status = ${status ?? null})
-        AND (${role ?? null}::text IS NULL
-             OR (${role ?? null} = 'customer' AND u.is_customer = TRUE)
-             OR (${role ?? null} = 'cleaner' AND u.is_freelancer = TRUE))
-        AND (${from}::timestamptz IS NULL OR u.created_at >= ${from}::timestamptz)
-        AND (${to}::timestamptz IS NULL OR u.created_at <= ${to}::timestamptz)
-      ORDER BY u.created_at DESC
+        AND ($1::text IS NULL OR u.name ILIKE $1 OR u.phone ILIKE $1 OR u.email ILIKE $1)
+        AND ($2::text IS NULL OR u.status = $2)
+        AND ($3::text IS NULL
+             OR ($3 = 'customer' AND u.is_customer = TRUE)
+             OR ($3 = 'cleaner' AND u.is_freelancer = TRUE))
+      ORDER BY ${orderClause}
       LIMIT 200
-    `;
+    `, search, status ?? null, role ?? null);
     return rows;
   }
 
