@@ -145,14 +145,21 @@ export class AdminAnalyticsController {
         WHERE b.created_at >= NOW() - INTERVAL '30 days'
         GROUP BY city ORDER BY orders DESC LIMIT 6
       `,
-      this.prisma.$queryRaw<{ used_30d: number; total_discount_30d: number; unique_users_30d: number }[]>`
+      this.prisma.$queryRaw<{ used_30d: number; total_discount_30d: number; unique_users_30d: number; net_revenue_30d: number }[]>`
         SELECT
           COUNT(*)::int AS used_30d,
           COALESCE(SUM(vu.discount_amount), 0)::bigint AS total_discount_30d,
-          COUNT(DISTINCT vu.user_id)::int AS unique_users_30d
+          COUNT(DISTINCT vu.user_id)::int AS unique_users_30d,
+          COALESCE((
+            SELECT SUM(b.total_amount - COALESCE(b.cleaner_payout, 0))
+            FROM bookings b
+            WHERE b.paid_at >= NOW() - INTERVAL '30 days'
+              AND b.paid_at IS NOT NULL
+              AND b.cleaner_payout IS NOT NULL
+          ), 0)::bigint AS net_revenue_30d
         FROM voucher_usage vu
         WHERE vu.created_at >= NOW() - INTERVAL '30 days'
-      `.catch(() => [{ used_30d: 0, total_discount_30d: 0, unique_users_30d: 0 }]),
+      `.catch(() => [{ used_30d: 0, total_discount_30d: 0, unique_users_30d: 0, net_revenue_30d: 0 }]),
       this.prisma.$queryRaw<{ suspended_total: number; suspended_7d: number }[]>`
         SELECT
           SUM(CASE WHEN u.status = 'suspended' THEN 1 ELSE 0 END)::int AS suspended_total,
@@ -181,7 +188,7 @@ export class AdminAnalyticsController {
       topCleaners,
       topServices,
       geoBreakdown,
-      voucher30d: voucherStats[0] ?? { used_30d: 0, total_discount_30d: 0, unique_users_30d: 0 },
+      voucher30d: voucherStats[0] ?? { used_30d: 0, total_discount_30d: 0, unique_users_30d: 0, net_revenue_30d: 0 },
       cleanerSuspended: inactivityStats[0] ?? { suspended_total: 0, suspended_7d: 0 },
       funnel30d: {
         totalOrders: totalOrders30d,
