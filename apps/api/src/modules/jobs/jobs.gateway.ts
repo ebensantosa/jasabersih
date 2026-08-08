@@ -201,7 +201,7 @@ export class JobsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     void (async () => {
       try {
         const ctx = await this.prisma.$queryRaw<{ base: number; travel: number; brings_tools: boolean | null; pricing_mode: string | null; hourly_share_pct: number | null; existing_payout: number | null }[]>`
-          SELECT COALESCE(b.base_amount, b.total_amount) AS base,
+          SELECT b.total_amount AS base,
                  COALESCE(b.travel_fee, 0) AS travel,
                  cp.brings_tools,
                  b.pricing_mode,
